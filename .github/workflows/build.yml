@@ -30,6 +30,7 @@ jobs:
           npx tsc --noEmit
 
       - name: Backend tests
+        if: success() || failure()
         working-directory: src-tauri
         run: cargo test
 

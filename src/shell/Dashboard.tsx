@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import GridLayout, { type Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import { backend } from "@backend";
@@ -10,7 +10,7 @@ import { SettingsPanel } from "./SettingsPanel";
 
 const MARGIN = 12;
 
-function useSize(ref: React.RefObject<HTMLElement | null>) {
+function useSize(ref: RefObject<HTMLElement | null>) {
   const [size, setSize] = useState({ w: 0, h: 0 });
   useLayoutEffect(() => {
     const el = ref.current;
