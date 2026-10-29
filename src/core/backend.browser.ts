@@ -12,9 +12,13 @@ const channel = new BroadcastChannel("cc-events");
 let dbPromise: Promise<Database> | null = null;
 let SQL: Awaited<ReturnType<typeof initSqlJs>> | null = null;
 
-function load(): Database {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  const db = saved ? new SQL!.Database(Uint8Array.from(atob(saved), (c) => c.charCodeAt(0))) : new SQL!.Database();
+function load(bytes?: Uint8Array): Database {
+  const saved = bytes ? null : localStorage.getItem(STORAGE_KEY);
+  const db = bytes
+    ? new SQL!.Database(bytes)
+    : saved
+      ? new SQL!.Database(Uint8Array.from(atob(saved), (c) => c.charCodeAt(0)))
+      : new SQL!.Database();
   db.exec(`PRAGMA foreign_keys = ON;
     CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS _migrations (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL);`);
@@ -54,7 +58,8 @@ channel.addEventListener("message", async (e: MessageEvent) => {
   if (!e.data?.event) return;
   if (dbPromise) {
     const old = await dbPromise;
-    dbPromise = Promise.resolve(load());
+    // localStorage reaches other tabs asynchronously, so the sender ships its database with the event.
+    dbPromise = Promise.resolve(load(e.data.db));
     old.close();
   }
   window.dispatchEvent(new CustomEvent("cc:" + e.data.event, { detail: e.data.payload }));
@@ -94,7 +99,7 @@ export const backend: Backend = {
     }
   },
   async emit(event, payload) {
-    channel.postMessage({ event, payload });
+    channel.postMessage({ event, payload, db: dbPromise ? (await dbPromise).export() : undefined });
     window.dispatchEvent(new CustomEvent("cc:" + event, { detail: payload }));
   },
   async listen(event, cb) {
