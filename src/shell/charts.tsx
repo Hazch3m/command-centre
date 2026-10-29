@@ -21,20 +21,24 @@ export function BarChart({
   unit = "",
   labelEvery = 1,
   refLine,
+  min = 0,
 }: {
   bars: Bar[];
   height?: number;
   unit?: string;
   labelEvery?: number;
   refLine?: { value: number; label: string } | null;
+  /** Bottom of the value axis (bars start here), e.g. to zoom in on race times. */
+  min?: number;
 }) {
   const [hover, setHover] = useState<number | null>(null);
   const W = 1000;
   const H = height;
   const pad = { top: 8, bottom: 18, left: 0, right: 0 };
-  const max = Math.max(1, ...bars.map((b) => Math.max(b.value, b.targetMax ?? b.target ?? 0)), refLine?.value ?? 0) * 1.08;
+  const top = Math.max(min + 1, ...bars.map((b) => Math.max(b.value, b.targetMax ?? b.target ?? 0)), refLine?.value ?? 0);
+  const max = min + (top - min) * 1.08;
   const bw = (W - pad.left - pad.right) / Math.max(1, bars.length);
-  const y = (v: number) => pad.top + (H - pad.top - pad.bottom) * (1 - v / max);
+  const y = (v: number) => pad.top + (H - pad.top - pad.bottom) * (1 - (Math.max(v, min) - min) / (max - min));
   const h = hover != null ? bars[hover] : null;
   return (
     <div className="chart" onMouseLeave={() => setHover(null)}>

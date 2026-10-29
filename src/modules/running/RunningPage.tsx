@@ -320,7 +320,7 @@ export function RunningPage({ onClose }: { onClose: () => void }) {
             </table>
 
             <h3>Every race, as a marathon equivalent</h3>
-            <p className="muted small">Shorter races converted with Riegel's formula (exponent 1.06). The dashed line is sub-2:50; lower is faster.</p>
+            <p className="muted small">Shorter races converted with Riegel's formula (exponent 1.06). Shorter bars are faster; the dashed line is 2:50. Green bars are actual marathons.</p>
             <BarChart
               bars={data.races.map((r) => ({
                 label: r.date.slice(2, 4) + "/" + r.date.slice(5, 7),
@@ -329,6 +329,7 @@ export function RunningPage({ onClose }: { onClose: () => void }) {
                 title: `${r.name} (${r.date}): ${duration(r.time)} → marathon ${duration(r.equiv)}`,
               }))}
               height={180}
+              min={150}
               refLine={{ value: 170, label: "2:50:00" }}
             />
             <table className="table">

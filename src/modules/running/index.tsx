@@ -50,7 +50,8 @@ function RunningCard({ editing }: CardProps) {
   const pct = hi ? Math.min(1, done / hi) : 0;
   const todaySession = sessionFor(plan, today);
   const tomorrowSession = sessionFor(plan, addDays(today, 1));
-  const phase = week?.phase.replace(/\s*\(.*\)$/, "").replace(/^Recovery and /, "");
+  // Weeks R1/R2 sit under the "Recovery and Phase 1" heading in the plan.
+  const phase = week ? (/^R\d/.test(week.week) ? "Recovery" : week.phase.replace(/\s*\(.*\)$/, "").replace(/^Recovery and /, "")) : "";
 
   return (
     <>
@@ -95,7 +96,7 @@ function RunningCard({ editing }: CardProps) {
                   </>
                 ) : null}
               </div>
-              <div className="muted small">
+              <div className="muted small one-line" title={lastRun.name}>
                 {relativeDayLabel(lastRun.date, today)} · {lastRun.name}
               </div>
             </>
@@ -159,7 +160,7 @@ function RunningCard({ editing }: CardProps) {
 export const runningModule: DashboardModule = {
   id: "running",
   title: "Running",
-  defaultPos: { x: 0, y: 3, w: 7, h: 13 },
+  defaultPos: { x: 0, y: 3, w: 7, h: 11 },
   minW: 5,
   minH: 8,
   migrations,

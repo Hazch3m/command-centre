@@ -1501,3 +1501,8 @@ select.filter {
   gap: 0.4rem;
   margin-top: 0.5rem;
 }
+.one-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
