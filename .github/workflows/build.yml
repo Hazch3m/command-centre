@@ -9,6 +9,25 @@ permissions:
   contents: write
 
 jobs:
+  # UI-only build (in-browser SQLite) pushed to the `preview` branch, used to test
+  # the interface in a headless browser before shipping the installer.
+  browser-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: bash ci/run.sh "Preview build" npx vite build --mode browser --outDir preview-dist --base ./
+      - name: Push to preview branch
+        run: |
+          cd preview-dist
+          git init -q -b preview
+          git -c user.name=ci -c user.email=ci@localhost add -A
+          git -c user.name=ci -c user.email=ci@localhost commit -qm "Preview of ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}" preview
+
   windows:
     runs-on: windows-latest
     steps:
