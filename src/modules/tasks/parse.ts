@@ -1,12 +1,36 @@
 import { addDays, dateKey, parseKey } from "../../core/time";
+import { parseRecurToken, type Recur } from "./recur";
 
 export interface ParsedTask {
   title: string;
   project: string | null;
   /** 1 = high, 2 = medium, 3 = low, null = none */
   priority: number | null;
-  /** YYYY-MM-DD */
+  /** Deadline, YYYY-MM-DD */
   due: string | null;
+  /** Don't show in Focus before this date, YYYY-MM-DD */
+  start: string | null;
+  /** Estimated minutes */
+  effort: number | null;
+  recur: Recur | null;
+}
+
+/** "30m", "2h", "1.5h", "1h30", "90" → minutes */
+export function parseEffort(tok: string): number | null {
+  const t = tok.toLowerCase();
+  let m = /^(\d+(?:\.\d+)?)h(?:(\d{1,2})m?)?$/.exec(t);
+  if (m) return Math.round(Number(m[1]) * 60 + (m[2] ? Number(m[2]) : 0));
+  m = /^(\d{1,4})m?$/.exec(t);
+  if (m && Number(m[1]) > 0) return Number(m[1]);
+  return null;
+}
+
+export function formatEffort(min: number | null | undefined): string {
+  if (!min) return "";
+  if (min < 60) return `${min}m`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
 }
 
 const DAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
@@ -60,7 +84,7 @@ function valid(y: number, m: number, d: number): string | null {
  * Tokens that don't parse are left in the title.
  */
 export function parseTask(input: string, today: string): ParsedTask {
-  const out: ParsedTask = { title: "", project: null, priority: null, due: null };
+  const out: ParsedTask = { title: "", project: null, priority: null, due: null, start: null, effort: null, recur: null };
   const words: string[] = [];
   for (const token of input.trim().split(/\s+/)) {
     if (!token) continue;
@@ -71,6 +95,27 @@ export function parseTask(input: string, today: string): ParsedTask {
     if (token.length > 1 && token.startsWith("!") && PRIORITY[token.slice(1).toLowerCase()] !== undefined) {
       out.priority = PRIORITY[token.slice(1).toLowerCase()];
       continue;
+    }
+    if (token.length > 1 && token.startsWith("^")) {
+      const start = parseDue(token.slice(1), today);
+      if (start) {
+        out.start = start;
+        continue;
+      }
+    }
+    if (token.length > 1 && token.startsWith("~")) {
+      const effort = parseEffort(token.slice(1));
+      if (effort) {
+        out.effort = effort;
+        continue;
+      }
+    }
+    if (token.length > 1 && token.startsWith("*")) {
+      const recur = parseRecurToken(token.slice(1));
+      if (recur) {
+        out.recur = recur;
+        continue;
+      }
     }
     if (token.length > 1 && token.startsWith("@")) {
       const due = parseDue(token.slice(1), today);

@@ -19,6 +19,8 @@ jobs:
         with:
           node-version: 22
       - run: npm install --no-audit --no-fund
+      - run: bash ci/run.sh "Unit tests (fast)" npm test
+      - run: bash ci/run.sh "Type check (fast)" npx tsc --noEmit
       - run: bash ci/run.sh "Preview build" npx vite build --mode browser --outDir preview-dist --base ./
       - name: Push to preview branch
         run: |

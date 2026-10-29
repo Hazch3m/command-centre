@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseDue, parseTask } from "./parse";
+import { formatEffort, parseDue, parseEffort, parseTask } from "./parse";
 
 // Thursday 29 October 2026
 const TODAY = "2026-10-29";
@@ -34,12 +34,31 @@ describe("parseTask", () => {
       project: "thesis",
       priority: 1,
       due: "2026-10-30",
+      start: null,
+      effort: null,
+      recur: null,
     });
   });
   it("leaves unknown tokens in the title", () => {
-    expect(parseTask("Book @someone !urgent", TODAY)).toEqual({ title: "Book @someone !urgent", project: null, priority: null, due: null });
+    expect(parseTask("Book @someone !urgent", TODAY)).toEqual({ title: "Book @someone !urgent", project: null, priority: null, due: null, start: null, effort: null, recur: null });
   });
   it("turns dashes in projects into spaces", () => {
     expect(parseTask("Read paper #lit-review !low", TODAY).project).toBe("lit review");
+  });
+});
+
+describe("start, effort and repeat", () => {
+  it("parses all three", () => {
+    const t = parseTask("Weekly supervisor update #thesis ^mon @tue ~45m *weekly", TODAY);
+    expect(t).toMatchObject({ title: "Weekly supervisor update", start: "2026-11-02", due: "2026-11-03", effort: 45, recur: "w:1:" });
+  });
+  it("parses and formats effort", () => {
+    expect(parseEffort("2h")).toBe(120);
+    expect(parseEffort("1.5h")).toBe(90);
+    expect(parseEffort("1h30")).toBe(90);
+    expect(parseEffort("40")).toBe(40);
+    expect(parseEffort("x")).toBeNull();
+    expect(formatEffort(90)).toBe("1h30");
+    expect(formatEffort(45)).toBe("45m");
   });
 });
