@@ -68,9 +68,14 @@ function splitEstimate(s: Split, cfg: Vo2Config): number {
  */
 export function estimateRun(splits: Split[], cfg: Vo2Config): { vo2: number; n: number } | null {
   const vals: number[] = [];
+  let covered = 0;
   for (let i = 1; i < splits.length; i++) {
     const s = splits[i];
     const p = splits[i - 1];
+    covered += p.distance;
+    // Past ~30 km heart rate drifts up at the same pace (dehydration, heat), which
+    // would read as lower fitness; steady-state methods like Garmin's skip it.
+    if (covered + s.distance > 30000) break;
     if (!s.hr || !p.hr || s.distance < 900 || s.moving_time < 150 || s.speed <= 0) continue;
     if (s.hr < 0.8 * cfg.hrMax || s.hr >= cfg.hrMax) continue;
     if (Math.abs(s.hr - p.hr) > 7 || p.distance < 900) continue;
@@ -146,11 +151,14 @@ export function judge(value: number | null, projected: number): TrendStatus {
   return "behind";
 }
 
-/** Garmin calibration: median difference between Garmin readings and our smoothed estimate nearest in time. */
-export function garminOffset(readings: { date: string; vo2: number }[], estimates: RunEstimate[]): number | null {
+/**
+ * Calibration: median difference between reference values (Garmin readings, or
+ * race results as VDOT) and our estimates from runs within `windowDays` of each.
+ */
+export function garminOffset(readings: { date: string; vo2: number }[], estimates: RunEstimate[], windowDays = 14): number | null {
   const diffs: number[] = [];
   for (const r of readings) {
-    const near = estimates.filter((e) => Math.abs(diffDays(e.date, r.date)) <= 14).map((e) => e.vo2);
+    const near = estimates.filter((e) => Math.abs(diffDays(e.date, r.date)) <= windowDays).map((e) => e.vo2);
     const m = median(near);
     if (m != null) diffs.push(r.vo2 - m);
   }
@@ -160,7 +168,7 @@ export function garminOffset(readings: { date: string; vo2: number }[], estimate
 /** Least-squares slope (per week) of the last `n` weekly values. */
 export function slopePerWeek(points: WeekPoint[], n = 8): number | null {
   const pts = points.slice(-n).map((p, i) => [i, p.value] as const).filter((p): p is readonly [number, number] => p[1] != null);
-  if (pts.length < 3) return null;
+  if (pts.length < 4) return null;
   const mx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
   const my = pts.reduce((s, p) => s + p[1], 0) / pts.length;
   const num = pts.reduce((s, p) => s + (p[0] - mx) * (p[1] - my), 0);

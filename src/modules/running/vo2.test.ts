@@ -29,8 +29,9 @@ describe("VO2 max from real Strava laps", () => {
       }
     }
   });
-  it("gives sensible values: Lausanne ~51.6, 1 Oct intervals ~54.4", () => {
-    expect(estimateRun(runs["20727686060"].splits, cfg)!.vo2).toBeCloseTo(51.6, 1);
+  it("gives sensible values: Lausanne ~51.9 (first 30 km), 1 Oct intervals ~54.4", () => {
+    expect(estimateRun(runs["20727686060"].splits, cfg)!.vo2).toBeCloseTo(51.9, 1);
+    expect(estimateRun(runs["20727686060"].splits, cfg)!.n).toBe(27);
     expect(estimateRun(runs["20402567292"].splits, cfg)!.vo2).toBeCloseTo(54.4, 1);
   });
   it("ignores alternating-pace workouts where heart rate lags", () => {
@@ -77,11 +78,14 @@ describe("projection and status", () => {
       { id: "b", date: "2026-10-13", name: "", vo2: 53, n: 4 },
       { id: "c", date: "2026-10-20", name: "", vo2: 54, n: 4 },
       { id: "d", date: "2026-10-22", name: "", vo2: 56, n: 4 },
+      { id: "e", date: "2026-10-27", name: "", vo2: 55, n: 4 },
     ];
-    const w = weeklySeries(est, "2026-10-05", "2026-10-26");
-    expect(w.map((x) => x.value)).toEqual([52, 53, 55, null]);
+    const w = weeklySeries(est, "2026-10-05", "2026-11-02");
+    expect(w.map((x) => x.value)).toEqual([52, 53, 55, 55, null]);
     expect(w[2].smooth).toBe(53.5);
-    expect(slopePerWeek(w)).toBeCloseTo(1.5, 5);
+    // x = 0,1,2,3; y = 52,53,55,55 → slope 1.1
+    expect(slopePerWeek(w)).toBeCloseTo(1.1, 5);
+    expect(slopePerWeek(w.slice(0, 3))).toBeNull(); // too few weeks to call a trend
   });
   it("calibrates to Garmin readings", () => {
     const est = [{ id: "a", date: "2026-10-20", name: "", vo2: 54, n: 4 }];

@@ -29,7 +29,7 @@ function Settings({ f }: { f: Fitness }) {
       </label>
       <label className="inline">
         <input type="checkbox" checked={c.calibrate} onChange={(e) => save({ ...c, calibrate: e.target.checked })} />
-        Calibrate to Garmin readings
+        Calibrate (to Garmin readings, else race results)
       </label>
       <div className="fit-milestones">
         <div className="label">Projection</div>
@@ -99,7 +99,7 @@ function GarminReadings({ f }: { f: Fitness }) {
   return (
     <div>
       <p className="muted small">
-        Garmin doesn't let other apps read your watch's VO2 max, so type it in now and then (Garmin Connect → Performance stats → VO2 max). With one or more readings, the estimates line up with Garmin's scale
+        Garmin doesn't let other apps read your watch's VO2 max, so type it in now and then (Garmin Connect → Performance stats → VO2 max). With one or more readings, the estimates line up with Garmin's scale instead of your race results
         {f.offset ? ` (currently ${f.offset >= 0 ? "+" : ""}${f.offset.toFixed(1)})` : ""}.
       </p>
       <div className="inline">
@@ -150,7 +150,10 @@ export function FitnessTab({ f }: { f: Fitness }) {
         <div className="tile">
           <div className="label">VO2 max now</div>
           <div className="tile-value num">{fmtVo2(f.current)}</div>
-          <div className="muted small">{f.offset ? "Garmin-calibrated estimate" : "Estimate from key runs"}</div>
+          <div className="muted small">
+            {f.calibration === "garmin" ? "Garmin-calibrated estimate" : f.calibration === "races" ? "Calibrated to your race results" : "Estimate from key runs"}
+            {f.offset ? ` (${f.offset >= 0 ? "+" : ""}${f.offset.toFixed(1)})` : ""}
+          </div>
         </div>
         <div className="tile">
           <div className="label">This week vs plan</div>
@@ -184,8 +187,8 @@ export function FitnessTab({ f }: { f: Fitness }) {
         markers={f.config.projection.milestones.map((m) => ({ x: m.date, label: m.label }))}
       />
       <p className="muted small">
-        Each dot is one key run: a run with at least three steady kilometres above 80% of max heart rate. Its estimate uses Daniels' oxygen cost of your grade-adjusted pace and
-        your heart-rate reserve. The trend is a 4-week rolling median. Diamonds are your races converted to VDOT. A single run can be off by ±2 (heat, hills, fatigue); the
+        Each dot is one key run: a run with at least three steady kilometres above 80% of max heart rate (the first 30 km only, before heart-rate drift). Its estimate uses Daniels' oxygen cost of your grade-adjusted pace and
+        your heart-rate reserve, then shifted onto the scale of your Garmin readings or, without those, your race results. The trend is a 4-week rolling median. Diamonds are your races converted to VDOT. A single run can be off by ±2 (heat, hills, fatigue); the
         trend is what to watch.
       </p>
 

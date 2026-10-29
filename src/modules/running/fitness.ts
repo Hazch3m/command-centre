@@ -26,7 +26,7 @@ import {
 export const FITNESS_FILE = "fitness.json";
 
 export interface FitnessConfig extends Vo2Config {
-  /** Apply the Garmin calibration offset when readings exist. */
+  /** Calibrate estimates to Garmin readings, or to recent race results when there are none. */
   calibrate: boolean;
 }
 
@@ -82,6 +82,7 @@ export function splitsFor(d: RunDetail) {
 export interface Fitness {
   config: FitnessConfig;
   offset: number;
+  calibration: "garmin" | "races" | "none";
   estimates: RunEstimate[]; // calibrated, oldest first
   weekly: WeekPoint[];
   readings: { date: string; vo2: number }[];
@@ -120,7 +121,25 @@ export function computeFitness(
     const e = estimateRun(splitsFor(d), config);
     if (e) raw.push({ id: r.id, date: r.date, name: r.name, vo2: e.vo2, n: e.n });
   }
-  const offset = config.calibrate && readings.length ? garminOffset(readings, raw) ?? 0 : 0;
+  // Calibrate: to Garmin readings when there are any, otherwise to race results
+  // from the last year (VDOT), which also puts estimates on the same scale as the goals.
+  const races = plan ? raceHistory(runs, plan).map((r) => ({ date: r.date, name: r.name, vdot: vdot(r.km * 1000, r.time) })) : [];
+  const recentRaces = races.filter((r) => r.date >= addDays(today, -365)).map((r) => ({ date: r.date, vo2: r.vdot }));
+  let calibration: Fitness["calibration"] = "none";
+  let offset = 0;
+  if (config.calibrate && readings.length) {
+    const o = garminOffset(readings, raw);
+    if (o != null) {
+      offset = o;
+      calibration = "garmin";
+    }
+  } else if (config.calibrate && recentRaces.length) {
+    const o = garminOffset(recentRaces, raw, 21);
+    if (o != null) {
+      offset = o;
+      calibration = "races";
+    }
+  }
   const estimates = raw.map((e) => ({ ...e, vo2: e.vo2 + offset }));
 
   const thisMonday = mondayOf(today);
@@ -151,8 +170,6 @@ export function computeFitness(
   const nextMilestone = config.projection.milestones.filter((m) => m.date > today).sort((a, b) => a.date.localeCompare(b.date))[0] ?? null;
   const neededSlope =
     nextMilestone && current != null ? (nextMilestone.vo2 - current) / Math.max(1, (Date.parse(nextMilestone.date) - Date.parse(today)) / (7 * 86400000)) : null;
-
-  const races = plan ? raceHistory(runs, plan).map((r) => ({ date: r.date, name: r.name, vdot: vdot(r.km * 1000, r.time) })) : [];
 
   const DIST = [
     { name: "5k", distance: 5000, match: /5k/i },
@@ -202,6 +219,7 @@ export function computeFitness(
   return {
     config,
     offset,
+    calibration,
     estimates,
     weekly,
     readings,

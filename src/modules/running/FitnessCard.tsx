@@ -97,7 +97,7 @@ function FitnessCard(_: CardProps) {
       <div className="fit-top">
         <div>
           <div className="num fit-big">{fmtVo2(f.current)}</div>
-          <div className="muted small">VO2 max{f.offset ? " (Garmin-calibrated)" : " estimate"}</div>
+          <div className="muted small">VO2 max · {f.calibration === "garmin" ? "Garmin scale" : f.calibration === "races" ? "race scale" : "estimate"}</div>
         </div>
         <div className="fit-facts small">
           <div>
