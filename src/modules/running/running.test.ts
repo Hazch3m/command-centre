@@ -16,6 +16,8 @@ const run = (id: string, date: string, distKm: number, secs: number, extra: Part
   avg_hr: 145,
   max_hr: 170,
   workout_type: null,
+  polyline: null,
+  gear_id: null,
   ...extra,
 });
 

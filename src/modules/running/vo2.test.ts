@@ -16,7 +16,7 @@ import {
 } from "./vo2";
 
 const cfg: Vo2Config = { hrMax: 199, hrRest: 50, projection: { start: { date: "2026-11-09", vo2: null }, milestones: [] } };
-const runs = real as Record<string, { splits: Split[]; expect: [number, number] | null }>;
+const runs = real as unknown as Record<string, { splits: Split[]; expect: [number, number] | null }>;
 
 describe("VO2 max from real Strava laps", () => {
   it("matches the independent reference for every run", () => {
