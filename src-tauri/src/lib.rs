@@ -1,6 +1,7 @@
 mod backup;
 mod config;
 mod db;
+mod oauth;
 mod quickadd;
 mod window;
 
@@ -58,6 +59,38 @@ fn data_folder(dir: tauri::State<DataDir>) -> String {
 #[tauri::command]
 fn open_data_folder(app: AppHandle, dir: tauri::State<DataDir>) -> Result<(), String> {
     app.opener().open_path(dir.0.to_string_lossy(), None::<&str>).map_err(|e| e.to_string())
+}
+
+/// Small JSON files the user (or Claude) can edit, e.g. training-plan.json.
+/// Only plain names in the data folder are allowed.
+fn data_file_path(dir: &DataDir, name: &str) -> Result<PathBuf, String> {
+    let ok = !name.is_empty()
+        && name.len() <= 64
+        && name.ends_with(".json")
+        && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
+        && !name.contains("..");
+    if !ok || name == "config.json" {
+        return Err(format!("\"{name}\" isn't a file the app can read"));
+    }
+    Ok(dir.0.join(name))
+}
+
+#[tauri::command]
+fn read_data_file(dir: tauri::State<DataDir>, name: String) -> Result<Option<String>, String> {
+    let path = data_file_path(&dir, &name)?;
+    match std::fs::read_to_string(&path) {
+        Ok(s) => Ok(Some(s)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[tauri::command]
+fn write_data_file(dir: tauri::State<DataDir>, name: String, contents: String) -> Result<(), String> {
+    let path = data_file_path(&dir, &name)?;
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, contents).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp, &path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -120,6 +153,12 @@ pub fn run() {
             let db = Db::open(&data_dir.join("command-centre.db"))?;
             let store = ConfigStore::load(&data_dir);
             app.manage(db);
+            app.manage(
+                reqwest::Client::builder()
+                    .user_agent("CommandCentre/0.2")
+                    .connect_timeout(Duration::from_secs(10))
+                    .build()?,
+            );
             app.manage(DataDir(data_dir));
 
             // Launch at login is on by default for the installed app; turning it off in settings sticks.
@@ -161,6 +200,13 @@ pub fn run() {
             open_data_folder,
             get_config,
             app_version,
+            read_data_file,
+            write_data_file,
+            oauth::oauth_status,
+            oauth::oauth_set_client,
+            oauth::oauth_disconnect,
+            oauth::oauth_connect,
+            oauth::api_request,
             window::list_monitors,
             window::set_monitor,
             window::set_fullscreen_mode,

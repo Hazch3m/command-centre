@@ -2,6 +2,7 @@ import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react
 import { backend } from "@backend";
 import type { AppConfig, BackupStatus, MonitorInfo } from "../core/backend.types";
 import { getSettings, subscribeSettings, updateSettings } from "../core/settings";
+import { Connections } from "./Connections";
 
 function Row({ label, hint, children, path }: { label: string; hint?: string; children: ReactNode; path?: boolean }) {
   return (
@@ -126,6 +127,9 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
             ))}
           </select>
         </Row>
+
+        <h3>Connections</h3>
+        <Connections />
 
         <h3>Data</h3>
         <Row label="Data folder" hint={folder} path>

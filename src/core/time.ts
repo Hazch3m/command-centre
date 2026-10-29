@@ -112,3 +112,21 @@ export function relativeDayLabel(key: string, today: string): string {
   const label = `${WEEKDAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
   return d.getFullYear() === parseKey(today).getFullYear() ? label : `${label} ${d.getFullYear()}`;
 }
+
+/**
+ * Runs `fn` now and then every `ms` (driven by the shared ticker, so no extra
+ * timers). Catches up after the PC wakes from sleep.
+ */
+export function useEvery(ms: number, fn: () => void, deps: unknown[] = []) {
+  useEffect(() => {
+    let last = Date.now();
+    fn();
+    return onTick((t) => {
+      if (t.getTime() - last >= ms) {
+        last = t.getTime();
+        fn();
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ms, ...deps]);
+}

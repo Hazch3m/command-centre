@@ -127,4 +127,42 @@ export const backend: Backend = {
   dataFolder: async () => "(browser preview — data kept in localStorage)",
   openDataFolder: async () => {},
   appVersion: async () => "dev",
+
+  readDataFile: async (name) => localStorage.getItem("cc-file:" + name),
+  writeDataFile: async (name, contents) => localStorage.setItem("cc-file:" + name, contents),
+  // Test harness: services are "connected" when a fixture file exists next to the page.
+  oauthStatus: async (p) => {
+    const ok = !!(await fixture(p));
+    return { configured: ok, connected: ok, account: ok ? `${p} (test data)` : null };
+  },
+  oauthSetClient: async () => {},
+  oauthConnect: async (p) => backend.oauthStatus(p),
+  oauthDisconnect: async () => {},
+  apiRequest: async <T,>(p: "strava" | "google", method: string, url: string, body?: unknown) => {
+    const fx = await fixture(p);
+    if (!fx) throw new Error("offline: no test data for " + p);
+    return fakeApi(fx, method, url, body) as { status: number; body: T };
+  },
 };
+
+// ---- Fake APIs for UI tests (fixtures/<provider>.json, not shipped) ----------
+const fixtures = new Map<string, Promise<any>>();
+function fixture(p: string): Promise<any> {
+  if (!fixtures.has(p)) fixtures.set(p, fetch(`fixtures/${p}.json`).then((r) => (r.ok ? r.json() : null), () => null));
+  return fixtures.get(p)!;
+}
+function fakeApi(fx: any, method: string, url: string, body: unknown): { status: number; body: unknown } {
+  const u = new URL(url);
+  if (u.pathname === "/api/v3/athlete/activities") {
+    const after = Number(u.searchParams.get("after") ?? 0);
+    const before = Number(u.searchParams.get("before") ?? Infinity);
+    const page = Number(u.searchParams.get("page") ?? 1);
+    const per = Number(u.searchParams.get("per_page") ?? 30);
+    const all = (fx.activities as any[])
+      .filter((a) => Date.parse(a.start_date) / 1000 > after && Date.parse(a.start_date) / 1000 < before)
+      .sort((a, b) => Date.parse(a.start_date) - Date.parse(b.start_date));
+    return { status: 200, body: all.slice((page - 1) * per, page * per) };
+  }
+  const handler = fx.routes?.[`${method} ${u.pathname}`];
+  return handler !== undefined ? { status: 200, body: handler } : { status: 404, body: { error: "not in fixture", method, path: u.pathname, body } };
+}

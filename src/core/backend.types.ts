@@ -35,6 +35,17 @@ export interface BackupStatus {
   count: number;
 }
 
+export type Provider = "strava" | "google";
+export interface OAuthStatus {
+  configured: boolean;
+  connected: boolean;
+  account: string | null;
+}
+export interface ApiResponse<T = unknown> {
+  status: number;
+  body: T;
+}
+
 export interface Backend {
   readonly kind: "tauri" | "browser";
   select<T = Row>(sql: string, params?: SqlParam[]): Promise<T[]>;
@@ -59,4 +70,16 @@ export interface Backend {
   dataFolder(): Promise<string>;
   openDataFolder(): Promise<void>;
   appVersion(): Promise<string>;
+
+  /** JSON files in the data folder that people edit by hand (e.g. training-plan.json). */
+  readDataFile(name: string): Promise<string | null>;
+  writeDataFile(name: string, contents: string): Promise<void>;
+
+  // Sign-in and authenticated API calls (tokens stay in the OS keychain).
+  oauthStatus(p: Provider): Promise<OAuthStatus>;
+  oauthSetClient(p: Provider, clientId: string, clientSecret: string): Promise<void>;
+  oauthConnect(p: Provider): Promise<OAuthStatus>;
+  oauthDisconnect(p: Provider, forgetClient: boolean): Promise<void>;
+  /** Rejects with a message starting "offline:" when there's no connection. */
+  apiRequest<T = unknown>(p: Provider, method: string, url: string, body?: unknown): Promise<ApiResponse<T>>;
 }
