@@ -9,7 +9,7 @@ A full-screen personal dashboard for a second monitor. Built with Tauri 2 (Rust)
 | 1 | App shell, monitor placement, editable grid, clock, daily checklist, tasks, quick-add, backups | **Done** |
 | 2 | Tasks v2 (projects, subtasks, statuses, board, repeats), Google Calendar, Google Tasks sync, Running card and page (training plan + Strava) | **Done** |
 | 2b | Fitness card (VO2 max trend vs projection, race predictor, training load), Latest run card, shoes, aerobic efficiency | **Done** |
-| 2c | Light theme (dark optional), text size, full-width bands, training calendar | **Done** |
+| 2c | Overview + tabs with animated transitions, Slate/Light/Dark themes, text size, training calendar | **Done** |
 | 3 | Research goals, gym tracker (with strength A/B from the plan), photos | Next |
 | 4 | Weather, Pomodoro, notes, polish | |
 
@@ -28,8 +28,9 @@ Windows SmartScreen may warn that the installer is from an unknown publisher, be
 | Action | How |
 |---|---|
 | Quick-add a task or checklist item from any app | **Ctrl+Alt+Space** (Tab switches between Task and Checklist item) |
-| Rearrange, resize or hide cards | **Ctrl+E**, or move the mouse and click **Edit layout** (top right) |
-| Settings | **Ctrl+,**, or move the mouse and click **Settings** |
+| Switch tab | Click it, or **Ctrl+1…6** |
+| Rearrange, resize or hide overview tiles | **Ctrl+E**, or **Edit** (top right) |
+| Settings | **Ctrl+,**, or ⚙ (top right) |
 | Toggle full-screen | **F11** |
 
 **Tasks** have three views: **Focus** (overdue, today, in progress, next 7 days, waiting, scheduled), **Projects** (each project with its colour and progress) and **Board** (drag cards between To do, In progress, Waiting and Done). Click any task to open its detail panel: status, priority, project, start date, due date, estimate, repeat, notes and subtasks.
@@ -58,9 +59,9 @@ Click a task to edit it. Ticked tasks stay visible (struck through) under "Done 
 
 **Daily checklist.** Items reset each morning at 04:00 by default, so anything ticked after midnight still counts for the evening before. You can change the reset time in Settings. To track an amount rather than a simple tick, add a number to the item: `Research 3h` counts in half-hour steps up to 3 h. A day only counts towards the streak once the target is reached. Removing an item keeps its history.
 
-**Layout.** Each card is a full-width band across the screen. Settings → Display has the theme (light, dark, or match Windows) and text size. If you had rearranged the old layout, this version starts again from the new default bands; rearrange with Ctrl+E as before.
+**Layout.** The top bar has tabs: **Overview** (the key facts from everything, as tiles you can rearrange with Ctrl+E), then **Training**, **Fitness**, **Calendar**, **Tasks** and **Daily**. Click a tab, a tile's title, or press Ctrl+1…6 (Ctrl+PageUp/PageDown cycles). Settings → Display has the theme (Slate, the mid-tone default; Light; Dark; or match Windows) and text size.
 
-**Training calendar.** The plan one week at a time: each day's session, an estimated distance (≈ km), the target pace, strength A/B days and races, and what you actually ran (click a run to open it on Strava). Scroll the mouse wheel over it, use ← →, or click a week in the strip underneath to move through the plan; **This week** jumps back. Distances for the days the plan doesn't name are sized from the weekly structure so the week adds up to its target, so treat them as a guide. Weeks after Edinburgh show the block's focus until the doc has day-by-day sessions for them.
+**Training calendar.** On the Overview, this week; on the Training tab, six weeks at a time. For each day: each day's session, an estimated distance (≈ km), the target pace, strength A/B days and races, and what you actually ran (click a run to open it on Strava). Scroll the mouse wheel over it, use ← →, or click a week in the strip underneath to move through the plan; **This week** jumps back. Distances for the days the plan doesn't name are sized from the weekly structure so the week adds up to its target, so treat them as a guide. Weeks after Edinburgh show the block's focus until the doc has day-by-day sessions for them.
 
 **Running.** The card shows this week's kilometres against the plan, today's and tomorrow's sessions, your last run, the last 12 weeks and the next race countdowns. Click **Plan ›** for the full page: this week, the whole plan with what you actually ran, races and benchmark status, progression (same numbers as your Running progression review) and paces and strength.
 

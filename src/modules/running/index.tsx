@@ -95,7 +95,7 @@ function RunningCard({ editing }: CardProps) {
 
       <div className="run-history">
         <div className="label">Last 10 weeks, km</div>
-        <BarChart bars={history} height={70} unit=" km" />
+        <BarChart bars={history} height={105} unit=" km" />
       </div>
 
       <div className="run-races">
