@@ -2,7 +2,7 @@ import { addDays, useToday } from "../../core/time";
 import { LineChart, type LineSeries } from "../../shell/charts";
 import { CardHeader, Empty } from "../../shell/ui";
 import type { CardProps, DashboardModule } from "../types";
-import { fmtVo2, useFitness, type Fitness } from "./fitness";
+import { showVo2, useFitness, type Fitness } from "./fitness";
 import { duration } from "./stats";
 import { useRunningData, useStravaSync } from "./useRunning";
 import { FitnessTab } from "./FitnessTab";
@@ -17,17 +17,17 @@ export function vo2Series(f: Fitness, from: string, to: string): LineSeries[] {
   const proj: LineSeries["points"] = [];
   if (f.start) {
     const end = [...f.config.projection.milestones].sort((a, b) => b.date.localeCompare(a.date))[0]?.date ?? to;
-    for (let d = f.start.date; d <= end && d <= to; d = addDays(d, 7)) proj.push({ x: d, y: f.project(d) });
-    for (const m of f.config.projection.milestones) if (m.date <= to) proj.push({ x: m.date, y: m.vo2 });
+    for (let d = f.start.date; d <= end && d <= to; d = addDays(d, 7)) proj.push({ x: d, y: f.project(d)! + f.shift });
+    for (const m of f.config.projection.milestones) if (m.date <= to) proj.push({ x: m.date, y: m.vo2 + f.shift });
     proj.sort((a, b) => a.x.localeCompare(b.x));
   }
   return [
-    { name: "Key run", kind: "dots", className: "s-est", points: f.estimates.filter((e) => e.date >= from).map((e) => ({ x: e.date, y: e.vo2, label: e.name })) },
-    { name: "Trend", kind: "line", className: "s-trend", points: f.weekly.filter((w) => w.week >= from).map((w) => ({ x: addDays(w.week, 3), y: w.smooth })) },
+    { name: "Key run", kind: "dots", className: "s-est", points: f.estimates.filter((e) => e.date >= from).map((e) => ({ x: e.date, y: e.vo2 + f.shift, label: e.name })) },
+    { name: "Trend", kind: "line", className: "s-trend", points: f.weekly.filter((w) => w.week >= from).map((w) => ({ x: addDays(w.week, 3), y: w.smooth == null ? null : w.smooth + f.shift })) },
     { name: "Plan", kind: "dashed", className: "s-proj", points: proj },
     // Garmin readings, moved onto the race scale so they sit alongside the estimates.
-    { name: "Garmin (scaled)", kind: "dots", className: "s-garmin", points: f.garmin ? f.readings.map((r) => ({ x: r.date, y: r.vo2 - f.garmin!.offset, label: `Garmin ${r.vo2}` })) : [] },
-    { name: "Race", kind: "diamonds", className: "s-race", points: f.races.filter((r) => r.date >= from).map((r) => ({ x: r.date, y: r.vdot, label: r.name })) },
+    { name: "Garmin (scaled)", kind: "dots", className: "s-garmin", points: f.garmin ? f.readings.map((r) => ({ x: r.date, y: r.vo2 - f.garmin!.offset + f.shift, label: `Garmin ${r.vo2}` })) : [] },
+    { name: "Race", kind: "diamonds", className: "s-race", points: f.races.filter((r) => r.date >= from).map((r) => ({ x: r.date, y: r.vdot + f.shift, label: r.name })) },
   ];
 }
 
@@ -91,12 +91,12 @@ function FitnessCard({ editing }: CardProps) {
       />
       <div className="fit-top">
         <div>
-          <div className="num fit-big">{fmtVo2(f.current)}</div>
-          <div className="muted small">VO2 max</div>
+          <div className="num fit-big">{showVo2(f, f.current)}</div>
+          <div className="muted small">VO2 max{f.shift ? " · Garmin scale" : ""}</div>
         </div>
         <div className="fit-facts small">
           <div>
-            <span className="label">Plan</span> <span className="num">{fmtVo2(projNow)}</span>
+            <span className="label">Plan</span> <span className="num">{showVo2(f, projNow)}</span>
             {diff != null && (
               <span className={diff >= -1 ? "tone-accent" : "tone-danger"}>
                 {" "}
@@ -107,7 +107,7 @@ function FitnessCard({ editing }: CardProps) {
           </div>
           {f.nextMilestone && (
             <div className="muted">
-              Goal {f.nextMilestone.vo2.toFixed(1)} · {f.nextMilestone.label.split(" · ")[1] ?? f.nextMilestone.label}
+              Goal {showVo2(f, f.nextMilestone.vo2)} · {f.nextMilestone.label.split(" · ")[1] ?? f.nextMilestone.label}
             </div>
           )}
           {f.load.status && (
@@ -120,15 +120,14 @@ function FitnessCard({ editing }: CardProps) {
       <div className="fit-chart">
         <LineChart series={vo2Series(f, from, to2)} from={from} to={to2} height={170} today={today} markers={f.config.projection.milestones.map((m) => ({ x: m.date, label: m.label.split(" · ")[0] }))} />
       </div>
-      <div className="fit-predict-row" title={f.predictionBasis?.source === "race" ? `Race-ready times from ${f.predictionBasis.race!.name}` : "Race-ready times from current form"}>
+      <div className="fit-predict-row" title="Your own speed–endurance curve from recent races">
         {f.predictions.map((p) => {
-          // The marathon needs the volume too: show the shape-adjusted time when it differs.
-          const t = p.distance > 40000 && p.shapeSeconds ? p.shapeSeconds : p.seconds;
+          const t = p.seconds;
           return (
-            <div key={p.name} title={p.distance > 40000 && p.seconds ? `VO2 max alone: ${duration(p.seconds)}` : undefined}>
+            <div key={p.name} title={p.target ? `Next: ${p.target}` : undefined}>
               <span className="label">{p.name}</span>
               <span className={"num" + (p.targetSeconds && t && t <= p.targetSeconds ? " tone-accent" : "")}>{t ? duration(t) : "–"}</span>
-              {p.distance > 40000 && f.shape && <span className="muted small">shape {Math.round(f.shape.total * 100)}%</span>}
+              {p.garminSeconds ? <span className="muted small">Garmin {duration(p.garminSeconds)}</span> : null}
             </div>
           );
         })}

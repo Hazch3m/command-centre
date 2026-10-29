@@ -153,7 +153,7 @@ function CalendarCard({ variant }: CardProps) {
 export const calendarModule: DashboardModule = {
   id: "calendar",
   title: "Calendar",
-  defaultPos: { x: 0, y: 16, w: 6, h: 16 },
+  defaultPos: { x: 0, y: 25, w: 6, h: 15 },
   minW: 3,
   minH: 3,
   migrations,

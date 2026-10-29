@@ -3127,3 +3127,60 @@ select:focus {
   height: 1.05rem;
   border-radius: 4px;
 }
+
+/* Health */
+.hm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  gap: 0.45rem;
+}
+.hm {
+  background: var(--card-2);
+  border-radius: 10px;
+  padding: 0.5rem 0.65rem 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.hm-value .num {
+  font-size: 1.45rem;
+  font-weight: 600;
+}
+.hm-note {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.spark {
+  width: 100%;
+  height: 1.3rem;
+  margin-top: auto;
+}
+.spark path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.6;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.8;
+}
+.health-connect {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.86rem;
+}
+.health-connect p {
+  margin: 0;
+}
+.health-charts h3 {
+  margin: 1.1rem 0 0.3rem;
+  font-size: 0.9rem;
+}
+.health-diag {
+  margin-top: 0.5rem;
+}
+.card-page.card-health .card-body {
+  overflow-y: auto;
+}

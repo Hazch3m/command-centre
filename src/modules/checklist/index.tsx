@@ -160,7 +160,7 @@ function ChecklistCard({ editing, variant }: CardProps) {
 export const checklistModule: DashboardModule = {
   id: "checklist",
   title: "Habits",
-  defaultPos: { x: 6, y: 32, w: 6, h: 8 },
+  defaultPos: { x: 6, y: 16, w: 6, h: 9 },
   minW: 3,
   minH: 3,
   migrations,

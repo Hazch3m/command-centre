@@ -38,4 +38,8 @@ export const backend: Backend = {
   icsAdd: (name, url) => invoke("ics_add", { name, url }),
   icsRemove: (id) => invoke("ics_remove", { id }),
   icsFetch: (id) => invoke("ics_fetch", { id }),
+  garminStatus: () => invoke("garmin_status"),
+  garminConnect: () => invoke("garmin_connect"),
+  garminDisconnect: () => invoke("garmin_disconnect"),
+  garminRequest: (path) => invoke("garmin_request", { path }),
 };

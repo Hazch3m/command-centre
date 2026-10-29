@@ -104,5 +104,6 @@ export const latestRunModule: DashboardModule = {
   defaultPos: { x: 0, y: 32, w: 6, h: 8 },
   minW: 3,
   minH: 3,
+  defaultHidden: true,
   Card: LatestRunCard,
 };

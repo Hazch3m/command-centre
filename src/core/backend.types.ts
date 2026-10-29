@@ -90,4 +90,11 @@ export interface Backend {
   icsRemove(id: string): Promise<void>;
   /** The feed's text. Rejects with "offline: …" when there's no connection. */
   icsFetch(id: string): Promise<string>;
+
+  // Garmin Connect (health metrics). Sign-in happens on Garmin's own page in a separate window.
+  garminStatus(): Promise<{ connected: boolean }>;
+  garminConnect(): Promise<{ connected: boolean }>;
+  garminDisconnect(): Promise<void>;
+  /** GET a read-only health endpoint. Rejects with "offline: …" when there's no connection. */
+  garminRequest<T = unknown>(path: string): Promise<{ status: number; body: T }>;
 }

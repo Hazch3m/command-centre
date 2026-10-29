@@ -232,7 +232,12 @@ export function TaskDetail({ id, onClose }: { id: number; onClose: () => void })
               </div>
 
               <label>Due</label>
-              <input type="date" value={task.due ?? ""} onChange={(e) => patch({ due: e.target.value || null })} aria-label="Due date" />
+              <div className="inline">
+                <input type="date" value={task.due ?? ""} onChange={(e) => patch({ due: e.target.value || null })} aria-label="Due date" />
+                <button className={"chip-btn" + (!task.due ? " on" : "")} onClick={() => patch({ due: null })}>
+                  No due date
+                </button>
+              </div>
 
               <label>Estimate</label>
               <input

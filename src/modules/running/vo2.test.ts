@@ -151,3 +151,29 @@ describe("marathon shape", () => {
     expect(shapeFactor(5000, 0.5)).toBe(1);
   });
 });
+
+import { enduranceModel } from "./fitness";
+describe("personal endurance curve", () => {
+  it("fits k to the best race in each band and anchors on the best 10k-equivalent", () => {
+    const races = [
+      { date: "2026-03-22", name: "10k", distance: 10000, seconds: 2241 },
+      { date: "2026-09-24", name: "5.5k", distance: 5500, seconds: 1189 },
+      { date: "2026-10-25", name: "Marathon", distance: 42195, seconds: 10785 },
+      { date: "2024-09-07", name: "Old half", distance: 21097.5, seconds: 7218 }, // too old for the fit
+    ];
+    const m = enduranceModel(races, "2026-10-29", 2272)!;
+    expect(m.fitted).toBe(true);
+    expect(m.k).toBeGreaterThan(1.06);
+    expect(m.k).toBeLessThan(1.1);
+    expect(m.anchor).toBe("10k");
+    expect(Math.round(m.predict(10000))).toBe(2241);
+    expect(m.predict(42195) / 60).toBeGreaterThan(175);
+    expect(m.predict(42195) / 60).toBeLessThan(182);
+  });
+  it("falls back to k = 1.07 with one race, and to current form when that's better", () => {
+    const m = enduranceModel([{ date: "2026-10-01", name: "10k", distance: 10000, seconds: 2400 }], "2026-10-29", 2300)!;
+    expect(m.fitted).toBe(false);
+    expect(m.k).toBe(1.07);
+    expect(m.anchor).toBe("current form");
+  });
+});

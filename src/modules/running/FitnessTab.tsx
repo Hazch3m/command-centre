@@ -2,7 +2,7 @@ import { useState } from "react";
 import { addDays, dateKey, relativeDayLabel, useToday } from "../../core/time";
 import { LineChart } from "../../shell/charts";
 import { ErrorNote } from "../../shell/ui";
-import { fitnessConfigChanged, fmtVo2, saveFitnessConfig, type Fitness, type FitnessConfig } from "./fitness";
+import { fitnessConfigChanged, fmtVo2, saveFitnessConfig, showVo2, type Fitness, type FitnessConfig } from "./fitness";
 import { LOAD_LABEL, Legend, STATUS_CLASS, STATUS_LABEL, vo2Series } from "./FitnessCard";
 import { duration } from "./stats";
 import { addReading, deleteReading } from "./strava";
@@ -30,6 +30,13 @@ function Settings({ f }: { f: Fitness }) {
       <label className="inline">
         <input type="checkbox" checked={c.calibrate} onChange={(e) => save({ ...c, calibrate: e.target.checked })} />
         Calibrate to my race results (recommended)
+      </label>
+      <label>
+        Show VO2 max on
+        <select value={c.displayScale ?? "garmin"} onChange={(e) => save({ ...c, displayScale: e.target.value as "race" | "garmin" })}>
+          <option value="garmin">Garmin's scale (when you have a Garmin reading)</option>
+          <option value="race">Race-result scale (VDOT)</option>
+        </select>
       </label>
       <div className="fit-milestones">
         <div className="label">Projection</div>
@@ -152,10 +159,10 @@ export function FitnessTab({ f }: { f: Fitness }) {
       <div className="tiles">
         <div className="tile">
           <div className="label">VO2 max now</div>
-          <div className="tile-value num">{fmtVo2(f.current)}</div>
+          <div className="tile-value num">{showVo2(f, f.current)}</div>
           <div className="muted small">
-            {f.calibration === "races" ? "On your race-result scale" : "Estimate from key runs"}
-            {f.garmin?.equivalent != null ? ` · ≈${f.garmin.equivalent.toFixed(0)} on Garmin` : ""}
+            {f.shift ? `Garmin scale · ${fmtVo2(f.current)} on the race scale` : f.calibration === "races" ? "On your race-result scale" : "Estimate from key runs"}
+            {!f.shift && f.garmin?.equivalent != null ? ` · ≈${f.garmin.equivalent.toFixed(0)} on Garmin` : ""}
           </div>
         </div>
         <div className="tile">
@@ -164,7 +171,7 @@ export function FitnessTab({ f }: { f: Fitness }) {
             <span className={`status ${STATUS_CLASS[f.thisWeek.status]}`}>{STATUS_LABEL[f.thisWeek.status]}</span>
           </div>
           <div className="muted small">
-            Key runs {fmtVo2(f.thisWeek.value)} · plan {fmtVo2(f.thisWeek.projected)}
+            Key runs {showVo2(f, f.thisWeek.value)} · plan {showVo2(f, f.thisWeek.projected)}
           </div>
         </div>
         <div className="tile">
@@ -216,8 +223,8 @@ export function FitnessTab({ f }: { f: Fitness }) {
                 <td className="nowrap">{e.date}</td>
                 <td>{e.name}</td>
                 <td className="num-col">{e.n}</td>
-                <td className="num-col">{e.vo2.toFixed(1)}</td>
-                <td className="num-col">{fmtVo2(p)}</td>
+                <td className="num-col">{showVo2(f, e.vo2)}</td>
+                <td className="num-col">{showVo2(f, p)}</td>
                 <td>
                   <span className={`status ${STATUS_CLASS[st]}`}>{p == null ? "before plan" : STATUS_LABEL[st]}</span>
                 </td>
@@ -239,40 +246,47 @@ export function FitnessTab({ f }: { f: Fitness }) {
         <thead>
           <tr>
             <th>Distance</th>
-            <th className="num-col">Race-ready</th>
-            <th className="num-col">With marathon shape</th>
+            <th className="num-col">Prediction</th>
+            {f.predictions.some((p) => p.garminSeconds) && <th className="num-col">Garmin</th>}
+            <th className="num-col">Equal endurance (VDOT)</th>
             <th className="num-col">Current form</th>
             <th>Next target</th>
-            <th className="num-col">VO2 max needed</th>
           </tr>
         </thead>
         <tbody>
           {f.predictions.map((p) => (
             <tr key={p.name}>
               <td>{p.name}</td>
-              <td className="num-col">{p.seconds ? duration(p.seconds) : "–"}</td>
-              <td className="num-col">{p.shapeSeconds ? duration(p.shapeSeconds) : "–"}</td>
+              <td className="num-col">
+                <b>{p.seconds ? duration(p.seconds) : "–"}</b>
+              </td>
+              {f.predictions.some((x) => x.garminSeconds) && <td className="num-col">{p.garminSeconds ? duration(p.garminSeconds) : "–"}</td>}
+              <td className="num-col muted">{p.vdotSeconds ? duration(p.vdotSeconds) : "–"}</td>
               <td className="num-col muted">{p.formSeconds ? duration(p.formSeconds) : "–"}</td>
               <td>{p.target ?? "–"}</td>
-              <td className="num-col">{p.targetSeconds ? vdot(p.distance, p.targetSeconds).toFixed(1) : "–"}</td>
             </tr>
           ))}
         </tbody>
       </table>
       <p className="muted small">
-        {f.predictionBasis?.source === "race"
-          ? `Race-ready times use your best race of the last year (${f.predictionBasis.race!.name}, VDOT ${f.predictionBasis.vdot.toFixed(1)}), because your key-run estimate (${fmtVo2(f.current)}) is lower right now — normal straight after a marathon or in a recovery block. They switch to current form once that overtakes it.`
-          : "Race-ready times use your current form from key runs, which is now above your best race of the last year."}{" "}
+        {f.endurance && (
+          <>
+            <b>Prediction</b> uses your own speed–endurance curve: time grows with distance to the power of <b>{f.endurance.k.toFixed(3)}</b>
+            {f.endurance.fitted ? `, fitted to your best recent races (${f.endurance.used.join(", ")})` : " (a typical value; it's fitted once you have races at two distances in the last 9 months)"}, and
+            anchored on {f.endurance.anchor === "current form" ? "your current form" : f.endurance.anchor} ({duration(f.endurance.ten)} for 10 km). That's the same idea as
+            Garmin's predictor, which also learns how well you hold pace over longer races; plain VDOT assumes everyone's endurance is the same, which flatters the marathon
+            for most people and undersells the 5k.{" "}
+          </>
+        )}
+        {f.garminPredictionsDate && <>Garmin's column is synced from Garmin Connect ({f.garminPredictionsDate}). </>}
         {f.shape && (
           <>
-            {" "}
             <b>Marathon shape {Math.round(f.shape.total * 100)}%</b> (as in Runalyze): {f.shape.kmPerWeek.toFixed(0)} km/week over the last 6 months against the ~
-            {f.shape.targetKm.toFixed(0)} a marathon at this level needs ({Math.round(f.shape.weekly * 100)}%, counts 2/3), and long runs over the last 10 weeks against ~
-            {f.shape.targetLong.toFixed(0)} km ({Math.round(f.shape.long * 100)}%, counts 1/3). A marathon needs 100%, a half 43%, a 10k 17%; below that the time is slowed
-            down.
+            {f.shape.targetKm.toFixed(0)} a marathon at this level needs, and long runs over the last 10 weeks against ~{f.shape.targetLong.toFixed(0)} km. It rises as the plan's
+            volume builds.
           </>
-        )}{" "}
-        Predictions assume race-specific training; the marathon one assumes your long runs are in place, which is exactly what the plan builds.</p>
+        )}
+      </p>
 
       <h3>Training load (Garmin-style acute vs chronic)</h3>
       <LineChart

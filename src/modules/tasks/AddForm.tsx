@@ -58,8 +58,8 @@ export function TaskAddForm({ today, projects, defaultProject, compact }: { toda
         priority: priority ?? p.priority,
         effort: effort ?? p.effort,
         recur: recur || p.recur,
-        // A repeating task needs a date to repeat from.
-        ...(recur && !due && !p.due ? { due: today } : {}),
+        // A repeating task without a due date repeats from today.
+        ...(recur && !due && !p.due ? { start: today } : {}),
       });
       reset();
       setErr(null);
@@ -69,6 +69,7 @@ export function TaskAddForm({ today, projects, defaultProject, compact }: { toda
   };
 
   const dueChips = [
+    { label: "No date", value: "" },
     { label: "Today", value: today },
     { label: "Tomorrow", value: addDays(today, 1) },
     { label: "Friday", value: friday(today) },
@@ -115,7 +116,7 @@ export function TaskAddForm({ today, projects, defaultProject, compact }: { toda
             <span className="label">Due</span>
             <div className="field-row">
               {dueChips.map((c) => (
-                <button key={c.label} className={"chip-btn" + (due === c.value ? " on" : "")} onClick={() => setDue(due === c.value ? "" : c.value)}>
+                <button key={c.label} className={"chip-btn" + (due === c.value ? " on" : "")} onClick={() => setDue(c.value)}>
                   {c.label}
                 </button>
               ))}

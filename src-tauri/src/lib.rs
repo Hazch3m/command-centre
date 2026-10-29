@@ -2,6 +2,7 @@ mod backup;
 mod config;
 mod db;
 mod oauth;
+mod garmin;
 mod quickadd;
 mod window;
 
@@ -221,6 +222,10 @@ pub fn run() {
             oauth::ics_add,
             oauth::ics_remove,
             oauth::ics_fetch,
+            garmin::garmin_status,
+            garmin::garmin_disconnect,
+            garmin::garmin_connect,
+            garmin::garmin_request,
             window::list_monitors,
             window::set_monitor,
             window::set_fullscreen_mode,

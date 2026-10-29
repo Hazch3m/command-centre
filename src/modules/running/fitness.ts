@@ -4,6 +4,7 @@ import { useDataVersion } from "../../core/events";
 import { addDays, useToday } from "../../core/time";
 import { useQuery } from "../../core/useQuery";
 import { mondayOf, type Plan } from "./plan";
+import { latestPredictions } from "../health/data";
 import { km, parseTime, raceHistory } from "./stats";
 import { loadDetails, loadReadings, loadRuns, loadShoes, type Run, type RunDetail, type Shoe } from "./strava";
 import {
@@ -28,6 +29,8 @@ export const FITNESS_FILE = "fitness.json";
 export interface FitnessConfig extends Vo2Config {
   /** Put estimates on your race-result (VDOT) scale, the scale the goals and predictions use. */
   calibrate: boolean;
+  /** Show VO2 max numbers on Garmin's scale (needs a Garmin reading) or the race scale. Display only. */
+  displayScale?: "race" | "garmin";
 }
 
 /** Defaults from the coach's log: max HR 199, threshold ~186–189; goals sub-2:50 then sub-2:45. */
@@ -85,6 +88,8 @@ export interface Fitness {
   calibration: "races" | "none";
   /** Garmin's VO2 max runs on its own scale: how far above the race scale your readings sit. */
   garmin: { offset: number; latest: { date: string; vo2: number }; equivalent: number | null } | null;
+  /** Added to VO2 max numbers when they're shown (Garmin scale), 0 on the race scale. */
+  shift: number;
   estimates: RunEstimate[]; // calibrated, oldest first
   weekly: WeekPoint[];
   readings: { date: string; vo2: number }[];
@@ -101,11 +106,18 @@ export interface Fitness {
     distance: number;
     seconds: number | null;
     formSeconds: number | null;
-    /** `seconds` slowed down when the marathon shape is short of what this distance needs. */
+    /** Equal-endurance (Daniels VDOT) prediction from the best recent level. */
+    vdotSeconds: number | null;
+    /** VDOT prediction slowed down when the marathon shape is short of what this distance needs. */
     shapeSeconds: number | null;
+    /** Garmin's own prediction, when synced. */
+    garminSeconds: number | null;
     target: string | null;
     targetSeconds: number | null;
   }[];
+  /** Your speed–endurance curve: time ∝ distance^k, anchored on your best recent 10k-equivalent. */
+  endurance: { k: number; ten: number; anchor: string; fitted: boolean; used: string[] } | null;
+  garminPredictionsDate: string | null;
   /** Runalyze-style marathon shape: is the training volume there for long races? */
   shape: MarathonShape | null;
   /** VDOT the predictions use: the better of current form and the best race in the last year. */
@@ -179,6 +191,67 @@ export function shapeFactor(distance: number, shape: number): number {
   return 1 + (Math.max(0, need - shape) / need) * maxPenalty;
 }
 
+// ---- Personal speed–endurance curve ---------------------------------------------
+
+export interface RacePoint {
+  date: string;
+  name: string;
+  distance: number; // m
+  seconds: number;
+}
+
+/**
+ * Riegel's time ∝ distance^k with your own k. k is fitted to your best race in
+ * each distance band (≤ 7.5 km, 10 km, half, marathon) from the last 9 months:
+ * runners with relatively strong endurance have a low k, speed-types a high one.
+ * The curve is anchored on your best 10 km-equivalent from races in the last
+ * year, or your current form when that's better.
+ */
+export function enduranceModel(races: RacePoint[], today: string, formTenK: number | null) {
+  const DEFAULT_K = 1.07;
+  const band = (m: number) => (m < 7500 ? 0 : m < 15000 ? 1 : m < 30000 ? 2 : 3);
+  const recent = races.filter((r) => r.distance >= 3000 && r.date >= addDays(today, -270) && r.date <= today);
+  // Best in each band by equal-endurance (VDOT) level, so a slow race in a band doesn't count.
+  const best = new Map<number, RacePoint>();
+  for (const r of recent) {
+    const b = band(r.distance);
+    const cur = best.get(b);
+    if (!cur || vdot(r.distance, r.seconds) > vdot(cur.distance, cur.seconds)) best.set(b, r);
+  }
+  const pts = [...best.values()];
+  let k = DEFAULT_K;
+  let fitted = false;
+  if (pts.length >= 2) {
+    const xs = pts.map((p) => Math.log(p.distance));
+    const ys = pts.map((p) => Math.log(p.seconds));
+    const mx = xs.reduce((s, x) => s + x, 0) / xs.length;
+    const my = ys.reduce((s, y) => s + y, 0) / ys.length;
+    const num = xs.reduce((s, x, i) => s + (x - mx) * (ys[i] - my), 0);
+    const den = xs.reduce((s, x) => s + (x - mx) ** 2, 0);
+    if (den > 0.1) {
+      k = Math.min(1.12, Math.max(1.04, num / den));
+      fitted = true;
+    }
+  }
+  const year = races.filter((r) => r.distance >= 3000 && r.date >= addDays(today, -365) && r.date <= today);
+  let ten: number | null = null;
+  let anchor = "";
+  for (const r of year) {
+    const t = r.seconds * Math.pow(10000 / r.distance, k);
+    if (ten == null || t < ten) {
+      ten = t;
+      anchor = r.name;
+    }
+  }
+  if (formTenK != null && (ten == null || formTenK < ten)) {
+    ten = formTenK;
+    anchor = "current form";
+  }
+  if (ten == null) return null;
+  const t10 = ten;
+  return { k, ten: t10, anchor, fitted, used: pts.map((p) => p.name), predict: (m: number) => t10 * Math.pow(m / 10000, k) };
+}
+
 export function computeFitness(
   runs: Run[],
   details: Map<string, RunDetail>,
@@ -187,6 +260,7 @@ export function computeFitness(
   config: FitnessConfig,
   plan: Plan | undefined,
   today: string,
+  garminPredictions: { values: Record<string, number>; date: string } | null = null,
 ): Fitness {
   // Raw estimates first, then calibrate to Garmin if there are readings.
   const raw: RunEstimate[] = [];
@@ -262,10 +336,29 @@ export function computeFitness(
         ? { vdot: current, source: "form" }
         : null;
   const shape = predictionBasis ? marathonShape(runs, today, predictionBasis.vdot) : null;
+  // Main prediction: your own speed–endurance curve from your recent races (like
+  // Garmin's, it lets your marathon be relatively slower or faster than your 10k).
+  const raceRows = plan ? raceHistory(runs, plan) : [];
+  const endurance = enduranceModel(
+    raceRows.map((r) => ({ date: r.date, name: r.name, distance: r.km * 1000, seconds: r.time })),
+    today,
+    current != null ? predictTime(10000, current) : null,
+  );
   const predictions = DIST.map((d) => {
     const race = plan?.races.find((r) => d.match.test(r.name) && r.date && r.date >= today);
     const targetSeconds = race ? targetTime(race.target, d.distance) : null;
-    return { name: d.name, distance: d.distance, seconds: predictionBasis ? predictTime(d.distance, predictionBasis.vdot) : null, shapeSeconds: predictionBasis && shape ? predictTime(d.distance, predictionBasis.vdot) * shapeFactor(d.distance, shape.total) : null, formSeconds: current != null ? predictTime(d.distance, current) : null, target: race ? `${race.name}: ${race.target}` : null, targetSeconds };
+    const vdotSeconds = predictionBasis ? predictTime(d.distance, predictionBasis.vdot) : null;
+    return {
+      name: d.name,
+      distance: d.distance,
+      seconds: endurance ? endurance.predict(d.distance) : vdotSeconds,
+      vdotSeconds,
+      shapeSeconds: vdotSeconds != null && shape ? vdotSeconds * shapeFactor(d.distance, shape.total) : null,
+      formSeconds: current != null ? predictTime(d.distance, current) : null,
+      garminSeconds: garminPredictions?.values[d.name] ?? null,
+      target: race ? `${race.name}: ${race.target}` : null,
+      targetSeconds,
+    };
   });
 
   // Training load, per day.
@@ -306,6 +399,7 @@ export function computeFitness(
     offset,
     calibration,
     garmin: latestReading && gOff != null ? { offset: gOff, latest: latestReading, equivalent: current != null ? current + gOff : null } : null,
+    shift: config.displayScale !== "race" && latestReading && gOff != null ? gOff : 0,
     estimates,
     weekly,
     readings,
@@ -319,6 +413,8 @@ export function computeFitness(
     nextMilestone,
     predictions,
     predictionBasis,
+    endurance: endurance ? { k: endurance.k, ten: endurance.ten, anchor: endurance.anchor, fitted: endurance.fitted, used: endurance.used } : null,
+    garminPredictionsDate: garminPredictions?.date ?? null,
     shape,
     load,
     loadSeries,
@@ -332,6 +428,7 @@ export function computeFitness(
 export function useFitness(plan: Plan | undefined): Fitness | undefined {
   const today = useToday();
   const version = useDataVersion("running");
+  const healthVersion = useDataVersion("health");
   const [cfgTick, setCfgTick] = useState(0);
   useEffect(() => {
     const f = () => setCfgTick((t) => t + 1);
@@ -340,12 +437,12 @@ export function useFitness(plan: Plan | undefined): Fitness | undefined {
   }, []);
   const from = addDays(today, -430);
   const { data } = useQuery(
-    () => Promise.all([loadRuns("2024-01-01"), loadDetails(from), loadReadings(), loadShoes(), loadFitnessConfig()]),
-    [version, today, cfgTick],
+    () => Promise.all([loadRuns("2024-01-01"), loadDetails(from), loadReadings(), loadShoes(), loadFitnessConfig(), latestPredictions()]),
+    [version, healthVersion, today, cfgTick],
   );
   if (!data) return undefined;
-  const [runs, details, readings, shoes, config] = data;
-  return computeFitness(runs, details, readings, shoes, config, plan, today);
+  const [runs, details, readings, shoes, config, garminPred] = data;
+  return computeFitness(runs, details, readings, shoes, config, plan, today, garminPred);
 }
 
 export function fitnessConfigChanged() {
@@ -353,4 +450,6 @@ export function fitnessConfigChanged() {
 }
 
 export const fmtVo2 = (v: number | null | undefined) => (v == null ? "–" : v.toFixed(1));
+/** A VO2 max number as shown: shifted onto Garmin's scale when that's chosen. */
+export const showVo2 = (f: Fitness, v: number | null | undefined) => (v == null ? "–" : (v + f.shift).toFixed(1));
 export { km };

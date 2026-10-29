@@ -75,21 +75,21 @@ fn entry(key: &str) -> Result<keyring::Entry, String> {
     keyring::Entry::new(SERVICE, key).map_err(|e| e.to_string())
 }
 
-fn load<T: for<'de> Deserialize<'de>>(key: &str) -> Option<T> {
+pub(crate) fn load<T: for<'de> Deserialize<'de>>(key: &str) -> Option<T> {
     entry(key).ok()?.get_password().ok().and_then(|s| serde_json::from_str(&s).ok())
 }
 
-fn save<T: Serialize>(key: &str, v: &T) -> Result<(), String> {
+pub(crate) fn save<T: Serialize>(key: &str, v: &T) -> Result<(), String> {
     entry(key)?.set_password(&serde_json::to_string(v).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
 }
 
-fn forget(key: &str) {
+pub(crate) fn forget(key: &str) {
     if let Ok(e) = entry(key) {
         let _ = e.delete_credential();
     }
 }
 
-fn now() -> u64 {
+pub(crate) fn now() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
 }
 

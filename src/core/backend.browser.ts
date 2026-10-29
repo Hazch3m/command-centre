@@ -158,6 +158,22 @@ export const backend: Backend = {
     const list = JSON.parse(localStorage.getItem("cc-fake-ics") ?? "[]").filter((f: { id: string }) => f.id !== id);
     localStorage.setItem("cc-fake-ics", JSON.stringify(list));
   },
+  // Test harness: Garmin is "connected" when fixtures/garmin.json exists; it maps path prefixes to replies.
+  garminStatus: async () => ({ connected: !!(await fixture("garmin")) && localStorage.getItem("cc-fake-garmin-off") !== "1" }),
+  garminConnect: async () => {
+    localStorage.removeItem("cc-fake-garmin-off");
+    return { connected: !!(await fixture("garmin")) };
+  },
+  garminDisconnect: async () => localStorage.setItem("cc-fake-garmin-off", "1"),
+  garminRequest: async <T,>(path: string) => {
+    const fx = (await fixture("garmin")) as Record<string, unknown> | null;
+    if (!fx) throw new Error("offline: no test data for garmin");
+    const bare = path.split("?")[0];
+    const key = Object.keys(fx)
+      .filter((k) => bare.startsWith(k))
+      .sort((a, b) => b.length - a.length)[0];
+    return key ? { status: 200, body: fx[key] as T } : { status: 404, body: null as T };
+  },
   icsFetch: async () => {
     const r = await fetch("fixtures/calendar.ics").catch(() => null);
     if (!r?.ok) throw new Error("offline: no test calendar");

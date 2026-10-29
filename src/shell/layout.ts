@@ -4,7 +4,7 @@ import type { DashboardModule, GridPos } from "../modules/types";
 export const COLS = 12;
 export const ROWS = 40;
 /** Bump when the default arrangement changes enough that old custom layouts no longer fit. */
-export const LAYOUT_VERSION = 3;
+export const LAYOUT_VERSION = 4;
 
 export interface SavedLayout {
   version: number;
