@@ -18,10 +18,13 @@ import {
   type BenchStatus,
 } from "./stats";
 import { useRunningData } from "./useRunning";
+import { useFitness } from "./fitness";
+import { FitnessTab } from "./FitnessTab";
 
-type Tab = "week" | "plan" | "races" | "progress" | "paces";
+type Tab = "week" | "fitness" | "plan" | "races" | "progress" | "paces";
 const TABS: { id: Tab; label: string }[] = [
   { id: "week", label: "This week" },
+  { id: "fitness", label: "Fitness & VO2 max" },
   { id: "plan", label: "Plan" },
   { id: "races", label: "Races & benchmarks" },
   { id: "progress", label: "Progression" },
@@ -55,6 +58,7 @@ const fmtDate = (d: string) => {
 export function RunningPage({ onClose }: { onClose: () => void }) {
   const today = useToday();
   const { plan, planError, runs = [], connected, sync } = useRunningData();
+  const fitness = useFitness(plan);
   const [tab, setTab] = useState<Tab>("week");
 
   useEffect(() => {
@@ -357,6 +361,8 @@ export function RunningPage({ onClose }: { onClose: () => void }) {
             {!runs.length && <p className="muted">Connect Strava in Settings to fill these in.</p>}
           </>
         )}
+
+        {tab === "fitness" && (fitness ? <FitnessTab f={fitness} /> : <p className="muted">Loading…</p>)}
 
         {tab === "paces" && (
           <>

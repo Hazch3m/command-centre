@@ -129,6 +129,9 @@ export const backend: Backend = {
   appVersion: async () => "dev",
 
   readDataFile: async (name) => localStorage.getItem("cc-file:" + name),
+  openStravaActivity: async (id) => {
+    window.open(`https://www.strava.com/activities/${id}`, "_blank");
+  },
   writeDataFile: async (name, contents) => localStorage.setItem("cc-file:" + name, contents),
   // Test harness: services are "connected" when a fixture file exists next to the page.
   oauthStatus: async (p) => {
@@ -251,6 +254,8 @@ function fakeApi(fx: any, method: string, url: string, body: unknown): { status:
       .sort((a, b) => Date.parse(a.start_date) - Date.parse(b.start_date));
     return { status: 200, body: all.slice((page - 1) * per, page * per) };
   }
+  const det = /^\/api\/v3\/activities\/(\d+)$/.exec(u.pathname);
+  if (det) return fx.details?.[det[1]] ? { status: 200, body: fx.details[det[1]] } : { status: 200, body: { splits_metric: [] } };
   const handler = fx.routes?.[`${method} ${u.pathname}`];
   return handler !== undefined ? { status: 200, body: handler } : { status: 404, body: { error: "not in fixture", method, path: u.pathname, body } };
 }

@@ -16,6 +16,13 @@ export interface Run {
   avg_hr: number | null;
   max_hr: number | null;
   workout_type: number | null; // 1 = race
+  polyline: string | null;
+  gear_id: string | null;
+}
+
+export interface RunDetail {
+  splits: { distance: number; moving_time: number; speed: number; gap: number | null; hr: number | null; elev: number | null }[];
+  bestEfforts: { name: string; time: number }[];
 }
 
 export const migrations = [
@@ -36,6 +43,20 @@ export const migrations = [
      synced_at TEXT NOT NULL
    );
    CREATE INDEX strava_date ON strava_activities(date);`,
+  // 1 — maps, shoes and per-run detail (1 km splits with heart rate) for VO2 max
+  `ALTER TABLE strava_activities ADD COLUMN polyline TEXT;
+   ALTER TABLE strava_activities ADD COLUMN gear_id TEXT;
+   ALTER TABLE strava_activities ADD COLUMN has_hr INTEGER;
+   CREATE TABLE strava_details (
+     id TEXT PRIMARY KEY,
+     json TEXT NOT NULL,
+     fetched_at TEXT NOT NULL
+   );
+   CREATE TABLE vo2_readings (
+     date TEXT PRIMARY KEY,
+     vo2 REAL NOT NULL,
+     source TEXT NOT NULL DEFAULT 'garmin'
+   );`,
 ];
 
 const RUN_SPORTS = ["Run", "TrailRun", "VirtualRun", "Treadmill"];
@@ -65,18 +86,40 @@ interface StravaActivity {
   total_elevation_gain: number;
   average_heartrate?: number;
   max_heartrate?: number;
+  has_heartrate?: boolean;
   workout_type?: number | null;
+  gear_id?: string | null;
+  map?: { summary_polyline?: string | null };
 }
+
+/** Strava's detailed activity, the parts we keep. */
+interface StravaDetail {
+  splits_metric?: { distance: number; moving_time: number; average_speed: number; average_grade_adjusted_speed?: number; average_heartrate?: number; elevation_difference?: number }[];
+  best_efforts?: { name: string; elapsed_time: number }[];
+}
+
+/** Detail requests per sync. Strava allows 100 requests per 15 minutes; this leaves plenty of headroom. */
+const DETAIL_BATCH = 25;
 
 /**
  * Fetches new and recently edited activities and caches them. The first sync
  * backfills from 2024; after that only the last few days are re-read.
  */
-export async function syncStrava(): Promise<SyncState> {
+let syncing: Promise<SyncState> | null = null;
+
+/** One sync at a time, shared by every card that asks. */
+export function syncStrava(): Promise<SyncState> {
+  syncing ??= doSyncStrava().finally(() => (syncing = null));
+  return syncing;
+}
+
+async function doSyncStrava(): Promise<SyncState> {
   const status = await backend.oauthStatus("strava").catch(() => null);
   if (!status?.connected) return syncState();
   const [{ latest }] = await db.select<{ latest: number | null }>("SELECT MAX(start_epoch) AS latest FROM strava_activities");
-  const after = latest ? latest - 3 * 86400 : HISTORY_FROM;
+  // Runs synced before maps and shoes were stored: re-read once to fill them in.
+  const [{ old }] = await db.select<{ old: number }>("SELECT count(*) AS old FROM strava_activities WHERE has_hr IS NULL");
+  const after = latest && !old ? latest - 3 * 86400 : HISTORY_FROM;
   let state: SyncState;
   try {
     let added = 0;
@@ -92,11 +135,12 @@ export async function syncStrava(): Promise<SyncState> {
       if (runs.length)
         await db.batch(
           runs.map((a) => ({
-            sql: `INSERT INTO strava_activities (id, date, start_local, start_epoch, name, sport, distance, moving_time, elapsed_time, elevation, avg_hr, max_hr, workout_type, synced_at)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            sql: `INSERT INTO strava_activities (id, date, start_local, start_epoch, name, sport, distance, moving_time, elapsed_time, elevation, avg_hr, max_hr, workout_type, synced_at, polyline, gear_id, has_hr)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                   ON CONFLICT(id) DO UPDATE SET name = excluded.name, sport = excluded.sport, distance = excluded.distance,
                     moving_time = excluded.moving_time, elapsed_time = excluded.elapsed_time, elevation = excluded.elevation,
-                    avg_hr = excluded.avg_hr, max_hr = excluded.max_hr, workout_type = excluded.workout_type, synced_at = excluded.synced_at`,
+                    avg_hr = excluded.avg_hr, max_hr = excluded.max_hr, workout_type = excluded.workout_type, synced_at = excluded.synced_at,
+                    polyline = excluded.polyline, gear_id = excluded.gear_id, has_hr = excluded.has_hr`,
             params: [
               String(a.id),
               a.start_date_local.slice(0, 10),
@@ -112,12 +156,19 @@ export async function syncStrava(): Promise<SyncState> {
               a.max_heartrate ?? null,
               a.workout_type ?? null,
               new Date().toISOString(),
+              a.map?.summary_polyline ?? null,
+              a.gear_id ?? null,
+              a.has_heartrate || a.average_heartrate ? 1 : 0,
             ],
           })),
         );
       added += runs.length;
       if (r.body.length < 200) break;
     }
+    // Anything the full refresh didn't see (deleted on Strava) shouldn't trigger it again.
+    if (old) await db.execute("UPDATE strava_activities SET has_hr = 0 WHERE has_hr IS NULL");
+    if (await syncDetails()) added++;
+    await syncShoes();
     state = { lastSync: new Date().toISOString(), lastError: null, offline: false };
     if (added) await notifyChanged(TOPIC);
   } catch (e) {
@@ -132,8 +183,99 @@ export async function syncStrava(): Promise<SyncState> {
 
 export function loadRuns(fromDate: string) {
   return db.select<Run>(
-    `SELECT id, date, start_local, name, sport, distance, moving_time, elapsed_time, elevation, avg_hr, max_hr, workout_type
+    `SELECT id, date, start_local, name, sport, distance, moving_time, elapsed_time, elevation, avg_hr, max_hr, workout_type, polyline, gear_id
      FROM strava_activities WHERE date >= ? ORDER BY start_local`,
     [fromDate],
   );
+}
+
+/**
+ * Fetches 1 km splits for runs with heart rate that don't have them yet:
+ * the newest run first (and again if it was edited), then a gentle backfill
+ * of the last ~14 months, a batch per sync.
+ */
+async function syncDetails(): Promise<boolean> {
+  const todo = await db.select<{ id: string }>(
+    `SELECT a.id FROM strava_activities a LEFT JOIN strava_details d ON d.id = a.id
+     WHERE a.has_hr = 1 AND a.date >= date('now', '-430 days')
+       AND (d.id IS NULL OR (d.fetched_at < a.synced_at AND a.date >= date('now', '-2 days')))
+     ORDER BY a.start_epoch DESC LIMIT ?`,
+    [DETAIL_BATCH],
+  );
+  let any = false;
+  for (const { id } of todo) {
+    const r = await backend.apiRequest<StravaDetail>("strava", "GET", `https://www.strava.com/api/v3/activities/${id}?include_all_efforts=false`);
+    if (r.status === 429) break; // rate limited: carry on next sync
+    if (r.status === 404) {
+      await db.execute("UPDATE strava_activities SET has_hr = 0 WHERE id = ?", [id]);
+      continue;
+    }
+    if (r.status !== 200) throw new Error(`Strava answered ${r.status}`);
+    const detail: RunDetail = {
+      splits: (r.body.splits_metric ?? []).map((s) => ({
+        distance: s.distance,
+        moving_time: s.moving_time,
+        speed: s.average_speed,
+        gap: s.average_grade_adjusted_speed ?? null,
+        hr: s.average_heartrate ?? null,
+        elev: s.elevation_difference ?? null,
+      })),
+      bestEfforts: (r.body.best_efforts ?? []).map((b) => ({ name: b.name, time: b.elapsed_time })),
+    };
+    await db.execute("INSERT OR REPLACE INTO strava_details (id, json, fetched_at) VALUES (?, ?, ?)", [id, JSON.stringify(detail), new Date().toISOString()]);
+    any = true;
+  }
+  return any;
+}
+
+export interface Shoe {
+  id: string;
+  name: string;
+  km: number;
+  primary: boolean;
+  retired: boolean;
+}
+
+async function syncShoes() {
+  const r = await backend.apiRequest<{ shoes?: { id: string; name: string; distance: number; primary: boolean; retired?: boolean }[] }>(
+    "strava",
+    "GET",
+    "https://www.strava.com/api/v3/athlete",
+  );
+  if (r.status !== 200) return;
+  const shoes: Shoe[] = (r.body.shoes ?? []).map((s) => ({ id: s.id, name: s.name, km: s.distance / 1000, primary: s.primary, retired: !!s.retired }));
+  await kvSet("strava.shoes", shoes);
+}
+
+export const loadShoes = () => kvGet<Shoe[]>("strava.shoes", []);
+
+export async function loadDetails(fromDate: string): Promise<Map<string, RunDetail>> {
+  const rows = await db.select<{ id: string; json: string }>(
+    "SELECT d.id, d.json FROM strava_details d JOIN strava_activities a ON a.id = d.id WHERE a.date >= ?",
+    [fromDate],
+  );
+  const out = new Map<string, RunDetail>();
+  for (const r of rows) {
+    try {
+      out.set(r.id, JSON.parse(r.json));
+    } catch {
+      /* skip a damaged row */
+    }
+  }
+  return out;
+}
+
+// ---- Garmin VO2 max readings (typed in from the watch) ------------------------
+
+export const loadReadings = () => db.select<{ date: string; vo2: number }>("SELECT date, vo2 FROM vo2_readings ORDER BY date");
+
+export async function addReading(date: string, vo2: number) {
+  if (!(vo2 > 20 && vo2 < 95)) throw new Error("Enter the VO2 max your watch shows, e.g. 57.");
+  await db.execute("INSERT OR REPLACE INTO vo2_readings (date, vo2) VALUES (?, ?)", [date, vo2]);
+  await notifyChanged(TOPIC);
+}
+
+export async function deleteReading(date: string) {
+  await db.execute("DELETE FROM vo2_readings WHERE date = ?", [date]);
+  await notifyChanged(TOPIC);
 }

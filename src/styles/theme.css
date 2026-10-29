@@ -1590,3 +1590,269 @@ select.filter {
 .sync-btn.danger {
   color: var(--danger);
 }
+
+/* ---------- Line charts ---------- */
+.chart-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.chart-line {
+  fill: none;
+  stroke-width: 2.5;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+}
+.chart-line.dashed {
+  stroke-dasharray: 7 6;
+  stroke-width: 2;
+}
+.chart-area {
+  opacity: 0.18;
+}
+.chart-today {
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+  vector-effect: non-scaling-stroke;
+}
+.chart-marker {
+  stroke: var(--line-2);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.chart-marker-label {
+  font-size: 12px;
+}
+.chart-hover {
+  stroke: var(--muted);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.chart-dot {
+  stroke: var(--card);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.s-est .chart-dot,
+.s-est.chart-line {
+  stroke: var(--info);
+}
+.s-est .chart-dot {
+  fill: var(--info);
+  opacity: 0.55;
+}
+.s-trend.chart-line {
+  stroke: var(--info);
+}
+.s-proj.chart-line {
+  stroke: var(--warn);
+}
+.s-garmin .chart-dot {
+  fill: var(--accent);
+}
+.s-race .chart-diamond {
+  fill: #c792ea;
+}
+.s-acute.chart-line {
+  stroke: var(--warn);
+}
+.s-chronic.chart-line {
+  stroke: var(--info);
+}
+.s-chronic.chart-area {
+  fill: var(--info);
+}
+.s-eff.chart-line {
+  stroke: var(--accent);
+}
+.s-eff .chart-dot {
+  fill: var(--accent);
+}
+.legend {
+  display: flex;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  font-size: 0.66rem;
+  color: var(--muted);
+  margin: 0.2rem 0;
+}
+.legend i {
+  display: inline-block;
+  width: 0.9em;
+  height: 0.25em;
+  border-radius: 2px;
+  margin-right: 0.35em;
+  vertical-align: middle;
+}
+.legend .l-est {
+  background: var(--info);
+}
+.legend .l-proj {
+  background: var(--warn);
+}
+.legend .l-garmin {
+  background: var(--accent);
+  border-radius: 50%;
+  width: 0.55em;
+  height: 0.55em;
+}
+.legend .l-race {
+  background: #c792ea;
+  transform: rotate(45deg);
+  width: 0.5em;
+  height: 0.5em;
+}
+
+/* ---------- Fitness card ---------- */
+.card-fitness .card-body,
+.card-latest-run .card-body {
+  gap: 0.4rem;
+  overflow: hidden;
+}
+.card-fitness .card-header,
+.card-latest-run .card-header {
+  margin-bottom: 0;
+}
+.fit-top {
+  display: flex;
+  gap: 1.2rem;
+  align-items: center;
+}
+.fit-big {
+  font-size: 2.6rem;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.fit-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.fit-keyruns {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+.fit-keyrun {
+  background: var(--card-2);
+  border-radius: 6px;
+  padding: 0.05rem 0.45rem;
+}
+.fit-predict {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+.fit-predict > div {
+  background: var(--card-2);
+  border-radius: 8px;
+  padding: 0.3rem 0.5rem;
+}
+.fit-predict .num {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.fit-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.fit-settings label,
+.fit-milestones label {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.fit-milestones {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+.readings {
+  margin-top: 0.4rem;
+}
+.wear {
+  height: 0.4rem;
+  background: var(--line-2);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 0.15rem;
+}
+.wear > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.wear.warn > span {
+  background: var(--warn);
+}
+.wear.over > span {
+  background: var(--danger);
+}
+
+/* ---------- Latest run ---------- */
+.lr-title {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+.lr-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.6rem;
+  align-items: center;
+}
+.lr-map {
+  background: var(--card-2);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.lr-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.85rem;
+}
+.lr-stats .big-ish {
+  font-size: 1.7rem;
+  font-weight: 650;
+}
+.lr-vo2 {
+  display: flex;
+  gap: 0.4rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.route-line-bg {
+  fill: none;
+  stroke: rgba(90, 214, 168, 0.18);
+  stroke-width: 7;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.route-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.route-start {
+  fill: var(--accent);
+  stroke: var(--card);
+  stroke-width: 2;
+}
+.route-end {
+  fill: var(--danger);
+  stroke: var(--card);
+  stroke-width: 2;
+}
+.route-empty {
+  height: 140px;
+  display: grid;
+  place-items: center;
+}

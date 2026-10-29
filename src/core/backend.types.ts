@@ -73,6 +73,7 @@ export interface Backend {
 
   /** JSON files in the data folder that people edit by hand (e.g. training-plan.json). */
   readDataFile(name: string): Promise<string | null>;
+  openStravaActivity(id: string): Promise<void>;
   writeDataFile(name: string, contents: string): Promise<void>;
 
   // Sign-in and authenticated API calls (tokens stay in the OS keychain).

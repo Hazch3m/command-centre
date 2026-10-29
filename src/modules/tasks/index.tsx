@@ -370,7 +370,7 @@ function TasksCard({ editing }: CardProps) {
 export const tasksModule: DashboardModule = {
   id: "tasks",
   title: "Tasks",
-  defaultPos: { x: 0, y: 14, w: 7, h: 16 },
+  defaultPos: { x: 0, y: 22, w: 7, h: 8 },
   minW: 4,
   minH: 5,
   migrations: [...migrations, ...syncMigrations],
