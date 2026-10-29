@@ -46,8 +46,10 @@ describe("VDOT and predictions", () => {
   });
   it("inverts back to the race time", () => {
     expect(Math.round(predictTime(42195, vdot(42195, 10200)))).toBe(10200);
-    expect(predictTime(5000, 57.3) / 60).toBeGreaterThan(16.5);
-    expect(predictTime(5000, 57.3) / 60).toBeLessThan(17.5);
+    // Daniels: VDOT 55 → 18:22, 60 → 17:03, so 57.3 → ~17:44
+    expect(predictTime(5000, 57.3) / 60).toBeGreaterThan(17.5);
+    expect(predictTime(5000, 57.3) / 60).toBeLessThan(18.0);
+    expect(predictTime(5000, 60) / 60).toBeCloseTo(17.05, 1);
   });
 });
 
