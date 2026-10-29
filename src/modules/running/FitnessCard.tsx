@@ -25,7 +25,8 @@ export function vo2Series(f: Fitness, from: string, to: string): LineSeries[] {
     { name: "Key run", kind: "dots", className: "s-est", points: f.estimates.filter((e) => e.date >= from).map((e) => ({ x: e.date, y: e.vo2, label: e.name })) },
     { name: "Trend", kind: "line", className: "s-trend", points: f.weekly.filter((w) => w.week >= from).map((w) => ({ x: addDays(w.week, 3), y: w.smooth })) },
     { name: "Plan", kind: "dashed", className: "s-proj", points: proj },
-    { name: "Garmin", kind: "dots", className: "s-garmin", points: f.readings.map((r) => ({ x: r.date, y: r.vo2 })) },
+    // Garmin readings, moved onto the race scale so they sit alongside the estimates.
+    { name: "Garmin (scaled)", kind: "dots", className: "s-garmin", points: f.garmin ? f.readings.map((r) => ({ x: r.date, y: r.vo2 - f.garmin!.offset, label: `Garmin ${r.vo2}` })) : [] },
     { name: "Race", kind: "diamonds", className: "s-race", points: f.races.filter((r) => r.date >= from).map((r) => ({ x: r.date, y: r.vdot, label: r.name })) },
   ];
 }
@@ -48,7 +49,7 @@ export function Legend({ garmin }: { garmin: boolean }) {
       {garmin && (
         <span>
           <i className="l-garmin" />
-          Garmin
+          Garmin readings (scaled)
         </span>
       )}
     </div>
@@ -120,12 +121,17 @@ function FitnessCard({ editing }: CardProps) {
         <LineChart series={vo2Series(f, from, to2)} from={from} to={to2} height={170} today={today} markers={f.config.projection.milestones.map((m) => ({ x: m.date, label: m.label.split(" · ")[0] }))} />
       </div>
       <div className="fit-predict-row" title={f.predictionBasis?.source === "race" ? `Race-ready times from ${f.predictionBasis.race!.name}` : "Race-ready times from current form"}>
-        {f.predictions.map((p) => (
-          <div key={p.name}>
-            <span className="label">{p.name}</span>
-            <span className={"num" + (p.targetSeconds && p.seconds && p.seconds <= p.targetSeconds ? " tone-accent" : "")}>{p.seconds ? duration(p.seconds) : "–"}</span>
-          </div>
-        ))}
+        {f.predictions.map((p) => {
+          // The marathon needs the volume too: show the shape-adjusted time when it differs.
+          const t = p.distance > 40000 && p.shapeSeconds ? p.shapeSeconds : p.seconds;
+          return (
+            <div key={p.name} title={p.distance > 40000 && p.seconds ? `VO2 max alone: ${duration(p.seconds)}` : undefined}>
+              <span className="label">{p.name}</span>
+              <span className={"num" + (p.targetSeconds && t && t <= p.targetSeconds ? " tone-accent" : "")}>{t ? duration(t) : "–"}</span>
+              {p.distance > 40000 && f.shape && <span className="muted small">shape {Math.round(f.shape.total * 100)}%</span>}
+            </div>
+          );
+        })}
       </div>
     </>
   );
@@ -141,7 +147,7 @@ function FitnessPage() {
       <header className="page-head">
         <div>
           <h1>Fitness &amp; VO2 max</h1>
-          <div className="muted small">Estimated from your key runs' heart rate and pace, on your race-result scale unless you add Garmin readings below.</div>
+          <div className="muted small">Estimated from your key runs' heart rate and pace, on your race-result (VDOT) scale.</div>
         </div>
       </header>
       <div className="page-body">{f ? <FitnessTab f={f} /> : <p className="muted">Loading…</p>}</div>

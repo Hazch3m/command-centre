@@ -83,4 +83,11 @@ export interface Backend {
   oauthDisconnect(p: Provider, forgetClient: boolean): Promise<void>;
   /** Rejects with a message starting "offline:" when there's no connection. */
   apiRequest<T = unknown>(p: Provider, method: string, url: string, body?: unknown): Promise<ApiResponse<T>>;
+
+  // Calendar feeds by secret iCal address (the address is kept in the keychain).
+  icsList(): Promise<{ id: string; name: string; host: string }[]>;
+  icsAdd(name: string, url: string): Promise<void>;
+  icsRemove(id: string): Promise<void>;
+  /** The feed's text. Rejects with "offline: …" when there's no connection. */
+  icsFetch(id: string): Promise<string>;
 }

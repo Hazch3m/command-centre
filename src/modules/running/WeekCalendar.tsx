@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type WheelEvent } from "react";
+import { createPortal } from "react-dom";
 import { backend } from "@backend";
 import { addDays, parseKey, useToday } from "../../core/time";
 import { CardHeader } from "../../shell/ui";
@@ -6,8 +7,12 @@ import type { CardProps, DashboardModule } from "../types";
 import { forecastRange, forecastWeek, isKeyDay, type ForecastDay, type ForecastWeek } from "./forecast";
 import { mondayOf, type Plan } from "./plan";
 import { km, pace } from "./stats";
-import type { Run } from "./strava";
+import { loadDetails, loadOverrides, setOverride, type Run, type RunDetail } from "./strava";
+import { checkDays, type PaceCheck } from "./pace";
+import { PaceBadge } from "./PaceOnPoint";
 import { useRunningData, useStravaSync } from "./useRunning";
+import { useDataVersion } from "../../core/events";
+import { useQuery } from "../../core/useQuery";
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const fmt = (d: string) => {
@@ -16,11 +21,16 @@ const fmt = (d: string) => {
 };
 const KIND_LABEL: Record<ForecastDay["kind"], string> = { key: "Key session", long: "Long run", easy: "Easy", optional: "Optional", rest: "Rest", race: "Race" };
 
-function Day({ d, today }: { d: ForecastDay; today: string }) {
+function Day({ d, today, onEdit, checks }: { d: ForecastDay; today: string; onEdit?: (d: ForecastDay) => void; checks?: Map<string, PaceCheck> }) {
   const past = d.date < today;
   const isToday = d.date === today;
   return (
-    <div className={`wk-day kind-${d.kind}` + (isToday ? " today" : "") + (past ? " past" : "")}>
+    <div className={`wk-day kind-${d.kind}` + (isToday ? " today" : "") + (past ? " past" : "") + (d.edited ? " edited" : "")}>
+      {onEdit && (
+        <button className="wk-edit" onClick={() => onEdit(d)} title="Change this day" aria-label={`Change ${d.dow} ${d.date}`}>
+          ✎
+        </button>
+      )}
       <div className="wk-day-head">
         <span className="wk-dow">{d.dow}</span>
         <span className="wk-date muted">{parseKey(d.date).getDate()}</span>
@@ -33,6 +43,7 @@ function Day({ d, today }: { d: ForecastDay; today: string }) {
       <div className="wk-foot">
         {d.pace && d.kind !== "rest" && <span className="wk-pace num">{/\d:\d\d/.test(d.pace) ? `${d.pace}/km` : d.pace}</span>}
         {d.strength && <span className="wk-tag">Strength {d.strength}</span>}
+        {d.edited && <span className="wk-tag edited">Changed</span>}
       </div>
       {d.runs.length > 0 && (
         <div className="wk-actual">
@@ -40,6 +51,7 @@ function Day({ d, today }: { d: ForecastDay; today: string }) {
             <button key={r.id} className="link wk-run" onClick={() => backend.openStravaActivity(r.id)} title={`${r.name} — open in Strava`}>
               ✓ <span className="num">{km(r.distance).toFixed(1)}</span> km · <span className="num">{pace(r.distance, r.moving_time)}</span>
               {r.avg_hr ? <> · {Math.round(r.avg_hr)}</> : null}
+              {checks?.get(r.id) && <PaceBadge c={checks.get(r.id)!} />}
             </button>
           ))}
         </div>
@@ -49,12 +61,79 @@ function Day({ d, today }: { d: ForecastDay; today: string }) {
   );
 }
 
-function WeekBody({ fw, today }: { fw: ForecastWeek; today: string }) {
+const QUICK = ["Rest", "Easy 8 km", "Easy 10 km + strides", "12 km easy", "Long run 20 km"];
+
+/** Change one day: new text, move it to another day (swap), or go back to the plan. */
+function DayEditor({ d, week, plan, onClose }: { d: ForecastDay; week: ForecastWeek; plan: Plan; onClose: () => void }) {
+  const [text, setText] = useState(d.text);
+  const [busy, setBusy] = useState(false);
+  const original = useMemo(() => forecastWeek(plan, week.monday).days.find((x) => x.date === d.date)?.text ?? "", [plan, week.monday, d.date]);
+  useEffect(() => {
+    const k = (e: globalThis.KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  }, [onClose]);
+  const run = (p: Promise<unknown>) => {
+    setBusy(true);
+    p.then(onClose, () => setBusy(false));
+  };
+  const swapWith = (other: ForecastDay) =>
+    run(Promise.all([setOverride(d.date, other.text || "Rest"), setOverride(other.date, d.text || "Rest")]));
+  return (
+    <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal day-editor" role="dialog" aria-label={`Change ${d.dow}`}>
+        <header className="modal-header">
+          <h2>
+            {d.dow} {fmt(d.date)}
+          </h2>
+          <button className="btn icon ghost" onClick={onClose} aria-label="Close">
+            ✕
+          </button>
+        </header>
+        <div className="muted small">Plan: {original || "–"}</div>
+        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} aria-label="Session" autoFocus />
+        <div className="quick-row">
+          {QUICK.map((q) => (
+            <button key={q} className="btn" onClick={() => setText(q)}>
+              {q}
+            </button>
+          ))}
+        </div>
+        <p className="muted small">
+          Write it the way the plan does and the distance is worked out: "12 km easy", "Easy 45 min", "5 × 1 km at 3:20, 2 min jog", "28 km, last 6 at 4:05".
+        </p>
+        <div className="label">Or swap with another day this week</div>
+        <div className="quick-row">
+          {week.days
+            .filter((x) => x.date !== d.date)
+            .map((x) => (
+              <button key={x.date} className="btn" disabled={busy} onClick={() => swapWith(x)} title={x.text}>
+                ⇄ {x.dow}
+              </button>
+            ))}
+        </div>
+        <footer className="modal-footer">
+          {d.edited && (
+            <button className="btn" disabled={busy} onClick={() => run(setOverride(d.date, null))}>
+              Back to the plan
+            </button>
+          )}
+          <button className="btn btn-primary" disabled={busy || !text.trim()} onClick={() => run(setOverride(d.date, text))}>
+            Save
+          </button>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+function WeekBody({ fw, today, onEdit, details }: { fw: ForecastWeek; today: string; onEdit?: (d: ForecastDay) => void; details?: Map<string, RunDetail> }) {
+  const checks = details ? checkDays(fw.days, details) : undefined;
   if (fw.week)
     return (
       <div className="wk-days">
         {fw.days.map((d) => (
-          <Day key={d.date} d={d} today={today} />
+          <Day key={d.date} d={d} today={today} onEdit={onEdit} checks={checks} />
         ))}
       </div>
     );
@@ -76,7 +155,7 @@ function WeekBody({ fw, today }: { fw: ForecastWeek; today: string }) {
         {fw.days.some((d) => d.runs.length) && (
           <div className="wk-days">
             {fw.days.map((d) => (
-              <Day key={d.date} d={d} today={today} />
+              <Day key={d.date} d={d} today={today} onEdit={onEdit} checks={checks} />
             ))}
           </div>
         )}
@@ -113,9 +192,13 @@ export function WeekCalendar({ plan, runs, compact, count = 1 }: { plan: Plan; r
   useEffect(() => setMonday(thisMonday), [thisMonday]);
   const clamp = (m: string) => (m < range.first ? range.first : m > range.last ? range.last : m);
   const go = (n: number) => setMonday((m) => clamp(addDays(m, 7 * n)));
+  const version = useDataVersion("running");
+  const { data: overrides } = useQuery(loadOverrides, [version]);
+  const { data: details } = useQuery(() => loadDetails(addDays(today, -120)), [version, today]);
+  const [editing, setEditing] = useState<{ d: ForecastDay; week: ForecastWeek } | null>(null);
   const shown = useMemo(
-    () => Array.from({ length: count }, (_, i) => addDays(monday, 7 * i)).filter((m) => m <= range.last).map((m) => forecastWeek(plan, m, runs)),
-    [plan, monday, runs, count, range.last],
+    () => Array.from({ length: count }, (_, i) => addDays(monday, 7 * i)).filter((m) => m <= range.last).map((m) => forecastWeek(plan, m, runs, overrides)),
+    [plan, monday, runs, count, range.last, overrides],
   );
   const f = shown[0];
 
@@ -123,6 +206,7 @@ export function WeekCalendar({ plan, runs, compact, count = 1 }: { plan: Plan; r
   const acc = useRef(0);
   const last = useRef(0);
   const onWheel = (e: WheelEvent) => {
+    if (editing) return;
     const now = Date.now();
     if (now - last.current > 400) acc.current = 0;
     last.current = now;
@@ -133,6 +217,8 @@ export function WeekCalendar({ plan, runs, compact, count = 1 }: { plan: Plan; r
     }
   };
   const onKey = (e: KeyboardEvent) => {
+    // Events from the day editor (a portal) still bubble here through React.
+    if (editing || /^(INPUT|TEXTAREA|SELECT)$/.test((e.target as HTMLElement).tagName)) return;
     if (e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "PageDown") (go(1), e.preventDefault());
     else if (e.key === "ArrowLeft" || e.key === "ArrowUp" || e.key === "PageUp") (go(-1), e.preventDefault());
     else if (e.key === "Home" || e.key === "t") setMonday(thisMonday);
@@ -218,7 +304,7 @@ export function WeekCalendar({ plan, runs, compact, count = 1 }: { plan: Plan; r
       {shown.map((fw, i) => (
         <div key={fw.monday} className="wk-week">
           {i > 0 && <WeekHead fw={fw} thisMonday={thisMonday} />}
-          <WeekBody fw={fw} today={today} />
+          <WeekBody fw={fw} today={today} details={details} onEdit={compact ? undefined : (d) => setEditing({ d, week: fw })} />
         </div>
       ))}
       {!compact && f.week?.notes && <div className="wk-notes small muted">Note: {f.week.notes}</div>}
@@ -231,9 +317,10 @@ export function WeekCalendar({ plan, runs, compact, count = 1 }: { plan: Plan; r
               <i /> {KIND_LABEL[k]}
             </span>
           ))}
-          <span>≈ km are estimates that add up to the week's target · scroll or use ← → to change week</span>
+          <span>≈ km are estimates that add up to the week's target · scroll or use ← → to change week · ✎ on a day to change it</span>
         </div>
       )}
+      {editing && createPortal(<DayEditor d={editing.d} week={editing.week} plan={plan} onClose={() => setEditing(null)} />, document.body)}
     </div>
   );
 }

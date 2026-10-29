@@ -12,7 +12,7 @@ const INFO: Record<Provider, { name: string; help: string; uses: string; topics:
   },
   google: {
     name: "Google",
-    uses: "Calendar card (read-only) and Tasks sync with Google Tasks",
+    uses: "Tasks sync with Google Tasks, and instant calendar updates (optional if you added your calendar's iCal address above)",
     help: "In Google Cloud: enable the Calendar API and Tasks API, publish the OAuth consent screen, and create an OAuth client of type Desktop app. Paste its client ID and secret.",
     topics: ["calendar", "tasks"],
   },

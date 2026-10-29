@@ -33,7 +33,7 @@ Windows SmartScreen may warn that the installer is from an unknown publisher, be
 | Settings | **Ctrl+,**, or ⚙ (top right) |
 | Toggle full-screen | **F11** |
 
-**Tasks** have three views: **Focus** (overdue, today, in progress, next 7 days, waiting, scheduled), **Projects** (each project with its colour and progress) and **Board** (drag cards between To do, In progress, Waiting and Done). Click any task to open its detail panel: status, priority, project, start date, due date, estimate, repeat, notes and subtasks.
+**Tasks** are added with a title plus fields for project, due date, priority, time estimate and repeat. The Overview shows them as a simple **To do** list. The Tasks tab has three views: **Focus** (overdue, today, in progress, next 7 days, waiting, scheduled), **Projects** (each project with its colour and progress) and **Board** (drag cards between To do, In progress, Waiting and Done). Click any task to open its detail panel: status, priority, project, start date, due date, estimate, repeat, notes and subtasks.
 
 **Task syntax**, which works both in the Tasks card and in quick-add:
 
@@ -57,7 +57,7 @@ Email supervisor about chapter 2 #thesis !1 @fri
 
 Click a task to edit it. Ticked tasks stay visible (struck through) under "Done today" until the day ends, so a mis-tap is easy to undo.
 
-**Daily checklist.** Items reset each morning at 04:00 by default, so anything ticked after midnight still counts for the evening before. You can change the reset time in Settings. To track an amount rather than a simple tick, add a number to the item: `Research 3h` counts in half-hour steps up to 3 h. A day only counts towards the streak once the target is reached. Removing an item keeps its history.
+**Habits** (the old daily checklist) show the last 7 days as ticks on the Overview and 28 days on the Habits tab; click a past day to fill it in. Items reset each morning at 04:00 by default, so anything ticked after midnight still counts for the evening before. You can change the reset time in Settings. To track an amount rather than a simple tick, add a number to the item: `Research 3h` counts in half-hour steps up to 3 h. A day only counts towards the streak once the target is reached. Removing an item keeps its history.
 
 **Layout.** The top bar has tabs: **Overview** (the key facts from everything, as tiles you can rearrange with Ctrl+E), then **Training**, **Fitness**, **Calendar**, **Tasks** and **Daily**. Click a tab, a tile's title, or press Ctrl+1…6 (Ctrl+PageUp/PageDown cycles). Settings → Display has the theme (Slate, the mid-tone default; Light; Dark; or match Windows) and text size.
 
@@ -67,7 +67,11 @@ Click a task to edit it. Ticked tasks stay visible (struck through) under "Done 
 
 The plan comes from your Claude doc "Sub-2:50 Training Plan". It's stored as `training-plan.json` in the data folder and the app picks up changes within five minutes. When the plan changes, ask Claude: *"Re-export my training plan for Command Centre"*. That reads the doc and runs `tools/plan_from_doc.py`, then writes the new file.
 
-**Fitness.** VO2 max is estimated from your *key runs*: any run with at least three steady kilometres above 80% of max heart rate (first 30 km only). Each such kilometre's grade-adjusted pace and heart rate give an estimate (Daniels' oxygen cost + heart-rate reserve); the run's value is their median. Weekly key-run values are compared with a projection from your current level to the VO2 max (VDOT) your goals need: 57.3 for sub-2:50 at Edinburgh, 59.3 for sub-2:45 at Valencia. Estimates are put on your race-result scale, or on Garmin's scale once you type in a reading from Garmin Connect (Running page → Fitness & VO2 max). Max/resting heart rate and the projection are editable there, and saved in `fitness.json`. Race predictions are *race-ready* times: they use the better of your current key-run level and your best race of the last 12 months, since training-run estimates dip after a marathon or in a recovery block; the Fitness tab also shows the current-form times. The same tab has a race predictor, Garmin-style training load (acute vs chronic), aerobic efficiency on easy runs, and shoe mileage.
+**Fitness.** VO2 max is estimated from your *key runs*: any run with at least three steady kilometres above 80% of max heart rate (first 30 km only). Each such kilometre's grade-adjusted pace and heart rate give an estimate (Daniels' oxygen cost + heart-rate reserve); the run's value is their median. Garmin readings you type in are shown next to the estimates but don't change them: Garmin's VO2 max runs a few points above the race-result (VDOT) scale that the goals and predictions use. Weekly key-run values are compared with a projection from your current level to the VO2 max (VDOT) your goals need: 57.3 for sub-2:50 at Edinburgh, 59.3 for sub-2:45 at Valencia. Estimates are put on your race-result scale, or on Garmin's scale once you type in a reading from Garmin Connect (Running page → Fitness & VO2 max). Max/resting heart rate and the projection are editable there, and saved in `fitness.json`. Race predictions are *race-ready* times: they use the better of your current key-run level and your best race of the last 12 months, since training-run estimates dip after a marathon or in a recovery block; the Fitness tab also shows the current-form times. The same tab has a race predictor, Garmin-style training load (acute vs chronic), aerobic efficiency on easy runs, and shoe mileage.
+
+**Pace on point** (Training tab) scores each run against the plan's pace for that day: easy and long runs on the whole run (slower than the easy range still counts), sessions on the work only — watch laps that look like reps, otherwise the fastest kilometres. The Running tile shows the last 14 days. **Marathon shape** (as in Runalyze) checks weekly km (last 6 months) and long runs (last 10 weeks) against what a marathon at your level needs, and slows the marathon prediction when they aren't there yet.
+
+**Changing the plan.** On the Training tab, hover a day and click ✎ to change it, swap it with another day, or go back to the plan. Your changes are kept in the app; the doc stays the master copy.
 
 **Latest run** shows your most recent Strava run: route, distance, time, pace, heart rate, shoe, km splits and its VO2 estimate. Click *Strava ↗* to open it.
 
@@ -101,7 +105,16 @@ API keys and tokens (from Stage 2 onwards) are stored in **Windows Credential Ma
 1. Go to <https://www.strava.com/settings/api> and create an application. Any name and website will do. Set **Authorization Callback Domain** to `localhost`.
 2. Copy the **Client ID** and **Client Secret** into Command Centre → Settings → Strava, then click **Connect**. Your browser opens and asks you to approve read-only access.
 
-### Google Calendar
+### Calendar (quick way, about a minute)
+
+1. Open **calendar.google.com** on your computer and click **⚙ → Settings**.
+2. On the left, under **Settings for my calendars**, click your calendar (usually your name).
+3. Scroll to **Integrate calendar** and copy the **Secret address in iCal format** (it ends in `basic.ics`).
+4. In Command Centre, paste it into the Calendar tile (or Settings → Calendar) and click **Add**. Repeat for other calendars.
+
+The address is stored in Windows Credential Manager. Outlook and iCloud calendar links work the same way. Google can take a while to put brand-new events into this feed; the full Google sign-in below is instant.
+
+### Google (Tasks sync, and instant calendar)
 
 1. Open <https://console.cloud.google.com/>, create a project (e.g. "Command Centre"), and enable both the **Google Calendar API** and the **Google Tasks API** for it.
 2. Under **OAuth consent screen**, choose **External** and fill in the app name and your email. Add yourself as a test user.

@@ -146,6 +146,23 @@ export const backend: Backend = {
     if (!fx) throw new Error("offline: no test data for " + p);
     return fakeApi(fx, method, url, body) as { status: number; body: T };
   },
+  // Test harness: feeds are remembered in localStorage and every feed serves fixtures/calendar.ics.
+  icsList: async () => JSON.parse(localStorage.getItem("cc-fake-ics") ?? "[]"),
+  icsAdd: async (name, url) => {
+    if (!/^(https|webcal):\/\//.test(url.trim())) throw new Error("The calendar address must start with https:// (or webcal://).");
+    const list = JSON.parse(localStorage.getItem("cc-fake-ics") ?? "[]");
+    list.push({ id: "f" + (list.length + 1), name: name.trim() || `Calendar ${list.length + 1}`, host: new URL(url.trim().replace(/^webcal:/, "https:")).host });
+    localStorage.setItem("cc-fake-ics", JSON.stringify(list));
+  },
+  icsRemove: async (id) => {
+    const list = JSON.parse(localStorage.getItem("cc-fake-ics") ?? "[]").filter((f: { id: string }) => f.id !== id);
+    localStorage.setItem("cc-fake-ics", JSON.stringify(list));
+  },
+  icsFetch: async () => {
+    const r = await fetch("fixtures/calendar.ics").catch(() => null);
+    if (!r?.ok) throw new Error("offline: no test calendar");
+    return r.text();
+  },
 };
 
 // ---- Fake APIs for UI tests (fixtures/<provider>.json, not shipped) ----------

@@ -128,3 +128,26 @@ describe("quantile", () => {
     expect(quantile([], 0.5)).toBeNull();
   });
 });
+
+import { marathonShape, shapeFactor } from "./fitness";
+describe("marathon shape", () => {
+  const mk = (date: string, km: number) => ({ id: date + km, date, start_local: date, name: "", sport: "Run", distance: km * 1000, moving_time: km * 300, elapsed_time: km * 300, elevation: 0, avg_hr: null, max_hr: null, workout_type: null, polyline: null, gear_id: null });
+  it("is 100 % when weekly km and long runs meet the targets", () => {
+    const runs = [];
+    for (let i = 1; i <= 26; i++) {
+      const d = new Date(Date.UTC(2026, 9, 26 - 7 * i));
+      const day = d.toISOString().slice(0, 10);
+      runs.push(mk(day, 30), mk(day, 30), mk(day, 32)); // ~92 km/week with a 32 km long run
+    }
+    const s = marathonShape(runs, "2026-10-29", 55);
+    expect(s.targetKm).toBeCloseTo(94.75, 1);
+    expect(s.total).toBeGreaterThan(0.95);
+    expect(shapeFactor(42195, s.total)).toBeCloseTo(1 + (Math.max(0, 1 - s.total)) * 0.12, 5);
+  });
+  it("slows the marathon prediction when the volume isn't there", () => {
+    const s = marathonShape([mk("2026-10-20", 10)], "2026-10-29", 55);
+    expect(s.total).toBeLessThan(0.1);
+    expect(shapeFactor(42195, s.total)).toBeGreaterThan(1.1);
+    expect(shapeFactor(5000, 0.5)).toBe(1);
+  });
+});

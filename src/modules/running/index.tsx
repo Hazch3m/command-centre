@@ -7,7 +7,10 @@ import { mondayOf, planWeekNumber, upcomingRaces, weekFor } from "./plan";
 import { RunningPage } from "./RunningPage";
 import { forecastWeek } from "./forecast";
 import { km, weekDays, weeklyTotals } from "./stats";
-import { migrations } from "./strava";
+import { loadOverrides, migrations } from "./strava";
+import { useDataVersion } from "../../core/events";
+import { useQuery } from "../../core/useQuery";
+import { usePaceChecks } from "./PaceOnPoint";
 import { useRunningData, useStravaSync } from "./useRunning";
 
 export function shortSession(text: string): string {
@@ -18,14 +21,17 @@ function RunningCard({ editing }: CardProps) {
   const today = useToday();
   useStravaSync();
   const { plan, planError, runs, connected, sync } = useRunningData();
+  const version = useDataVersion("running");
+  const { data: overrides } = useQuery(loadOverrides, [version]);
+  const pace = usePaceChecks(plan, runs, 3);
 
   const view = useMemo(() => {
     if (!plan) return null;
     const week = weekFor(plan, today);
     const wk = planWeekNumber(plan, today);
     const done = weekDays(runs ?? [], today).reduce((s, d) => s + d.km, 0);
-    const f = forecastWeek(plan, mondayOf(today), runs ?? []);
-    const nextF = forecastWeek(plan, mondayOf(addDays(today, 1)), runs ?? []);
+    const f = forecastWeek(plan, mondayOf(today), runs ?? [], overrides);
+    const nextF = forecastWeek(plan, mondayOf(addDays(today, 1)), runs ?? [], overrides);
     const todayDay = f.days.find((d) => d.date === today) ?? null;
     const tomorrowDay = [...f.days, ...nextF.days].find((d) => d.date === addDays(today, 1)) ?? null;
     const lastRun = runs?.length ? runs[runs.length - 1] : null;
@@ -42,7 +48,7 @@ function RunningCard({ editing }: CardProps) {
       };
     });
     return { week, wk, done, todayDay, tomorrowDay, lastRun, history, races: upcomingRaces(plan, today).slice(0, 2) };
-  }, [plan, runs, today]);
+  }, [plan, runs, today, overrides]);
 
   if (!plan || !view) return <CardHeader title="Running" to="running" />;
   const { week, wk, done, todayDay, tomorrowDay, lastRun, history, races } = view;
@@ -93,6 +99,11 @@ function RunningCard({ editing }: CardProps) {
         ))}
       </div>
 
+      {pace?.last14 != null && (
+        <div className="run-pace small">
+          <span className="label">Pace on point</span> <b className="num">{pace.last14}%</b> <span className="muted">last 14 days</span>
+        </div>
+      )}
       <div className="run-history">
         <div className="label">Last 10 weeks, km</div>
         <BarChart bars={history} height={105} unit=" km" />

@@ -3,6 +3,7 @@ import { backend } from "@backend";
 import type { AppConfig, BackupStatus, MonitorInfo } from "../core/backend.types";
 import { getSettings, subscribeSettings, TEXT_SIZES, updateSettings } from "../core/settings";
 import { Connections } from "./Connections";
+import { CalendarFeeds } from "../modules/calendar/Connect";
 import { getTaskSync, setTaskSyncEnabled } from "../modules/tasks/gsync";
 
 function Row({ label, hint, children, path }: { label: string; hint?: string; children: ReactNode; path?: boolean }) {
@@ -151,6 +152,9 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
           </select>
         </Row>
 
+        <h3>Calendar</h3>
+        <p className="muted small">The quick way: paste your calendar's secret iCal address.</p>
+        <CalendarFeeds />
         <h3>Connections</h3>
         <Connections />
         <Row label="Sync tasks with Google Tasks" hint="Projects become lists on your phone. Title, notes, due date, done and subtasks sync both ways.">

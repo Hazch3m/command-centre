@@ -24,6 +24,9 @@ export interface ForecastDay {
   race: PlanRace | null;
   actualKm: number;
   runs: Run[];
+  /** You changed this day (the plan's own text is in `planText`). */
+  edited?: boolean;
+  planText?: string;
 }
 
 export interface ForecastWeek {
@@ -149,7 +152,7 @@ function paceFor(plan: Plan, text: string, kind: DayKind): string | null {
   return zone(/^Easy/i);
 }
 
-export function forecastWeek(plan: Plan, monday: string, runs: Run[] = []): ForecastWeek {
+export function forecastWeek(plan: Plan, monday: string, runs: Run[] = [], overrides?: Map<string, string>): ForecastWeek {
   const week = plan.weeks.find((w) => w.start <= monday && monday <= w.end) ?? plan.weeks.find((w) => w.start > monday && w.start <= addDays(monday, 6)) ?? null;
   const block = week ? null : blockFor(plan, monday);
   const strengthFrom = plan.phases.find((p) => p.start)?.start ?? "";
@@ -176,6 +179,14 @@ export function forecastWeek(plan: Plan, monday: string, runs: Run[] = []): Fore
     const actualKm = dayRuns.reduce((s, r) => s + km(r.distance), 0);
     const race = plan.races.find((r) => r.date === date && !r.approx) ?? null;
     const base: ForecastDay = { date, dow: DOW[i], text: "", kind: "easy", km: null, pace: null, strength: null, race, actualKm, runs: dayRuns };
+    const ov = overrides?.get(date);
+    if (ov != null) {
+      const k = sessionKm(ov, threshold);
+      const rest = /^(rest|none)\b/i.test(ov);
+      const kind: DayKind = rest ? "rest" : DOW[i] === "Sun" && k != null && k >= 16 ? "long" : classify(ov);
+      days.push({ ...base, text: rest ? "Rest" : ov, kind, km: k, pace: rest ? null : paceFor(plan, ov, kind), edited: true, flex: k == null && week ? [8, 12] : undefined });
+      continue;
+    }
     if (!week) {
       days.push({ ...base, kind: "optional" });
       continue;

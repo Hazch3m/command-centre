@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { backend } from "@backend";
 import { useDataVersion } from "../../core/events";
 import { dateKey, diffDays, relativeDayLabel, useEvery, useNow } from "../../core/time";
 import { useQuery } from "../../core/useQuery";
-import { CardHeader, Empty, ErrorNote } from "../../shell/ui";
+import { CardHeader, ErrorNote } from "../../shell/ui";
 import type { CardProps, DashboardModule } from "../types";
-import { getCalendars, getCalSync, hhmm, loadEvents, migrations, setShown, syncCalendar, type DayEvents } from "./data";
+import { CalendarFeeds } from "./Connect";
+import { calendarSources, getCalendars, getCalSync, hhmm, loadEvents, migrations, setShown, syncCalendar, type DayEvents } from "./data";
 
 function untilLabel(ms: number): string {
   const m = Math.round(ms / 60000);
@@ -73,7 +73,7 @@ function CalendarCard({ variant }: CardProps) {
     syncCalendar().catch(() => {});
   });
   const { data } = useQuery(
-    () => Promise.all([loadEvents(today), getCalendars(), getCalSync(), backend.oauthStatus("google").catch(() => null)]),
+    () => Promise.all([loadEvents(today), getCalendars(), getCalSync(), calendarSources().then((s) => ({ connected: s.google || s.feeds.length > 0 }))]),
     [today, version],
   );
   const [choosing, setChoosing] = useState(false);
@@ -111,7 +111,10 @@ function CalendarCard({ variant }: CardProps) {
         }
       />
       {data && !status?.connected && (
-        <Empty>Connect Google in Settings (Ctrl+,) to see today and the next 7 days here.</Empty>
+        <div className="card-scroll">
+          <p className="cal-connect-lead">Connect your Google Calendar in four steps:</p>
+          <CalendarFeeds />
+        </div>
       )}
       {choosing && (
         <div className="cal-choose">
@@ -122,6 +125,10 @@ function CalendarCard({ variant }: CardProps) {
               {c.name}
             </label>
           ))}
+          <div className="label" style={{ marginTop: "0.6rem" }}>
+            Add a calendar
+          </div>
+          <CalendarFeeds intro={false} />
           <button className="btn" onClick={() => setChoosing(false)}>
             Done
           </button>
@@ -138,7 +145,7 @@ function CalendarCard({ variant }: CardProps) {
       {sync?.offline && sync.lastSync && (
         <div className="muted small">Offline — showing events from {diffDays(sync.lastSync.slice(0, 10), today) === 0 ? hhmm(new Date(sync.lastSync)) : relativeDayLabel(sync.lastSync.slice(0, 10), today).toLowerCase()}.</div>
       )}
-      {sync?.error && <ErrorNote error={`Google Calendar: ${sync.error}`} />}
+      {sync?.error && <ErrorNote error={sync.error} />}
     </>
   );
 }

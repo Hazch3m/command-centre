@@ -29,7 +29,7 @@ function Settings({ f }: { f: Fitness }) {
       </label>
       <label className="inline">
         <input type="checkbox" checked={c.calibrate} onChange={(e) => save({ ...c, calibrate: e.target.checked })} />
-        Calibrate (to Garmin readings, else race results)
+        Calibrate to my race results (recommended)
       </label>
       <div className="fit-milestones">
         <div className="label">Projection</div>
@@ -99,8 +99,11 @@ function GarminReadings({ f }: { f: Fitness }) {
   return (
     <div>
       <p className="muted small">
-        Garmin doesn't let other apps read your watch's VO2 max, so type it in now and then (Garmin Connect → Performance stats → VO2 max). With one or more readings, the estimates line up with Garmin's scale instead of your race results
-        {f.offset ? ` (currently ${f.offset >= 0 ? "+" : ""}${f.offset.toFixed(1)})` : ""}.
+        Type in your watch's VO2 max now and then (Garmin Connect → Performance stats → VO2 max) to compare the two. Garmin's number is on its own scale, usually a few points
+        above VDOT, the race-result scale your goals and predictions use, so readings don't change the estimates.
+        {f.garmin
+          ? ` Your Garmin reads ${f.garmin.offset >= 0 ? "+" : ""}${f.garmin.offset.toFixed(1)} above the race scale, so your goals are about ${f.config.projection.milestones.map((m) => `${(m.vo2 + f.garmin!.offset).toFixed(0)} (${m.label.split(" · ")[0]})`).join(" and ")} on the watch.`
+          : ""}
       </p>
       <div className="inline">
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Reading date" />
@@ -151,8 +154,8 @@ export function FitnessTab({ f }: { f: Fitness }) {
           <div className="label">VO2 max now</div>
           <div className="tile-value num">{fmtVo2(f.current)}</div>
           <div className="muted small">
-            {f.calibration === "garmin" ? "Garmin-calibrated estimate" : f.calibration === "races" ? "Calibrated to your race results" : "Estimate from key runs"}
-            {f.offset ? ` (${f.offset >= 0 ? "+" : ""}${f.offset.toFixed(1)})` : ""}
+            {f.calibration === "races" ? "On your race-result scale" : "Estimate from key runs"}
+            {f.garmin?.equivalent != null ? ` · ≈${f.garmin.equivalent.toFixed(0)} on Garmin` : ""}
           </div>
         </div>
         <div className="tile">
@@ -188,7 +191,7 @@ export function FitnessTab({ f }: { f: Fitness }) {
       />
       <p className="muted small">
         Each dot is one key run: a run with at least three steady kilometres above 80% of max heart rate (the first 30 km only, before heart-rate drift). Its estimate uses Daniels' oxygen cost of your grade-adjusted pace and
-        your heart-rate reserve, then shifted onto the scale of your Garmin readings or, without those, your race results. The trend is a 4-week rolling median. Diamonds are your races converted to VDOT. A single run can be off by ±2 (heat, hills, fatigue); the
+        your heart-rate reserve, then shifted onto the scale of your race results (VDOT), which is what the goals and predictions use. The trend is a 4-week rolling median. Diamonds are your races converted to VDOT. A single run can be off by ±2 (heat, hills, fatigue); the
         trend is what to watch.
       </p>
 
@@ -237,6 +240,7 @@ export function FitnessTab({ f }: { f: Fitness }) {
           <tr>
             <th>Distance</th>
             <th className="num-col">Race-ready</th>
+            <th className="num-col">With marathon shape</th>
             <th className="num-col">Current form</th>
             <th>Next target</th>
             <th className="num-col">VO2 max needed</th>
@@ -247,6 +251,7 @@ export function FitnessTab({ f }: { f: Fitness }) {
             <tr key={p.name}>
               <td>{p.name}</td>
               <td className="num-col">{p.seconds ? duration(p.seconds) : "–"}</td>
+              <td className="num-col">{p.shapeSeconds ? duration(p.shapeSeconds) : "–"}</td>
               <td className="num-col muted">{p.formSeconds ? duration(p.formSeconds) : "–"}</td>
               <td>{p.target ?? "–"}</td>
               <td className="num-col">{p.targetSeconds ? vdot(p.distance, p.targetSeconds).toFixed(1) : "–"}</td>
@@ -258,6 +263,15 @@ export function FitnessTab({ f }: { f: Fitness }) {
         {f.predictionBasis?.source === "race"
           ? `Race-ready times use your best race of the last year (${f.predictionBasis.race!.name}, VDOT ${f.predictionBasis.vdot.toFixed(1)}), because your key-run estimate (${fmtVo2(f.current)}) is lower right now — normal straight after a marathon or in a recovery block. They switch to current form once that overtakes it.`
           : "Race-ready times use your current form from key runs, which is now above your best race of the last year."}{" "}
+        {f.shape && (
+          <>
+            {" "}
+            <b>Marathon shape {Math.round(f.shape.total * 100)}%</b> (as in Runalyze): {f.shape.kmPerWeek.toFixed(0)} km/week over the last 6 months against the ~
+            {f.shape.targetKm.toFixed(0)} a marathon at this level needs ({Math.round(f.shape.weekly * 100)}%, counts 2/3), and long runs over the last 10 weeks against ~
+            {f.shape.targetLong.toFixed(0)} km ({Math.round(f.shape.long * 100)}%, counts 1/3). A marathon needs 100%, a half 43%, a 10k 17%; below that the time is slowed
+            down.
+          </>
+        )}{" "}
         Predictions assume race-specific training; the marathon one assumes your long runs are in place, which is exactly what the plan builds.</p>
 
       <h3>Training load (Garmin-style acute vs chronic)</h3>

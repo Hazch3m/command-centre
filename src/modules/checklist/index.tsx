@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useDataVersion } from "../../core/events";
-import { useToday } from "../../core/time";
+import { addDays, parseKey, relativeDayLabel, useToday } from "../../core/time";
 import { useQuery } from "../../core/useQuery";
 import { CardHeader, Empty, ErrorNote, TickButton } from "../../shell/ui";
 import type { CardProps, DashboardModule } from "../types";
@@ -9,7 +9,34 @@ import { streaks } from "./streak";
 
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
-function Row({ item, value, doneDays, today }: { item: ChecklistItem; value: number; doneDays: string[]; today: string }) {
+const DOW1 = ["S", "M", "T", "W", "T", "F", "S"];
+
+/** The last `n` days as ticks; click a past day to fill it in or clear it. */
+function History({ item, doneDays, today, done, n }: { item: ChecklistItem; doneDays: string[]; today: string; done: boolean; n: number }) {
+  const set = new Set(doneDays);
+  return (
+    <div className="habit-days" style={{ gridTemplateColumns: `repeat(${n}, 1fr)` }}>
+      {Array.from({ length: n }, (_, i) => {
+        const d = addDays(today, i - n + 1);
+        const hit = d === today ? done : set.has(d);
+        return (
+          <button
+            key={d}
+            className={"habit-day" + (hit ? " hit" : "") + (d === today ? " today" : "")}
+            onClick={() => d !== today && setValue(item.id, hit ? 0 : item.target, d)}
+            title={`${relativeDayLabel(d, today)}${hit ? " · done" : ""}${d !== today ? " (click to change)" : ""}`}
+            aria-label={`${item.title} ${d} ${hit ? "done" : "not done"}`}
+            disabled={d === today}
+          >
+            {n <= 14 && <span className="habit-dow">{DOW1[parseKey(d).getDay()]}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function Row({ item, value, doneDays, today, days }: { item: ChecklistItem; value: number; doneDays: string[]; today: string; days: number }) {
   const done = value >= item.target;
   const counted = item.target > 1 || !!item.unit;
   const s = streaks(doneDays, today);
@@ -37,6 +64,7 @@ function Row({ item, value, doneDays, today }: { item: ChecklistItem; value: num
           </span>
         )}
       </div>
+      <History item={item} doneDays={doneDays} today={today} done={done} n={days} />
       <div className={"streak" + (s.current === 0 ? " streak-none" : done ? " streak-today" : "")} title={`Best: ${s.best} days`}>
         <span className="num">{s.current}</span>
         <span className="streak-unit">{s.current === 1 ? "day" : "days"}</span>
@@ -87,7 +115,7 @@ function describe(text: string) {
   return p.target === 1 && !p.unit ? `“${p.title}” — tick once a day` : `“${p.title}” — target ${fmt(p.target)}${p.unit ?? ""} a day, +${fmt(p.step)} per tap`;
 }
 
-function ChecklistCard({ editing }: CardProps) {
+function ChecklistCard({ editing, variant }: CardProps) {
   const today = useToday();
   const version = useDataVersion("checklist");
   const { data, error } = useQuery(() => loadChecklist(today), [today, version]);
@@ -99,7 +127,7 @@ function ChecklistCard({ editing }: CardProps) {
   return (
     <>
       <CardHeader
-        title="Daily"
+        title="Habits"
         to={editing ? undefined : "checklist"}
         right={
           <>
@@ -120,7 +148,7 @@ function ChecklistCard({ editing }: CardProps) {
           {data && items.length === 0 && <Empty>No daily items yet. Use ✎ to add some.</Empty>}
           <ul className="check-list">
             {items.map((it) => (
-              <Row key={it.id} item={it} value={data!.today.get(it.id) ?? 0} doneDays={data!.doneDays.get(it.id) ?? []} today={today} />
+              <Row key={it.id} item={it} value={data!.today.get(it.id) ?? 0} doneDays={data!.doneDays.get(it.id) ?? []} today={today} days={variant === "page" ? 28 : 7} />
             ))}
           </ul>
         </div>
@@ -131,12 +159,12 @@ function ChecklistCard({ editing }: CardProps) {
 
 export const checklistModule: DashboardModule = {
   id: "checklist",
-  title: "Daily checklist",
+  title: "Habits",
   defaultPos: { x: 6, y: 32, w: 6, h: 8 },
   minW: 3,
   minH: 3,
   migrations,
-  page: { label: "Daily", order: 5 },
+  page: { label: "Habits", order: 5 },
   init: seedDefaults,
   Card: ChecklistCard,
   quickAdd: [

@@ -26,7 +26,7 @@ import {
 export const FITNESS_FILE = "fitness.json";
 
 export interface FitnessConfig extends Vo2Config {
-  /** Calibrate estimates to Garmin readings, or to recent race results when there are none. */
+  /** Put estimates on your race-result (VDOT) scale, the scale the goals and predictions use. */
   calibrate: boolean;
 }
 
@@ -82,7 +82,9 @@ export function splitsFor(d: RunDetail) {
 export interface Fitness {
   config: FitnessConfig;
   offset: number;
-  calibration: "garmin" | "races" | "none";
+  calibration: "races" | "none";
+  /** Garmin's VO2 max runs on its own scale: how far above the race scale your readings sit. */
+  garmin: { offset: number; latest: { date: string; vo2: number }; equivalent: number | null } | null;
   estimates: RunEstimate[]; // calibrated, oldest first
   weekly: WeekPoint[];
   readings: { date: string; vo2: number }[];
@@ -94,7 +96,18 @@ export interface Fitness {
   slope: number | null; // per week, last 8 weeks
   neededSlope: number | null; // per week, to the next milestone
   nextMilestone: { date: string; vo2: number; label: string } | null;
-  predictions: { name: string; distance: number; seconds: number | null; formSeconds: number | null; target: string | null; targetSeconds: number | null }[];
+  predictions: {
+    name: string;
+    distance: number;
+    seconds: number | null;
+    formSeconds: number | null;
+    /** `seconds` slowed down when the marathon shape is short of what this distance needs. */
+    shapeSeconds: number | null;
+    target: string | null;
+    targetSeconds: number | null;
+  }[];
+  /** Runalyze-style marathon shape: is the training volume there for long races? */
+  shape: MarathonShape | null;
   /** VDOT the predictions use: the better of current form and the best race in the last year. */
   predictionBasis: { vdot: number; source: "form" | "race"; race?: { name: string; date: string; vdot: number } } | null;
   load: ReturnType<typeof loadRatio>;
@@ -105,6 +118,66 @@ export interface Fitness {
 }
 
 const RACING = /alphafly|vaporfly|metaspeed|adios pro|endorphin pro|elite|rocket x|sc elite|supercomp elite/i;
+
+// ---- Marathon shape -------------------------------------------------------------
+
+export interface MarathonShape {
+  total: number; // 1 = 100 %
+  weekly: number;
+  long: number;
+  kmPerWeek: number;
+  targetKm: number;
+  targetLong: number;
+}
+
+const interp = (pts: [number, number][], x: number) => {
+  if (x <= pts[0][0]) return pts[0][1] + ((x - pts[0][0]) * (pts[1][1] - pts[0][1])) / (pts[1][0] - pts[0][0]);
+  for (let i = 1; i < pts.length; i++)
+    if (x <= pts[i][0]) return pts[i - 1][1] + ((x - pts[i - 1][0]) * (pts[i][1] - pts[i - 1][1])) / (pts[i][0] - pts[i - 1][0]);
+  const [a, b] = [pts[pts.length - 2], pts[pts.length - 1]];
+  return b[1] + ((x - b[0]) * (b[1] - a[1])) / (b[0] - a[0]);
+};
+
+/**
+ * Like Runalyze's marathon shape: weekly km over the last 26 weeks (2/3) and long
+ * runs over the last 10 weeks (1/3), both against what a marathon at this VO2 max
+ * needs, recent weeks counting more. Targets follow Runalyze's table
+ * (VO2 max 50 → ~85 km/week and ~30 km long runs; 70 → ~124 and ~34).
+ */
+export function marathonShape(runs: Run[], today: string, vdotNow: number): MarathonShape {
+  const targetKm = interp([[25, 39], [50, 85], [70, 124]], vdotNow);
+  const targetLong = interp([[25, 22], [50, 30], [70, 34]], vdotNow);
+  const thisMonday = mondayOf(today);
+  let wSum = 0;
+  let kmW = 0;
+  let longW = 0;
+  let lSum = 0;
+  for (let i = 1; i <= 26; i++) {
+    const mon = addDays(thisMonday, -7 * i);
+    const wk = runs.filter((r) => r.date >= mon && r.date < addDays(mon, 7));
+    const kmWeek = wk.reduce((s, r) => s + r.distance / 1000, 0);
+    const w = 27 - i; // recent weeks count more
+    kmW += kmWeek * w;
+    wSum += w;
+    if (i <= 10) {
+      const longest = wk.reduce((m, r) => Math.max(m, r.distance / 1000), 0);
+      const lw = 11 - i;
+      longW += Math.max(0, Math.min(1, (longest - 13) / (targetLong - 13))) * lw;
+      lSum += lw;
+    }
+  }
+  const kmPerWeek = kmW / wSum;
+  const weekly = Math.min(1.5, kmPerWeek / targetKm);
+  const long = longW / lSum;
+  return { total: (2 / 3) * weekly + (1 / 3) * long, weekly, long, kmPerWeek, targetKm, targetLong };
+}
+
+/** How much slower than the VO2 max prediction, given the shape (needs: 5k 7 %, 10k 17 %, half 43 %, marathon 100 %). */
+export function shapeFactor(distance: number, shape: number): number {
+  const need = distance >= 42000 ? 1 : distance >= 21000 ? 0.43 : distance >= 10000 ? 0.17 : 0.07;
+  const maxPenalty = distance >= 42000 ? 0.12 : distance >= 21000 ? 0.05 : distance >= 10000 ? 0.03 : 0.02;
+  return 1 + (Math.max(0, need - shape) / need) * maxPenalty;
+}
 
 export function computeFitness(
   runs: Run[],
@@ -127,15 +200,12 @@ export function computeFitness(
   // from the last year (VDOT), which also puts estimates on the same scale as the goals.
   const races = plan ? raceHistory(runs, plan).map((r) => ({ date: r.date, name: r.name, vdot: vdot(r.km * 1000, r.time) })) : [];
   const recentRaces = races.filter((r) => r.date >= addDays(today, -365)).map((r) => ({ date: r.date, vo2: r.vdot }));
+  // Garmin readings are deliberately not used for this: Garmin's VO2 max is on a
+  // different (usually higher) scale than VDOT, so shifting onto it would make every
+  // race prediction too fast. They're compared separately below.
   let calibration: Fitness["calibration"] = "none";
   let offset = 0;
-  if (config.calibrate && readings.length) {
-    const o = garminOffset(readings, raw);
-    if (o != null) {
-      offset = o;
-      calibration = "garmin";
-    }
-  } else if (config.calibrate && recentRaces.length) {
+  if (config.calibrate && recentRaces.length) {
     const o = garminOffset(recentRaces, raw, 21);
     if (o != null) {
       offset = o;
@@ -143,6 +213,9 @@ export function computeFitness(
     }
   }
   const estimates = raw.map((e) => ({ ...e, vo2: e.vo2 + offset }));
+  const latestReading = readings.length ? [...readings].sort((a, b) => a.date.localeCompare(b.date))[readings.length - 1] : null;
+  // Wider window than calibration used to: readings are occasional.
+  const gOff = latestReading ? garminOffset(readings, estimates, 28) : null;
 
   const thisMonday = mondayOf(today);
   const weekly = weeklySeries(estimates, addDays(thisMonday, -51 * 7), thisMonday);
@@ -188,10 +261,11 @@ export function computeFitness(
       : current != null
         ? { vdot: current, source: "form" }
         : null;
+  const shape = predictionBasis ? marathonShape(runs, today, predictionBasis.vdot) : null;
   const predictions = DIST.map((d) => {
     const race = plan?.races.find((r) => d.match.test(r.name) && r.date && r.date >= today);
     const targetSeconds = race ? targetTime(race.target, d.distance) : null;
-    return { name: d.name, distance: d.distance, seconds: predictionBasis ? predictTime(d.distance, predictionBasis.vdot) : null, formSeconds: current != null ? predictTime(d.distance, current) : null, target: race ? `${race.name}: ${race.target}` : null, targetSeconds };
+    return { name: d.name, distance: d.distance, seconds: predictionBasis ? predictTime(d.distance, predictionBasis.vdot) : null, shapeSeconds: predictionBasis && shape ? predictTime(d.distance, predictionBasis.vdot) * shapeFactor(d.distance, shape.total) : null, formSeconds: current != null ? predictTime(d.distance, current) : null, target: race ? `${race.name}: ${race.target}` : null, targetSeconds };
   });
 
   // Training load, per day.
@@ -231,6 +305,7 @@ export function computeFitness(
     config,
     offset,
     calibration,
+    garmin: latestReading && gOff != null ? { offset: gOff, latest: latestReading, equivalent: current != null ? current + gOff : null } : null,
     estimates,
     weekly,
     readings,
@@ -244,6 +319,7 @@ export function computeFitness(
     nextMilestone,
     predictions,
     predictionBasis,
+    shape,
     load,
     loadSeries,
     efficiency,

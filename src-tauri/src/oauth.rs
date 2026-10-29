@@ -319,9 +319,108 @@ pub async fn api_request(
     Ok(ApiResponse { status, body })
 }
 
+// ---- Calendar feeds (secret iCal links) -------------------------------------
+//
+// The simplest way to show a Google (or Outlook/iCloud) calendar: its private
+// iCal address. The address works like a password, so it's kept in the
+// keychain and fetched here; the page only sees the calendar text.
+
+const ICS_KEY: &str = "ics.feeds";
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct IcsFeed {
+    pub id: String,
+    pub name: String,
+    pub url: String,
+}
+
+#[derive(Serialize)]
+pub struct IcsFeedInfo {
+    id: String,
+    name: String,
+    host: String,
+}
+
+/// webcal:// → https://, and only https feeds are accepted.
+pub fn normalise_ics_url(raw: &str) -> Result<String, String> {
+    let t = raw.trim();
+    let t = if let Some(rest) = t.strip_prefix("webcal://") { format!("https://{rest}") } else { t.to_string() };
+    let u = url::Url::parse(&t).map_err(|_| "That doesn't look like a web address.".to_string())?;
+    if u.scheme() != "https" || u.host_str().is_none() {
+        return Err("The calendar address must start with https:// (or webcal://).".into());
+    }
+    Ok(u.to_string())
+}
+
+fn ics_feeds() -> Vec<IcsFeed> {
+    load(ICS_KEY).unwrap_or_default()
+}
+
+#[tauri::command]
+pub fn ics_list() -> Vec<IcsFeedInfo> {
+    ics_feeds()
+        .into_iter()
+        .map(|f| IcsFeedInfo {
+            host: url::Url::parse(&f.url).ok().and_then(|u| u.host_str().map(String::from)).unwrap_or_default(),
+            id: f.id,
+            name: f.name,
+        })
+        .collect()
+}
+
+#[tauri::command]
+pub fn ics_add(name: String, url: String) -> Result<(), String> {
+    let url = normalise_ics_url(&url)?;
+    let mut feeds = ics_feeds();
+    if feeds.iter().any(|f| f.url == url) {
+        return Err("That calendar is already added.".into());
+    }
+    let name = if name.trim().is_empty() { format!("Calendar {}", feeds.len() + 1) } else { name.trim().to_string() };
+    feeds.push(IcsFeed { id: random(10), name, url });
+    save(ICS_KEY, &feeds)
+}
+
+#[tauri::command]
+pub fn ics_remove(id: String) -> Result<(), String> {
+    let feeds: Vec<IcsFeed> = ics_feeds().into_iter().filter(|f| f.id != id).collect();
+    if feeds.is_empty() {
+        forget(ICS_KEY);
+        Ok(())
+    } else {
+        save(ICS_KEY, &feeds)
+    }
+}
+
+/// Downloads one feed. Network failures start with "offline:".
+#[tauri::command]
+pub async fn ics_fetch(http: tauri::State<'_, reqwest::Client>, id: String) -> Result<String, String> {
+    let feed = ics_feeds().into_iter().find(|f| f.id == id).ok_or("That calendar was removed.")?;
+    let resp = http.get(&feed.url).timeout(Duration::from_secs(30)).send().await.map_err(|e| format!("offline: {e}"))?;
+    let status = resp.status();
+    if !status.is_success() {
+        return Err(if status.as_u16() == 404 || status.as_u16() == 403 {
+            "The calendar address was refused. If you reset the secret address in Google Calendar, add the new one.".into()
+        } else {
+            format!("The calendar server replied {status}")
+        });
+    }
+    let text = resp.text().await.map_err(|e| e.to_string())?;
+    if !text.contains("BEGIN:VCALENDAR") {
+        return Err("That address didn't return a calendar. Use the \"Secret address in iCal format\".".into());
+    }
+    Ok(text)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn normalises_calendar_addresses() {
+        assert_eq!(normalise_ics_url(" webcal://p01-calendars.icloud.com/x ").unwrap(), "https://p01-calendars.icloud.com/x");
+        assert!(normalise_ics_url("http://example.com/a.ics").is_err());
+        assert!(normalise_ics_url("not a url").is_err());
+    }
 
     #[test]
     fn providers_are_locked_to_their_hosts() {

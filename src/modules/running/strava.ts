@@ -23,6 +23,8 @@ export interface Run {
 export interface RunDetail {
   splits: { distance: number; moving_time: number; speed: number; gap: number | null; hr: number | null; elev: number | null }[];
   bestEfforts: { name: string; time: number }[];
+  /** Watch laps (auto-lap or workout steps), when fetched. */
+  laps?: { distance: number; moving_time: number; speed: number; hr: number | null }[];
 }
 
 export const migrations = [
@@ -57,7 +59,25 @@ export const migrations = [
      vo2 REAL NOT NULL,
      source TEXT NOT NULL DEFAULT 'garmin'
    );`,
+  // 2 — your own changes to the plan, one per day (the doc stays the master copy)
+  `CREATE TABLE plan_overrides (
+     date TEXT PRIMARY KEY,
+     text TEXT NOT NULL,
+     updated_at TEXT NOT NULL
+   );`,
 ];
+
+/** Your edits to the plan, by date. */
+export async function loadOverrides(): Promise<Map<string, string>> {
+  const rows = await db.select<{ date: string; text: string }>("SELECT date, text FROM plan_overrides");
+  return new Map(rows.map((r) => [r.date, r.text]));
+}
+
+export async function setOverride(date: string, text: string | null) {
+  if (text == null) await db.execute("DELETE FROM plan_overrides WHERE date = ?", [date]);
+  else await db.execute("INSERT OR REPLACE INTO plan_overrides (date, text, updated_at) VALUES (?, ?, ?)", [date, text.trim() || "Rest", new Date().toISOString()]);
+  await notifyChanged("running");
+}
 
 const RUN_SPORTS = ["Run", "TrailRun", "VirtualRun", "Treadmill"];
 const HISTORY_FROM = Date.UTC(2024, 0, 1) / 1000; // the progression page goes back to 2024
@@ -96,6 +116,7 @@ interface StravaActivity {
 interface StravaDetail {
   splits_metric?: { distance: number; moving_time: number; average_speed: number; average_grade_adjusted_speed?: number; average_heartrate?: number; elevation_difference?: number }[];
   best_efforts?: { name: string; elapsed_time: number }[];
+  laps?: { distance: number; moving_time: number; average_speed: number; average_heartrate?: number }[];
 }
 
 /** Detail requests per sync. Strava allows 100 requests per 15 minutes; this leaves plenty of headroom. */
@@ -198,7 +219,9 @@ async function syncDetails(): Promise<boolean> {
   const todo = await db.select<{ id: string }>(
     `SELECT a.id FROM strava_activities a LEFT JOIN strava_details d ON d.id = a.id
      WHERE a.has_hr = 1 AND a.date >= date('now', '-430 days')
-       AND (d.id IS NULL OR (d.fetched_at < a.synced_at AND a.date >= date('now', '-2 days')))
+       AND (d.id IS NULL OR (d.fetched_at < a.synced_at AND a.date >= date('now', '-2 days'))
+            -- laps (for pace on point) arrived later: fetch recent runs again once
+            OR (d.json NOT LIKE '%"laps"%' AND a.date >= date('now', '-60 days')))
      ORDER BY a.start_epoch DESC LIMIT ?`,
     [DETAIL_BATCH],
   );
@@ -221,6 +244,7 @@ async function syncDetails(): Promise<boolean> {
         elev: s.elevation_difference ?? null,
       })),
       bestEfforts: (r.body.best_efforts ?? []).map((b) => ({ name: b.name, time: b.elapsed_time })),
+      laps: (r.body.laps ?? []).map((l) => ({ distance: l.distance, moving_time: l.moving_time, speed: l.average_speed, hr: l.average_heartrate ?? null })),
     };
     await db.execute("INSERT OR REPLACE INTO strava_details (id, json, fetched_at) VALUES (?, ?, ?)", [id, JSON.stringify(detail), new Date().toISOString()]);
     any = true;

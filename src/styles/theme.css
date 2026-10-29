@@ -2832,3 +2832,298 @@ select:focus {
   flex: 1;
   min-height: 0;
 }
+
+/* Calendar connect */
+.cal-connect {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+.cal-connect-lead {
+  margin: 0 0 0.2rem;
+  font-weight: 600;
+}
+.steps {
+  margin: 0;
+  padding-left: 1.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  line-height: 1.45;
+}
+.steps code {
+  font-size: 0.85em;
+  background: var(--card-2);
+  padding: 0 0.3em;
+  border-radius: 4px;
+}
+.feed-add {
+  display: flex;
+  gap: 0.4rem;
+}
+.feed-add input {
+  flex: 1;
+  min-width: 0;
+}
+.feed-add .feed-name {
+  flex: 0 0 9rem;
+}
+.feed-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+/* Last 4 weeks vs previous */
+.recent-block {
+  margin: 0.9rem 0 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.recent-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+.recent-head h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+.recent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 0.45rem;
+}
+.recent-cell {
+  background: var(--card-2);
+  border-radius: 10px;
+  padding: 0.5rem 0.65rem;
+}
+.recent-value .num {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+/* Day editor */
+.wk-day {
+  position: relative;
+}
+.wk-edit {
+  position: absolute;
+  right: 0.3rem;
+  bottom: 0.3rem;
+  border: 0;
+  background: var(--card);
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 0.05rem 0.35rem;
+  font-size: 0.75rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.wk-day:hover .wk-edit,
+.wk-edit:focus-visible {
+  opacity: 1;
+}
+.wk-edit:hover {
+  color: var(--accent);
+}
+.wk-tag.edited {
+  border-color: var(--info);
+  color: var(--info);
+}
+.day-editor {
+  width: min(34rem, 92vw);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.day-editor textarea {
+  font: inherit;
+  color: inherit;
+  background: var(--card-2);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  resize: vertical;
+  user-select: text;
+}
+.day-editor textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.quick-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+/* Pace on point */
+.pace-badge {
+  margin-left: 0.35rem;
+  font-size: 0.66rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tone-warn {
+  color: var(--warn);
+}
+.pace-weeks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.4rem;
+  margin: 0.6rem 0 0.9rem;
+}
+.pace-week {
+  background: var(--card-2);
+  border-radius: 10px;
+  padding: 0.45rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.pace-week .num {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+.pace-bar {
+  height: 0.3rem;
+  background: var(--track);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.pace-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.run-pace {
+  margin-top: 0.1rem;
+}
+
+/* Task add form */
+.task-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 0.6rem;
+}
+.task-form-main {
+  display: flex;
+  gap: 0.4rem;
+}
+.task-form-main input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.45em 0.7em;
+}
+.task-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  padding: 0.55rem 0.65rem;
+  background: var(--card-2);
+  border-radius: 10px;
+  animation: fade-up 0.2s ease both;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+}
+.field select,
+.field input {
+  background: var(--card);
+  font-size: 0.8rem;
+}
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+}
+.chip-btn {
+  border: 1px solid var(--line-2);
+  background: transparent;
+  color: var(--text-2);
+  border-radius: 999px;
+  font-size: 0.74rem;
+  padding: 0.15em 0.65em;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.chip-btn:hover {
+  border-color: var(--muted);
+}
+.chip-btn.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+.chip-btn.prio-chip-1.on {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+.chip-btn.prio-chip-2.on {
+  background: var(--warn);
+  border-color: var(--warn);
+}
+.chip-btn.prio-chip-3.on {
+  background: var(--info);
+  border-color: var(--info);
+}
+.todo-list .task-row + .task-row {
+  border-top: 1px solid var(--line);
+}
+
+/* Habit tracker */
+.habit-days {
+  display: grid;
+  gap: 3px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.check-row .check-main {
+  flex: 1;
+}
+.habit-day {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 6px;
+  border: 0;
+  background: var(--track);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, transform 0.15s;
+}
+.habit-day:not(:disabled):hover {
+  transform: scale(1.12);
+}
+.habit-day.hit {
+  background: var(--accent);
+}
+.habit-day.today {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+  cursor: default;
+  opacity: 1;
+}
+.habit-dow {
+  font-size: 0.55rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+.habit-day.hit .habit-dow {
+  color: var(--on-accent);
+}
+.card-page .habit-day {
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 4px;
+}

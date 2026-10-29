@@ -16,10 +16,13 @@ import {
 } from "./stats";
 import { useRunningData } from "./useRunning";
 import { WeekCalendar } from "./WeekCalendar";
+import { RecentBlock } from "./RecentBlock";
+import { PaceOnPointTab } from "./PaceOnPoint";
 
-type Tab = "week" | "plan" | "races" | "progress" | "paces";
+type Tab = "week" | "pace" | "plan" | "races" | "progress" | "paces";
 const TABS: { id: Tab; label: string }[] = [
   { id: "week", label: "Week by week" },
+  { id: "pace", label: "Pace on point" },
   { id: "plan", label: "Plan" },
   { id: "races", label: "Races & benchmarks" },
   { id: "progress", label: "Progression" },
@@ -91,6 +94,7 @@ export function RunningPage() {
         </div>
       </header>
       <ErrorNote error={planError} />
+      <RecentBlock runs={runs} plan={plan} />
       <nav className="segmented page-tabs" role="tablist">
         {TABS.map((t) => (
           <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? "on" : ""} onClick={() => setTab(t.id)}>
@@ -101,6 +105,7 @@ export function RunningPage() {
 
       <div className="page-body" key={tab}>
         {tab === "week" && <WeekCalendar plan={plan} runs={runs} count={6} />}
+        {tab === "pace" && <PaceOnPointTab plan={plan} runs={runs} />}
 
         {tab === "plan" && (
           <>

@@ -6,7 +6,6 @@ import { useQuery } from "../../core/useQuery";
 import { CardHeader, Empty, ErrorNote } from "../../shell/ui";
 import type { CardProps, DashboardModule } from "../types";
 import {
-  addTask,
   addTaskFromText,
   compareTasks,
   createProject,
@@ -27,6 +26,7 @@ import { formatEffort, parseTask, type ParsedTask } from "./parse";
 import { describeRecur } from "./recur";
 import { getTaskSync, syncGoogleTasks, syncMigrations } from "./gsync";
 import { TaskDetail } from "./TaskDetail";
+import { TaskAddForm } from "./AddForm";
 import { PRIORITY_NAME, ProjectChip, TaskRow } from "./TaskRow";
 
 export const SYNTAX_HINT = "#project  !1-3  @due  ^start  ~45m  *weekly";
@@ -79,6 +79,23 @@ function Section({
       </h3>
       {open && <ul>{children}</ul>}
     </section>
+  );
+}
+
+/** Overview tile: one simple list, most urgent first, without the groups. */
+function TodoList({ tasks, today, onOpen }: { tasks: Task[]; today: string; onOpen: (id: number) => void }) {
+  const order = GROUPS.map((g) => g.key);
+  const open = tasks
+    .filter((t) => t.status !== "done" && focusGroup(t, today) !== "scheduled")
+    .sort((a, b) => order.indexOf(focusGroup(a, today)) - order.indexOf(focusGroup(b, today)) || compareTasks(a, b));
+  const doneToday = tasks.filter((t) => t.status === "done");
+  if (!open.length) return <Empty>{doneToday.length ? `All done — ${doneToday.length} finished today.` : "Nothing to do. Add something above."}</Empty>;
+  return (
+    <ul className="todo-list">
+      {open.map((t) => (
+        <TaskRow key={t.id} task={t} today={today} onOpen={onOpen} />
+      ))}
+    </ul>
   );
 }
 
@@ -241,8 +258,6 @@ function TasksCard({ editing, variant }: CardProps) {
   const [view, setViewState] = useState<View>("focus");
   const [filter, setFilterState] = useState<number | "">("");
   const [openId, setOpenId] = useState<number | null>(null);
-  const [draft, setDraft] = useState("");
-  const [addErr, setAddErr] = useState<string | null>(null);
 
   // Remember the chosen view and filter between launches.
   useEffect(() => {
@@ -268,19 +283,6 @@ function TasksCard({ editing, variant }: CardProps) {
   const doneToday = tasks.filter((t) => t.status === "done").length;
   const filterProject = projects.find((p) => p.id === filter);
 
-  const parsed = parseTask(draft, today);
-  if (filterProject && !parsed.project) parsed.project = filterProject.name;
-  const preview = draft.trim() ? describeParsed(parsed, today) : null;
-  const submit = async () => {
-    if (!draft.trim()) return;
-    try {
-      await addTask(parsed);
-      setDraft("");
-      setAddErr(null);
-    } catch (e) {
-      setAddErr((e as Error).message);
-    }
-  };
   // Google Tasks: every 2 minutes, and a few seconds after any local change.
   const syncVersion = useDataVersion("tasks-sync");
   const { data: syncState } = useQuery(getTaskSync, [syncVersion]);
@@ -306,7 +308,7 @@ function TasksCard({ editing, variant }: CardProps) {
   return (
     <>
       <CardHeader
-        title="Tasks"
+        title={tile ? "To do" : "Tasks"}
         to={editing ? undefined : "tasks"}
         right={
           <>
@@ -346,21 +348,11 @@ function TasksCard({ editing, variant }: CardProps) {
         )}
         {filterProject && <ProjectChip name={filterProject.name} color={filterProject.color} />}
       </div>}
-      <div className="task-add">
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && submit()}
-          placeholder={filterProject ? `Add to ${filterProject.name}…` : "Add a task…"}
-          aria-label="New task"
-          disabled={editing}
-        />
-        <div className="task-add-hint muted">{preview ?? (draft ? " " : SYNTAX_HINT)}</div>
-        <ErrorNote error={addErr} />
-      </div>
+      {!editing && <TaskAddForm today={today} projects={projects} defaultProject={filterProject} compact={tile} />}
       <ErrorNote error={error} />
       <div className={`card-scroll tasks-scroll view-${tile ? "tile" : view}`}>
-        {data && (tile || view === "focus") && <FocusView tasks={visible} today={today} onOpen={onOpen} />}
+        {data && tile && <TodoList tasks={visible} today={today} onOpen={onOpen} />}
+        {data && !tile && view === "focus" && <FocusView tasks={visible} today={today} onOpen={onOpen} />}
         {data && !tile && view === "projects" && <ProjectsView tasks={tasks} projects={projects} today={today} onOpen={onOpen} />}
         {data && !tile && view === "board" && <BoardView tasks={visible} today={today} onOpen={onOpen} />}
       </div>

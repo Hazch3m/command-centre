@@ -34,4 +34,8 @@ export const backend: Backend = {
   oauthConnect: (p) => invoke("oauth_connect", { providerId: p }),
   oauthDisconnect: (p, forgetClient) => invoke("oauth_disconnect", { providerId: p, forgetClient }),
   apiRequest: (p, method, url, body) => invoke("api_request", { providerId: p, method, url, body: body ?? null }),
+  icsList: () => invoke("ics_list"),
+  icsAdd: (name, url) => invoke("ics_add", { name, url }),
+  icsRemove: (id) => invoke("ics_remove", { id }),
+  icsFetch: (id) => invoke("ics_fetch", { id }),
 };

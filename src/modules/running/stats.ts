@@ -165,3 +165,50 @@ export function resultOn(runs: Run[], date: string | null): Run | null {
   const day = runs.filter((r) => r.date === date);
   return day.find((r) => r.workout_type === 1) ?? day.sort((a, b) => b.distance - a.distance)[0] ?? null;
 }
+
+export interface PeriodStats {
+  kmPerWeek: number;
+  runsPerWeek: number;
+  hoursPerWeek: number;
+  longRun: number; // average of each week's longest run, km
+  pace: number | null; // s/km, distance-weighted
+  hr: number | null; // time-weighted average heart rate
+  climbPerWeek: number;
+}
+
+function periodStats(runs: Run[], from: string, to: string): PeriodStats {
+  const rs = runs.filter((r) => r.date >= from && r.date <= to);
+  const weeks = Math.max(1, Math.round((diffDays(from, to) + 1) / 7));
+  const dist = rs.reduce((s, r) => s + r.distance, 0);
+  const time = rs.reduce((s, r) => s + r.moving_time, 0);
+  const withHr = rs.filter((r) => r.avg_hr);
+  const hrTime = withHr.reduce((s, r) => s + r.moving_time, 0);
+  const longest = new Map<string, number>();
+  for (const r of rs) {
+    const w = mondayOf(r.date);
+    longest.set(w, Math.max(longest.get(w) ?? 0, km(r.distance)));
+  }
+  return {
+    kmPerWeek: km(dist) / weeks,
+    runsPerWeek: rs.length / weeks,
+    hoursPerWeek: time / 3600 / weeks,
+    longRun: [...longest.values()].reduce((s, x) => s + x, 0) / weeks,
+    pace: dist ? time / km(dist) : null,
+    hr: hrTime ? withHr.reduce((s, r) => s + r.avg_hr! * r.moving_time, 0) / hrTime : null,
+    climbPerWeek: rs.reduce((s, r) => s + (r.elevation || 0), 0) / weeks,
+  };
+}
+
+/** The last 4 weeks (28 days to today) against the 12 weeks before them, per week. */
+export function recentVsPrevious(runs: Run[], today: string, recentWeeks = 4, previousWeeks = 12) {
+  const recentFrom = addDays(today, -(recentWeeks * 7 - 1));
+  const prevTo = addDays(recentFrom, -1);
+  const prevFrom = addDays(recentFrom, -previousWeeks * 7);
+  return {
+    recent: periodStats(runs, recentFrom, today),
+    previous: periodStats(runs, prevFrom, prevTo),
+    recentFrom,
+    prevFrom,
+    prevTo,
+  };
+}
