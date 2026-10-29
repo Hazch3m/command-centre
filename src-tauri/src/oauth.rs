@@ -342,7 +342,10 @@ mod tests {
         let t = parse_token(&google, Some("old".into())).unwrap();
         assert_eq!(t.refresh_token.as_deref(), Some("old"));
         assert!(t.expires_at > now());
-        let err = parse_token(&serde_json::json!({"error":"invalid_grant","error_description":"Bad Request"}), None);
-        assert!(err.unwrap_err().contains("Bad Request"));
+        // Token deliberately has no Debug impl (so it can never be logged); match instead of unwrap_err.
+        match parse_token(&serde_json::json!({"error":"invalid_grant","error_description":"Bad Request"}), None) {
+            Err(msg) => assert!(msg.contains("Bad Request")),
+            Ok(_) => panic!("an error reply must not parse as a token"),
+        }
     }
 }
