@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type DragEvent, type ReactNode } from "react";
 import { kvGet, kvSet } from "../../core/db";
 import { useDataVersion } from "../../core/events";
-import { relativeDayLabel, todayKey, useToday } from "../../core/time";
+import { relativeDayLabel, todayKey, useEvery, useToday } from "../../core/time";
 import { useQuery } from "../../core/useQuery";
 import { CardHeader, Empty, ErrorNote } from "../../shell/ui";
 import type { CardProps, DashboardModule } from "../types";
@@ -25,6 +25,7 @@ import {
 } from "./data";
 import { formatEffort, parseTask, type ParsedTask } from "./parse";
 import { describeRecur } from "./recur";
+import { getTaskSync, syncGoogleTasks, syncMigrations } from "./gsync";
 import { TaskDetail } from "./TaskDetail";
 import { PRIORITY_NAME, ProjectChip, TaskRow } from "./TaskRow";
 
@@ -279,6 +280,25 @@ function TasksCard({ editing }: CardProps) {
       setAddErr((e as Error).message);
     }
   };
+  // Google Tasks: every 2 minutes, and a few seconds after any local change.
+  const syncVersion = useDataVersion("tasks-sync");
+  const { data: syncState } = useQuery(getTaskSync, [syncVersion]);
+  useEvery(2 * 60_000, () => {
+    syncGoogleTasks().catch(() => {});
+  });
+  useEffect(() => {
+    if (!version) return;
+    const t = setTimeout(() => syncGoogleTasks().catch(() => {}), 8000);
+    return () => clearTimeout(t);
+  }, [version]);
+  const syncLabel = !syncState?.lastSync
+    ? null
+    : syncState.offline
+      ? "Offline"
+      : syncState.error
+        ? "Sync problem"
+        : `Synced ${new Date(syncState.lastSync).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
+
   const onOpen = useCallback((id: number) => !editing && setOpenId(id), [editing]);
   const close = useCallback(() => setOpenId(null), []);
 
@@ -291,6 +311,16 @@ function TasksCard({ editing }: CardProps) {
             {overdue > 0 && <span className="pill pill-danger">{overdue} overdue</span>}
             <span className="pill">{dueToday} due today</span>
             {doneToday > 0 && <span className="pill pill-accent">{doneToday} done</span>}
+            {syncLabel && (
+              <button
+                className={"btn icon ghost sync-btn" + (syncState?.error ? " danger" : "")}
+                onClick={() => syncGoogleTasks()}
+                title={`Google Tasks: ${syncState?.error ?? syncLabel}. Click to sync now.`}
+                aria-label="Sync with Google Tasks now"
+              >
+                ↻ <span className="small">{syncLabel}</span>
+              </button>
+            )}
           </>
         }
       />
@@ -343,7 +373,7 @@ export const tasksModule: DashboardModule = {
   defaultPos: { x: 0, y: 14, w: 7, h: 16 },
   minW: 4,
   minH: 5,
-  migrations,
+  migrations: [...migrations, ...syncMigrations],
   Card: TasksCard,
   quickAdd: [
     {

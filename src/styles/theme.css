@@ -1506,3 +1506,87 @@ select.filter {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ---------- Calendar ---------- */
+.cal-day {
+  margin-bottom: 0.8rem;
+}
+.cal-day h3 {
+  margin: 0 0 0.3rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.cal-day.today h3 {
+  color: var(--accent);
+}
+.cal-allday {
+  font-size: 0.75rem;
+  border-left: 3px solid var(--info);
+  background: var(--card-2);
+  border-radius: 6px;
+  padding: 0.15rem 0.5rem;
+  margin-bottom: 0.25rem;
+}
+.cal-event {
+  display: grid;
+  grid-template-columns: 4px 5.6rem 1fr;
+  gap: 0.55rem;
+  align-items: start;
+  padding: 0.35rem 0.3rem;
+  border-radius: 10px;
+}
+.cal-event.current {
+  background: var(--accent-dim);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+.cal-bar {
+  align-self: stretch;
+  border-radius: 4px;
+}
+.cal-time {
+  font-size: 0.8rem;
+  padding-top: 0.08rem;
+}
+.cal-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.1rem;
+}
+.cal-title {
+  font-size: 0.92rem;
+}
+.cal-day:not(.today) .cal-title {
+  font-size: 0.82rem;
+}
+.cal-progress {
+  height: 0.25rem;
+  border-radius: 99px;
+  background: var(--line-2);
+  overflow: hidden;
+  margin-top: 0.2rem;
+}
+.cal-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.cal-choose {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  overflow-y: auto;
+}
+.cal-choose label {
+  align-items: center;
+}
+.sync-btn {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+.sync-btn.danger {
+  color: var(--danger);
+}

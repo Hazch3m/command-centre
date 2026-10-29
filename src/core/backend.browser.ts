@@ -151,8 +151,96 @@ function fixture(p: string): Promise<any> {
   if (!fixtures.has(p)) fixtures.set(p, fetch(`fixtures/${p}.json`).then((r) => (r.ok ? r.json() : null), () => null));
   return fixtures.get(p)!;
 }
+// A tiny in-memory Google Tasks, persisted in localStorage so a test can play "the phone".
+type FakeTask = { id: string; title: string; notes?: string; due?: string; status: string; parent?: string; deleted?: boolean; updated: string; completed?: string };
+type FakeGoogle = { lists: { id: string; title: string; updated: string }[]; tasks: Record<string, FakeTask[]>; seq: number };
+function fakeGoogle(): FakeGoogle {
+  const raw = localStorage.getItem("cc-fake-google");
+  return raw ? JSON.parse(raw) : { lists: [{ id: "L0", title: "My Tasks", updated: new Date().toISOString() }], tasks: { L0: [] }, seq: 1 };
+}
+function fakeTasksApi(method: string, u: URL, body: any): { status: number; body: unknown } | null {
+  const g = fakeGoogle();
+  const save = () => localStorage.setItem("cc-fake-google", JSON.stringify(g));
+  const p = u.pathname.replace("/tasks/v1", "");
+  const stamp = new Date().toISOString();
+  let m: RegExpExecArray | null;
+  if (p === "/users/@me/lists" && method === "GET") return { status: 200, body: { items: g.lists } };
+  if (p === "/users/@me/lists" && method === "POST") {
+    const l = { id: "L" + g.seq++, title: body.title, updated: stamp };
+    g.lists.push(l);
+    g.tasks[l.id] = [];
+    save();
+    return { status: 200, body: l };
+  }
+  if ((m = /^\/users\/@me\/lists\/([^/]+)$/.exec(p)) && method === "PATCH") {
+    const l = g.lists.find((x) => x.id === m![1]);
+    if (!l) return { status: 404, body: {} };
+    Object.assign(l, body, { updated: stamp });
+    save();
+    return { status: 200, body: l };
+  }
+  if ((m = /^\/lists\/([^/]+)\/tasks$/.exec(p))) {
+    const list = g.tasks[m[1]];
+    if (!list) return { status: 404, body: {} };
+    if (method === "GET") {
+      const since = u.searchParams.get("updatedMin");
+      return { status: 200, body: { items: list.filter((t) => !since || t.updated >= since) } };
+    }
+    if (method === "POST") {
+      const t: FakeTask = { id: "T" + g.seq++, title: body.title, notes: body.notes || undefined, due: body.due ?? undefined, status: body.status, updated: stamp };
+      const parent = u.searchParams.get("parent");
+      if (parent) t.parent = parent;
+      list.push(t);
+      save();
+      return { status: 200, body: t };
+    }
+  }
+  if ((m = /^\/lists\/([^/]+)\/tasks\/([^/]+)$/.exec(p))) {
+    const t = (g.tasks[m[1]] ?? []).find((x) => x.id === m![2] && !x.deleted);
+    if (!t) return { status: 404, body: {} };
+    if (method === "PATCH") {
+      Object.assign(t, body, { updated: stamp });
+      if (body.due === null) delete t.due;
+      save();
+      return { status: 200, body: t };
+    }
+    if (method === "DELETE") {
+      t.deleted = true;
+      t.updated = stamp;
+      save();
+      return { status: 204, body: null };
+    }
+  }
+  return null;
+}
+
+function fakeCalendar(fx: any, u: URL): { status: number; body: unknown } | null {
+  const p = u.pathname.replace("/calendar/v3", "");
+  if (p === "/users/me/calendarList") return { status: 200, body: { items: fx.calendars } };
+  if (p.startsWith("/users/me/calendarList/primary")) return { status: 200, body: fx.calendars[0] };
+  const m = /^\/calendars\/([^/]+)\/events$/.exec(p);
+  if (!m) return null;
+  const id = decodeURIComponent(m[1]);
+  const base = new Date();
+  base.setSeconds(0, 0);
+  const d0 = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+  const iso = (d: Date) => d.toISOString();
+  const dk = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const items = (fx.events[id] ?? []).map((e: any, i: number) => {
+    if (e.allDayOffset != null) {
+      const s = new Date(d0.getTime() + e.allDayOffset * 86400000);
+      return { id: id + i, summary: e.summary, start: { date: dk(s) }, end: { date: dk(new Date(s.getTime() + (e.days ?? 1) * 86400000)) } };
+    }
+    const s = new Date(base.getTime() + e.startMin * 60000);
+    return { id: id + i, summary: e.summary, location: e.location, start: { dateTime: iso(s) }, end: { dateTime: iso(new Date(s.getTime() + e.durMin * 60000)) } };
+  });
+  return { status: 200, body: { items } };
+}
+
 function fakeApi(fx: any, method: string, url: string, body: unknown): { status: number; body: unknown } {
   const u = new URL(url);
+  if (u.hostname === "tasks.googleapis.com") return fakeTasksApi(method, u, body) ?? { status: 404, body: {} };
+  if (u.pathname.startsWith("/calendar/v3")) return fakeCalendar(fx, u) ?? { status: 404, body: {} };
   if (u.pathname === "/api/v3/athlete/activities") {
     const after = Number(u.searchParams.get("after") ?? 0);
     const before = Number(u.searchParams.get("before") ?? Infinity);

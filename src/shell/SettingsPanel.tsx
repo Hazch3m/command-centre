@@ -3,6 +3,7 @@ import { backend } from "@backend";
 import type { AppConfig, BackupStatus, MonitorInfo } from "../core/backend.types";
 import { getSettings, subscribeSettings, updateSettings } from "../core/settings";
 import { Connections } from "./Connections";
+import { getTaskSync, setTaskSyncEnabled } from "../modules/tasks/gsync";
 
 function Row({ label, hint, children, path }: { label: string; hint?: string; children: ReactNode; path?: boolean }) {
   return (
@@ -34,6 +35,10 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
   const [version, setVersion] = useState("");
   const [shortcut, setShortcut] = useState("");
   const [msg, setMsg] = useState<{ text: string; error?: boolean } | null>(null);
+  const [taskSync, setTaskSync] = useState<boolean | null>(null);
+  useEffect(() => {
+    getTaskSync().then((s) => setTaskSync(s.enabled));
+  }, []);
 
   const refresh = async () => {
     const [m, c, a, b, f, v] = await Promise.all([
@@ -130,6 +135,11 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
 
         <h3>Connections</h3>
         <Connections />
+        <Row label="Sync tasks with Google Tasks" hint="Projects become lists on your phone. Title, notes, due date, done and subtasks sync both ways.">
+          {taskSync != null && (
+            <Toggle on={taskSync} label="Sync tasks with Google Tasks" onChange={(v) => setTaskSyncEnabled(v).then(() => setTaskSync(v))} />
+          )}
+        </Row>
 
         <h3>Data</h3>
         <Row label="Data folder" hint={folder} path>
