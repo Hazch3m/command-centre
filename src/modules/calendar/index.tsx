@@ -145,7 +145,7 @@ function CalendarCard() {
 export const calendarModule: DashboardModule = {
   id: "calendar",
   title: "Calendar",
-  defaultPos: { x: 0, y: 25, w: 12, h: 5 },
+  defaultPos: { x: 0, y: 23, w: 12, h: 5 },
   minW: 3,
   minH: 3,
   migrations,

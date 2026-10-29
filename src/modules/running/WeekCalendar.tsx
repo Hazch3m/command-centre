@@ -45,7 +45,7 @@ function Day({ d, today }: { d: ForecastDay; today: string }) {
           ))}
         </div>
       )}
-      {past && !d.runs.length && d.kind !== "rest" && d.km ? <div className="wk-actual muted">missed</div> : null}
+      {past && !d.runs.length && d.kind !== "rest" && d.km ? <div className="wk-actual muted">not run</div> : null}
     </div>
   );
 }
@@ -89,7 +89,7 @@ export function WeekCalendar({ plan, runs, compact }: { plan: Plan; runs: Run[];
       const w = plan.weeks.find((x) => x.start <= m && m <= x.end);
       const b = w ? null : plan.blocks.find((x) => x.start && x.end && x.start <= addDays(m, 6) && m <= x.end);
       const race = plan.races.some((r) => r.date && r.date >= m && r.date <= addDays(m, 6));
-      out.push({ monday: m, label: w ? w.week : b ? "·" : "", km: w ? w.km.replace(/\s*\+\s*race/, "+") : b ? b.km : "", race });
+      out.push({ monday: m, label: w ? w.week : b ? "·" : "", km: w ? w.km.replace(/\s*\+\s*race/, "+").replace(/^about\s*/, "≈") : b ? b.km : "", race });
     }
     return out;
   }, [plan, range]);
@@ -227,7 +227,7 @@ function TrainingWeekCard({ editing }: CardProps) {
 export const trainingWeekModule: DashboardModule = {
   id: "training-week",
   title: "Training calendar",
-  defaultPos: { x: 0, y: 7, w: 12, h: 7 },
+  defaultPos: { x: 0, y: 7, w: 12, h: 6 },
   minW: 6,
   minH: 4,
   Card: TrainingWeekCard,

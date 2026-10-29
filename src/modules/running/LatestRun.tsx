@@ -102,7 +102,7 @@ function LatestRunCard(_: CardProps) {
 export const latestRunModule: DashboardModule = {
   id: "latest-run",
   title: "Latest run",
-  defaultPos: { x: 0, y: 20, w: 12, h: 5 },
+  defaultPos: { x: 0, y: 18, w: 12, h: 5 },
   minW: 3,
   minH: 3,
   Card: LatestRunCard,

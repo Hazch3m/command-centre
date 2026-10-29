@@ -136,9 +136,7 @@ export function computeFitness(
       calibration = "garmin";
     }
   } else if (config.calibrate && recentRaces.length) {
-    // Races are all-out efforts; training-run estimates around them understate it, so
-    // lean towards the better races (75th percentile) rather than the middle one.
-    const o = garminOffset(recentRaces, raw, 21, 0.75);
+    const o = garminOffset(recentRaces, raw, 21);
     if (o != null) {
       offset = o;
       calibration = "races";

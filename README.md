@@ -9,6 +9,7 @@ A full-screen personal dashboard for a second monitor. Built with Tauri 2 (Rust)
 | 1 | App shell, monitor placement, editable grid, clock, daily checklist, tasks, quick-add, backups | **Done** |
 | 2 | Tasks v2 (projects, subtasks, statuses, board, repeats), Google Calendar, Google Tasks sync, Running card and page (training plan + Strava) | **Done** |
 | 2b | Fitness card (VO2 max trend vs projection, race predictor, training load), Latest run card, shoes, aerobic efficiency | **Done** |
+| 2c | Light theme (dark optional), text size, full-width bands, training calendar | **Done** |
 | 3 | Research goals, gym tracker (with strength A/B from the plan), photos | Next |
 | 4 | Weather, Pomodoro, notes, polish | |
 
@@ -57,11 +58,15 @@ Click a task to edit it. Ticked tasks stay visible (struck through) under "Done 
 
 **Daily checklist.** Items reset each morning at 04:00 by default, so anything ticked after midnight still counts for the evening before. You can change the reset time in Settings. To track an amount rather than a simple tick, add a number to the item: `Research 3h` counts in half-hour steps up to 3 h. A day only counts towards the streak once the target is reached. Removing an item keeps its history.
 
-**Running.** The card shows this week's kilometres against the plan, each day's session, today's and tomorrow's sessions, your last run, the last 12 weeks and the next race countdowns. Click **Plan ›** for the full page: this week, the whole plan with what you actually ran, races and benchmark status, progression (same numbers as your Running progression review) and paces and strength.
+**Layout.** Each card is a full-width band across the screen. Settings → Display has the theme (light, dark, or match Windows) and text size. If you had rearranged the old layout, this version starts again from the new default bands; rearrange with Ctrl+E as before.
+
+**Training calendar.** The plan one week at a time: each day's session, an estimated distance (≈ km), the target pace, strength A/B days and races, and what you actually ran (click a run to open it on Strava). Scroll the mouse wheel over it, use ← →, or click a week in the strip underneath to move through the plan; **This week** jumps back. Distances for the days the plan doesn't name are sized from the weekly structure so the week adds up to its target, so treat them as a guide. Weeks after Edinburgh show the block's focus until the doc has day-by-day sessions for them.
+
+**Running.** The card shows this week's kilometres against the plan, today's and tomorrow's sessions, your last run, the last 12 weeks and the next race countdowns. Click **Plan ›** for the full page: this week, the whole plan with what you actually ran, races and benchmark status, progression (same numbers as your Running progression review) and paces and strength.
 
 The plan comes from your Claude doc "Sub-2:50 Training Plan". It's stored as `training-plan.json` in the data folder and the app picks up changes within five minutes. When the plan changes, ask Claude: *"Re-export my training plan for Command Centre"*. That reads the doc and runs `tools/plan_from_doc.py`, then writes the new file.
 
-**Fitness.** VO2 max is estimated from your *key runs*: any run with at least three steady kilometres above 80% of max heart rate (first 30 km only). Each such kilometre's grade-adjusted pace and heart rate give an estimate (Daniels' oxygen cost + heart-rate reserve); the run's value is their median. Weekly key-run values are compared with a projection from your current level to the VO2 max (VDOT) your goals need: 57.3 for sub-2:50 at Edinburgh, 59.3 for sub-2:45 at Valencia. Estimates are put on your race-result scale, or on Garmin's scale once you type in a reading from Garmin Connect (Running page → Fitness & VO2 max). Max/resting heart rate and the projection are editable there, and saved in `fitness.json`. The same tab has a race predictor, Garmin-style training load (acute vs chronic), aerobic efficiency on easy runs, and shoe mileage.
+**Fitness.** VO2 max is estimated from your *key runs*: any run with at least three steady kilometres above 80% of max heart rate (first 30 km only). Each such kilometre's grade-adjusted pace and heart rate give an estimate (Daniels' oxygen cost + heart-rate reserve); the run's value is their median. Weekly key-run values are compared with a projection from your current level to the VO2 max (VDOT) your goals need: 57.3 for sub-2:50 at Edinburgh, 59.3 for sub-2:45 at Valencia. Estimates are put on your race-result scale, or on Garmin's scale once you type in a reading from Garmin Connect (Running page → Fitness & VO2 max). Max/resting heart rate and the projection are editable there, and saved in `fitness.json`. Race predictions are *race-ready* times: they use the better of your current key-run level and your best race of the last 12 months, since training-run estimates dip after a marathon or in a recovery block; the Fitness tab also shows the current-form times. The same tab has a race predictor, Garmin-style training load (acute vs chronic), aerobic efficiency on easy runs, and shoe mileage.
 
 **Latest run** shows your most recent Strava run: route, distance, time, pace, heart rate, shoe, km splits and its VO2 estimate. Click *Strava ↗* to open it.
 
@@ -156,7 +161,7 @@ src/
    export const quoteModule: DashboardModule = {
      id: "quote",                               // stable, never change it
      title: "Quote",
-     defaultPos: { x: 0, y: 17, w: 6, h: 4 },   // 12 columns × 30 rows
+     defaultPos: { x: 0, y: 36, w: 12, h: 4 },  // 12 columns × 40 rows
      migrations: [],                            // SQL strings, run once each; only ever append
      Card: QuoteCard,
      // quickAdd: [...]                         // optional quick-add targets

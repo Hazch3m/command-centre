@@ -141,7 +141,7 @@ function FitnessCard(_: CardProps) {
           </div>
         </div>
         <div className="band-col band-grow">
-          <LineChart series={vo2Series(f, from, to)} from={from} to={to} height={120} today={today} markers={f.config.projection.milestones.map((m) => ({ x: m.date, label: m.label.split(" · ")[0] }))} />
+          <LineChart series={vo2Series(f, from, to)} from={from} to={to} height={150} today={today} markers={f.config.projection.milestones.map((m) => ({ x: m.date, label: m.label.split(" · ")[0] }))} />
         </div>
         <div className="band-col fit-predict-col">
           <div className="label" title={f.predictionBasis?.source === "race" ? `Your key-run estimate (${fmtVo2(f.current)}) is below your best race of the last year, so race-ready times use the race.` : undefined}>
@@ -169,7 +169,7 @@ function FitnessCard(_: CardProps) {
 export const fitnessModule: DashboardModule = {
   id: "fitness",
   title: "Fitness",
-  defaultPos: { x: 0, y: 14, w: 12, h: 6 },
+  defaultPos: { x: 0, y: 13, w: 12, h: 5 },
   minW: 4,
   minH: 3,
   Card: FitnessCard,
