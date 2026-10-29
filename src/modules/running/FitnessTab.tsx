@@ -260,6 +260,7 @@ export function FitnessTab({ f }: { f: Fitness }) {
         to={today}
         height={170}
         digits={0}
+        yMin={0}
         series={[
           { name: "Chronic (28-day)", kind: "area", className: "s-chronic", points: f.loadSeries.map((d) => ({ x: d.date, y: d.chronic })) },
           { name: "Chronic (28-day)", kind: "line", className: "s-chronic", points: f.loadSeries.map((d) => ({ x: d.date, y: d.chronic })) },
