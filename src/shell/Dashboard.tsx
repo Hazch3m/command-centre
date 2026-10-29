@@ -133,14 +133,17 @@ export function Dashboard() {
 
   return (
     <div className={"app" + (cursorHidden ? " cursor-hidden" : "") + (editing ? " is-editing" : "")}>
-      <div className={"toolbar" + (idle && !editing ? " toolbar-hidden" : "")}>
-        <button className="btn" onClick={() => setEditing((v) => !v)} title="Ctrl+E">
-          {editing ? "Done" : "Edit layout"}
-        </button>
-        <button className="btn" onClick={() => setSettingsOpen(true)} title="Ctrl+,">
-          Settings
-        </button>
-      </div>
+      {/* Floating toolbar; while editing, the edit bar takes over so nothing covers the cards. */}
+      {!editing && (
+        <div className={"toolbar" + (idle ? " toolbar-hidden" : "")}>
+          <button className="btn" onClick={() => setEditing(true)} title="Ctrl+E">
+            Edit layout
+          </button>
+          <button className="btn" onClick={() => setSettingsOpen(true)} title="Ctrl+,">
+            Settings
+          </button>
+        </div>
+      )}
 
       {editing && (
         <div className="edit-bar">
@@ -157,6 +160,9 @@ export function Dashboard() {
           )}
           <button className="btn" onClick={reset}>
             Reset layout
+          </button>
+          <button className="btn" onClick={() => setSettingsOpen(true)}>
+            Settings
           </button>
           <button className="btn btn-primary" onClick={() => setEditing(false)}>
             Done

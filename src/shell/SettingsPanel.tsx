@@ -3,12 +3,12 @@ import { backend } from "@backend";
 import type { AppConfig, BackupStatus, MonitorInfo } from "../core/backend.types";
 import { getSettings, subscribeSettings, updateSettings } from "../core/settings";
 
-function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+function Row({ label, hint, children, path }: { label: string; hint?: string; children: ReactNode; path?: boolean }) {
   return (
     <div className="setting">
       <div>
         <div className="setting-label">{label}</div>
-        {hint && <div className="muted small">{hint}</div>}
+        {hint && <div className={"muted small" + (path ? " path" : "")}>{hint}</div>}
       </div>
       <div className="setting-control">{children}</div>
     </div>
@@ -128,7 +128,7 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
         </Row>
 
         <h3>Data</h3>
-        <Row label="Data folder" hint={folder}>
+        <Row label="Data folder" hint={folder} path>
           <button className="btn" onClick={() => act(() => backend.openDataFolder())}>
             Open
           </button>

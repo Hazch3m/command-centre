@@ -636,7 +636,7 @@ ul {
 .setting-label {
   font-weight: 500;
 }
-.setting .muted.small {
+.setting .path {
   word-break: break-all;
 }
 .setting-control {

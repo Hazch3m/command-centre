@@ -6,7 +6,7 @@ use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 pub const LABEL: &str = "quickadd";
 const WIDTH: f64 = 720.0;
-const HEIGHT: f64 = 300.0;
+const HEIGHT: f64 = 190.0;
 
 /// Built once at startup and kept hidden so it appears instantly.
 pub fn create(app: &AppHandle) -> tauri::Result<WebviewWindow> {

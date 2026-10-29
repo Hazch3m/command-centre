@@ -48,6 +48,18 @@ function run(db: Database, sql: string, params: SqlParam[]): ExecResult {
   return { changes, lastInsertId: id ?? 0 };
 }
 
+// One channel handler per tab: reload our copy of the database once, then fan
+// the event out locally. (Reloading per listener raced and dropped refreshes.)
+channel.addEventListener("message", async (e: MessageEvent) => {
+  if (!e.data?.event) return;
+  if (dbPromise) {
+    const old = await dbPromise;
+    dbPromise = Promise.resolve(load());
+    old.close();
+  }
+  window.dispatchEvent(new CustomEvent("cc:" + e.data.event, { detail: e.data.payload }));
+});
+
 let fullscreen = false;
 const backups: string[] = [];
 
@@ -87,20 +99,8 @@ export const backend: Backend = {
   },
   async listen(event, cb) {
     const local = (e: Event) => cb((e as CustomEvent).detail);
-    const remote = async (e: MessageEvent) => {
-      if (e.data?.event !== event) return;
-      // Another tab wrote to its copy; reload ours from storage before notifying.
-      const db = await getDb();
-      db.close();
-      dbPromise = Promise.resolve(load());
-      cb(e.data.payload);
-    };
     window.addEventListener("cc:" + event, local);
-    channel.addEventListener("message", remote);
-    return () => {
-      window.removeEventListener("cc:" + event, local);
-      channel.removeEventListener("message", remote);
-    };
+    return () => window.removeEventListener("cc:" + event, local);
   },
   getConfig: async () => ({ monitor: null, quickAddShortcut: "Ctrl+Alt+Space", fullscreen }),
   listMonitors: async () => [
