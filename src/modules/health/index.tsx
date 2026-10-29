@@ -183,7 +183,7 @@ function HealthCard({ variant, editing }: CardProps) {
 }
 
 function HealthCharts({ rows, today }: { rows: HealthDay[]; today: string }) {
-  const from = addDays(today, -180);
+  const from = rows.length && rows[0].date > addDays(today, -180) ? rows[0].date : addDays(today, -180);
   const pts = (f: keyof HealthDay, scale = 1) => rows.map((r) => ({ x: r.date, y: r[f] == null ? null : (r[f] as number) * scale }));
   const preds = rows.filter((r) => r.pred_10k != null);
   const first = preds[0];
