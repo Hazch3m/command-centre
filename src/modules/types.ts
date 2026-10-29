@@ -11,6 +11,8 @@ export interface GridPos {
 export interface CardProps {
   /** True while the dashboard is in layout edit mode (cards should avoid stealing clicks). */
   editing: boolean;
+  /** "tile" on the overview grid (keep it to the key facts), "page" when shown full-size in its own tab. */
+  variant?: "tile" | "page";
 }
 
 /** A target the quick-add popup can write to (e.g. "Task", "Checklist item"). */
@@ -33,8 +35,15 @@ export interface QuickAddTarget {
 export interface DashboardModule {
   id: string;
   title: string;
-  /** Where the card sits in the default portrait layout (12 columns × 30 rows). */
+  /** Where the tile sits on the overview (12 columns × 40 rows). */
   defaultPos: GridPos;
+  /** Start hidden on the overview (it can be added back in edit mode). */
+  defaultHidden?: boolean;
+  /**
+   * Gives the module its own tab at the top of the screen. `Page` defaults to
+   * the Card rendered with variant "page".
+   */
+  page?: { label: string; order: number; Page?: ComponentType };
   minW?: number;
   minH?: number;
   /** SQL migrations, run once each in order. Only ever append. */

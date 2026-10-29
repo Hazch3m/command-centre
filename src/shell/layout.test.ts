@@ -12,14 +12,14 @@ describe("resolveLayout", () => {
   });
 
   it("keeps saved positions and places new cards in free space", () => {
-    const saved: SavedLayout = { version: 2, custom: true, items: { a: { x: 0, y: 0, w: 12, h: 4 }, b: { x: 0, y: 4, w: 6, h: 10 } }, hidden: [] };
+    const saved: SavedLayout = { version: 3, custom: true, items: { a: { x: 0, y: 0, w: 12, h: 4 }, b: { x: 0, y: 4, w: 6, h: 10 } }, hidden: [] };
     const r = resolveLayout(saved, mods);
     expect(r.items.c).toEqual({ x: 6, y: 4, w: 6, h: 10 });
     expect(r.hidden).toEqual([]);
   });
 
   it("puts a new card in the hidden tray when the screen is full", () => {
-    const saved: SavedLayout = { version: 2, custom: true, items: { a: { x: 0, y: 0, w: 12, h: 40 } }, hidden: ["b"] };
+    const saved: SavedLayout = { version: 3, custom: true, items: { a: { x: 0, y: 0, w: 12, h: 40 } }, hidden: ["b"] };
     expect(resolveLayout(saved, mods).hidden).toEqual(["b", "c"]);
   });
 

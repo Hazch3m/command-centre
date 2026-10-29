@@ -105,9 +105,9 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
         </Row>
         <Row label="Theme">
           <div className="segmented small-seg">
-            {(["light", "dark", "system"] as const).map((t) => (
+            {(["slate", "light", "dark", "system"] as const).map((t) => (
               <button key={t} className={settings.theme === t ? "on" : ""} onClick={() => updateSettings({ theme: t })}>
-                {t === "light" ? "Light" : t === "dark" ? "Dark" : "Match Windows"}
+                {t === "slate" ? "Slate" : t === "light" ? "Light" : t === "dark" ? "Dark" : "Match Windows"}
               </button>
             ))}
           </div>

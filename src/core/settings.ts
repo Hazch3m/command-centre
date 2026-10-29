@@ -6,13 +6,16 @@ export interface Settings {
   dayResetHour: number;
   /** Hide the mouse pointer after a few seconds without movement. */
   hideCursor: boolean;
-  /** Colour scheme. "system" follows Windows' light/dark setting. */
-  theme: "light" | "dark" | "system";
+  /** Colour scheme. "slate" is the mid-tone default; "system" follows Windows' light/dark setting. */
+  theme: "slate" | "light" | "dark" | "system";
+  /** Bumped when the appearance defaults change, so older saved choices reset once. */
+  appearanceVersion?: number;
   /** Text size multiplier on top of the size that scales with the screen. */
   textScale: number;
 }
 
-const DEFAULTS: Settings = { dayResetHour: 4, hideCursor: true, theme: "light", textScale: 1 };
+const APPEARANCE_VERSION = 2;
+const DEFAULTS: Settings = { dayResetHour: 4, hideCursor: true, theme: "slate", textScale: 1, appearanceVersion: APPEARANCE_VERSION };
 
 export const TEXT_SIZES = [
   { label: "Small", value: 0.9 },
@@ -26,8 +29,7 @@ const darkQuery = typeof window !== "undefined" && window.matchMedia ? window.ma
 /** Puts the theme and text size on <html>, where the stylesheet reads them. */
 export function applyAppearance(s: Settings = current) {
   if (typeof document === "undefined") return;
-  const dark = s.theme === "dark" || (s.theme === "system" && !!darkQuery?.matches);
-  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  document.documentElement.dataset.theme = s.theme === "system" ? (darkQuery?.matches ? "dark" : "light") : s.theme;
   document.documentElement.style.setProperty("--scale", String(s.textScale || 1));
 }
 darkQuery?.addEventListener?.("change", () => applyAppearance());
@@ -35,7 +37,9 @@ let current: Settings = DEFAULTS;
 const subs = new Set<() => void>();
 
 export async function loadSettings() {
-  current = { ...DEFAULTS, ...(await kvGet<Partial<Settings>>("settings", {})) };
+  const saved = await kvGet<Partial<Settings>>("settings", {});
+  current = { ...DEFAULTS, ...saved };
+  if ((saved.appearanceVersion ?? 0) < APPEARANCE_VERSION) current = { ...current, theme: "slate", appearanceVersion: APPEARANCE_VERSION };
   applyAppearance();
   subs.forEach((s) => s());
 }

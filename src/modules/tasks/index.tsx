@@ -233,7 +233,8 @@ function BoardView({ tasks, today, onOpen }: { tasks: Task[]; today: string; onO
   );
 }
 
-function TasksCard({ editing }: CardProps) {
+function TasksCard({ editing, variant }: CardProps) {
+  const tile = variant === "tile";
   const today = useToday();
   const version = useDataVersion("tasks");
   const { data, error } = useQuery(() => Promise.all([loadTasks(today), loadProjects()]), [today, version]);
@@ -306,6 +307,7 @@ function TasksCard({ editing }: CardProps) {
     <>
       <CardHeader
         title="Tasks"
+        to={editing ? undefined : "tasks"}
         right={
           <>
             {overdue > 0 && <span className="pill pill-danger">{overdue} overdue</span>}
@@ -324,7 +326,7 @@ function TasksCard({ editing }: CardProps) {
           </>
         }
       />
-      <div className="task-toolbar">
+      {!tile && <div className="task-toolbar">
         <div className="segmented small-seg" role="tablist">
           {(["focus", "projects", "board"] as View[]).map((v) => (
             <button key={v} role="tab" aria-selected={view === v} className={view === v ? "on" : ""} onClick={() => setView(v)}>
@@ -343,7 +345,7 @@ function TasksCard({ editing }: CardProps) {
           </select>
         )}
         {filterProject && <ProjectChip name={filterProject.name} color={filterProject.color} />}
-      </div>
+      </div>}
       <div className="task-add">
         <input
           value={draft}
@@ -357,10 +359,10 @@ function TasksCard({ editing }: CardProps) {
         <ErrorNote error={addErr} />
       </div>
       <ErrorNote error={error} />
-      <div className={`card-scroll tasks-scroll view-${view}`}>
-        {data && view === "focus" && <FocusView tasks={visible} today={today} onOpen={onOpen} />}
-        {data && view === "projects" && <ProjectsView tasks={tasks} projects={projects} today={today} onOpen={onOpen} />}
-        {data && view === "board" && <BoardView tasks={visible} today={today} onOpen={onOpen} />}
+      <div className={`card-scroll tasks-scroll view-${tile ? "tile" : view}`}>
+        {data && (tile || view === "focus") && <FocusView tasks={visible} today={today} onOpen={onOpen} />}
+        {data && !tile && view === "projects" && <ProjectsView tasks={tasks} projects={projects} today={today} onOpen={onOpen} />}
+        {data && !tile && view === "board" && <BoardView tasks={visible} today={today} onOpen={onOpen} />}
       </div>
       {openId != null && <TaskDetail id={openId} onClose={close} />}
     </>
@@ -370,10 +372,11 @@ function TasksCard({ editing }: CardProps) {
 export const tasksModule: DashboardModule = {
   id: "tasks",
   title: "Tasks",
-  defaultPos: { x: 0, y: 28, w: 12, h: 9 },
+  defaultPos: { x: 6, y: 17, w: 6, h: 13 },
   minW: 4,
   minH: 3,
   migrations: [...migrations, ...syncMigrations],
+  page: { label: "Tasks", order: 4 },
   Card: TasksCard,
   quickAdd: [
     {

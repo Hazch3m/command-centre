@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { useMemo, useState, type ReactNode } from "react";
 import { parseKey, useToday } from "../../core/time";
 import { BarChart } from "../../shell/charts";
 import { ErrorNote } from "../../shell/ui";
@@ -16,14 +15,11 @@ import {
   type BenchStatus,
 } from "./stats";
 import { useRunningData } from "./useRunning";
-import { useFitness } from "./fitness";
-import { FitnessTab } from "./FitnessTab";
 import { WeekCalendar } from "./WeekCalendar";
 
-type Tab = "week" | "fitness" | "plan" | "races" | "progress" | "paces";
+type Tab = "week" | "plan" | "races" | "progress" | "paces";
 const TABS: { id: Tab; label: string }[] = [
   { id: "week", label: "Week by week" },
-  { id: "fitness", label: "Fitness & VO2 max" },
   { id: "plan", label: "Plan" },
   { id: "races", label: "Races & benchmarks" },
   { id: "progress", label: "Progression" },
@@ -53,17 +49,11 @@ const fmtDate = (d: string) => {
   return `${x.getDate()} ${MON[x.getMonth()]}`;
 };
 
-export function RunningPage({ onClose }: { onClose: () => void }) {
+/** The Training tab: the plan week by week, the whole plan, races, progression, paces. */
+export function RunningPage() {
   const today = useToday();
   const { plan, planError, runs = [], connected, sync } = useRunningData();
-  const fitness = useFitness(plan);
   const [tab, setTab] = useState<Tab>("week");
-
-  useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", k);
-    return () => window.removeEventListener("keydown", k);
-  }, [onClose]);
 
   const data = useMemo(() => {
     if (!plan) return null;
@@ -90,8 +80,8 @@ export function RunningPage({ onClose }: { onClose: () => void }) {
 
   if (!plan || !data) return null;
 
-  return createPortal(
-    <div className="page-overlay" role="dialog" aria-label="Running">
+  return (
+    <div className="subpage">
       <header className="page-head">
         <div>
           <h1>{plan.title}</h1>
@@ -99,9 +89,6 @@ export function RunningPage({ onClose }: { onClose: () => void }) {
             From your training doc, exported {plan.exported} · {connected ? `Strava synced ${sync?.lastSync ? new Date(sync.lastSync).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}` : "Strava not connected"}
           </div>
         </div>
-        <button className="btn" onClick={onClose}>
-          Close (Esc)
-        </button>
       </header>
       <ErrorNote error={planError} />
       <nav className="segmented page-tabs" role="tablist">
@@ -112,7 +99,7 @@ export function RunningPage({ onClose }: { onClose: () => void }) {
         ))}
       </nav>
 
-      <div className="page-body">
+      <div className="page-body" key={tab}>
         {tab === "week" && <WeekCalendar plan={plan} runs={runs} />}
 
         {tab === "plan" && (
@@ -315,7 +302,6 @@ export function RunningPage({ onClose }: { onClose: () => void }) {
           </>
         )}
 
-        {tab === "fitness" && (fitness ? <FitnessTab f={fitness} /> : <p className="muted">Loading…</p>)}
 
         {tab === "paces" && (
           <>
@@ -387,8 +373,7 @@ export function RunningPage({ onClose }: { onClose: () => void }) {
           </>
         )}
       </div>
-    </div>,
-    document.body,
+    </div>
   );
 }
 

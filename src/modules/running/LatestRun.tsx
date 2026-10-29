@@ -39,11 +39,11 @@ function LatestRunCard(_: CardProps) {
           </button>
         }
       />
-      <div className="band-cols lr-band">
+      <div className="lr-body">
         <div className="lr-map">
           <RouteMap polyline={r.polyline} height={140} />
         </div>
-        <div className="band-col lr-stats">
+        <div className="lr-stats">
           <div className="lr-title one-line" title={r.name}>
             {r.name}
           </div>
@@ -78,11 +78,11 @@ function LatestRunCard(_: CardProps) {
             <div className="muted small">{r.detail ? "Not a key run (too easy or unsteady for a VO2 reading)" : r.avg_hr ? "Fetching splits…" : ""}</div>
           )}
         </div>
-        <div className="band-col band-grow lr-splits">
-          <div className="label">Splits (km/h){splits.some((s) => s.hr && s.hr >= 0.85 * f.config.hrMax) ? " · highlighted above 85% max HR" : ""}</div>
+      </div>
+      <div className="lr-splits">
           {splits.length > 1 && (
         <BarChart
-          height={100}
+          height={44}
           min={Math.max(0, Math.floor(Math.min(...splits.map((s) => s.speed * 3.6))) - 2)}
           labelEvery={splits.length > 16 ? 5 : splits.length > 8 ? 2 : 1}
           bars={splits.map((s, i) => ({
@@ -93,7 +93,6 @@ function LatestRunCard(_: CardProps) {
           }))}
         />
       )}
-        </div>
       </div>
     </>
   );
@@ -102,7 +101,7 @@ function LatestRunCard(_: CardProps) {
 export const latestRunModule: DashboardModule = {
   id: "latest-run",
   title: "Latest run",
-  defaultPos: { x: 0, y: 18, w: 12, h: 5 },
+  defaultPos: { x: 0, y: 30, w: 6, h: 10 },
   minW: 3,
   minH: 3,
   Card: LatestRunCard,

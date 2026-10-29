@@ -4,7 +4,7 @@ import { useDataVersion } from "../../core/events";
 import { dateKey, diffDays, relativeDayLabel, useEvery, useNow } from "../../core/time";
 import { useQuery } from "../../core/useQuery";
 import { CardHeader, Empty, ErrorNote } from "../../shell/ui";
-import type { DashboardModule } from "../types";
+import type { CardProps, DashboardModule } from "../types";
 import { getCalendars, getCalSync, hhmm, loadEvents, migrations, setShown, syncCalendar, type DayEvents } from "./data";
 
 function untilLabel(ms: number): string {
@@ -65,7 +65,7 @@ function Day({ day, now, today }: { day: DayEvents; now: Date; today: string }) 
   );
 }
 
-function CalendarCard() {
+function CalendarCard({ variant }: CardProps) {
   const now = useNow("minute");
   const today = dateKey(now);
   const version = useDataVersion("calendar");
@@ -98,6 +98,7 @@ function CalendarCard() {
     <>
       <CardHeader
         title="Calendar"
+        to="calendar"
         right={
           <>
             {next && <span className="pill">Next {untilLabel(next.startDate.getTime() - now.getTime())}</span>}
@@ -127,7 +128,7 @@ function CalendarCard() {
         </div>
       )}
       {status?.connected && !choosing && (
-        <div className="card-scroll cal-days">
+        <div className={"card-scroll " + (variant === "page" ? "cal-days" : "cal-list")}>
           {days.map((d) => (
             <Day key={d.date} day={d} now={now} today={today} />
           ))}
@@ -145,9 +146,10 @@ function CalendarCard() {
 export const calendarModule: DashboardModule = {
   id: "calendar",
   title: "Calendar",
-  defaultPos: { x: 0, y: 23, w: 12, h: 5 },
+  defaultPos: { x: 0, y: 17, w: 6, h: 13 },
   minW: 3,
   minH: 3,
   migrations,
+  page: { label: "Calendar", order: 3 },
   Card: CalendarCard,
 };

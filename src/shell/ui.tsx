@@ -1,10 +1,25 @@
 import type { ReactNode } from "react";
+import { useNav } from "./nav";
 
-/** Standard card header: title on the left, small status on the right. */
-export function CardHeader({ title, right }: { title: string; right?: ReactNode }) {
+/**
+ * Standard card header: title on the left, small status on the right. With `to`,
+ * the title opens that tab (shown on overview tiles).
+ */
+export function CardHeader({ title, right, to }: { title: string; right?: ReactNode; to?: string }) {
+  const nav = useNav();
+  const link = to && nav.tab !== to;
   return (
     <header className="card-header">
-      <h2>{title}</h2>
+      {link ? (
+        <button className="card-title-link" onClick={() => nav.go(to)} title={`Open ${title}`}>
+          <h2>{title}</h2>
+          <span className="card-open" aria-hidden="true">
+            ›
+          </span>
+        </button>
+      ) : (
+        <h2>{title}</h2>
+      )}
       {right != null && <div className="card-header-right">{right}</div>}
     </header>
   );

@@ -4,7 +4,7 @@ import type { DashboardModule, GridPos } from "../modules/types";
 export const COLS = 12;
 export const ROWS = 40;
 /** Bump when the default arrangement changes enough that old custom layouts no longer fit. */
-export const LAYOUT_VERSION = 2;
+export const LAYOUT_VERSION = 3;
 
 export interface SavedLayout {
   version: number;
@@ -43,7 +43,11 @@ export function findSpot(size: GridPos, taken: GridPos[]): GridPos | null {
  */
 export function resolveLayout(saved: SavedLayout | null, modules: DashboardModule[]): ResolvedLayout {
   if (!saved || !saved.custom || saved.version !== LAYOUT_VERSION) {
-    return { items: Object.fromEntries(modules.map((m) => [m.id, m.defaultPos])), hidden: [], custom: false };
+    return {
+      items: Object.fromEntries(modules.filter((m) => !m.defaultHidden).map((m) => [m.id, m.defaultPos])),
+      hidden: modules.filter((m) => m.defaultHidden).map((m) => m.id),
+      custom: false,
+    };
   }
   const items: Record<string, GridPos> = {};
   const hidden: string[] = [];

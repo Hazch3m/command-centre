@@ -1,11 +1,12 @@
-import { addDays, relativeDayLabel, useToday } from "../../core/time";
+import { addDays, useToday } from "../../core/time";
 import { LineChart, type LineSeries } from "../../shell/charts";
 import { CardHeader, Empty } from "../../shell/ui";
 import type { CardProps, DashboardModule } from "../types";
 import { fmtVo2, useFitness, type Fitness } from "./fitness";
 import { duration } from "./stats";
 import { useRunningData, useStravaSync } from "./useRunning";
-import { judge, type TrendStatus } from "./vo2";
+import { FitnessTab } from "./FitnessTab";
+import { type TrendStatus } from "./vo2";
 
 export const STATUS_LABEL: Record<TrendStatus, string> = { ahead: "Ahead of plan", "on-track": "On track", behind: "Behind plan", "no-data": "No key run yet" };
 export const STATUS_CLASS: Record<TrendStatus, string> = { ahead: "status-on-track", "on-track": "status-on-track", behind: "status-behind", "no-data": "status-pending" };
@@ -54,16 +55,17 @@ export function Legend({ garmin }: { garmin: boolean }) {
   );
 }
 
-function FitnessCard(_: CardProps) {
+function FitnessCard({ editing }: CardProps) {
   const today = useToday();
   useStravaSync();
   const { plan, connected } = useRunningData();
   const f = useFitness(plan);
-  if (!f) return <CardHeader title="Fitness" />;
+  const to = editing ? undefined : "fitness";
+  if (!f) return <CardHeader title="Fitness" to={to} />;
   if (!f.estimates.length)
     return (
       <>
-        <CardHeader title="Fitness" />
+        <CardHeader title="Fitness" to={to} />
         <Empty>
           {connected
             ? "Reading your runs' heart-rate splits from Strava. VO2 max appears once a few key runs are in (this backfills over the first hour or so)."
@@ -71,106 +73,88 @@ function FitnessCard(_: CardProps) {
         </Empty>
       </>
     );
-  const from = addDays(today, -18 * 7);
-  const to = f.nextMilestone?.date ?? addDays(today, 26 * 7);
+  const from = addDays(today, -16 * 7);
+  const to2 = f.nextMilestone?.date ?? addDays(today, 26 * 7);
   const projNow = f.project(today);
-  const thisWeekRuns = f.weekly[f.weekly.length - 1]?.runs ?? [];
-  const lastWeekRuns = f.weekly[f.weekly.length - 2]?.runs ?? [];
-  const keyRuns = thisWeekRuns.length ? thisWeekRuns : lastWeekRuns;
+  const diff = f.current != null && projNow != null ? f.current - projNow : null;
   return (
     <>
       <CardHeader
         title="Fitness"
+        to={to}
         right={
-          <>
-            <span className={`status ${STATUS_CLASS[f.thisWeek.status]}`} title={`Week of ${f.thisWeek.week}`}>
-              {STATUS_LABEL[f.thisWeek.status]}
-            </span>
-            {f.load.status && (
-              <span className={"pill" + (f.load.status === "very-high" ? " pill-danger" : f.load.status === "optimal" ? " pill-accent" : "")} title="Acute (7-day) ÷ chronic (28-day) training load">
-                Load {f.load.ratio!.toFixed(2)} · {LOAD_LABEL[f.load.status]}
-              </span>
-            )}
-          </>
+          <span className={`status ${STATUS_CLASS[f.thisWeek.status]}`} title={`Week of ${f.thisWeek.week}`}>
+            {STATUS_LABEL[f.thisWeek.status]}
+          </span>
         }
       />
-      <div className="band-cols fit-band">
-        <div className="band-col fit-summary">
-          <div className="fit-top">
-            <div>
-              <div className="num fit-big">{fmtVo2(f.current)}</div>
-              <div className="muted small">VO2 max · {f.calibration === "garmin" ? "Garmin scale" : f.calibration === "races" ? "race scale" : "estimate"}</div>
-            </div>
-            <div className="fit-facts small">
-              <div>
-                <span className="label">Plan now</span> <span className="num">{fmtVo2(projNow)}</span>
-                {f.current != null && projNow != null && (
-                  <span className={f.current - projNow >= -1 ? "tone-accent" : "tone-danger"}>
-                    {" "}
-                    ({f.current - projNow >= 0 ? "+" : ""}
-                    {(f.current - projNow).toFixed(1)})
-                  </span>
-                )}
-              </div>
-              <div>
-                <span className="label">Trend</span> {f.slope == null ? "–" : `${f.slope >= 0 ? "+" : ""}${f.slope.toFixed(2)}/week`}
-                {f.neededSlope != null && <span className="muted"> · need {f.neededSlope >= 0 ? "+" : ""}{f.neededSlope.toFixed(2)}</span>}
-              </div>
-              {f.nextMilestone && (
-                <div className="muted">
-                  Goal {f.nextMilestone.vo2.toFixed(1)} by {relativeDayLabel(f.nextMilestone.date, today)}
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="fit-keyruns small">
-            <span className="label">{thisWeekRuns.length ? "This week" : "Last week"}</span>
-            {keyRuns.length ? (
-              keyRuns.map((k) => {
-                const st = judge(k.vo2, f.project(k.date) ?? k.vo2);
-                return (
-                  <span key={k.id} className="fit-keyrun" title={k.name}>
-                    {relativeDayLabel(k.date, today)} <span className="num">{k.vo2.toFixed(1)}</span>{" "}
-                    <span className={st === "behind" ? "tone-danger" : "tone-accent"}>{st === "behind" ? "▼" : "✓"}</span>
-                  </span>
-                );
-              })
-            ) : (
-              <span className="muted">no key runs yet</span>
+      <div className="fit-top">
+        <div>
+          <div className="num fit-big">{fmtVo2(f.current)}</div>
+          <div className="muted small">VO2 max</div>
+        </div>
+        <div className="fit-facts small">
+          <div>
+            <span className="label">Plan</span> <span className="num">{fmtVo2(projNow)}</span>
+            {diff != null && (
+              <span className={diff >= -1 ? "tone-accent" : "tone-danger"}>
+                {" "}
+                ({diff >= 0 ? "+" : ""}
+                {diff.toFixed(1)})
+              </span>
             )}
           </div>
-        </div>
-        <div className="band-col band-grow">
-          <LineChart series={vo2Series(f, from, to)} from={from} to={to} height={150} today={today} markers={f.config.projection.milestones.map((m) => ({ x: m.date, label: m.label.split(" · ")[0] }))} />
-        </div>
-        <div className="band-col fit-predict-col">
-          <div className="label" title={f.predictionBasis?.source === "race" ? `Your key-run estimate (${fmtVo2(f.current)}) is below your best race of the last year, so race-ready times use the race.` : undefined}>
-            Race-ready{f.predictionBasis?.source === "race" ? ` · from ${f.predictionBasis.race!.name}` : " · current form"}
-          </div>
-          <div className="fit-predict">
-            {f.predictions.map((p) => (
-              <div key={p.name} title={p.target ? `Next: ${p.target}` : undefined}>
-                <span className="fit-pname">{p.name}</span>
-                <span className="num fit-ptime">{p.seconds ? duration(p.seconds) : "–"}</span>
-                {p.targetSeconds && p.seconds ? (
-                  <span className={"small " + (p.seconds <= p.targetSeconds ? "tone-accent" : "muted")}>target {duration(p.targetSeconds)}</span>
-                ) : (
-                  <span />
-                )}
-              </div>
-            ))}
-          </div>
+          {f.nextMilestone && (
+            <div className="muted">
+              Goal {f.nextMilestone.vo2.toFixed(1)} · {f.nextMilestone.label.split(" · ")[1] ?? f.nextMilestone.label}
+            </div>
+          )}
+          {f.load.status && (
+            <div className={f.load.status === "very-high" ? "tone-danger" : "muted"} title="Acute (7-day) ÷ chronic (28-day) training load">
+              Load {f.load.ratio!.toFixed(2)} · {LOAD_LABEL[f.load.status]}
+            </div>
+          )}
         </div>
       </div>
+      <div className="fit-chart">
+        <LineChart series={vo2Series(f, from, to2)} from={from} to={to2} height={110} today={today} markers={f.config.projection.milestones.map((m) => ({ x: m.date, label: m.label.split(" · ")[0] }))} />
+      </div>
+      <div className="fit-predict-row" title={f.predictionBasis?.source === "race" ? `Race-ready times from ${f.predictionBasis.race!.name}` : "Race-ready times from current form"}>
+        {f.predictions.map((p) => (
+          <div key={p.name}>
+            <span className="label">{p.name}</span>
+            <span className={"num" + (p.targetSeconds && p.seconds && p.seconds <= p.targetSeconds ? " tone-accent" : "")}>{p.seconds ? duration(p.seconds) : "–"}</span>
+          </div>
+        ))}
+      </div>
     </>
+  );
+}
+
+/** The Fitness tab. */
+function FitnessPage() {
+  useStravaSync();
+  const { plan } = useRunningData();
+  const f = useFitness(plan);
+  return (
+    <div className="subpage">
+      <header className="page-head">
+        <div>
+          <h1>Fitness &amp; VO2 max</h1>
+          <div className="muted small">Estimated from your key runs' heart rate and pace, on your race-result scale unless you add Garmin readings below.</div>
+        </div>
+      </header>
+      <div className="page-body">{f ? <FitnessTab f={f} /> : <p className="muted">Loading…</p>}</div>
+    </div>
   );
 }
 
 export const fitnessModule: DashboardModule = {
   id: "fitness",
   title: "Fitness",
-  defaultPos: { x: 0, y: 13, w: 12, h: 5 },
+  defaultPos: { x: 7, y: 0, w: 5, h: 9 },
   minW: 4,
-  minH: 3,
+  minH: 6,
   Card: FitnessCard,
+  page: { label: "Fitness", order: 2, Page: FitnessPage },
 };

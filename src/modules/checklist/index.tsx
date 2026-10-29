@@ -87,7 +87,7 @@ function describe(text: string) {
   return p.target === 1 && !p.unit ? `“${p.title}” — tick once a day` : `“${p.title}” — target ${fmt(p.target)}${p.unit ?? ""} a day, +${fmt(p.step)} per tap`;
 }
 
-function ChecklistCard(_: CardProps) {
+function ChecklistCard({ editing }: CardProps) {
   const today = useToday();
   const version = useDataVersion("checklist");
   const { data, error } = useQuery(() => loadChecklist(today), [today, version]);
@@ -100,6 +100,7 @@ function ChecklistCard(_: CardProps) {
     <>
       <CardHeader
         title="Daily"
+        to={editing ? undefined : "checklist"}
         right={
           <>
             <span className={"pill" + (items.length && doneCount === items.length ? " pill-accent" : "")}>
@@ -131,10 +132,11 @@ function ChecklistCard(_: CardProps) {
 export const checklistModule: DashboardModule = {
   id: "checklist",
   title: "Daily checklist",
-  defaultPos: { x: 0, y: 37, w: 12, h: 3 },
+  defaultPos: { x: 6, y: 30, w: 6, h: 10 },
   minW: 3,
   minH: 3,
   migrations,
+  page: { label: "Daily", order: 5 },
   init: seedDefaults,
   Card: ChecklistCard,
   quickAdd: [

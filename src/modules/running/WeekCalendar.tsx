@@ -5,7 +5,6 @@ import { CardHeader } from "../../shell/ui";
 import type { CardProps, DashboardModule } from "../types";
 import { forecastRange, forecastWeek, isKeyDay, type ForecastDay } from "./forecast";
 import { mondayOf, type Plan } from "./plan";
-import { RunningPage } from "./RunningPage";
 import { km, pace } from "./stats";
 import type { Run } from "./strava";
 import { useRunningData, useStravaSync } from "./useRunning";
@@ -176,6 +175,7 @@ export function WeekCalendar({ plan, runs, compact }: { plan: Plan; runs: Run[];
 
       {!compact && f.week?.notes && <div className="wk-notes small muted">Note: {f.week.notes}</div>}
 
+      {!compact && (
       <div className="wk-strip" ref={strip}>
         {weeks.map((w) => (
           <button
@@ -189,6 +189,7 @@ export function WeekCalendar({ plan, runs, compact }: { plan: Plan; runs: Run[];
           </button>
         ))}
       </div>
+      )}
       {!compact && (
         <div className="wk-legend small muted">
           {(["key", "long", "easy", "race"] as const).map((k) => (
@@ -206,29 +207,20 @@ export function WeekCalendar({ plan, runs, compact }: { plan: Plan; runs: Run[];
 function TrainingWeekCard({ editing }: CardProps) {
   useStravaSync();
   const { plan, runs } = useRunningData();
-  const [open, setOpen] = useState(false);
-  if (!plan) return <CardHeader title="Training calendar" />;
+  if (!plan) return <CardHeader title="Training week" to="running" />;
   return (
     <>
-      <CardHeader
-        title="Training calendar"
-        right={
-          <button className="btn" onClick={() => !editing && setOpen(true)}>
-            Full plan ›
-          </button>
-        }
-      />
-      <WeekCalendar plan={plan} runs={runs ?? []} />
-      {open && <RunningPage onClose={() => setOpen(false)} />}
+      <CardHeader title="Training week" to={editing ? undefined : "running"} />
+      <WeekCalendar plan={plan} runs={runs ?? []} compact />
     </>
   );
 }
 
 export const trainingWeekModule: DashboardModule = {
   id: "training-week",
-  title: "Training calendar",
-  defaultPos: { x: 0, y: 7, w: 12, h: 6 },
+  title: "Training week",
+  defaultPos: { x: 0, y: 9, w: 12, h: 8 },
   minW: 6,
-  minH: 4,
+  minH: 5,
   Card: TrainingWeekCard,
 };
