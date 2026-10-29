@@ -200,8 +200,8 @@ export async function addTask(t: ParsedTask, opts: { parentId?: number; status?:
   return r.lastInsertId;
 }
 
-export function addTaskFromText(text: string) {
-  return addTask(parseTask(text, todayKey()));
+export async function addTaskFromText(text: string): Promise<void> {
+  await addTask(parseTask(text, todayKey()));
 }
 
 export function addSubtask(parentId: number, title: string) {
