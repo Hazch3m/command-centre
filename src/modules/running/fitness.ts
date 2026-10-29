@@ -94,7 +94,9 @@ export interface Fitness {
   slope: number | null; // per week, last 8 weeks
   neededSlope: number | null; // per week, to the next milestone
   nextMilestone: { date: string; vo2: number; label: string } | null;
-  predictions: { name: string; distance: number; seconds: number | null; target: string | null; targetSeconds: number | null }[];
+  predictions: { name: string; distance: number; seconds: number | null; formSeconds: number | null; target: string | null; targetSeconds: number | null }[];
+  /** VDOT the predictions use: the better of current form and the best race in the last year. */
+  predictionBasis: { vdot: number; source: "form" | "race"; race?: { name: string; date: string; vdot: number } } | null;
   load: ReturnType<typeof loadRatio>;
   loadSeries: { date: string; acute: number; chronic: number }[];
   efficiency: { week: string; value: number | null }[];
@@ -134,7 +136,9 @@ export function computeFitness(
       calibration = "garmin";
     }
   } else if (config.calibrate && recentRaces.length) {
-    const o = garminOffset(recentRaces, raw, 21);
+    // Races are all-out efforts; training-run estimates around them understate it, so
+    // lean towards the better races (75th percentile) rather than the middle one.
+    const o = garminOffset(recentRaces, raw, 21, 0.75);
     if (o != null) {
       offset = o;
       calibration = "races";
@@ -177,10 +181,19 @@ export function computeFitness(
     { name: "Half", distance: 21097.5, match: /half/i },
     { name: "Marathon", distance: 42195, match: /marathon/i },
   ];
+  // Race predictions: what you can run when rested and sharp. Training-run estimates dip
+  // after a marathon or in a recovery block, so the best race in the last year sets a floor.
+  const bestRace = races.filter((r) => r.date >= addDays(today, -365)).sort((a, b) => b.vdot - a.vdot)[0];
+  const predictionBasis: Fitness["predictionBasis"] =
+    bestRace && (current == null || bestRace.vdot > current)
+      ? { vdot: bestRace.vdot, source: "race", race: bestRace }
+      : current != null
+        ? { vdot: current, source: "form" }
+        : null;
   const predictions = DIST.map((d) => {
     const race = plan?.races.find((r) => d.match.test(r.name) && r.date && r.date >= today);
     const targetSeconds = race ? targetTime(race.target, d.distance) : null;
-    return { name: d.name, distance: d.distance, seconds: current != null ? predictTime(d.distance, current) : null, target: race ? `${race.name}: ${race.target}` : null, targetSeconds };
+    return { name: d.name, distance: d.distance, seconds: predictionBasis ? predictTime(d.distance, predictionBasis.vdot) : null, formSeconds: current != null ? predictTime(d.distance, current) : null, target: race ? `${race.name}: ${race.target}` : null, targetSeconds };
   });
 
   // Training load, per day.
@@ -232,6 +245,7 @@ export function computeFitness(
     neededSlope,
     nextMilestone,
     predictions,
+    predictionBasis,
     load,
     loadSeries,
     efficiency,

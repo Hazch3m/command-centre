@@ -3,6 +3,7 @@ import { checklistModule } from "./checklist";
 import { clockModule } from "./clock";
 import { runningModule } from "./running";
 import { fitnessModule } from "./running/FitnessCard";
+import { trainingWeekModule } from "./running/WeekCalendar";
 import { latestRunModule } from "./running/LatestRun";
 import { tasksModule } from "./tasks";
 import type { DashboardModule } from "./types";
@@ -12,6 +13,6 @@ import type { DashboardModule } from "./types";
  * src/modules/ and add it here — the shell handles layout, edit mode,
  * migrations and quick-add automatically.
  */
-export const modules: DashboardModule[] = [clockModule, runningModule, calendarModule, fitnessModule, latestRunModule, tasksModule, checklistModule];
+export const modules: DashboardModule[] = [clockModule, runningModule, trainingWeekModule, calendarModule, fitnessModule, latestRunModule, tasksModule, checklistModule];
 
 export const moduleById = new Map(modules.map((m) => [m.id, m]));

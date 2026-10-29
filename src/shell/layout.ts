@@ -2,10 +2,12 @@ import { kvGet, kvSet } from "../core/db";
 import type { DashboardModule, GridPos } from "../modules/types";
 
 export const COLS = 12;
-export const ROWS = 30;
+export const ROWS = 40;
+/** Bump when the default arrangement changes enough that old custom layouts no longer fit. */
+export const LAYOUT_VERSION = 2;
 
 export interface SavedLayout {
-  version: 1;
+  version: number;
   /** False until the user edits the layout; until then new defaults apply automatically. */
   custom: boolean;
   items: Record<string, GridPos>;
@@ -40,7 +42,7 @@ export function findSpot(size: GridPos, taken: GridPos[]): GridPos | null {
  * later version go into free space, or into the hidden tray if the screen is full.
  */
 export function resolveLayout(saved: SavedLayout | null, modules: DashboardModule[]): ResolvedLayout {
-  if (!saved || !saved.custom) {
+  if (!saved || !saved.custom || saved.version !== LAYOUT_VERSION) {
     return { items: Object.fromEntries(modules.map((m) => [m.id, m.defaultPos])), hidden: [], custom: false };
   }
   const items: Record<string, GridPos> = {};
@@ -63,6 +65,6 @@ export function loadLayout() {
 }
 
 export function saveLayout(l: ResolvedLayout) {
-  const saved: SavedLayout = { version: 1, custom: l.custom, items: l.items, hidden: l.hidden };
+  const saved: SavedLayout = { version: LAYOUT_VERSION, custom: l.custom, items: l.items, hidden: l.hidden };
   return kvSet("layout", saved);
 }

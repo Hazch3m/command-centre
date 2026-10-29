@@ -8,7 +8,7 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { COLS, ROWS, findSpot, loadLayout, resolveLayout, saveLayout, type ResolvedLayout } from "./layout";
 import { SettingsPanel } from "./SettingsPanel";
 
-const MARGIN = 12;
+const MARGIN = 8;
 
 function useSize(ref: RefObject<HTMLElement | null>) {
   const [size, setSize] = useState({ w: 0, h: 0 });

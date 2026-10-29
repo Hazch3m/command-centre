@@ -357,7 +357,7 @@ function TasksCard({ editing }: CardProps) {
         <ErrorNote error={addErr} />
       </div>
       <ErrorNote error={error} />
-      <div className="card-scroll">
+      <div className={`card-scroll tasks-scroll view-${view}`}>
         {data && view === "focus" && <FocusView tasks={visible} today={today} onOpen={onOpen} />}
         {data && view === "projects" && <ProjectsView tasks={tasks} projects={projects} today={today} onOpen={onOpen} />}
         {data && view === "board" && <BoardView tasks={visible} today={today} onOpen={onOpen} />}
@@ -370,9 +370,9 @@ function TasksCard({ editing }: CardProps) {
 export const tasksModule: DashboardModule = {
   id: "tasks",
   title: "Tasks",
-  defaultPos: { x: 0, y: 22, w: 7, h: 8 },
+  defaultPos: { x: 0, y: 30, w: 12, h: 7 },
   minW: 4,
-  minH: 5,
+  minH: 3,
   migrations: [...migrations, ...syncMigrations],
   Card: TasksCard,
   quickAdd: [

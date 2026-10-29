@@ -23,7 +23,7 @@ function ClockCard() {
 export const clockModule: DashboardModule = {
   id: "clock",
   title: "Clock",
-  defaultPos: { x: 0, y: 0, w: 12, h: 3 },
+  defaultPos: { x: 0, y: 0, w: 12, h: 2 },
   minW: 3,
   minH: 2,
   Card: ClockCard,

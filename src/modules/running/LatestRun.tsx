@@ -39,18 +39,18 @@ function LatestRunCard(_: CardProps) {
           </button>
         }
       />
-      <div className="lr-title one-line" title={r.name}>
-        {r.name}
-      </div>
-      <div className="muted small">
-        {relativeDayLabel(r.date, today)} · {time}
-        {r.shoe ? ` · ${r.shoe.name}` : ""}
-      </div>
-      <div className="lr-body">
+      <div className="band-cols lr-band">
         <div className="lr-map">
           <RouteMap polyline={r.polyline} height={140} />
         </div>
-        <div className="lr-stats">
+        <div className="band-col lr-stats">
+          <div className="lr-title one-line" title={r.name}>
+            {r.name}
+          </div>
+          <div className="muted small">
+            {relativeDayLabel(r.date, today)} · {time}
+            {r.shoe ? ` · ${r.shoe.name}` : ""}
+          </div>
           <div>
             <span className="num big-ish">{km(r.distance).toFixed(2)}</span> <span className="muted">km</span>
           </div>
@@ -78,10 +78,12 @@ function LatestRunCard(_: CardProps) {
             <div className="muted small">{r.detail ? "Not a key run (too easy or unsteady for a VO2 reading)" : r.avg_hr ? "Fetching splits…" : ""}</div>
           )}
         </div>
-      </div>
-      {splits.length > 1 && (
+        <div className="band-col band-grow lr-splits">
+          <div className="label">Splits (km/h){splits.some((s) => s.hr && s.hr >= 0.85 * f.config.hrMax) ? " · highlighted above 85% max HR" : ""}</div>
+          {splits.length > 1 && (
         <BarChart
-          height={56}
+          height={100}
+          min={Math.max(0, Math.floor(Math.min(...splits.map((s) => s.speed * 3.6))) - 2)}
           labelEvery={splits.length > 16 ? 5 : splits.length > 8 ? 2 : 1}
           bars={splits.map((s, i) => ({
             label: String(i + 1),
@@ -91,6 +93,8 @@ function LatestRunCard(_: CardProps) {
           }))}
         />
       )}
+        </div>
+      </div>
     </>
   );
 }
@@ -98,8 +102,8 @@ function LatestRunCard(_: CardProps) {
 export const latestRunModule: DashboardModule = {
   id: "latest-run",
   title: "Latest run",
-  defaultPos: { x: 7, y: 14, w: 5, h: 8 },
+  defaultPos: { x: 0, y: 20, w: 12, h: 5 },
   minW: 3,
-  minH: 5,
+  minH: 3,
   Card: LatestRunCard,
 };

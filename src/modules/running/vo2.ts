@@ -155,14 +155,23 @@ export function judge(value: number | null, projected: number): TrendStatus {
  * Calibration: median difference between reference values (Garmin readings, or
  * race results as VDOT) and our estimates from runs within `windowDays` of each.
  */
-export function garminOffset(readings: { date: string; vo2: number }[], estimates: RunEstimate[], windowDays = 14): number | null {
+export function garminOffset(readings: { date: string; vo2: number }[], estimates: RunEstimate[], windowDays = 14, q = 0.5): number | null {
   const diffs: number[] = [];
   for (const r of readings) {
     const near = estimates.filter((e) => Math.abs(diffDays(e.date, r.date)) <= windowDays).map((e) => e.vo2);
     const m = median(near);
     if (m != null) diffs.push(r.vo2 - m);
   }
-  return median(diffs);
+  return quantile(diffs, q);
+}
+
+/** Linear-interpolated quantile (q = 0.5 is the median). */
+export function quantile(xs: number[], q: number): number | null {
+  if (!xs.length) return null;
+  const s = [...xs].sort((a, b) => a - b);
+  const i = (s.length - 1) * q;
+  const lo = Math.floor(i);
+  return s[lo] + (s[Math.ceil(i)] - s[lo]) * (i - lo);
 }
 
 /** Least-squares slope (per week) of the last `n` weekly values. */

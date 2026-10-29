@@ -12,15 +12,22 @@ describe("resolveLayout", () => {
   });
 
   it("keeps saved positions and places new cards in free space", () => {
-    const saved: SavedLayout = { version: 1, custom: true, items: { a: { x: 0, y: 0, w: 12, h: 4 }, b: { x: 0, y: 4, w: 6, h: 10 } }, hidden: [] };
+    const saved: SavedLayout = { version: 2, custom: true, items: { a: { x: 0, y: 0, w: 12, h: 4 }, b: { x: 0, y: 4, w: 6, h: 10 } }, hidden: [] };
     const r = resolveLayout(saved, mods);
     expect(r.items.c).toEqual({ x: 6, y: 4, w: 6, h: 10 });
     expect(r.hidden).toEqual([]);
   });
 
   it("puts a new card in the hidden tray when the screen is full", () => {
-    const saved: SavedLayout = { version: 1, custom: true, items: { a: { x: 0, y: 0, w: 12, h: 30 } }, hidden: ["b"] };
+    const saved: SavedLayout = { version: 2, custom: true, items: { a: { x: 0, y: 0, w: 12, h: 40 } }, hidden: ["b"] };
     expect(resolveLayout(saved, mods).hidden).toEqual(["b", "c"]);
+  });
+
+  it("goes back to the defaults when the saved layout is from an older version", () => {
+    const saved: SavedLayout = { version: 1, custom: true, items: { a: { x: 0, y: 0, w: 6, h: 4 } }, hidden: ["b"] };
+    const r = resolveLayout(saved, mods);
+    expect(r.custom).toBe(false);
+    expect(r.items.a).toEqual({ x: 0, y: 0, w: 12, h: 4 });
   });
 
   it("finds no spot when nothing fits", () => {

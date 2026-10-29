@@ -3,16 +3,14 @@ import { createPortal } from "react-dom";
 import { parseKey, useToday } from "../../core/time";
 import { BarChart } from "../../shell/charts";
 import { ErrorNote } from "../../shell/ui";
-import { mondayOf, sessionFor, upcomingRaces, weekFor, PLAN_FILE } from "./plan";
+import { mondayOf, upcomingRaces, weekFor, PLAN_FILE } from "./plan";
 import {
   duration,
   judgeBenchmark,
-  km,
   marathonBlocks,
   pace,
   raceHistory,
   resultOn,
-  weekDays,
   weeklyTotals,
   yearSummary,
   type BenchStatus,
@@ -20,17 +18,17 @@ import {
 import { useRunningData } from "./useRunning";
 import { useFitness } from "./fitness";
 import { FitnessTab } from "./FitnessTab";
+import { WeekCalendar } from "./WeekCalendar";
 
 type Tab = "week" | "fitness" | "plan" | "races" | "progress" | "paces";
 const TABS: { id: Tab; label: string }[] = [
-  { id: "week", label: "This week" },
+  { id: "week", label: "Week by week" },
   { id: "fitness", label: "Fitness & VO2 max" },
   { id: "plan", label: "Plan" },
   { id: "races", label: "Races & benchmarks" },
   { id: "progress", label: "Progression" },
   { id: "paces", label: "Paces & strength" },
 ];
-const DOW = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const STATUS_LABEL: Record<BenchStatus, string> = {
   "on-track": "On track",
@@ -91,8 +89,6 @@ export function RunningPage({ onClose }: { onClose: () => void }) {
   }, [plan, runs, today]);
 
   if (!plan || !data) return null;
-  const thisWeek = weekFor(plan, today);
-  const days = weekDays(runs, today);
 
   return createPortal(
     <div className="page-overlay" role="dialog" aria-label="Running">
@@ -117,50 +113,7 @@ export function RunningPage({ onClose }: { onClose: () => void }) {
       </nav>
 
       <div className="page-body">
-        {tab === "week" && (
-          <>
-            {thisWeek ? (
-              <p className="lead">
-                Week <b>{thisWeek.week}</b>, {fmtDate(thisWeek.start)} – {fmtDate(thisWeek.end)}: <b>{thisWeek.km} km</b> planned, <b className="num">{days.reduce((s, d) => s + d.km, 0).toFixed(1)} km</b> run so far.
-                {thisWeek.notes && <> {thisWeek.notes}.</>}
-              </p>
-            ) : (
-              <p className="lead">Today is outside the plan's weekly tables.</p>
-            )}
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Day</th>
-                  <th>Plan</th>
-                  <th className="num-col">Ran</th>
-                </tr>
-              </thead>
-              <tbody>
-                {days.map((d, i) => {
-                  const s = sessionFor(plan, d.date);
-                  return (
-                    <tr key={d.date} className={d.date === today ? "row-today" : d.date < today ? "row-past" : ""}>
-                      <td>
-                        {DOW[i]} <span className="muted small">{fmtDate(d.date)}</span>
-                      </td>
-                      <td className={s?.key ? "key-session" : "muted"}>{s?.text ?? "–"}</td>
-                      <td className="num-col">
-                        {d.runs.length
-                          ? d.runs.map((r) => (
-                              <div key={r.id}>
-                                {km(r.distance).toFixed(1)} km · {pace(r.distance, r.moving_time)}/km{r.avg_hr ? ` · ${Math.round(r.avg_hr)} bpm` : ""}
-                              </div>
-                            ))
-                          : "–"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            <p className="muted small">Fill the unnamed days with easy running to reach the week's total. Never put two hard days back to back.</p>
-          </>
-        )}
+        {tab === "week" && <WeekCalendar plan={plan} runs={runs} />}
 
         {tab === "plan" && (
           <>

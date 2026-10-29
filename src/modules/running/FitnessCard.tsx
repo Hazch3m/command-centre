@@ -94,60 +94,73 @@ function FitnessCard(_: CardProps) {
           </>
         }
       />
-      <div className="fit-top">
-        <div>
-          <div className="num fit-big">{fmtVo2(f.current)}</div>
-          <div className="muted small">VO2 max · {f.calibration === "garmin" ? "Garmin scale" : f.calibration === "races" ? "race scale" : "estimate"}</div>
-        </div>
-        <div className="fit-facts small">
-          <div>
-            <span className="label">Plan now</span> <span className="num">{fmtVo2(projNow)}</span>
-            {f.current != null && projNow != null && (
-              <span className={f.current - projNow >= -1 ? "tone-accent" : "tone-danger"}>
-                {" "}
-                ({f.current - projNow >= 0 ? "+" : ""}
-                {(f.current - projNow).toFixed(1)})
-              </span>
-            )}
-          </div>
-          <div>
-            <span className="label">Trend</span> {f.slope == null ? "–" : `${f.slope >= 0 ? "+" : ""}${f.slope.toFixed(2)}/week`}
-            {f.neededSlope != null && <span className="muted"> · need {f.neededSlope >= 0 ? "+" : ""}{f.neededSlope.toFixed(2)}</span>}
-          </div>
-          {f.nextMilestone && (
-            <div className="muted">
-              Goal {f.nextMilestone.vo2.toFixed(1)} by {relativeDayLabel(f.nextMilestone.date, today)} ({f.nextMilestone.label})
+      <div className="band-cols fit-band">
+        <div className="band-col fit-summary">
+          <div className="fit-top">
+            <div>
+              <div className="num fit-big">{fmtVo2(f.current)}</div>
+              <div className="muted small">VO2 max · {f.calibration === "garmin" ? "Garmin scale" : f.calibration === "races" ? "race scale" : "estimate"}</div>
             </div>
-          )}
-        </div>
-      </div>
-      <LineChart series={vo2Series(f, from, to)} from={from} to={to} height={130} today={today} markers={f.config.projection.milestones.map((m) => ({ x: m.date, label: m.label.split(" · ")[0] }))} />
-      <div className="fit-keyruns small">
-        <span className="label">{thisWeekRuns.length ? "This week" : "Last week"}</span>
-        {keyRuns.length ? (
-          keyRuns.map((k) => {
-            const st = judge(k.vo2, f.project(k.date) ?? k.vo2);
-            return (
-              <span key={k.id} className="fit-keyrun" title={k.name}>
-                {relativeDayLabel(k.date, today)} <span className="num">{k.vo2.toFixed(1)}</span>{" "}
-                <span className={st === "behind" ? "tone-danger" : "tone-accent"}>{st === "behind" ? "▼" : "✓"}</span>
-              </span>
-            );
-          })
-        ) : (
-          <span className="muted">no key runs yet — a steady tempo, threshold or long run with heart rate counts</span>
-        )}
-      </div>
-      <div className="fit-predict">
-        {f.predictions.map((p) => (
-          <div key={p.name} title={p.target ? `Next: ${p.target}` : undefined}>
-            <div className="label">{p.name}</div>
-            <div className="num">{p.seconds ? duration(p.seconds) : "–"}</div>
-            {p.targetSeconds && p.seconds && (
-              <div className={"small " + (p.seconds <= p.targetSeconds ? "tone-accent" : "muted")}>target {duration(p.targetSeconds)}</div>
+            <div className="fit-facts small">
+              <div>
+                <span className="label">Plan now</span> <span className="num">{fmtVo2(projNow)}</span>
+                {f.current != null && projNow != null && (
+                  <span className={f.current - projNow >= -1 ? "tone-accent" : "tone-danger"}>
+                    {" "}
+                    ({f.current - projNow >= 0 ? "+" : ""}
+                    {(f.current - projNow).toFixed(1)})
+                  </span>
+                )}
+              </div>
+              <div>
+                <span className="label">Trend</span> {f.slope == null ? "–" : `${f.slope >= 0 ? "+" : ""}${f.slope.toFixed(2)}/week`}
+                {f.neededSlope != null && <span className="muted"> · need {f.neededSlope >= 0 ? "+" : ""}{f.neededSlope.toFixed(2)}</span>}
+              </div>
+              {f.nextMilestone && (
+                <div className="muted">
+                  Goal {f.nextMilestone.vo2.toFixed(1)} by {relativeDayLabel(f.nextMilestone.date, today)}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="fit-keyruns small">
+            <span className="label">{thisWeekRuns.length ? "This week" : "Last week"}</span>
+            {keyRuns.length ? (
+              keyRuns.map((k) => {
+                const st = judge(k.vo2, f.project(k.date) ?? k.vo2);
+                return (
+                  <span key={k.id} className="fit-keyrun" title={k.name}>
+                    {relativeDayLabel(k.date, today)} <span className="num">{k.vo2.toFixed(1)}</span>{" "}
+                    <span className={st === "behind" ? "tone-danger" : "tone-accent"}>{st === "behind" ? "▼" : "✓"}</span>
+                  </span>
+                );
+              })
+            ) : (
+              <span className="muted">no key runs yet</span>
             )}
           </div>
-        ))}
+        </div>
+        <div className="band-col band-grow">
+          <LineChart series={vo2Series(f, from, to)} from={from} to={to} height={120} today={today} markers={f.config.projection.milestones.map((m) => ({ x: m.date, label: m.label.split(" · ")[0] }))} />
+        </div>
+        <div className="band-col fit-predict-col">
+          <div className="label" title={f.predictionBasis?.source === "race" ? `Your key-run estimate (${fmtVo2(f.current)}) is below your best race of the last year, so race-ready times use the race.` : undefined}>
+            Race-ready{f.predictionBasis?.source === "race" ? ` · from ${f.predictionBasis.race!.name}` : " · current form"}
+          </div>
+          <div className="fit-predict">
+            {f.predictions.map((p) => (
+              <div key={p.name} title={p.target ? `Next: ${p.target}` : undefined}>
+                <span className="fit-pname">{p.name}</span>
+                <span className="num fit-ptime">{p.seconds ? duration(p.seconds) : "–"}</span>
+                {p.targetSeconds && p.seconds ? (
+                  <span className={"small " + (p.seconds <= p.targetSeconds ? "tone-accent" : "muted")}>target {duration(p.targetSeconds)}</span>
+                ) : (
+                  <span />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </>
   );
@@ -156,8 +169,8 @@ function FitnessCard(_: CardProps) {
 export const fitnessModule: DashboardModule = {
   id: "fitness",
   title: "Fitness",
-  defaultPos: { x: 0, y: 14, w: 7, h: 8 },
+  defaultPos: { x: 0, y: 14, w: 12, h: 6 },
   minW: 4,
-  minH: 6,
+  minH: 3,
   Card: FitnessCard,
 };

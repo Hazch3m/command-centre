@@ -236,7 +236,8 @@ export function FitnessTab({ f }: { f: Fitness }) {
         <thead>
           <tr>
             <th>Distance</th>
-            <th className="num-col">Predicted now</th>
+            <th className="num-col">Race-ready</th>
+            <th className="num-col">Current form</th>
             <th>Next target</th>
             <th className="num-col">VO2 max needed</th>
           </tr>
@@ -246,13 +247,18 @@ export function FitnessTab({ f }: { f: Fitness }) {
             <tr key={p.name}>
               <td>{p.name}</td>
               <td className="num-col">{p.seconds ? duration(p.seconds) : "–"}</td>
+              <td className="num-col muted">{p.formSeconds ? duration(p.formSeconds) : "–"}</td>
               <td>{p.target ?? "–"}</td>
               <td className="num-col">{p.targetSeconds ? vdot(p.distance, p.targetSeconds).toFixed(1) : "–"}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      <p className="muted small">Predictions assume race-specific training; the marathon one assumes your long runs are in place, which is exactly what the plan builds.</p>
+      <p className="muted small">
+        {f.predictionBasis?.source === "race"
+          ? `Race-ready times use your best race of the last year (${f.predictionBasis.race!.name}, VDOT ${f.predictionBasis.vdot.toFixed(1)}), because your key-run estimate (${fmtVo2(f.current)}) is lower right now — normal straight after a marathon or in a recovery block. They switch to current form once that overtakes it.`
+          : "Race-ready times use your current form from key runs, which is now above your best race of the last year."}{" "}
+        Predictions assume race-specific training; the marathon one assumes your long runs are in place, which is exactly what the plan builds.</p>
 
       <h3>Training load (Garmin-style acute vs chronic)</h3>
       <LineChart

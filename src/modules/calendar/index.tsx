@@ -127,7 +127,7 @@ function CalendarCard() {
         </div>
       )}
       {status?.connected && !choosing && (
-        <div className="card-scroll">
+        <div className="card-scroll cal-days">
           {days.map((d) => (
             <Day key={d.date} day={d} now={now} today={today} />
           ))}
@@ -145,9 +145,9 @@ function CalendarCard() {
 export const calendarModule: DashboardModule = {
   id: "calendar",
   title: "Calendar",
-  defaultPos: { x: 7, y: 3, w: 5, h: 11 },
+  defaultPos: { x: 0, y: 25, w: 12, h: 5 },
   minW: 3,
-  minH: 4,
+  minH: 3,
   migrations,
   Card: CalendarCard,
 };

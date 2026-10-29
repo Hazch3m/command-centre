@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { backend } from "@backend";
 import type { AppConfig, BackupStatus, MonitorInfo } from "../core/backend.types";
-import { getSettings, subscribeSettings, updateSettings } from "../core/settings";
+import { getSettings, subscribeSettings, TEXT_SIZES, updateSettings } from "../core/settings";
 import { Connections } from "./Connections";
 import { getTaskSync, setTaskSyncEnabled } from "../modules/tasks/gsync";
 
@@ -102,6 +102,24 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
         </Row>
         <Row label="Full-screen" hint="F11 also toggles this.">
           {config && <Toggle on={config.fullscreen} label="Full-screen" onChange={(v) => act(() => backend.setFullscreen(v))} />}
+        </Row>
+        <Row label="Theme">
+          <div className="segmented small-seg">
+            {(["light", "dark", "system"] as const).map((t) => (
+              <button key={t} className={settings.theme === t ? "on" : ""} onClick={() => updateSettings({ theme: t })}>
+                {t === "light" ? "Light" : t === "dark" ? "Dark" : "Match Windows"}
+              </button>
+            ))}
+          </div>
+        </Row>
+        <Row label="Text size" hint="Text also scales with the width of the screen.">
+          <div className="segmented small-seg">
+            {TEXT_SIZES.map((t) => (
+              <button key={t.value} className={settings.textScale === t.value ? "on" : ""} onClick={() => updateSettings({ textScale: t.value })}>
+                {t.label}
+              </button>
+            ))}
+          </div>
         </Row>
         <Row label="Hide the mouse pointer when idle">
           <Toggle on={settings.hideCursor} label="Hide pointer" onChange={(v) => updateSettings({ hideCursor: v })} />

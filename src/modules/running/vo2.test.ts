@@ -118,3 +118,13 @@ describe("race targets", () => {
     expect(targetTime("Sub-2:45", 42195)).toBe(9900);
   });
 });
+
+import { quantile } from "./vo2";
+describe("quantile", () => {
+  it("interpolates", () => {
+    expect(quantile([1, 2, 3, 4, 5], 0.5)).toBe(3);
+    expect(quantile([1, 2, 3, 4, 5], 0.75)).toBe(4);
+    expect(quantile([1, 2], 0.75)).toBe(1.75);
+    expect(quantile([], 0.5)).toBeNull();
+  });
+});
