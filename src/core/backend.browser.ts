@@ -22,10 +22,12 @@ function load(): Database {
 }
 
 function getDb(): Promise<Database> {
-  dbPromise ??= initSqlJs({ locateFile: () => wasmUrl }).then((s) => {
-    SQL = s;
-    return load();
-  });
+  if (!dbPromise) {
+    dbPromise = initSqlJs({ locateFile: () => wasmUrl }).then((s) => {
+      SQL = s;
+      return load();
+    });
+  }
   return dbPromise;
 }
 
