@@ -47,13 +47,13 @@
   --danger: #ff6b6b;
   --danger-dim: rgba(255, 107, 107, 0.14);
   --warn: #f2b84b;
-  --warn-dim: var(--warn-dim);
+  --warn-dim: rgba(242, 184, 75, 0.15);
   --info: #6aa8ff;
-  --info-dim: var(--info-dim);
+  --info-dim: rgba(106, 168, 255, 0.15);
   --purple: #c792ea;
   --on-accent: #062016;
   --on-danger: #2a0808;
-  --overlay: var(--overlay);
+  --overlay: rgba(0, 0, 0, 0.6);
   --shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
   --hover: rgba(255, 255, 255, 0.025);
   --track: #262d36;
