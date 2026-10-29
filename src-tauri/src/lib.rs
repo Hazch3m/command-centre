@@ -87,8 +87,10 @@ pub fn run() {
     tauri::Builder::default()
         // Must be first: a second launch just brings the running dashboard back.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            if let (Some(win), Some(store)) = (app.get_webview_window(window::MAIN), app.try_state::<ConfigStore>()) {
-                window::place(&win, &store, true);
+            match (app.get_webview_window(window::MAIN), app.try_state::<ConfigStore>()) {
+                (Some(win), Some(store)) => window::place(&win, &store, true),
+                // The dashboard window is gone but the process lingered: start afresh.
+                _ => app.restart(),
             }
         }))
         .plugin(
@@ -141,6 +143,13 @@ pub fn run() {
             window::start_watchdog(handle.clone());
             start_backup_scheduler(handle);
             Ok(())
+        })
+        // Closing the dashboard quits the whole app. Without this the hidden quick-add
+        // window kept the process alive with no dashboard, and relaunching did nothing.
+        .on_window_event(|window, event| {
+            if window.label() == window::MAIN && matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
+                window.app_handle().exit(0);
+            }
         })
         .invoke_handler(tauri::generate_handler![
             db_select,
