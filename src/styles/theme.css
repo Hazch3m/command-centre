@@ -1224,7 +1224,7 @@ select.filter {
 }
 .run-top {
   display: grid;
-  grid-template-columns: 1.3fr 1fr;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
   gap: 1rem;
   align-items: start;
 }

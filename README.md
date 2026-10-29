@@ -7,9 +7,9 @@ A full-screen personal dashboard for a second monitor. Built with Tauri 2 (Rust)
 | Stage | Contents | State |
 |---|---|---|
 | 1 | App shell, monitor placement, editable grid, clock, daily checklist, tasks, quick-add, backups | **Done** |
-| 2 | Google Calendar, Strava running card | Next |
-| 3 | Research goals, gym tracker, photos | |
-| 4 | Weather, Pomodoro, notes, polish, signed installer | |
+| 2 | Tasks v2 (projects, subtasks, statuses, board, repeats), Google Calendar, Google Tasks sync, Running card and page (training plan + Strava) | **Done** |
+| 3 | Research goals, gym tracker (with strength A/B from the plan), photos | Next |
+| 4 | Weather, Pomodoro, notes, polish | |
 
 ## Installing
 
@@ -30,6 +30,8 @@ Windows SmartScreen may warn that the installer is from an unknown publisher, be
 | Settings | **Ctrl+,**, or move the mouse and click **Settings** |
 | Toggle full-screen | **F11** |
 
+**Tasks** have three views: **Focus** (overdue, today, in progress, next 7 days, waiting, scheduled), **Projects** (each project with its colour and progress) and **Board** (drag cards between To do, In progress, Waiting and Done). Click any task to open its detail panel: status, priority, project, start date, due date, estimate, repeat, notes and subtasks.
+
 **Task syntax**, which works both in the Tasks card and in quick-add:
 
 ```
@@ -46,10 +48,23 @@ Email supervisor about chapter 2 #thesis !1 @fri
 | `@3/11` | 3 November (day/month) |
 | `@2027-05-30` | An exact date |
 | `@+5` | In five days |
+| `^mon` | Start date: hidden from Focus until then (same date words as `@`) |
+| `~45m` `~2h` `~1h30` | Time estimate |
+| `*daily` `*weekdays` `*weekly` `*2w` `*monthly` `*mon,thu` | Repeat. The next one is created when you finish this one |
 
 Click a task to edit it. Ticked tasks stay visible (struck through) under "Done today" until the day ends, so a mis-tap is easy to undo.
 
 **Daily checklist.** Items reset each morning at 04:00 by default, so anything ticked after midnight still counts for the evening before. You can change the reset time in Settings. To track an amount rather than a simple tick, add a number to the item: `Research 3h` counts in half-hour steps up to 3 h. A day only counts towards the streak once the target is reached. Removing an item keeps its history.
+
+**Running.** The card shows this week's kilometres against the plan, each day's session, today's and tomorrow's sessions, your last run, the last 12 weeks and the next race countdowns. Click **Plan ›** for the full page: this week, the whole plan with what you actually ran, races and benchmark status, progression (same numbers as your Running progression review) and paces and strength.
+
+The plan comes from your Claude doc "Sub-2:50 Training Plan". It's stored as `training-plan.json` in the data folder and the app picks up changes within five minutes. When the plan changes, ask Claude: *"Re-export my training plan for Command Centre"*. That reads the doc and runs `tools/plan_from_doc.py`, then writes the new file.
+
+**Calendar** shows today (with the current event highlighted and a countdown to the next one) and the next 7 days. Choose which calendars appear with the ✎ button.
+
+**Google Tasks sync.** Each project is a list in Google Tasks; tasks without a project go to your default list. Title, notes, due date, done and subtasks sync both ways every two minutes (and shortly after any change). Priority, status, start date, estimate and repeat rules stay on the dashboard; a repeating task ticked on your phone still repeats. Turn it off in Settings if you prefer.
+
+Everything from Strava and Google is cached locally, so the cards keep showing the last data when you're offline.
 
 ## Your data
 
@@ -75,12 +90,12 @@ API keys and tokens (from Stage 2 onwards) are stored in **Windows Credential Ma
 
 ### Google Calendar
 
-1. Open <https://console.cloud.google.com/>, create a project (e.g. "Command Centre"), and enable the **Google Calendar API** for it.
+1. Open <https://console.cloud.google.com/>, create a project (e.g. "Command Centre"), and enable both the **Google Calendar API** and the **Google Tasks API** for it.
 2. Under **OAuth consent screen**, choose **External** and fill in the app name and your email. Add yourself as a test user.
 3. Then click **Publish app**. Without this step, Google expires the sign-in every 7 days. Publishing a personal app is fine: Google will show an "unverified app" warning when you sign in, which you can click through, since you are the only user.
 4. Under **Credentials**, choose **Create credentials → OAuth client ID → Desktop app**. Copy the **Client ID** and **Client Secret** into Command Centre → Settings → Google Calendar, then click **Connect**.
 
-The app only requests read-only calendar access.
+The app requests read-only calendar access and access to your Google Tasks.
 
 ## Development
 
@@ -119,6 +134,7 @@ src/
 
    ```tsx
    import type { DashboardModule } from "../types";
+   // For data from an API, use backend.apiRequest(...) — tokens stay in the keychain.
    import { CardHeader } from "../../shell/ui";
 
    function QuoteCard() {
