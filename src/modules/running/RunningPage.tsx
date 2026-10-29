@@ -100,7 +100,7 @@ export function RunningPage() {
       </nav>
 
       <div className="page-body" key={tab}>
-        {tab === "week" && <WeekCalendar plan={plan} runs={runs} />}
+        {tab === "week" && <WeekCalendar plan={plan} runs={runs} count={4} />}
 
         {tab === "plan" && (
           <>

@@ -1,11 +1,12 @@
 import { useMemo } from "react";
-import { addDays, relativeDayLabel, useToday } from "../../core/time";
+import { addDays, parseKey, relativeDayLabel, useToday } from "../../core/time";
+import { BarChart } from "../../shell/charts";
 import { CardHeader, ErrorNote } from "../../shell/ui";
 import type { CardProps, DashboardModule } from "../types";
 import { mondayOf, planWeekNumber, upcomingRaces, weekFor } from "./plan";
 import { RunningPage } from "./RunningPage";
 import { forecastWeek } from "./forecast";
-import { km, weekDays } from "./stats";
+import { km, weekDays, weeklyTotals } from "./stats";
 import { migrations } from "./strava";
 import { useRunningData, useStravaSync } from "./useRunning";
 
@@ -28,11 +29,23 @@ function RunningCard({ editing }: CardProps) {
     const todayDay = f.days.find((d) => d.date === today) ?? null;
     const tomorrowDay = [...f.days, ...nextF.days].find((d) => d.date === addDays(today, 1)) ?? null;
     const lastRun = runs?.length ? runs[runs.length - 1] : null;
-    return { week, wk, done, todayDay, tomorrowDay, lastRun, races: upcomingRaces(plan, today).slice(0, 2) };
+    const mon = mondayOf(today);
+    const history = weeklyTotals(runs ?? [], addDays(mon, -9 * 7), mon).map((w) => {
+      const pw = weekFor(plan, w.week);
+      return {
+        label: String(parseKey(w.week).getDate()),
+        value: w.km,
+        target: pw?.kmMin ?? null,
+        targetMax: pw?.kmMax ?? null,
+        highlight: w.week === mon,
+        title: `Week of ${relativeDayLabel(w.week, today)}: ${w.km.toFixed(1)} km${pw ? ` (plan ${pw.km})` : ""}`,
+      };
+    });
+    return { week, wk, done, todayDay, tomorrowDay, lastRun, history, races: upcomingRaces(plan, today).slice(0, 2) };
   }, [plan, runs, today]);
 
   if (!plan || !view) return <CardHeader title="Running" to="running" />;
-  const { week, wk, done, todayDay, tomorrowDay, lastRun, races } = view;
+  const { week, wk, done, todayDay, tomorrowDay, lastRun, history, races } = view;
   const lo = week?.kmMin ?? null;
   const hi = week?.kmMax ?? lo;
   const pct = hi ? Math.min(1, done / hi) : 0;
@@ -78,6 +91,11 @@ function RunningCard({ editing }: CardProps) {
             </span>
           </div>
         ))}
+      </div>
+
+      <div className="run-history">
+        <div className="label">Last 10 weeks, km</div>
+        <BarChart bars={history} height={70} unit=" km" />
       </div>
 
       <div className="run-races">

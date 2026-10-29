@@ -3,7 +3,7 @@ import { backend } from "@backend";
 import { addDays, parseKey, useToday } from "../../core/time";
 import { CardHeader } from "../../shell/ui";
 import type { CardProps, DashboardModule } from "../types";
-import { forecastRange, forecastWeek, isKeyDay, type ForecastDay } from "./forecast";
+import { forecastRange, forecastWeek, isKeyDay, type ForecastDay, type ForecastWeek } from "./forecast";
 import { mondayOf, type Plan } from "./plan";
 import { km, pace } from "./stats";
 import type { Run } from "./strava";
@@ -49,11 +49,63 @@ function Day({ d, today }: { d: ForecastDay; today: string }) {
   );
 }
 
+function WeekBody({ fw, today }: { fw: ForecastWeek; today: string }) {
+  if (fw.week)
+    return (
+      <div className="wk-days">
+        {fw.days.map((d) => (
+          <Day key={d.date} d={d} today={today} />
+        ))}
+      </div>
+    );
+  if (fw.block)
+    return (
+      <div className="wk-block">
+        <div>
+          <span className="label">Focus</span> {fw.block.key}
+        </div>
+        {fw.block.race && (
+          <div>
+            <span className="label">Race</span> {fw.block.race}
+          </div>
+        )}
+        <div className="muted small">
+          {fw.block.name}: {fmt(fw.block.start!)} – {fmt(fw.block.end!)}. The plan doesn't have day-by-day sessions this far out yet; they'll appear here once the doc has them and the
+          plan is re-exported.
+        </div>
+        {fw.days.some((d) => d.runs.length) && (
+          <div className="wk-days">
+            {fw.days.map((d) => (
+              <Day key={d.date} d={d} today={today} />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  return <div className="muted small wk-block">No plan for this week.</div>;
+}
+
+function WeekHead({ fw, thisMonday }: { fw: ForecastWeek; thisMonday: string }) {
+  const offset = Math.round((parseKey(fw.monday).getTime() - parseKey(thisMonday).getTime()) / (7 * 86400000));
+  return (
+    <div className="wk-subhead small">
+      <b>{fw.week ? `Week ${fw.week.week}` : fw.block ? fw.block.name : "Outside the plan"}</b>
+      <span className="muted">
+        {" "}
+        · {fmt(fw.monday)} – {fmt(addDays(fw.monday, 6))}
+        {fw.week ? ` · ${fw.week.km} km` : fw.block ? ` · ${fw.block.km} km/week` : ""}
+        {fw.week?.notes ? ` · ${fw.week.notes}` : ""}
+      </span>
+      <span className="wk-when muted">{offset === 1 ? "next week" : offset > 0 ? `in ${offset} weeks` : offset === 0 ? "this week" : `${-offset} weeks ago`}</span>
+    </div>
+  );
+}
+
 /**
  * The plan as a calendar, one week at a time. Scroll (mouse wheel), arrow keys,
  * the ‹ › buttons or the week strip move between weeks.
  */
-export function WeekCalendar({ plan, runs, compact }: { plan: Plan; runs: Run[]; compact?: boolean }) {
+export function WeekCalendar({ plan, runs, compact, count = 1 }: { plan: Plan; runs: Run[]; compact?: boolean; count?: number }) {
   const today = useToday();
   const thisMonday = mondayOf(today);
   const range = useMemo(() => forecastRange(plan, today), [plan, today]);
@@ -61,7 +113,11 @@ export function WeekCalendar({ plan, runs, compact }: { plan: Plan; runs: Run[];
   useEffect(() => setMonday(thisMonday), [thisMonday]);
   const clamp = (m: string) => (m < range.first ? range.first : m > range.last ? range.last : m);
   const go = (n: number) => setMonday((m) => clamp(addDays(m, 7 * n)));
-  const f = useMemo(() => forecastWeek(plan, monday, runs), [plan, monday, runs]);
+  const shown = useMemo(
+    () => Array.from({ length: count }, (_, i) => addDays(monday, 7 * i)).filter((m) => m <= range.last).map((m) => forecastWeek(plan, m, runs)),
+    [plan, monday, runs, count, range.last],
+  );
+  const f = shown[0];
 
   // One week per wheel "notch"; trackpads send many small events, so accumulate.
   const acc = useRef(0);
@@ -96,6 +152,23 @@ export function WeekCalendar({ plan, runs, compact }: { plan: Plan; runs: Run[];
   useEffect(() => {
     strip.current?.querySelector(".sel")?.scrollIntoView({ block: "nearest", inline: "center" });
   }, [monday]);
+
+  const strip_ = (
+      <div className="wk-strip" ref={strip}>
+        {weeks.map((w) => (
+          <button
+            key={w.monday}
+            className={"wk-chip" + (w.monday >= monday && w.monday < addDays(monday, 7 * count) ? " sel" : "") + (w.monday === thisMonday ? " now" : "") + (w.monday < thisMonday ? " past" : "") + (w.race ? " has-race" : "")}
+            onClick={() => setMonday(w.monday)}
+            title={`Week of ${fmt(w.monday)}${w.km ? ` · ${w.km} km` : ""}${w.race ? " · race" : ""}`}
+          >
+            <span className="wk-chip-label">{w.label || fmt(w.monday)}</span>
+            <span className="wk-chip-km num">{w.km}</span>
+          </button>
+        ))}
+      </div>
+      
+  );
 
   const phase = f.week ? (/^R\d/.test(f.week.week) ? "Recovery" : f.week.phase.replace(/\s*\(.*\)$/, "").replace(/^Recovery and /, "")) : f.block?.name ?? "";
   const offset = Math.round((parseKey(monday).getTime() - parseKey(thisMonday).getTime()) / (7 * 86400000));
@@ -141,55 +214,16 @@ export function WeekCalendar({ plan, runs, compact }: { plan: Plan; runs: Run[];
         </button>
       </div>
 
-      {f.week ? (
-        <div className="wk-days">
-          {f.days.map((d) => (
-            <Day key={d.date} d={d} today={today} />
-          ))}
+      {!compact && count > 1 && strip_}
+      {shown.map((fw, i) => (
+        <div key={fw.monday} className="wk-week">
+          {i > 0 && <WeekHead fw={fw} thisMonday={thisMonday} />}
+          <WeekBody fw={fw} today={today} />
         </div>
-      ) : f.block ? (
-        <div className="wk-block">
-          <div>
-            <span className="label">Focus</span> {f.block.key}
-          </div>
-          {f.block.race && (
-            <div>
-              <span className="label">Race</span> {f.block.race}
-            </div>
-          )}
-          <div className="muted small">
-            {f.block.name}: {fmt(f.block.start!)} – {fmt(f.block.end!)}. The plan doesn't have day-by-day sessions this far out yet; they'll appear here once the doc has them and
-            the plan is re-exported.
-          </div>
-          {f.days.some((d) => d.runs.length) && (
-            <div className="wk-days">
-              {f.days.map((d) => (
-                <Day key={d.date} d={d} today={today} />
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="muted small wk-block">No plan for this week.</div>
-      )}
-
+      ))}
       {!compact && f.week?.notes && <div className="wk-notes small muted">Note: {f.week.notes}</div>}
 
-      {!compact && (
-      <div className="wk-strip" ref={strip}>
-        {weeks.map((w) => (
-          <button
-            key={w.monday}
-            className={"wk-chip" + (w.monday === monday ? " sel" : "") + (w.monday === thisMonday ? " now" : "") + (w.monday < thisMonday ? " past" : "") + (w.race ? " has-race" : "")}
-            onClick={() => setMonday(w.monday)}
-            title={`Week of ${fmt(w.monday)}${w.km ? ` · ${w.km} km` : ""}${w.race ? " · race" : ""}`}
-          >
-            <span className="wk-chip-label">{w.label || fmt(w.monday)}</span>
-            <span className="wk-chip-km num">{w.km}</span>
-          </button>
-        ))}
-      </div>
-      )}
+      {!compact && count === 1 && strip_}
       {!compact && (
         <div className="wk-legend small muted">
           {(["key", "long", "easy", "race"] as const).map((k) => (
@@ -219,7 +253,7 @@ function TrainingWeekCard({ editing }: CardProps) {
 export const trainingWeekModule: DashboardModule = {
   id: "training-week",
   title: "Training week",
-  defaultPos: { x: 0, y: 9, w: 12, h: 8 },
+  defaultPos: { x: 0, y: 9, w: 12, h: 7 },
   minW: 6,
   minH: 5,
   Card: TrainingWeekCard,

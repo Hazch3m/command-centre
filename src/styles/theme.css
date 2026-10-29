@@ -2671,7 +2671,7 @@ select:focus {
   border: 0;
 }
 
-/* Calendar: list on the overview, day columns on its page. */
+/* Calendar: list on the overview; on its page, one row per day. */
 .cal-event {
   border-radius: 8px;
   padding: 0.3rem 0.25rem;
@@ -2679,38 +2679,45 @@ select:focus {
 .cal-allday {
   border-radius: 6px;
 }
-@container (min-width: 46rem) {
-  .cal-days {
-    display: grid;
-    grid-template-columns: 1.4fr repeat(7, minmax(0, 1fr));
-    gap: 0.4rem;
-  }
-  .cal-days > .cal-day {
-    margin: 0;
-    padding: 0.5rem 0.55rem;
-    background: var(--card-2);
-    border-radius: 10px;
-    min-width: 0;
-  }
-  .cal-days > .cal-day.today {
-    background: var(--accent-dim);
-  }
-  .cal-days > .muted {
-    display: none;
-  }
-  .cal-days .cal-day:not(.today) .cal-event {
-    grid-template-columns: 3px 1fr;
-  }
-  .cal-days .cal-day:not(.today) .cal-time {
-    grid-column: 2;
-    font-size: 0.68rem;
-  }
-  .cal-days .cal-day:not(.today) .cal-main {
-    grid-column: 2;
-  }
-  .cal-days .cal-day:not(.today) .cal-bar {
-    grid-row: 1 / span 2;
-  }
+.cal-days > .cal-day {
+  display: grid;
+  grid-template-columns: 8rem minmax(0, 1fr);
+  column-gap: 1rem;
+  align-items: start;
+  margin: 0;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--line);
+}
+.cal-days > .cal-day:first-child {
+  border-top: 0;
+  padding-top: 0.2rem;
+}
+.cal-days > .cal-day > * {
+  grid-column: 2;
+}
+.cal-days > .cal-day > h3 {
+  grid-column: 1;
+  grid-row: 1 / span 20;
+  font-size: 0.8rem;
+  padding-top: 0.3rem;
+}
+.cal-days > .cal-day > ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 0.4rem;
+}
+.cal-days .cal-event {
+  background: var(--card-2);
+  padding: 0.45rem 0.5rem;
+}
+.cal-days .cal-event.current {
+  background: var(--accent-dim);
+}
+.cal-days .cal-allday {
+  margin-bottom: 0.4rem;
+}
+.cal-days .cal-title {
+  font-size: 0.92rem !important;
 }
 
 /* Tasks and daily pages: wider layouts. */
@@ -2783,4 +2790,35 @@ select:focus {
 }
 .modal-backdrop {
   backdrop-filter: blur(3px);
+}
+
+/* v3 tweaks */
+.run-history {
+  margin-top: 0.3rem;
+}
+.lr-body {
+  flex: 0 0 auto;
+  align-items: start;
+}
+.lr-splits {
+  margin-top: 0.4rem;
+}
+.wk-week + .wk-week {
+  margin-top: 0.7rem;
+}
+.wk-subhead {
+  display: flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  margin: 0 0 0.35rem 0.2rem;
+}
+.wk-subhead .wk-when {
+  margin-left: 0.5rem;
+  font-size: 0.7rem;
+}
+.subpage .wk-days {
+  min-height: 9.5rem;
+}
+.subpage .wk-strip {
+  margin-bottom: 0.2rem;
 }

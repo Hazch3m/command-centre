@@ -117,7 +117,7 @@ function FitnessCard({ editing }: CardProps) {
         </div>
       </div>
       <div className="fit-chart">
-        <LineChart series={vo2Series(f, from, to2)} from={from} to={to2} height={110} today={today} markers={f.config.projection.milestones.map((m) => ({ x: m.date, label: m.label.split(" · ")[0] }))} />
+        <LineChart series={vo2Series(f, from, to2)} from={from} to={to2} height={170} today={today} markers={f.config.projection.milestones.map((m) => ({ x: m.date, label: m.label.split(" · ")[0] }))} />
       </div>
       <div className="fit-predict-row" title={f.predictionBasis?.source === "race" ? `Race-ready times from ${f.predictionBasis.race!.name}` : "Race-ready times from current form"}>
         {f.predictions.map((p) => (
