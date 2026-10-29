@@ -52,8 +52,8 @@ export function TaskRow({ task, today, onOpen, showProject = true, compact = fal
       <button className="task-main" onClick={() => onOpen(task.id)} title="Open task">
         <span className="task-title">{task.title}</span>
         <span className="task-meta">
-          {task.status === "doing" && <span className="status-pill doing">In progress</span>}
-          {task.status === "waiting" && <span className="status-pill waiting">Waiting</span>}
+          {task.status === "doing" && !compact && <span className="status-pill doing">In progress</span>}
+          {task.status === "waiting" && !compact && <span className="status-pill waiting">Waiting</span>}
           {due && <span className={"task-due" + (overdue ? " danger" : "")}>{due.text}</span>}
           {scheduled && <span>From {relativeDayLabel(task.start!, today)}</span>}
           {showProject && task.project_name && <ProjectChip name={task.project_name} color={task.project_color} />}
