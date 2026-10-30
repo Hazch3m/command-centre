@@ -201,6 +201,12 @@ function plannedRuns(plan: Plan, from: string, to: string, overrides?: Map<strin
   const out: Run[] = [];
   for (let m = mondayOf(from); m <= to; m = addDays(m, 7)) {
     const fw = forecastWeek(plan, m, [], overrides);
+    // An undated last block (e.g. "Sharpen and taper") covers the weeks after the last dated one.
+    if (!fw.week && !fw.block) {
+      const lastEnd = plan.blocks.filter((b) => b.end).map((b) => b.end!).sort().pop();
+      const undated = plan.blocks.find((b) => !b.start && b.kmMin);
+      if (lastEnd && undated && m > lastEnd) fw.block = { ...undated, start: addDays(lastEnd, 1), end: to };
+    }
     if (fw.week) {
       for (const d of fw.days) if (d.km && d.date > from && d.date <= to) out.push(fake(d.date, d.km));
     } else if (fw.block && fw.block.kmMin) {

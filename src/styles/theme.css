@@ -3535,3 +3535,19 @@ select:focus {
   background: var(--text-2);
   opacity: 0.6;
 }
+
+/* Path to the goal */
+.goal-targets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 0.6rem;
+  margin: 0.6rem 0 0.4rem;
+}
+.goal-card {
+  background: var(--card-2);
+  border-radius: 10px;
+  padding: 0.6rem 0.8rem;
+}
+.goal-card .pred-table {
+  margin-top: 0.3rem;
+}
