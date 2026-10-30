@@ -21,6 +21,7 @@ export function typeOfRun(r: Run, planned?: DayKind | null): RunType {
   const k = r.distance / 1000;
   if (r.workout_type === 1) return "race";
   if (planned === "race" && k >= 4.5) return "race";
+  if (/\brace\b|marathon|parkrun|time trial|\btt\b|\bxc\b|cross country/i.test(r.name) && !/\bpace\b/i.test(r.name)) return "race";
   if (planned === "key") return "speed";
   if (planned === "long" && k >= 14) return "long";
   if (/interval|tempo|threshold|reps?\b|×|\d\s*x\s*\d|fartlek|track|session|hills?\b|progress|workout|\bmp\b|\bhmp\b/i.test(r.name)) return "speed";

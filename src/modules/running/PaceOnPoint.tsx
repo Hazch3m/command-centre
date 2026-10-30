@@ -130,6 +130,7 @@ export function PaceOnPointTab({ plan, runs }: { plan: Plan; runs: Run[] }) {
   );
 }
 
+const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 type Band = "fast" | "on" | "slow";
 const bandOf = (pace: number, [lo, hi]: [number, number]): Band => (pace < lo - 3 ? "fast" : pace > hi + 3 ? "slow" : "on");
 const BAND_LABEL: Record<Band, string> = { fast: "faster than target", on: "on target", slow: "slower than target" };
@@ -165,8 +166,8 @@ function IntervalChart({ rows }: { rows: { day: ForecastDay; check: PaceCheck }[
       <div className="interval-head">
         <h3>Key sessions: fastest and slowest interval</h3>
         <span className="small muted">
-          Fastest on target {count("fastest", "on")}/{items.length} · slowest on target {count("slowest", "on")}/{items.length} · {count("fastest", "fast")} sessions with a rep
-          too quick · {count("slowest", "slow")} with one too slow
+          Fastest on target {count("fastest", "on")}/{items.length} · slowest on target {count("slowest", "on")}/{items.length} · {plural(count("fastest", "fast"), "session")} with a rep too quick ·{" "}
+          {plural(count("slowest", "slow"), "session")} with one too slow
         </span>
       </div>
       <div className="chart" ref={ref} onMouseLeave={() => setHover(null)}>
