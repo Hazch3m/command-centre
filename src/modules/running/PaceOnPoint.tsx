@@ -44,7 +44,13 @@ export function usePaceChecks(plan: Plan | undefined, runs: Run[] | undefined, w
       rows,
       last14: avg(rows.filter((r) => r.check.date > addDays(today, -14)).map((r) => r.check)),
       onPointShare: rows.length ? rows.filter((r) => r.check.verdict === "on-point").length / rows.length : null,
-      byWeek: [...new Set(rows.map((r) => mondayOf(r.check.date)))].map((w) => ({ week: w, score: avg(rows.filter((r) => mondayOf(r.check.date) === w).map((r) => r.check)) })),
+      // Weeks before the plan get a score from the runs judged against the nearest training pace (marked "est.").
+      byWeek: [...new Set(rows.map((r) => mondayOf(r.check.date)))].map((w) => {
+        const inWeek = rows.filter((r) => mondayOf(r.check.date) === w).map((r) => r.check);
+        const planned = avg(inWeek);
+        const all = inWeek.length ? Math.round(inWeek.reduce((a, c) => a + c.score, 0) / inWeek.length) : null;
+        return { week: w, score: planned ?? all, estimate: planned == null && all != null };
+      }),
       details,
       overrides,
     };
@@ -92,7 +98,9 @@ export function PaceOnPointTab({ plan, runs }: { plan: Plan; runs: Run[] }) {
           {p.byWeek.map((w) => (
             <div key={w.week} className="pace-week">
               <span className="label">Week of {fmt(w.week)}</span>
-              <span className="num">{w.score ?? "–"}%</span>
+              <span className="num">
+                {w.score ?? "–"}%{w.estimate ? <span className="muted small"> est.</span> : null}
+              </span>
               <span className="pace-bar">
                 <span style={{ width: `${w.score ?? 0}%` }} />
               </span>
@@ -143,7 +151,7 @@ export function PaceOnPointTab({ plan, runs }: { plan: Plan; runs: Run[] }) {
 
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 type Band = "fast" | "on" | "slow";
-const bandOf = (pace: number, [lo, hi]: [number, number]): Band => (pace < lo - 3 ? "fast" : pace > hi + 3 ? "slow" : "on");
+const bandOf = (pace: number, [lo, hi]: [number, number]): Band => (pace < lo - 5 ? "fast" : pace > hi + 5 ? "slow" : "on");
 const BAND_LABEL: Record<Band, string> = { fast: "faster than target", on: "on target", slow: "slower than target" };
 const offText = (pace: number, [lo, hi]: [number, number]) =>
   pace < lo ? `${Math.round(lo - pace)} s fast` : pace > hi ? `${Math.round(pace - hi)} s slow` : "in range";
@@ -159,14 +167,15 @@ function IntervalChart({ rows }: { rows: { day: ForecastDay; check: PaceCheck }[
   if (!items.length)
     return (
       <div className="interval-chart">
-        <h3>Key sessions: fastest and slowest interval</h3>
+        <h3>Key sessions against their target</h3>
         <p className="muted small">No sessions with quick laps or kilometres in the last 12 weeks yet. Your plan's first is the threshold session on Tue 17 Nov.</p>
       </div>
     );
   const W = box.w || 800;
-  const H = 230;
+  const H = 300;
+  const TOL = 5;
   const pad = { top: 14, bottom: 34, left: 44, right: 8 };
-  const all = items.flatMap((r) => [r.check.fastest!, r.check.slowest!, r.check.target[0], r.check.target[1]]);
+  const all = items.flatMap((r) => [r.check.fastest!, r.check.slowest!, r.check.target[0] - TOL, r.check.target[1] + TOL]);
   const lo = Math.min(...all) - 6;
   const hi = Math.max(...all) + 6;
   const y = (v: number) => pad.top + ((v - lo) / (hi - lo)) * (H - pad.top - pad.bottom);
@@ -175,14 +184,14 @@ function IntervalChart({ rows }: { rows: { day: ForecastDay; check: PaceCheck }[
   const ticks: number[] = [];
   const stepS = hi - lo > 90 ? 30 : hi - lo > 40 ? 15 : 5;
   for (let t = Math.ceil(lo / stepS) * stepS; t <= hi; t += stepS) ticks.push(t);
-  const count = (k: "fastest" | "slowest", b: Band) => items.filter((r) => bandOf(r.check[k]!, r.check.target) === b).length;
+  const count = (k: "fastest" | "slowest" | "actual", b: Band) => items.filter((r) => bandOf(r.check[k]!, r.check.target) === b).length;
   const h = hover != null ? items[hover] : null;
   return (
     <div className="interval-chart">
       <div className="interval-head">
-        <h3>Key sessions: fastest and slowest interval</h3>
+        <h3>Key sessions against their target</h3>
         <span className="small muted">
-          Fastest on target {count("fastest", "on")}/{items.length} · slowest on target {count("slowest", "on")}/{items.length} · {plural(count("fastest", "fast"), "session")} with a rep too quick ·{" "}
+          Average on target <b>{count("actual", "on")}/{items.length}</b> · fastest on target {count("fastest", "on")}/{items.length} · slowest on target {count("slowest", "on")}/{items.length} · {plural(count("fastest", "fast"), "session")} with a rep too quick ·{" "}
           {plural(count("slowest", "slow"), "session")} with one too slow
         </span>
       </div>
@@ -199,16 +208,23 @@ function IntervalChart({ rows }: { rows: { day: ForecastDay; check: PaceCheck }[
           {items.map((r, i) => {
             const c = r.check;
             const x = cx(i);
-            const w = Math.min(96, bw * 0.75);
+            const w = Math.min(130, bw * 0.7);
             const fb = bandOf(c.fastest!, c.target);
             const sb = bandOf(c.slowest!, c.target);
+            const ab = bandOf(c.actual, c.target);
             return (
               <g key={c.runId} onMouseEnter={() => setHover(i)} onClick={() => openRun(c.runId)} style={{ cursor: "pointer" }}>
                 <rect x={x - bw / 2} y={pad.top} width={bw} height={H - pad.top - pad.bottom} fill="transparent" />
-                <rect x={x - w / 2} y={y(c.target[0] - 3)} width={w} height={Math.max(12, y(c.target[1] + 3) - y(c.target[0] - 3))} rx={5} className={"iv-band" + (c.autoZone ? " auto" : "")} />
-                <line x1={x} x2={x} y1={y(c.fastest!)} y2={y(c.slowest!)} className="iv-span" />
-                <circle cx={x} cy={y(c.fastest!)} r={hover === i ? 8 : 6.5} className={`iv-dot iv-${fb}`} />
-                <rect x={x - 6} y={y(c.slowest!) - 6} width={12} height={12} rx={2} className={`iv-dot iv-${sb}`} transform={`rotate(45 ${x} ${y(c.slowest!)})`} />
+                <rect x={x - w / 2} y={y(c.target[0] - TOL)} width={w} height={Math.max(18, y(c.target[1] + TOL) - y(c.target[0] - TOL))} rx={6} className={"iv-band" + (c.autoZone ? " auto" : "")} />
+                <rect x={x - 7} y={y(c.fastest!) - 7} width={14} height={Math.max(14, y(c.slowest!) - y(c.fastest!) + 14)} rx={7} className="iv-capsule" />
+                <circle cx={x} cy={y(c.fastest!)} r={hover === i ? 7 : 5.5} className={`iv-dot iv-${fb}`} />
+                <circle cx={x} cy={y(c.slowest!)} r={hover === i ? 7 : 5.5} className={`iv-dot iv-${sb}`} />
+                <rect x={x - w / 2} y={y(c.actual) - 3} width={w} height={6} rx={3} className={`iv-avg iv-${ab}`} />
+                {bw > 70 && (
+                  <text x={x + w / 2 + 4} y={y(c.actual) + 4} className="chart-label iv-avg-label">
+                    {fmtPace(c.actual)}
+                  </text>
+                )}
                 {(i % Math.max(1, Math.ceil(46 / bw)) === 0 || hover === i) && (
                   <text x={x} y={H - pad.bottom + 16} textAnchor="middle" className={"chart-label" + (hover === i ? " hl" : "")}>
                     {fmt(c.date)}
@@ -224,20 +240,20 @@ function IntervalChart({ rows }: { rows: { day: ForecastDay; check: PaceCheck }[
               <b>
                 {h.day.dow} {fmt(h.check.date)}
               </b>{" "}
-              {h.day.text} · fastest <b className="num">{fmtPace(h.check.fastest!)}</b> ({offText(h.check.fastest!, h.check.target)}) · slowest{" "}
+              {h.day.text} · average <b className="num">{fmtPace(h.check.actual)}</b> ({offText(h.check.actual, h.check.target)}) · fastest <b className="num">{fmtPace(h.check.fastest!)}</b> ({offText(h.check.fastest!, h.check.target)}) · slowest{" "}
               <b className="num">{fmtPace(h.check.slowest!)}</b> ({offText(h.check.slowest!, h.check.target)}) · target {fmtPace(h.check.target[0])}
               {h.check.target[1] !== h.check.target[0] ? `–${fmtPace(h.check.target[1])}` : ""} · {h.check.measured}
             </>
           ) : (
             <span className="iv-legend">
               <span>
-                <i className="iv-dot-l iv-on" /> fastest interval
+                <i className="iv-avg-l" /> average of the work
               </span>
               <span>
-                <i className="iv-dot-l iv-on sq" /> slowest interval
+                <i className="iv-capsule-l" /> fastest to slowest interval
               </span>
               <span>
-                <i className="iv-band-l" /> target range (±3 s)
+                <i className="iv-band-l" /> target range (±5 s)
               </span>
               <span>
                 <i className="iv-band-l auto" /> before the plan: nearest training pace

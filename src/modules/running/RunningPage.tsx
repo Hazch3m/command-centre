@@ -23,18 +23,19 @@ import { PlanEditor } from "./PlanEditor";
 import { PlanList } from "./PlanList";
 import { PlanWeekView } from "./PlanWeekView";
 
-type Tab = "plan" | "list" | "week" | "runs" | "pace" | "edit" | "races" | "progress" | "paces";
+type Tab = "plan" | "runs" | "pace" | "edit" | "progress";
 const TABS: { id: Tab; label: string }[] = [
   { id: "plan", label: "Plan" },
-  { id: "list", label: "All weeks" },
-  { id: "week", label: "Week by week" },
-  { id: "runs", label: "All runs" },
+  { id: "runs", label: "Runs" },
   { id: "pace", label: "Pace on point" },
+  { id: "progress", label: "Races & progress" },
   { id: "edit", label: "Edit plan" },
-  { id: "races", label: "Races & benchmarks" },
-  { id: "progress", label: "Progression" },
-  { id: "paces", label: "Paces & strength" },
 ];
+const PLAN_VIEWS = [
+  { id: "week", label: "Week" },
+  { id: "list", label: "All weeks" },
+  { id: "six", label: "6 weeks" },
+] as const;
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const STATUS_LABEL: Record<BenchStatus, string> = {
   "on-track": "On track",
@@ -64,6 +65,7 @@ export function RunningPage() {
   const today = useToday();
   const { plan, planError, runs = [], connected, sync } = useRunningData();
   const [tab, setTab] = useState<Tab>("plan");
+  const [view, setView] = useState<(typeof PLAN_VIEWS)[number]["id"]>("week");
 
   const data = useMemo(() => {
     if (!plan) return null;
@@ -107,14 +109,27 @@ export function RunningPage() {
       </nav>
 
       <div className="page-body" key={tab}>
-        {tab === "week" && <WeekCalendar plan={plan} runs={runs} count={6} />}
         {tab === "pace" && <PaceOnPointTab plan={plan} runs={runs} />}
         {tab === "runs" && <RunsTab runs={runs} plan={plan} />}
         {tab === "edit" && <PlanEditor plan={plan} />}
 
-        {tab === "plan" && <PlanWeekView plan={plan} runs={runs} />}
-        {tab === "list" && <PlanList plan={plan} runs={runs} />}
-        {tab === "races" && (
+        {tab === "plan" && (
+          <>
+            <div className="plan-view-switch">
+              <span className="segmented small-seg">
+                {PLAN_VIEWS.map((v) => (
+                  <button key={v.id} className={view === v.id ? "on" : ""} onClick={() => setView(v.id)}>
+                    {v.label}
+                  </button>
+                ))}
+              </span>
+            </div>
+            {view === "week" && <PlanWeekView plan={plan} runs={runs} />}
+            {view === "list" && <PlanList plan={plan} runs={runs} />}
+            {view === "six" && <WeekCalendar plan={plan} runs={runs} count={6} />}
+          </>
+        )}
+        {tab === "progress" && (
           <>
             <div className="tiles">
               {data.upcoming.slice(0, 4).map((r) => (
@@ -243,8 +258,12 @@ export function RunningPage() {
         )}
 
 
-        {tab === "paces" && (
-          <>
+        {tab === "plan" && (
+          <details className="fold">
+            <summary>
+              <h3>Training paces, weekly shape and strength</h3>
+              <span className="muted small">the reference tables from the plan</span>
+            </summary>
             <table className="table">
               <thead>
                 <tr>
@@ -310,7 +329,7 @@ export function RunningPage() {
                 <li key={x}>{x}</li>
               ))}
             </ul>
-          </>
+          </details>
         )}
       </div>
     </div>

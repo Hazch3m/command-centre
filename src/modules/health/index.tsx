@@ -3,7 +3,8 @@ import { backend } from "@backend";
 import { useDataVersion } from "../../core/events";
 import { addDays, relativeDayLabel, useEvery, useToday } from "../../core/time";
 import { useQuery } from "../../core/useQuery";
-import { LineChart } from "../../shell/charts";
+import { LineChart, type LineSeries } from "../../shell/charts";
+import { MetricModal } from "../../shell/MetricModal";
 import { CardHeader, ErrorNote } from "../../shell/ui";
 import type { CardProps, DashboardModule } from "../types";
 import { duration } from "../running/stats";
@@ -13,12 +14,72 @@ import { trimp } from "../running/vo2";
 import { ownReadiness, type Readiness } from "./readiness";
 
 /** Heart-rate training load per day (same TRIMP as the Fitness page), for the readiness score. */
-function useDailyLoad() {
+function useDailyLoad(days = 60) {
   const version = useDataVersion("running");
   return useQuery(async () => {
-    const [runs, cfg] = await Promise.all([loadRuns(addDays(new Date().toISOString().slice(0, 10), -60)), loadFitnessConfig()]);
+    const [runs, cfg] = await Promise.all([loadRuns(addDays(new Date().toISOString().slice(0, 10), -days)), loadFitnessConfig()]);
     return runs.map((r) => ({ date: r.date, load: trimp(r.moving_time, r.avg_hr, cfg) }));
-  }, [version]).data;
+  }, [version, days]).data;
+}
+
+type Field = "readiness" | "hrv" | "rhr" | "sleep" | "bb" | "vo2";
+
+/** A health measure over up to two years, in a pop-up with a range choice. */
+function HealthModal({ field, garminReadiness, onClose }: { field: Field; garminReadiness: boolean; onClose: () => void }) {
+  const today = useToday();
+  const v = useDataVersion("health");
+  const rows = useQuery(() => loadHealth(760), [v]).data ?? [];
+  const load = useDailyLoad(800);
+  const pts = (f: keyof HealthDay, scale = 1) => rows.filter((r) => r[f] != null).map((r) => ({ x: r.date, y: (r[f] as number) * scale }));
+  let title = "";
+  let unit = "";
+  let digits = 0;
+  let format: ((v: number) => string) | undefined;
+  let series: LineSeries[] = [];
+  let note = "";
+  if (field === "readiness") {
+    title = "Readiness";
+    if (garminReadiness) series = [{ name: "Garmin training readiness", kind: "line", className: "s-trend", points: pts("readiness") }];
+    else {
+      const own: { x: string; y: number }[] = [];
+      if (load) for (let d = addDays(today, -730); d <= today; d = addDays(d, 1)) {
+        const r = ownReadiness(rows, d, load);
+        if (r) own.push({ x: d, y: r.score });
+      }
+      series = [{ name: "Readiness (worked out here)", kind: "line", className: "s-trend", points: own }, { name: "Day", kind: "dots", className: "s-est", points: own }];
+      note = "From last night's HRV against your 30-day normal, sleep, resting heart rate and training load.";
+    }
+  } else if (field === "hrv") {
+    title = "HRV (overnight)";
+    unit = " ms";
+    series = [
+      { name: "Last night", kind: "dots", className: "s-est", points: pts("hrv") },
+      { name: "7-day average", kind: "line", className: "s-trend", points: pts("hrv_week") },
+      { name: "Normal range, low", kind: "dashed", className: "s-goal", points: pts("hrv_low") },
+      { name: "Normal range, high", kind: "dashed", className: "s-goal", points: pts("hrv_high") },
+    ];
+  } else if (field === "rhr") {
+    title = "Resting heart rate";
+    unit = " bpm";
+    series = [{ name: "Resting HR", kind: "line", className: "s-acute", points: pts("rhr") }];
+  } else if (field === "sleep") {
+    title = "Sleep";
+    unit = " h";
+    digits = 1;
+    format = (x) => `${Math.floor(x)}:${String(Math.round((x % 1) * 60)).padStart(2, "0")}`;
+    series = [{ name: "Time asleep", kind: "line", className: "s-trend", points: pts("sleep_secs", 1 / 3600) }, { name: "Night", kind: "dots", className: "s-est", points: pts("sleep_secs", 1 / 3600) }];
+  } else if (field === "bb") {
+    title = "Body Battery";
+    series = [
+      { name: "Daily high", kind: "line", className: "s-trend", points: pts("bb_high") },
+      { name: "Daily low", kind: "line", className: "s-acute", points: pts("bb_low") },
+    ];
+  } else {
+    title = "VO2 max (Garmin)";
+    digits = 1;
+    series = [{ name: "Garmin VO2 max", kind: "line", className: "s-trend", points: pts("vo2") }];
+  }
+  return <MetricModal title={title} series={series} unit={unit} digits={digits} format={format} note={note} onClose={onClose} />;
 }
 import { getHealthSync, latest, loadHealth, migrations, syncHealth, type HealthDay } from "./data";
 
@@ -46,9 +107,9 @@ function Spark({ values, invert }: { values: (number | null)[]; invert?: boolean
   );
 }
 
-function Metric({ label, value, unit, note, tone, spark, when }: { label: string; value: string; unit?: string; note?: string; tone?: string; spark?: (number | null)[]; when?: string }) {
+function Metric({ label, value, unit, note, tone, spark, when, onOpen }: { label: string; value: string; unit?: string; note?: string; tone?: string; spark?: (number | null)[]; when?: string; onOpen?: () => void }) {
   return (
-    <div className="hm" title={when}>
+    <div className={"hm" + (onOpen ? " clickable" : "")} title={when} onClick={onOpen} role={onOpen ? "button" : undefined} tabIndex={onOpen ? 0 : undefined} onKeyDown={onOpen ? (e) => e.key === "Enter" && onOpen() : undefined}>
       <div className="label">{label}</div>
       <div className="hm-value">
         <span className={"num " + (tone ?? "")}>{value}</span>
@@ -124,6 +185,8 @@ function Metrics({ rows, today, detail }: { rows: HealthDay[]; today: string; de
   const load = useDailyLoad();
   const ownFor = (d: string): Readiness | null => (load ? ownReadiness(rows, d, load) : null);
   const own = ownFor(today);
+  const [open, setOpen] = useState<Field | null>(null);
+  const garminReady = L.readiness != null && L.dates.readiness === today;
   const last14 = Array.from({ length: 14 }, (_, i) => addDays(today, i - 13));
   const by = new Map(rows.map((r) => [r.date, r]));
   const series = (f: keyof HealthDay) => last14.map((d) => (by.get(d)?.[f] as number | null) ?? null);
@@ -142,6 +205,7 @@ function Metrics({ rows, today, detail }: { rows: HealthDay[]; today: string; de
           note={nice(L.readiness_level) || nice(L.readiness_note)}
           spark={series("readiness")}
           when="Garmin"
+          onOpen={() => setOpen("readiness")}
         />
       ) : (
         <Metric
@@ -150,6 +214,7 @@ function Metrics({ rows, today, detail }: { rows: HealthDay[]; today: string; de
           tone={READY_TONE(own?.score)}
           note={own ? `${own.level} · ${own.advice}${own.limiter ? ` · held back by ${own.limiter.name.toLowerCase()}` : ""}` : "Needs last night's HRV or sleep"}
           spark={ownSeries}
+          onOpen={() => setOpen("readiness")}
           when={own ? own.parts.map((p) => `${p.name} ${Math.round(p.score)}: ${p.note}`).join("\n") + "\n(Worked out from HRV, sleep, resting HR and training load)" : undefined}
         />
       )}
@@ -160,6 +225,7 @@ function Metrics({ rows, today, detail }: { rows: HealthDay[]; today: string; de
         tone={L.hrv_status ? HRV_TONE[L.hrv_status] : ""}
         note={`${L.hrv_week != null ? `7-day ${Math.round(L.hrv_week)}` : ""}${L.hrv_low != null && L.hrv_high != null ? ` · normal ${Math.round(L.hrv_low)}–${Math.round(L.hrv_high)}` : ""}${L.hrv_status ? ` · ${nice(L.hrv_status)}` : ""}`}
         spark={series("hrv")}
+        onOpen={() => setOpen("hrv")}
         when={when("hrv")}
       />
       <Metric
@@ -169,6 +235,7 @@ function Metrics({ rows, today, detail }: { rows: HealthDay[]; today: string; de
         note={rhr7 != null && rhrPrev != null ? `7-day ${rhr7.toFixed(0)} (${rhr7 - rhrPrev >= 0 ? "+" : ""}${(rhr7 - rhrPrev).toFixed(1)} vs week before)` : undefined}
         tone={rhr7 != null && rhrPrev != null && rhr7 - rhrPrev > 3 ? "tone-warn" : ""}
         spark={series("rhr")}
+        onOpen={() => setOpen("rhr")}
         when={when("rhr")}
       />
       <Metric
@@ -177,6 +244,7 @@ function Metrics({ rows, today, detail }: { rows: HealthDay[]; today: string; de
         unit="h"
         note={[L.sleep_score != null ? `Score ${Math.round(L.sleep_score)}` : null, L.dates.sleep_secs && L.dates.sleep_secs !== today ? `night to ${relativeDayLabel(L.dates.sleep_secs, today).toLowerCase()}` : L.sleep_end ? `woke ${L.sleep_end}` : null].filter(Boolean).join(" · ") || undefined}
         spark={series("sleep_secs")}
+        onOpen={() => setOpen("sleep")}
         when={when("sleep_secs")}
       />
       <Metric
@@ -185,10 +253,12 @@ function Metrics({ rows, today, detail }: { rows: HealthDay[]; today: string; de
         note={L.bb_high != null ? `High ${Math.round(L.bb_high)} · low ${Math.round(L.bb_low ?? 0)}` : undefined}
         tone={READY_TONE(L.bb_now ?? L.bb_high)}
         spark={series("bb_high")}
+        onOpen={() => setOpen("bb")}
         when={when("bb_high")}
       />
-      <Metric label="VO2 max (Garmin)" value={L.vo2 != null ? L.vo2.toFixed(1) : "–"} spark={series("vo2")} when={when("vo2")} />
+      <Metric label="VO2 max (Garmin)" value={L.vo2 != null ? L.vo2.toFixed(1) : "–"} spark={series("vo2")} when={when("vo2")} onOpen={() => setOpen("vo2")} />
     </div>
+    {open && <HealthModal field={open} garminReadiness={garminReady} onClose={() => setOpen(null)} />}
     {detail && own && !(L.readiness != null && L.dates.readiness === today) && (
       <div className="ready-parts">
         <span className="label">Readiness today, worked out from</span>

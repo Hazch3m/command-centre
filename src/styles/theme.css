@@ -4349,3 +4349,36 @@ details.fold[open] { padding-bottom: 0.7rem; }
 .iv-span { stroke-width: 3; stroke-linecap: round; }
 .iv-band-l, .iv-band-l.auto { width: 1.4rem; height: 0.8rem; }
 .iv-band-l.auto { border-width: 2px; }
+
+/* ---- v16 ---- */
+button.recent-cell { text-align: left; color: var(--text); border: 1px solid var(--line); cursor: pointer; font: inherit; transition: border-color 0.15s, background 0.15s; }
+button.recent-cell:hover { border-color: var(--line-2); background: color-mix(in srgb, var(--text) 3%, var(--card-2)); }
+button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0 0 var(--c-running); }
+.recent-chart-head { display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.4rem; flex-wrap: wrap; }
+.recent-chart-head .segmented { margin-left: auto; }
+
+/* Calendar: clearer lines between days and hours */
+.cal-day-col { border-left: 1px solid var(--line-2); background-image: linear-gradient(to bottom, color-mix(in srgb, var(--line-2) 70%, transparent) 1px, transparent 1px); }
+.cal-grid-head > span, .cal-grid-allday > span { border-left: 1px solid var(--line-2); padding-left: 0.35rem; }
+.cal-grid-head > span:first-child, .cal-grid-allday > span:first-child { border-left: 0; }
+.cal-month { gap: 0 !important; border: 1px solid var(--line-2); border-radius: 10px; overflow: hidden; }
+.cal-month-day { border-right: 1px solid var(--line-2) !important; border-bottom: 1px solid var(--line-2) !important; border-radius: 0 !important; }
+.cal-month-day:nth-child(7n) { border-right: 0 !important; }
+.cal-month-dow { border-bottom: 1px solid var(--line-2); padding-bottom: 0.2rem; }
+.iv-band { fill: color-mix(in srgb, var(--run-easy) 20%, transparent); stroke: color-mix(in srgb, var(--run-easy) 60%, transparent); stroke-width: 1.5; }
+.iv-capsule { fill: color-mix(in srgb, var(--text) 18%, transparent); }
+.iv-avg { stroke: var(--card-2); stroke-width: 1; }
+.iv-avg.iv-on { fill: var(--run-easy); }
+.iv-avg.iv-fast { fill: var(--c-calendar); }
+.iv-avg.iv-slow { fill: var(--run-speed); }
+.iv-avg-label { fill: var(--text); font-weight: 600; }
+.iv-span { display: none; }
+.iv-avg-l { display: inline-block; width: 1.2rem; height: 0.3rem; border-radius: 2px; background: var(--run-easy); vertical-align: 0.15rem; }
+.iv-capsule-l { display: inline-block; width: 0.5rem; height: 0.9rem; border-radius: 4px; background: color-mix(in srgb, var(--text) 25%, transparent); vertical-align: -0.1rem; }
+.plan-view-switch { display: flex; justify-content: flex-end; margin: -0.2rem 0 0.5rem; }
+.hm.clickable { cursor: pointer; transition: border-color 0.15s, transform 0.15s; }
+.hm.clickable:hover { border-color: var(--line-2) !important; transform: translateY(-1px); }
+.metric-modal { width: min(1100px, 92vw); max-width: none; }
+.metric-modal .modal-header { display: flex; align-items: center; gap: 0.8rem; }
+.metric-modal .modal-header h2 { margin-right: auto; }
+.metric-stats { display: flex; gap: 1.4rem; margin: 0.2rem 0 0.6rem; color: var(--text-2); }
