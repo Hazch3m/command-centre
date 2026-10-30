@@ -76,7 +76,8 @@ export function ownReadiness(rows: HealthDay[], date: string, dailyLoad: { date:
     parts.push({ name: "Training load", w: 0.3, score: clamp(sc), note: `last 7 days ${Math.round((r) * 100)}% of usual${y1 > 120 ? " · hard day yesterday" : ""}` });
   }
 
-  if (!parts.length || !parts.some((p) => p.name !== "Training load")) return null;
+  // Without last night (HRV or sleep) there is nothing to say about today yet.
+  if (!parts.some((p) => p.name === "HRV" || p.name === "Sleep")) return null;
   const wsum = parts.reduce((a, p) => a + p.w, 0);
   const score = Math.round(parts.reduce((a, p) => a + p.score * p.w, 0) / wsum);
   const level = score >= 75 ? "High" : score >= 50 ? "Moderate" : score >= 25 ? "Low" : "Poor";
