@@ -4183,3 +4183,16 @@ select:focus {
 .runs-row .rt-pill { justify-self: start; }
 :root[data-theme="light"] .tab.on,
 :root[data-theme="light"] .pw-now { color: #fff; }
+.tab-page { --mod: var(--accent); }
+.tab-page-running { --mod: var(--c-running); }
+.tab-page-fitness { --mod: var(--c-fitness); }
+.tab-page-health { --mod: var(--c-health); }
+.tab-page-calendar { --mod: var(--c-calendar); }
+.tab-page-tasks { --mod: var(--c-tasks); }
+.tab-page-checklist { --mod: var(--c-checklist); }
+.subpage {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--mod) 8%, var(--card)) 0, var(--card) 6rem);
+  border-top: 3px solid color-mix(in srgb, var(--mod) 75%, transparent);
+}
+.subpage h1 { color: color-mix(in srgb, var(--mod) 35%, var(--text)); }
+.plist-top { background: color-mix(in srgb, var(--mod) 4%, var(--card)); }
