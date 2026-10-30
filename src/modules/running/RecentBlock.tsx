@@ -8,7 +8,7 @@ import { openWeek } from "./RunView";
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const fmt = (d: string) => `${parseKey(d).getDate()} ${MON[parseKey(d).getMonth()]}`;
-const paceStr = (s: number | null) => (s == null ? "–" : `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`);
+const paceStr = (v: number | null) => (v == null ? "–" : `${Math.floor(Math.round(v) / 60)}:${String(Math.round(v) % 60).padStart(2, "0")}`);
 
 type Key = "km" | "runs" | "hours" | "long" | "pace" | "hr" | "climb";
 type Row = { key: Key; label: string; get: (p: PeriodStats) => number | null; show: (v: number | null) => string; unit: string; /** Is a bigger number better? */ up: boolean | null };

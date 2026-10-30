@@ -38,3 +38,11 @@ describe("pace on point", () => {
     expect(checkRun(day("8 × 400 m at 3:12–3:15, 200 m jog", "key", "3:12–3:15"), run(10, 2700), { splits: [300, 280].map(split), bestEfforts: [] })).toBeNull();
   });
 });
+
+describe("pace text", () => {
+  it("never shows 60 seconds", async () => {
+    const { fmtPace } = await import("./pace");
+    expect(fmtPace(239.6)).toBe("4:00");
+    expect(fmtPace(225)).toBe("3:45");
+  });
+});

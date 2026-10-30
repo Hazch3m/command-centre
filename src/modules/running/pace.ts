@@ -144,7 +144,10 @@ export const VERDICT_LABEL: Record<PaceVerdict, string> = {
   "too-slow": "Too slow",
 };
 
-export const fmtPace = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+export const fmtPace = (secs: number) => {
+  const s = Math.round(secs); // round first, so 239.6 reads 4:00, not 3:60
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+};
 
 /**
  * A quick run that wasn't a planned session (before the plan started, or an
