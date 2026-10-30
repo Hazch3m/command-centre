@@ -19,11 +19,11 @@ export const DEFAULTS: Record<Orientation, Record<string, GridPos>> = {
   portrait: {
     running: { x: 0, y: 0, w: 13, h: 11 },
     fitness: { x: 13, y: 0, w: 11, h: 11 },
-    "training-week": { x: 0, y: 11, w: 24, h: 8 },
-    health: { x: 0, y: 19, w: 12, h: 11 },
-    checklist: { x: 12, y: 19, w: 12, h: 11 },
-    calendar: { x: 0, y: 30, w: 12, h: 18 },
-    tasks: { x: 12, y: 30, w: 12, h: 18 },
+    "training-week": { x: 0, y: 11, w: 24, h: 7 },
+    health: { x: 0, y: 18, w: 12, h: 9 },
+    checklist: { x: 12, y: 18, w: 12, h: 9 },
+    calendar: { x: 0, y: 27, w: 12, h: 21 },
+    tasks: { x: 12, y: 27, w: 12, h: 21 },
   },
   landscape: {
     running: { x: 0, y: 0, w: 8, h: 10 },
