@@ -1,7 +1,7 @@
 {
   "version": 1,
   "title": "Sub-2:45 Training Plan",
-  "exported": "2026-10-30",
+  "exported": "2026-10-30 v2",
   "source": "Claude doc: Sub-2:50 Training Plan — Nov 2026 to Edinburgh",
   "phases": [
     {
@@ -23,16 +23,34 @@
       "summary": "98–105 km, with long runs of 32–35 km at marathon pace. Ends with Killarney."
     },
     {
-      "name": "Summer",
-      "start": null,
-      "end": null,
-      "summary": "recover, then rebuild speed and base at 70–95 km."
+      "name": "Phase 5: Recovery (31 May – 13 Jun)",
+      "start": "2027-05-31",
+      "end": "2027-06-13",
+      "summary": "Two easy weeks after Edinburgh."
     },
     {
-      "name": "Autumn marathon block",
-      "start": null,
-      "end": null,
-      "summary": "100–120 km, long runs of 32–36 km with 20–26 km at 3:52–3:56/km, then the taper into Valencia."
+      "name": "Phase 6: Summer speed and base (14 Jun – 25 Jul)",
+      "start": "2027-06-14",
+      "end": "2027-07-25",
+      "summary": "Speed back first (VO2 and threshold), volume 65–95 km, long runs to 26 km, a summer 10k."
+    },
+    {
+      "name": "Phase 7: Transition (26 Jul – 8 Aug)",
+      "start": "2027-07-26",
+      "end": "2027-08-08",
+      "summary": "Volume past 100 km, long runs of 28–30 km."
+    },
+    {
+      "name": "Phase 8: Autumn marathon block (9 Aug – 31 Oct)",
+      "start": "2027-08-09",
+      "end": "2027-10-31",
+      "summary": "Three build weeks then an easier one; 110–125 km, 32–36 km long runs with 18–24 km at marathon pace, midweek 20–24 km; Lausanne half as a test."
+    },
+    {
+      "name": "Phase 9: Sharpen and taper (1 Nov – 5 Dec)",
+      "start": "2027-11-01",
+      "end": "2027-12-05",
+      "summary": "Two more big weeks, then a three-week taper into Valencia."
     }
   ],
   "races": [
@@ -86,8 +104,8 @@
     },
     {
       "date": "2027-10-24",
-      "approx": true,
-      "when": "Late October",
+      "approx": false,
+      "when": "Sun 24 Oct",
       "name": "Lausanne half",
       "target": "1:15:30–1:16:30",
       "role": "Autumn test"
@@ -686,6 +704,519 @@
         "fri": "Rest",
         "sat": "15 min shakeout",
         "sun": "Edinburgh Marathon, 30 May"
+      },
+      "notes": "Carb-load Fri–Sat at 8–10 g per kg"
+    },
+    {
+      "week": "30",
+      "start": "2027-05-31",
+      "end": "2027-06-06",
+      "phase": "Phase 5: Recovery (31 May – 13 Jun)",
+      "km": "24",
+      "kmMin": 24,
+      "kmMax": 24,
+      "sessions": {
+        "mon": "Rest",
+        "tue": "Rest",
+        "wed": "6 km very easy",
+        "thu": "Rest",
+        "fri": "8 km easy",
+        "sat": "Rest",
+        "sun": "10 km easy"
+      },
+      "notes": "After Edinburgh: easy only, walk if anything aches"
+    },
+    {
+      "week": "31",
+      "start": "2027-06-07",
+      "end": "2027-06-13",
+      "phase": "Phase 5: Recovery (31 May – 13 Jun)",
+      "km": "42",
+      "kmMin": 42,
+      "kmMax": 42,
+      "sessions": {
+        "mon": "Rest",
+        "tue": "8 km easy",
+        "wed": "10 km easy",
+        "thu": "Rest",
+        "fri": "8 km easy + 4 strides",
+        "sat": "Rest",
+        "sun": "16 km easy"
+      },
+      "notes": "Back to normal running by the weekend"
+    },
+    {
+      "week": "32",
+      "start": "2027-06-14",
+      "end": "2027-06-20",
+      "phase": "Phase 6: Summer speed and base (14 Jun – 25 Jul)",
+      "km": "64",
+      "kmMin": 64,
+      "kmMax": 64,
+      "sessions": {
+        "mon": "Rest",
+        "tue": "12 km with 8 × 400 m at 3:12–3:15, 200 m jog",
+        "wed": "12 km easy",
+        "thu": "10 km easy + 8 × 10 s hill sprints",
+        "fri": "Rest",
+        "sat": "10 km easy + 6 × 20 s strides",
+        "sun": "20 km easy"
+      },
+      "notes": "Speed comes back first; strength A and B again"
+    },
+    {
+      "week": "33",
+      "start": "2027-06-21",
+      "end": "2027-06-27",
+      "phase": "Phase 6: Summer speed and base (14 Jun – 25 Jul)",
+      "km": "79",
+      "kmMin": 79,
+      "kmMax": 79,
+      "sessions": {
+        "mon": "6 km recovery",
+        "tue": "14 km with 5 × 1 km at 3:15–3:18, 2 min jog",
+        "wed": "14 km easy",
+        "thu": "13 km with 3 × 10 min T at 3:35–3:38, 2 min jog",
+        "fri": "Rest",
+        "sat": "10 km easy + 6 × 20 s strides",
+        "sun": "22 km easy"
+      },
+      "notes": ""
+    },
+    {
+      "week": "34",
+      "start": "2027-06-28",
+      "end": "2027-07-04",
+      "phase": "Phase 6: Summer speed and base (14 Jun – 25 Jul)",
+      "km": "87",
+      "kmMin": 87,
+      "kmMax": 87,
+      "sessions": {
+        "mon": "8 km recovery",
+        "tue": "14 km with 6 × 1 km at 3:13–3:16, 2 min jog",
+        "wed": "15 km easy",
+        "thu": "14 km with 4 × 2 km T at 3:35–3:38, 90 s jog",
+        "fri": "Rest",
+        "sat": "12 km easy + 6 × 20 s strides",
+        "sun": "24 km easy"
+      },
+      "notes": ""
+    },
+    {
+      "week": "35",
+      "start": "2027-07-05",
+      "end": "2027-07-11",
+      "phase": "Phase 6: Summer speed and base (14 Jun – 25 Jul)",
+      "km": "62",
+      "kmMin": 62,
+      "kmMax": 62,
+      "sessions": {
+        "mon": "Rest",
+        "tue": "12 km with fartlek 10 × 1 min on, 1 min off",
+        "wed": "12 km easy",
+        "thu": "10 km easy + strides",
+        "fri": "Rest",
+        "sat": "8 km easy + 6 × 20 s strides",
+        "sun": "20 km easy"
+      },
+      "notes": "Easier week"
+    },
+    {
+      "week": "36",
+      "start": "2027-07-12",
+      "end": "2027-07-18",
+      "phase": "Phase 6: Summer speed and base (14 Jun – 25 Jul)",
+      "km": "74",
+      "kmMin": 74,
+      "kmMax": 74,
+      "sessions": {
+        "mon": "8 km recovery",
+        "tue": "13 km with 5 × 1 km at 3:24–3:27, 2 min jog",
+        "wed": "16 km easy",
+        "thu": "10 km easy + strides",
+        "fri": "Rest",
+        "sat": "7 km easy + 4 strides",
+        "sun": "10k race, 34:45 (about 20 km with warm-up and cool-down)"
+      },
+      "notes": "Summer 10k this weekend if there is one (target 34:45)"
+    },
+    {
+      "week": "37",
+      "start": "2027-07-19",
+      "end": "2027-07-25",
+      "phase": "Phase 6: Summer speed and base (14 Jun – 25 Jul)",
+      "km": "92",
+      "kmMin": 92,
+      "kmMax": 92,
+      "sessions": {
+        "mon": "8 km recovery",
+        "tue": "15 km with 8 × 800 m at 3:08–3:12, 90 s jog",
+        "wed": "16 km easy",
+        "thu": "15 km with 25 min T at 3:33–3:36",
+        "fri": "Rest",
+        "sat": "12 km easy + 6 × 20 s strides",
+        "sun": "26 km easy"
+      },
+      "notes": ""
+    },
+    {
+      "week": "38",
+      "start": "2027-07-26",
+      "end": "2027-08-01",
+      "phase": "Phase 7: Transition (26 Jul – 8 Aug)",
+      "km": "95",
+      "kmMin": 95,
+      "kmMax": 95,
+      "sessions": {
+        "mon": "8 km recovery",
+        "tue": "15 km with 3 × 3 km T at 3:34–3:37, 2 min jog",
+        "wed": "18 km easy",
+        "thu": "12 km easy + strides",
+        "fri": "Rest",
+        "sat": "14 km easy + 6 × 20 s strides",
+        "sun": "28 km easy"
+      },
+      "notes": "Volume up; speed stays"
+    },
+    {
+      "week": "39",
+      "start": "2027-08-02",
+      "end": "2027-08-08",
+      "phase": "Phase 7: Transition (26 Jul – 8 Aug)",
+      "km": "104",
+      "kmMin": 104,
+      "kmMax": 104,
+      "sessions": {
+        "mon": "10 km recovery",
+        "tue": "16 km with 6 × 1 km at 3:13–3:16, 90 s jog",
+        "wed": "20 km easy",
+        "thu": "14 km with 20 min T at 3:33–3:36",
+        "fri": "Rest",
+        "sat": "14 km easy + 6 × 20 s strides",
+        "sun": "30 km easy"
+      },
+      "notes": ""
+    },
+    {
+      "week": "40",
+      "start": "2027-08-09",
+      "end": "2027-08-15",
+      "phase": "Phase 8: Autumn marathon block (9 Aug – 31 Oct)",
+      "km": "106",
+      "kmMin": 106,
+      "kmMax": 106,
+      "sessions": {
+        "mon": "10 km recovery",
+        "tue": "18 km with 4 × 4 km at HMP 3:35–3:38, 2 min jog",
+        "wed": "20 km medium-long",
+        "thu": "14 km easy + strides",
+        "fri": "Rest",
+        "sat": "14 km easy",
+        "sun": "30 km, last 10 at 3:52–3:56"
+      },
+      "notes": "Autumn block starts"
+    },
+    {
+      "week": "41",
+      "start": "2027-08-16",
+      "end": "2027-08-22",
+      "phase": "Phase 8: Autumn marathon block (9 Aug – 31 Oct)",
+      "km": "110",
+      "kmMin": 110,
+      "kmMax": 110,
+      "sessions": {
+        "mon": "10 km recovery",
+        "tue": "17 km with 6 × 1.6 km at 3:25–3:28, 90 s jog",
+        "wed": "22 km medium-long",
+        "thu": "14 km easy + strides",
+        "fri": "Rest",
+        "sat": "15 km easy",
+        "sun": "32 km easy"
+      },
+      "notes": ""
+    },
+    {
+      "week": "42",
+      "start": "2027-08-23",
+      "end": "2027-08-29",
+      "phase": "Phase 8: Autumn marathon block (9 Aug – 31 Oct)",
+      "km": "115",
+      "kmMin": 115,
+      "kmMax": 115,
+      "sessions": {
+        "mon": "10 km recovery",
+        "tue": "20 km with 2 × 8 km at MP 3:52–3:56, 2 min jog",
+        "wed": "22 km medium-long",
+        "thu": "15 km easy + strides",
+        "fri": "Rest",
+        "sat": "15 km easy",
+        "sun": "33 km, 18 at 3:54–3:58"
+      },
+      "notes": ""
+    },
+    {
+      "week": "43",
+      "start": "2027-08-30",
+      "end": "2027-09-05",
+      "phase": "Phase 8: Autumn marathon block (9 Aug – 31 Oct)",
+      "km": "93",
+      "kmMin": 93,
+      "kmMax": 93,
+      "sessions": {
+        "mon": "8 km recovery",
+        "tue": "15 km with 3 × 3 km at HMP 3:35–3:38, 2 min jog",
+        "wed": "18 km easy",
+        "thu": "12 km easy + strides",
+        "fri": "Rest",
+        "sat": "12 km easy",
+        "sun": "28 km easy"
+      },
+      "notes": "Easier week"
+    },
+    {
+      "week": "44",
+      "start": "2027-09-06",
+      "end": "2027-09-12",
+      "phase": "Phase 8: Autumn marathon block (9 Aug – 31 Oct)",
+      "km": "118",
+      "kmMin": 118,
+      "kmMax": 118,
+      "sessions": {
+        "mon": "10 km recovery",
+        "tue": "19 km with 5 × 3 km at 3:30–3:33, 2 min jog",
+        "wed": "24 km medium-long",
+        "thu": "15 km easy + strides",
+        "fri": "Rest",
+        "sat": "16 km easy",
+        "sun": "34 km easy"
+      },
+      "notes": ""
+    },
+    {
+      "week": "45",
+      "start": "2027-09-13",
+      "end": "2027-09-19",
+      "phase": "Phase 8: Autumn marathon block (9 Aug – 31 Oct)",
+      "km": "121",
+      "kmMin": 121,
+      "kmMax": 121,
+      "sessions": {
+        "mon": "10 km recovery",
+        "tue": "20 km with 3 × 5 km at HMP 3:35–3:38, 2 min jog",
+        "wed": "24 km medium-long",
+        "thu": "16 km easy + strides",
+        "fri": "Rest",
+        "sat": "16 km easy",
+        "sun": "35 km, 22 at 3:52–3:56"
+      },
+      "notes": ""
+    },
+    {
+      "week": "46",
+      "start": "2027-09-20",
+      "end": "2027-09-26",
+      "phase": "Phase 8: Autumn marathon block (9 Aug – 31 Oct)",
+      "km": "122",
+      "kmMin": 122,
+      "kmMax": 122,
+      "sessions": {
+        "mon": "10 km recovery",
+        "tue": "20 km with 2 × 10 km at MP 3:52–3:56, 3 min jog",
+        "wed": "24 km medium-long",
+        "thu": "16 km easy + strides",
+        "fri": "Rest",
+        "sat": "16 km easy",
+        "sun": "36 km easy"
+      },
+      "notes": "Biggest week"
+    },
+    {
+      "week": "47",
+      "start": "2027-09-27",
+      "end": "2027-10-03",
+      "phase": "Phase 8: Autumn marathon block (9 Aug – 31 Oct)",
+      "km": "95",
+      "kmMin": 95,
+      "kmMax": 95,
+      "sessions": {
+        "mon": "8 km recovery",
+        "tue": "15 km with 8 × 1 km at 3:25–3:28, 75 s jog",
+        "wed": "18 km easy",
+        "thu": "12 km easy + strides",
+        "fri": "Rest",
+        "sat": "12 km easy",
+        "sun": "30 km easy"
+      },
+      "notes": "Easier week"
+    },
+    {
+      "week": "48",
+      "start": "2027-10-04",
+      "end": "2027-10-10",
+      "phase": "Phase 8: Autumn marathon block (9 Aug – 31 Oct)",
+      "km": "121",
+      "kmMin": 121,
+      "kmMax": 121,
+      "sessions": {
+        "mon": "10 km recovery",
+        "tue": "20 km with 4 × 5 km at HMP 3:35–3:38, 2 min jog",
+        "wed": "24 km medium-long",
+        "thu": "16 km easy + strides",
+        "fri": "Rest",
+        "sat": "16 km easy",
+        "sun": "35 km, 24 at 3:52–3:56"
+      },
+      "notes": ""
+    },
+    {
+      "week": "49",
+      "start": "2027-10-11",
+      "end": "2027-10-17",
+      "phase": "Phase 8: Autumn marathon block (9 Aug – 31 Oct)",
+      "km": "122",
+      "kmMin": 122,
+      "kmMax": 122,
+      "sessions": {
+        "mon": "10 km recovery",
+        "tue": "18 km with 6 × 2 km at 3:28–3:31, 90 s jog",
+        "wed": "24 km medium-long",
+        "thu": "16 km easy + strides",
+        "fri": "Rest",
+        "sat": "18 km easy",
+        "sun": "36 km easy"
+      },
+      "notes": ""
+    },
+    {
+      "week": "50",
+      "start": "2027-10-18",
+      "end": "2027-10-24",
+      "phase": "Phase 8: Autumn marathon block (9 Aug – 31 Oct)",
+      "km": "93",
+      "kmMin": 93,
+      "kmMax": 93,
+      "sessions": {
+        "mon": "10 km recovery",
+        "tue": "16 km with 3 × 3 km at HMP 3:35–3:38, 2 min jog",
+        "wed": "20 km medium-long",
+        "thu": "12 km easy + strides",
+        "fri": "Rest",
+        "sat": "7 km easy + 4 strides",
+        "sun": "Lausanne half, 1:15:30–1:16:30 (about 28 km with warm-up and cool-down)"
+      },
+      "notes": "Lausanne half on Sunday: 1:15:30–1:16:30"
+    },
+    {
+      "week": "51",
+      "start": "2027-10-25",
+      "end": "2027-10-31",
+      "phase": "Phase 8: Autumn marathon block (9 Aug – 31 Oct)",
+      "km": "112",
+      "kmMin": 112,
+      "kmMax": 112,
+      "sessions": {
+        "mon": "8 km recovery",
+        "tue": "14 km easy",
+        "wed": "22 km medium-long",
+        "thu": "16 km with 10 km at MP 3:52–3:56",
+        "fri": "Rest",
+        "sat": "18 km easy",
+        "sun": "34 km, 20 at 3:52–3:56"
+      },
+      "notes": ""
+    },
+    {
+      "week": "52",
+      "start": "2027-11-01",
+      "end": "2027-11-07",
+      "phase": "Phase 9: Sharpen and taper (1 Nov – 5 Dec)",
+      "km": "115",
+      "kmMin": 115,
+      "kmMax": 115,
+      "sessions": {
+        "mon": "10 km recovery",
+        "tue": "18 km with 3 × 5 km at HMP 3:35–3:38, 2 min jog",
+        "wed": "22 km medium-long",
+        "thu": "15 km easy + strides",
+        "fri": "Rest",
+        "sat": "15 km easy",
+        "sun": "35 km, 26 at 3:52–3:56"
+      },
+      "notes": "Last big week"
+    },
+    {
+      "week": "53",
+      "start": "2027-11-08",
+      "end": "2027-11-14",
+      "phase": "Phase 9: Sharpen and taper (1 Nov – 5 Dec)",
+      "km": "115",
+      "kmMin": 115,
+      "kmMax": 115,
+      "sessions": {
+        "mon": "10 km recovery",
+        "tue": "18 km with 2 × 8 km at MP 3:52–3:56, 2 min jog",
+        "wed": "22 km medium-long",
+        "thu": "15 km easy + strides",
+        "fri": "Rest",
+        "sat": "16 km easy",
+        "sun": "34 km easy"
+      },
+      "notes": ""
+    },
+    {
+      "week": "54",
+      "start": "2027-11-15",
+      "end": "2027-11-21",
+      "phase": "Phase 9: Sharpen and taper (1 Nov – 5 Dec)",
+      "km": "92",
+      "kmMin": 92,
+      "kmMax": 92,
+      "sessions": {
+        "mon": "8 km recovery",
+        "tue": "16 km with 3 × 4 km at HMP 3:35–3:38, 2 min jog",
+        "wed": "18 km easy",
+        "thu": "12 km easy + strides",
+        "fri": "Rest",
+        "sat": "12 km easy",
+        "sun": "26 km, 14 at MP"
+      },
+      "notes": "Taper begins"
+    },
+    {
+      "week": "55",
+      "start": "2027-11-22",
+      "end": "2027-11-28",
+      "phase": "Phase 9: Sharpen and taper (1 Nov – 5 Dec)",
+      "km": "77",
+      "kmMin": 77,
+      "kmMax": 77,
+      "sessions": {
+        "mon": "8 km recovery",
+        "tue": "14 km with 3 × 3 km at MP 3:52–3:55, 2 min jog",
+        "wed": "15 km easy",
+        "thu": "10 km easy + strides",
+        "fri": "Rest",
+        "sat": "10 km easy",
+        "sun": "20 km, 8 at MP"
+      },
+      "notes": ""
+    },
+    {
+      "week": "56",
+      "start": "2027-11-29",
+      "end": "2027-12-05",
+      "phase": "Phase 9: Sharpen and taper (1 Nov – 5 Dec)",
+      "km": "46",
+      "kmMin": 46,
+      "kmMax": 46,
+      "sessions": {
+        "mon": "7 km recovery",
+        "tue": "10 km with 3 × 1 km at MP",
+        "wed": "10 km easy",
+        "thu": "6 km + strides",
+        "fri": "Rest",
+        "sat": "15 min shakeout",
+        "sun": "Valencia Marathon, 5 Dec"
       },
       "notes": "Carb-load Fri–Sat at 8–10 g per kg"
     }

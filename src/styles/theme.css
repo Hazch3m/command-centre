@@ -4314,3 +4314,38 @@ select:focus {
 .iv-band-l.auto { background: transparent; border: 1px dashed var(--text-2); }
 .card:not(.card-page) .chart-readout { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card:not(.card-page) .chart-legend { flex-wrap: nowrap; }
+.s-goal .chart-diamond { fill: var(--warn); stroke: var(--card-2); stroke-width: 1.5; }
+details.fold { margin: 0.8rem 0; border: 1px solid var(--line); border-radius: 12px; background: var(--card-2); padding: 0 0.9rem; }
+details.fold > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 0.8rem; padding: 0.55rem 0; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary::after { content: "▸"; margin-left: auto; color: var(--muted); }
+details.fold[open] > summary::after { content: "▾"; }
+details.fold > summary h3 { margin: 0; font-size: 0.92rem; }
+details.fold[open] { padding-bottom: 0.7rem; }
+.pred-chart { margin-bottom: 0.6rem; }
+
+/* ---- v15: calmer colour — solid surfaces, colour only in thin accents ---- */
+.card { background: var(--card); border: 1px solid var(--line); border-top: 2px solid var(--mod); }
+.card-header h2::before { box-shadow: none; width: 0.45rem; height: 0.45rem; }
+.subpage { background: var(--card); border: 1px solid var(--line); border-top: 2px solid var(--mod); }
+.subpage .chart, .card-page .chart, .run-modal .chart { background: var(--card-2); border: 1px solid var(--line); }
+.card:not(.card-page) .chart { background: var(--card-2); border: 1px solid var(--line); }
+.tile, .hm, .run-stat, .goal-card { background: var(--card-2) !important; border: 1px solid var(--line) !important; }
+.lead { background: var(--card-2); border: 1px solid var(--line); border-left: 3px solid var(--mod, var(--accent)); }
+.subpage .table th, .card-page .table th { background: var(--card); }
+.plist-top { background: var(--card); }
+.pwv-head { background: var(--card-2); border: 1px solid var(--line); border-left: 3px solid var(--c-running); }
+.pwv-day { background: var(--card-2); border: 1px solid var(--line); border-top: 4px solid var(--rt); }
+.pwv-day.rt-rest { border-top-color: var(--line-2); }
+.pwv-day:hover { box-shadow: 0 6px 16px rgb(0 0 0 / 0.2); }
+.pwv-day.today { box-shadow: 0 0 0 2px var(--c-running); }
+.pw-card.now { box-shadow: none; }
+.pw-card.now .pw-card-head { background: var(--card); }
+.wk-day.kind-key, .wk-day.kind-long, .wk-day.kind-race { background: transparent; }
+.pw-day.rt-row-long, .pw-day.rt-row-speed, .pw-day.rt-row-race { background: transparent; }
+.label { color: var(--muted); }
+.iv-band { stroke-width: 1.5; }
+.iv-band.auto { stroke-dasharray: 7 4; stroke-width: 2; fill: color-mix(in srgb, var(--text) 6%, transparent); }
+.iv-span { stroke-width: 3; stroke-linecap: round; }
+.iv-band-l, .iv-band-l.auto { width: 1.4rem; height: 0.8rem; }
+.iv-band-l.auto { border-width: 2px; }

@@ -199,16 +199,16 @@ function IntervalChart({ rows }: { rows: { day: ForecastDay; check: PaceCheck }[
           {items.map((r, i) => {
             const c = r.check;
             const x = cx(i);
-            const w = Math.min(34, bw * 0.6);
+            const w = Math.min(96, bw * 0.75);
             const fb = bandOf(c.fastest!, c.target);
             const sb = bandOf(c.slowest!, c.target);
             return (
               <g key={c.runId} onMouseEnter={() => setHover(i)} onClick={() => openRun(c.runId)} style={{ cursor: "pointer" }}>
                 <rect x={x - bw / 2} y={pad.top} width={bw} height={H - pad.top - pad.bottom} fill="transparent" />
-                <rect x={x - w / 2} y={y(c.target[0] - 3)} width={w} height={Math.max(2, y(c.target[1] + 3) - y(c.target[0] - 3))} rx={3} className={"iv-band" + (c.autoZone ? " auto" : "")} />
+                <rect x={x - w / 2} y={y(c.target[0] - 3)} width={w} height={Math.max(12, y(c.target[1] + 3) - y(c.target[0] - 3))} rx={5} className={"iv-band" + (c.autoZone ? " auto" : "")} />
                 <line x1={x} x2={x} y1={y(c.fastest!)} y2={y(c.slowest!)} className="iv-span" />
-                <circle cx={x} cy={y(c.fastest!)} r={hover === i ? 6 : 5} className={`iv-dot iv-${fb}`} />
-                <rect x={x - 4.5} y={y(c.slowest!) - 4.5} width={9} height={9} rx={1.5} className={`iv-dot iv-${sb}`} transform={`rotate(45 ${x} ${y(c.slowest!)})`} />
+                <circle cx={x} cy={y(c.fastest!)} r={hover === i ? 8 : 6.5} className={`iv-dot iv-${fb}`} />
+                <rect x={x - 6} y={y(c.slowest!) - 6} width={12} height={12} rx={2} className={`iv-dot iv-${sb}`} transform={`rotate(45 ${x} ${y(c.slowest!)})`} />
                 {(i % Math.max(1, Math.ceil(46 / bw)) === 0 || hover === i) && (
                   <text x={x} y={H - pad.bottom + 16} textAnchor="middle" className={"chart-label" + (hover === i ? " hl" : "")}>
                     {fmt(c.date)}

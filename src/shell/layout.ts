@@ -157,3 +157,24 @@ export function fitToScreen(items: Record<string, GridPos>, rows: number): { ite
   }
   return { items: out, hidden, moved };
 }
+
+/**
+ * Grows cards into empty grid space next to them (down, right, then up and
+ * left), so the dashboard has no holes between tiles.
+ */
+export function fillGaps(items: Record<string, GridPos>, rows: number): Record<string, GridPos> {
+  const out: Record<string, GridPos> = {};
+  for (const [id, p] of Object.entries(items)) out[id] = { ...p };
+  const ids = Object.keys(out).sort((a, b) => out[a].y - out[b].y || out[a].x - out[b].x);
+  const free = (id: string, x: number, y: number, w: number, h: number) =>
+    x >= 0 && y >= 0 && x + w <= COLS && y + h <= rows && !ids.some((o) => o !== id && overlaps({ x, y, w, h }, out[o]));
+  for (let pass = 0; pass < 3; pass++)
+    for (const id of ids) {
+      const p = out[id];
+      while (free(id, p.x, p.y + p.h, p.w, 1)) p.h++;
+      while (free(id, p.x + p.w, p.y, 1, p.h)) p.w++;
+      while (free(id, p.x, p.y - 1, p.w, 1)) (p.y--, p.h++);
+      while (free(id, p.x - 1, p.y, 1, p.h)) (p.x--, p.w++);
+    }
+  return out;
+}

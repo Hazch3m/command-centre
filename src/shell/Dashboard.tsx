@@ -8,7 +8,7 @@ import { useNow } from "../core/time";
 import { NavContext } from "./nav";
 import { moduleById, modules } from "../modules/registry";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { COLS, ROWS, defaultFor, findSpot, fitToScreen, loadLayout, orientationOf, resolveLayout, saveLayout, type Orientation, type ResolvedLayout } from "./layout";
+import { COLS, ROWS, defaultFor, fillGaps, findSpot, fitToScreen, loadLayout, orientationOf, resolveLayout, saveLayout, type Orientation, type ResolvedLayout } from "./layout";
 import { SettingsPanel } from "./SettingsPanel";
 import { RunViewHost } from "../modules/running/RunView";
 import { usePlanCalendarSync } from "../modules/running/planCalendar";
@@ -236,9 +236,11 @@ export function Dashboard() {
 
   const rowHeight = Math.max(8, (size.h - MARGIN * (ROWS_NOW + 1)) / ROWS_NOW);
   const visible = modules.filter((m) => layout.items[m.id]);
+  // Outside edit mode, cards grow into any empty space next to them, so there are no holes.
+  const shown = editing ? layout.items : fillGaps(layout.items, ROWS_NOW);
   const gridLayout: Layout[] = visible.map((m) => ({
     i: m.id,
-    ...layout.items[m.id],
+    ...shown[m.id],
     minW: 3,
     minH: 2,
   }));

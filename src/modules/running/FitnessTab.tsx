@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useDataVersion } from "../../core/events";
+import { useQuery } from "../../core/useQuery";
+import { loadHealth, type HealthDay } from "../health/data";
 import { addDays, dateKey, relativeDayLabel, useToday } from "../../core/time";
 import { LineChart } from "../../shell/charts";
 import { ErrorNote } from "../../shell/ui";
@@ -6,7 +9,7 @@ import { fitnessConfigChanged, fmtVo2, saveFitnessConfig, showVo2, type Fitness,
 import { LOAD_LABEL, Legend, STATUS_CLASS, STATUS_LABEL, vo2Series } from "./FitnessCard";
 import { duration } from "./stats";
 import { addReading, deleteReading } from "./strava";
-import { judge, vdot } from "./vo2";
+import { judge, predictTime, vdot } from "./vo2";
 
 function Settings({ f }: { f: Fitness }) {
   const [c, setC] = useState<FitnessConfig>(f.config);
@@ -202,7 +205,8 @@ export function FitnessTab({ f }: { f: Fitness }) {
         trend is what to watch.
       </p>
 
-      <h3>Key runs, last 12 weeks</h3>
+      <details className="fold">
+      <summary><h3>Key runs, last 12 weeks</h3><span className="muted small">{recentKey.length} runs · the dots on the chart above</span></summary>
       <table className="table">
         <thead>
           <tr>
@@ -240,8 +244,10 @@ export function FitnessTab({ f }: { f: Fitness }) {
           )}
         </tbody>
       </table>
+      </details>
 
       <h3>Race predictor</h3>
+      <PredictionChart f={f} />
       <table className="table">
         <thead>
           <tr>
@@ -307,7 +313,8 @@ export function FitnessTab({ f }: { f: Fitness }) {
         idea as the plan's "never add more than 25 km in a week" rule.
       </p>
 
-      <h3>Aerobic efficiency on easy runs</h3>
+      <details className="fold">
+      <summary><h3>Aerobic efficiency on easy runs</h3><span className="muted small">metres per heartbeat on easy runs</span></summary>
       <LineChart
         from={from}
         to={today}
@@ -320,6 +327,7 @@ export function FitnessTab({ f }: { f: Fitness }) {
         ]}
       />
       <p className="muted small">Metres covered per heartbeat on easy runs (under 78% of max heart rate, 6 km+). It rises as your aerobic base grows: more speed for the same heart rate.</p>
+      </details>
 
       <h3>Shoes</h3>
       <table className="table">
@@ -353,16 +361,106 @@ export function FitnessTab({ f }: { f: Fitness }) {
         </tbody>
       </table>
 
-      <div className="two-col">
-        <div>
-          <h3>Garmin VO2 max readings</h3>
-          <GarminReadings f={f} />
+      <details className="fold">
+        <summary><h3>Garmin VO2 max readings and settings</h3><span className="muted small">heart-rate settings, manual readings</span></summary>
+        <div className="two-col">
+          <div>
+            <h3>Garmin VO2 max readings</h3>
+            <GarminReadings f={f} />
+          </div>
+          <div>
+            <h3>Settings</h3>
+            <Settings f={f} />
+          </div>
         </div>
-        <div>
-          <h3>Settings</h3>
-          <Settings f={f} />
+      </details>
+    </>
+  );
+}
+
+const PRED_DISTS = [
+  { name: "5k", m: 5000, key: "pred_5k" },
+  { name: "10k", m: 10000, key: "pred_10k" },
+  { name: "Half", m: 21097.5, key: "pred_half" },
+  { name: "Marathon", m: 42195, key: "pred_marathon" },
+] as const;
+const hm = (s: number) => {
+  const m = Math.round(s / 60);
+  return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
+};
+const fmtT = (dist: string) => (dist === "Marathon" || dist === "Half" ? (v: number) => (v >= 3600 ? duration(v) : hm(v)) : (v: number) => duration(v));
+
+/**
+ * The prediction for one distance over the last year (Garmin's history) and
+ * where it goes from today if your VO2 max follows the plan's path, with the
+ * goal times marked.
+ */
+function PredictionChart({ f }: { f: Fitness }) {
+  const today = useToday();
+  const v = useDataVersion("health");
+  const health = useQuery(() => loadHealth(400).catch(() => [] as HealthDay[]), [v]).data ?? [];
+  const [dist, setDist] = useState<(typeof PRED_DISTS)[number]["name"]>("Marathon");
+  const d = PRED_DISTS.find((x) => x.name === dist)!;
+  const final = [...f.config.projection.milestones].sort((a, b) => b.date.localeCompare(a.date))[0];
+  const data = useMemo(() => {
+    const now = f.predictions.find((p) => p.name === dist)?.seconds ?? null;
+    const hist = health.filter((h) => h[d.key] != null).map((h) => ({ x: h.date, y: h[d.key] as number }));
+    const vNow = f.project(today) ?? f.current;
+    const proj: { x: string; y: number }[] = [];
+    if (now && vNow && final)
+      for (let x = today; x <= final.date; x = addDays(x, 7)) {
+        const vx = f.project(x);
+        if (vx != null) proj.push({ x, y: now * (predictTime(d.m, vx) / predictTime(d.m, vNow)) });
+      }
+    if (now && final && proj.length && proj[proj.length - 1].x !== final.date) {
+      const vx = f.project(final.date);
+      if (vx != null && vNow) proj.push({ x: final.date, y: now * (predictTime(d.m, vx) / predictTime(d.m, vNow)) });
+    }
+    const goals = f.config.projection.milestones.map((m) => ({ x: m.date, y: predictTime(d.m, m.vo2) }));
+    return { now, hist, proj, goals };
+  }, [f, health, dist, today, final?.date]);
+  if (!final) return null;
+  const from = addDays(today, -365);
+  const last = data.proj[data.proj.length - 1];
+  return (
+    <div className="pred-chart">
+      <div className="goal-bar">
+        <span className="small">
+          {data.now ? (
+            <>
+              {dist} now <b className="num">{fmtT(dist)(data.now)}</b>
+              {last ? (
+                <>
+                  {" "}· if you follow the plan, about <b className="num">{fmtT(dist)(last.y)}</b> by {final.label.split(" · ")[1] ?? final.label}
+                </>
+              ) : null}
+            </>
+          ) : (
+            "No prediction for this distance yet."
+          )}
+        </span>
+        <div className="segmented small-seg">
+          {PRED_DISTS.map((x) => (
+            <button key={x.name} className={dist === x.name ? "on" : ""} onClick={() => setDist(x.name)}>
+              {x.name}
+            </button>
+          ))}
         </div>
       </div>
-    </>
+      <LineChart
+        from={from}
+        to={final.date}
+        height={220}
+        today={today}
+        format={fmtT(dist)}
+        markers={f.config.projection.milestones.map((m) => ({ x: m.date, label: m.label.split(" · ")[0] }))}
+        series={[
+          { name: f.predictions.some((p) => p.source === "garmin") ? "Garmin's prediction" : "Prediction", kind: "line", className: "s-trend", points: data.hist },
+          { name: "If you follow the plan", kind: "dashed", className: "s-proj", points: data.proj },
+          { name: "Goal time", kind: "diamonds", className: "s-goal", points: data.goals },
+          ...(data.now ? [{ name: "Now", kind: "dots" as const, className: "s-est", points: [{ x: today, y: data.now }] }] : []),
+        ]}
+      />
+    </div>
   );
 }

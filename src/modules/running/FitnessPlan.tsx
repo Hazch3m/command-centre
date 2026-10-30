@@ -400,12 +400,13 @@ export function ShapeView({ f, plan, overrides }: { f: Fitness; plan: Plan; over
           </div>
         </div>
         {f.config.projection.milestones.map((m) => {
-          const at = data.at(m.date);
-          const k = data.scaleFor(m.date);
+          // Judged at the start of the taper: shape always dips over the last two weeks, by design.
+          const at = data.at(addDays(m.date, -14));
+          const k = data.scaleFor(addDays(m.date, -14));
           const p = pctOf(at.total);
           return (
             <div className="tile" key={m.date}>
-              <div className="label">{m.label.split(" · ")[1] ?? m.label}</div>
+              <div className="label">{m.label.split(" · ")[1] ?? m.label} · 2 weeks out</div>
               <div className={"tile-value num " + (p >= 100 ? "tone-accent" : p >= 85 ? "tone-warn" : "tone-danger")}>{p}%</div>
               <div className="muted small">
                 ~{at.kmPerWeek.toFixed(0)} km/week · needs {at.targetKm.toFixed(0)}
@@ -433,7 +434,8 @@ export function ShapeView({ f, plan, overrides }: { f: Fitness; plan: Plan; over
       />
       <WeeklyBars weeks={data.weeks} thisWeek={data.thisWeek} need={data.at(final.date)} finalLabel={final.label.split(" · ")[0]} longMin={set.longMin} />
       <p className="muted small">
-        Targets grow with your fitness (VO2 max 50 → ~85 km/week and ~30 km long runs; 60 → ~105 and ~32). The projection uses the plan's weeks as estimated in the training
+        Race tiles show your shape two weeks out, at the start of the taper: it always dips over the last two weeks as the volume comes down, and that's the fitness you take
+        into the race. Targets grow with your fitness (VO2 max 50 → ~85 km/week and ~30 km long runs; 60 → ~105 and ~32). The projection uses the plan's weeks as estimated in the training
         calendar, including any days you've changed; the what-if buttons only change this page, not the plan.
       </p>
     </>

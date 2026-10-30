@@ -52,3 +52,13 @@ describe("cards pushed off the screen", () => {
     expect(r2.items.b.y + r2.items.b.h).toBeLessThanOrEqual(24);
   });
 });
+
+describe("filling gaps", () => {
+  it("grows cards into empty space beside and below them", async () => {
+    const { fillGaps } = await import("./layout");
+    const r = fillGaps({ a: { x: 0, y: 0, w: 10, h: 10 }, b: { x: 12, y: 0, w: 12, h: 24 }, c: { x: 0, y: 12, w: 12, h: 12 } }, 24);
+    expect(r.a).toEqual({ x: 0, y: 0, w: 12, h: 12 });
+    expect(r.b).toEqual({ x: 12, y: 0, w: 12, h: 24 });
+    expect(r.c).toEqual({ x: 0, y: 12, w: 12, h: 12 });
+  });
+});
