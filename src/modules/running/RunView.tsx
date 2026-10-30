@@ -237,7 +237,7 @@ function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; o
           {full?.calories ? <Stat label="Calories" value={String(Math.round(full.calories))} /> : null}
         </div>
       </div>
-      {day && (
+      {day && day.text && (
         <div className="run-plan-line small">
           <span className="label">Planned</span> {day.text || "–"}
           {day.pace && ` · ${day.pace}${/\d:\d\d/.test(day.pace) ? "/km" : ""}`}

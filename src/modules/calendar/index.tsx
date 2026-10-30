@@ -100,7 +100,8 @@ function CalendarCard({ variant }: CardProps) {
   );
   const [choosing, setChoosing] = useState(false);
   const [days, cals, sync, status, rangeDays] = data ?? [[], [], null, null, []];
-  const outside = range.start < addDays(today, -8) || addDays(range.start, range.days - 1) > addDays(today, 42);
+  // Only flag future days past the synced window (older days are simply past).
+  const outside = addDays(range.start, range.days - 1) > addDays(today, 42) && view !== "month" ? true : view === "month" && range.start > addDays(today, 14);
 
   // Re-read when the window regains focus (e.g. after connecting in Settings).
   useEffect(() => {
