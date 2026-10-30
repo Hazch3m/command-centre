@@ -213,12 +213,15 @@ export function PlanCalendarSync() {
           </p>
           <div className="plan-gcal-row">
             <label className="inline">
-              <input type="checkbox" checked={s.enabled} disabled={busy} onChange={(e) => run(async () => {
-                await setSettings({ enabled: e.target.checked, calendarId: s.calendarId ?? writable.find((c) => /train|run/i.test(c.name))?.id ?? writable.find((c) => c.primary)?.id ?? writable[0].id });
-                if (e.target.checked) return syncPlanToCalendar();
+              <input type="checkbox" checked={s.enabled} disabled={busy} onChange={(e) => {
+                const on = e.target.checked;
+                run(async () => {
+                await setSettings({ enabled: on, calendarId: s.calendarId ?? writable.find((c) => /train|run/i.test(c.name))?.id ?? writable.find((c) => c.primary)?.id ?? writable[0].id });
+                if (on) return syncPlanToCalendar();
                 await removeAll();
                 return "Sync off, the plan's future events were removed.";
-              })} />
+                });
+              }} />
               Keep in sync
             </label>
             <label className="small">

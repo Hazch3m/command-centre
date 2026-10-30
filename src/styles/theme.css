@@ -3634,7 +3634,7 @@ select:focus {
   border-radius: 6px;
 }
 .cal-day-col.today {
-  background-color: var(--accent-dim);
+  background-color: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 .cal-col {
   position: absolute;
@@ -3950,7 +3950,7 @@ select:focus {
 .shape-weekly-head h3 { margin: 0; }
 
 .plan-editor { display: flex; flex-direction: column; gap: 0.6rem; padding-bottom: 3rem; }
-.plan-editor input:not([type="checkbox"]), .plan-editor select { background: var(--card-2); color: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 0.3rem 0.45rem; font: inherit; min-width: 0; }
+.plan-editor input:not([type="checkbox"]), .plan-editor select { font-size: 0.85rem; background: var(--card-2); color: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 0.3rem 0.45rem; font: inherit; min-width: 0; }
 .plan-save-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .plan-weeks { display: flex; flex-direction: column; gap: 0.5rem; }
 .plan-week { border: 1px solid var(--line); border-radius: 10px; padding: 0.55rem 0.7rem; background: var(--card); }
