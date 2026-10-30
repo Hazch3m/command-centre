@@ -3551,3 +3551,8 @@ select:focus {
 .goal-card .pred-table {
   margin-top: 0.3rem;
 }
+.s-goal.chart-line {
+  stroke: var(--accent);
+  stroke-dasharray: 2 5;
+  opacity: 0.8;
+}

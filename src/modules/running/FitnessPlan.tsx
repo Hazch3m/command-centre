@@ -307,7 +307,7 @@ export function ShapeView({ f, plan, overrides }: { f: Fitness; plan: Plan; over
         series={[
           { name: "Your shape", kind: "line", className: "s-trend", points: data.past },
           { name: "If you follow the plan", kind: "dashed", className: "s-proj", points: data.ahead },
-          { name: "Marathon needs", kind: "dashed", className: "s-acute", points: [{ x: data.past[0].x, y: 100 }, { x: final.date, y: 100 }] },
+          { name: "Marathon needs", kind: "dashed", className: "s-goal", points: [{ x: data.past[0].x, y: 100 }, { x: final.date, y: 100 }] },
         ]}
       />
       <p className="muted small">
