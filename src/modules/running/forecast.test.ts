@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { forecastWeek, sessionKm, raceKm } from "./forecast";
+import { forecastWeek, fullWeekSessions, sessionKm, raceKm } from "./forecast";
 import { BUNDLED_PLAN } from "./plan";
 
 describe("session km", () => {
@@ -66,3 +66,17 @@ describe("week forecast", () => {
   });
 });
 
+
+describe("writing out the full week", () => {
+  it("names every day and keeps the week's distance", () => {
+    const week = BUNDLED_PLAN.weeks.find((w) => w.week === "3")!;
+    const sessions = fullWeekSessions(BUNDLED_PLAN, week);
+    expect(Object.keys(sessions).sort()).toEqual(["fri", "mon", "sat", "sun", "thu", "tue", "wed"]);
+    const before = forecastWeek(BUNDLED_PLAN, week.start);
+    const plan2 = { ...BUNDLED_PLAN, weeks: BUNDLED_PLAN.weeks.map((w) => (w === week ? { ...w, sessions } : w)) };
+    const after = forecastWeek(plan2, week.start);
+    expect(after.plannedKm).toBeCloseTo(before.plannedKm!, -1);
+    expect(after.days.filter((d) => d.kind !== "rest").length).toBe(before.days.filter((d) => d.kind !== "rest").length);
+    expect(sessions.tue).toBe(week.sessions.tue);
+  });
+});

@@ -64,7 +64,7 @@ function Day({ d, today, onEdit, checks }: { d: ForecastDay; today: string; onEd
 const QUICK = ["Rest", "Easy 8 km", "Easy 10 km + strides", "12 km easy", "Long run 20 km"];
 
 /** Change one day: new text, move it to another day (swap), or go back to the plan. */
-function DayEditor({ d, week, plan, onClose }: { d: ForecastDay; week: ForecastWeek; plan: Plan; onClose: () => void }) {
+export function DayEditor({ d, week, plan, onClose }: { d: ForecastDay; week: ForecastWeek; plan: Plan; onClose: () => void }) {
   const [text, setText] = useState(d.text);
   const [busy, setBusy] = useState(false);
   const original = useMemo(() => forecastWeek(plan, week.monday).days.find((x) => x.date === d.date)?.text ?? "", [plan, week.monday, d.date]);

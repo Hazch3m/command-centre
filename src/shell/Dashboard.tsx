@@ -264,7 +264,7 @@ export function Dashboard() {
       <header className="topbar">
         <nav className="tabs" role="tablist">
           {tabs.map((t) => (
-            <button key={t.id} role="tab" aria-selected={tab === t.id} className={"tab" + (tab === t.id ? " on" : "")} onClick={() => go(t.id)}>
+            <button key={t.id} role="tab" aria-selected={tab === t.id} className={`tab tab-${t.id}` + (tab === t.id ? " on" : "")} onClick={() => go(t.id)}>
               {tab === t.id && <span className="tab-ind" aria-hidden="true" />}
               <span className="tab-label">{t.label}</span>
             </button>

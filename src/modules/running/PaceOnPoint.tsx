@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useBox } from "../../shell/charts";
 import { useDataVersion } from "../../core/events";
 import { addDays, parseKey, useToday } from "../../core/time";
 import { useQuery } from "../../core/useQuery";
@@ -6,6 +7,7 @@ import { forecastWeek, type ForecastDay } from "./forecast";
 import { checkDays, fmtPace, VERDICT_LABEL, type PaceCheck } from "./pace";
 import { mondayOf, type Plan } from "./plan";
 import { loadDetails, loadOverrides, type Run } from "./strava";
+import { openRun } from "./RunView";
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const fmt = (d: string) => `${parseKey(d).getDate()} ${MON[parseKey(d).getMonth()]}`;
@@ -54,7 +56,7 @@ export function PaceBadge({ c }: { c: PaceCheck }) {
 
 /** The "Pace on point" tab of the Training page. */
 export function PaceOnPointTab({ plan, runs }: { plan: Plan; runs: Run[] }) {
-  const p = usePaceChecks(plan, runs, 8);
+  const p = usePaceChecks(plan, runs, 12);
   if (!p) return <p className="muted">Loading…</p>;
   return (
     <>
@@ -73,6 +75,7 @@ export function PaceOnPointTab({ plan, runs }: { plan: Plan; runs: Run[] }) {
         like reps (press lap or use a structured workout), otherwise the fastest kilometres adding up to the work. Within 3 s/km of the range counts as on point. Reps shorter
         than 1 km need laps.
       </p>
+      <IntervalChart rows={p.rows} />
       {p.byWeek.length > 0 && (
         <div className="pace-weeks">
           {p.byWeek.map((w) => (
@@ -126,3 +129,113 @@ export function PaceOnPointTab({ plan, runs }: { plan: Plan; runs: Run[] }) {
     </>
   );
 }
+
+type Band = "fast" | "on" | "slow";
+const bandOf = (pace: number, [lo, hi]: [number, number]): Band => (pace < lo - 3 ? "fast" : pace > hi + 3 ? "slow" : "on");
+const BAND_LABEL: Record<Band, string> = { fast: "faster than target", on: "on target", slow: "slower than target" };
+const offText = (pace: number, [lo, hi]: [number, number]) =>
+  pace < lo ? `${Math.round(lo - pace)} s fast` : pace > hi ? `${Math.round(pace - hi)} s slow` : "in range";
+
+/**
+ * Key sessions over the last weeks, Runna-style: for each one the fastest and
+ * slowest rep (or km) against the target range. Faster is up.
+ */
+function IntervalChart({ rows }: { rows: { day: ForecastDay; check: PaceCheck }[] }) {
+  const [ref, box] = useBox(false);
+  const [hover, setHover] = useState<number | null>(null);
+  const items = rows.filter((r) => r.check.session && r.check.fastest != null).sort((a, b) => a.check.date.localeCompare(b.check.date));
+  if (!items.length)
+    return <p className="muted small">Key sessions will show here once there are runs with work laps or quick kilometres on session days.</p>;
+  const W = box.w || 800;
+  const H = 230;
+  const pad = { top: 14, bottom: 34, left: 44, right: 8 };
+  const all = items.flatMap((r) => [r.check.fastest!, r.check.slowest!, r.check.target[0], r.check.target[1]]);
+  const lo = Math.min(...all) - 6;
+  const hi = Math.max(...all) + 6;
+  const y = (v: number) => pad.top + ((v - lo) / (hi - lo)) * (H - pad.top - pad.bottom);
+  const bw = (W - pad.left - pad.right) / items.length;
+  const cx = (i: number) => pad.left + bw * (i + 0.5);
+  const ticks: number[] = [];
+  const stepS = hi - lo > 90 ? 30 : hi - lo > 40 ? 15 : 5;
+  for (let t = Math.ceil(lo / stepS) * stepS; t <= hi; t += stepS) ticks.push(t);
+  const count = (k: "fastest" | "slowest", b: Band) => items.filter((r) => bandOf(r.check[k]!, r.check.target) === b).length;
+  const h = hover != null ? items[hover] : null;
+  return (
+    <div className="interval-chart">
+      <div className="interval-head">
+        <h3>Key sessions: fastest and slowest interval</h3>
+        <span className="small muted">
+          Fastest on target {count("fastest", "on")}/{items.length} · slowest on target {count("slowest", "on")}/{items.length} · {count("fastest", "fast")} sessions with a rep
+          too quick · {count("slowest", "slow")} with one too slow
+        </span>
+      </div>
+      <div className="chart" ref={ref} onMouseLeave={() => setHover(null)}>
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} role="img">
+          {ticks.map((t) => (
+            <g key={t}>
+              <line x1={pad.left} x2={W - pad.right} y1={y(t)} y2={y(t)} className="chart-grid" />
+              <text x={pad.left - 6} y={y(t) + 4} textAnchor="end" className="chart-label">
+                {fmtPace(t)}
+              </text>
+            </g>
+          ))}
+          {items.map((r, i) => {
+            const c = r.check;
+            const x = cx(i);
+            const w = Math.min(34, bw * 0.6);
+            const fb = bandOf(c.fastest!, c.target);
+            const sb = bandOf(c.slowest!, c.target);
+            return (
+              <g key={c.runId} onMouseEnter={() => setHover(i)} onClick={() => openRun(c.runId)} style={{ cursor: "pointer" }}>
+                <rect x={x - bw / 2} y={pad.top} width={bw} height={H - pad.top - pad.bottom} fill="transparent" />
+                <rect x={x - w / 2} y={y(c.target[0] - 3)} width={w} height={Math.max(2, y(c.target[1] + 3) - y(c.target[0] - 3))} rx={3} className="iv-band" />
+                <line x1={x} x2={x} y1={y(c.fastest!)} y2={y(c.slowest!)} className="iv-span" />
+                <circle cx={x} cy={y(c.fastest!)} r={hover === i ? 6 : 5} className={`iv-dot iv-${fb}`} />
+                <rect x={x - 4.5} y={y(c.slowest!) - 4.5} width={9} height={9} rx={1.5} className={`iv-dot iv-${sb}`} transform={`rotate(45 ${x} ${y(c.slowest!)})`} />
+                {(i % Math.max(1, Math.ceil(46 / bw)) === 0 || hover === i) && (
+                  <text x={x} y={H - pad.bottom + 16} textAnchor="middle" className={"chart-label" + (hover === i ? " hl" : "")}>
+                    {fmt(c.date)}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+        <div className="chart-readout small">
+          {h ? (
+            <>
+              <b>
+                {h.day.dow} {fmt(h.check.date)}
+              </b>{" "}
+              {h.day.text} · fastest <b className="num">{fmtPace(h.check.fastest!)}</b> ({offText(h.check.fastest!, h.check.target)}) · slowest{" "}
+              <b className="num">{fmtPace(h.check.slowest!)}</b> ({offText(h.check.slowest!, h.check.target)}) · target {fmtPace(h.check.target[0])}
+              {h.check.target[1] !== h.check.target[0] ? `–${fmtPace(h.check.target[1])}` : ""} · {h.check.measured}
+            </>
+          ) : (
+            <span className="iv-legend">
+              <span>
+                <i className="iv-dot-l iv-on" /> fastest interval
+              </span>
+              <span>
+                <i className="iv-dot-l iv-on sq" /> slowest interval
+              </span>
+              <span>
+                <i className="iv-band-l" /> target range (±3 s)
+              </span>
+              <span>
+                <i className="iv-dot-l iv-fast" /> {BAND_LABEL.fast}
+              </span>
+              <span>
+                <i className="iv-dot-l iv-on" /> {BAND_LABEL.on}
+              </span>
+              <span>
+                <i className="iv-dot-l iv-slow" /> {BAND_LABEL.slow}
+              </span>
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+

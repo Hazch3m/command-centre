@@ -2,6 +2,9 @@ import { backend } from "@backend";
 import { addDays, diffDays, parseKey } from "../../core/time";
 import defaultPlan from "./default-plan.json";
 
+export type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+export const WEEK_KEYS: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+
 export interface PlanWeek {
   week: string;
   start: string;
@@ -10,7 +13,8 @@ export interface PlanWeek {
   km: string;
   kmMin: number | null;
   kmMax: number | null;
-  sessions: Partial<Record<"tue" | "wed" | "thu" | "sun", string>>;
+  /** Named sessions by day; days without one follow the weekly structure. */
+  sessions: Partial<Record<DayKey, string>>;
   notes: string;
 }
 export interface PlanRace {

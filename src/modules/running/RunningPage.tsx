@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { parseKey, useToday } from "../../core/time";
 import { BarChart } from "../../shell/charts";
 import { ErrorNote } from "../../shell/ui";
-import { mondayOf, upcomingRaces, weekFor, PLAN_FILE } from "./plan";
+import { mondayOf, upcomingRaces, weekFor } from "./plan";
 import {
   duration,
   judgeBenchmark,
@@ -20,13 +20,14 @@ import { RecentBlock } from "./RecentBlock";
 import { PaceOnPointTab } from "./PaceOnPoint";
 import { RunsTab } from "./RunsTab";
 import { PlanEditor } from "./PlanEditor";
+import { PlanList } from "./PlanList";
 
-type Tab = "week" | "runs" | "pace" | "plan" | "edit" | "races" | "progress" | "paces";
+type Tab = "plan" | "week" | "runs" | "pace" | "edit" | "races" | "progress" | "paces";
 const TABS: { id: Tab; label: string }[] = [
+  { id: "plan", label: "Plan" },
   { id: "week", label: "Week by week" },
   { id: "runs", label: "All runs" },
   { id: "pace", label: "Pace on point" },
-  { id: "plan", label: "Plan" },
   { id: "edit", label: "Edit plan" },
   { id: "races", label: "Races & benchmarks" },
   { id: "progress", label: "Progression" },
@@ -60,14 +61,10 @@ const fmtDate = (d: string) => {
 export function RunningPage() {
   const today = useToday();
   const { plan, planError, runs = [], connected, sync } = useRunningData();
-  const [tab, setTab] = useState<Tab>("week");
+  const [tab, setTab] = useState<Tab>("plan");
 
   const data = useMemo(() => {
     if (!plan) return null;
-    const planWeeks = plan.weeks.map((w) => {
-      const total = weeklyTotals(runs, w.start, w.start)[0];
-      return { ...w, actual: total.km, runs: total.runs, longest: total.longest };
-    });
     const year = yearSummary(runs, today);
     const since = "2025-03-31";
     const weekly = weeklyTotals(runs, since, mondayOf(today)).map((w) => {
@@ -82,7 +79,7 @@ export function RunningPage() {
       };
     });
     const races = raceHistory(runs, plan);
-    return { planWeeks, year, weekly, races, blocks: marathonBlocks(runs, plan), upcoming: upcomingRaces(plan, today) };
+    return { year, weekly, races, blocks: marathonBlocks(runs, plan), upcoming: upcomingRaces(plan, today) };
   }, [plan, runs, today]);
 
   if (!plan || !data) return null;
@@ -110,81 +107,10 @@ export function RunningPage() {
       <div className="page-body" key={tab}>
         {tab === "week" && <WeekCalendar plan={plan} runs={runs} count={6} />}
         {tab === "pace" && <PaceOnPointTab plan={plan} runs={runs} />}
-        {tab === "runs" && <RunsTab runs={runs} />}
+        {tab === "runs" && <RunsTab runs={runs} plan={plan} />}
         {tab === "edit" && <PlanEditor plan={plan} />}
 
-        {tab === "plan" && (
-          <>
-            {plan.phases
-              .filter((p) => p.summary)
-              .map((p) => (
-                <p key={p.name} className="small">
-                  <b>{p.name}</b> {p.start && p.end ? <span className="muted">({fmtDate(p.start)} – {fmtDate(p.end)})</span> : null}: {p.summary}
-                </p>
-              ))}
-            <table className="table plan-table">
-              <thead>
-                <tr>
-                  <th>Week</th>
-                  <th>Dates</th>
-                  <th className="num-col">Plan km</th>
-                  <th className="num-col">Ran</th>
-                  <th>Tuesday</th>
-                  <th>Mid-week</th>
-                  <th>Sunday</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.planWeeks.map((w) => {
-                  const past = w.end < today;
-                  const current = w.start <= today && today <= w.end;
-                  const hit = w.kmMin ? w.actual / w.kmMin : null;
-                  const cls = current ? "row-today" : past ? (hit == null ? "" : hit >= 0.9 ? "row-hit" : hit >= 0.7 ? "row-close" : "row-miss") : "";
-                  return (
-                    <tr key={w.week} className={cls} title={w.notes || undefined}>
-                      <td>{w.week}</td>
-                      <td className="nowrap">
-                        {fmtDate(w.start)} – {fmtDate(w.end)}
-                      </td>
-                      <td className="num-col">{w.km}</td>
-                      <td className="num-col">{past || current ? w.actual.toFixed(0) : ""}</td>
-                      <td>{w.sessions.tue}</td>
-                      <td>{w.sessions.thu ?? (w.sessions.wed ? `Wed: ${w.sessions.wed}` : "")}</td>
-                      <td>{w.sessions.sun}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            <h3>After Edinburgh</h3>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Block</th>
-                  <th>Dates</th>
-                  <th>km/week</th>
-                  <th>Key sessions</th>
-                  <th>Race</th>
-                </tr>
-              </thead>
-              <tbody>
-                {plan.blocks.map((b) => (
-                  <tr key={b.name}>
-                    <td>{b.name}</td>
-                    <td className="nowrap">{b.start && b.end ? `${fmtDate(b.start)} – ${fmtDate(b.end)}` : "–"}</td>
-                    <td>{b.km}</td>
-                    <td>{b.key}</td>
-                    <td>{b.race}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="muted small">
-              The plan lives in your Claude doc. To update it here, ask Claude to “re-export my training plan for Command Centre”, which writes {PLAN_FILE} in the app's data folder.
-            </p>
-          </>
-        )}
-
+        {tab === "plan" && <PlanList plan={plan} runs={runs} />}
         {tab === "races" && (
           <>
             <div className="tiles">

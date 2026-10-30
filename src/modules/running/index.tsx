@@ -1,3 +1,4 @@
+import { typeOfDay } from "./runType";
 import { useMemo } from "react";
 import { addDays, parseKey, relativeDayLabel, useToday } from "../../core/time";
 import { BarChart } from "../../shell/charts";
@@ -92,7 +93,7 @@ function RunningCard({ editing }: CardProps) {
           { label: "Today", d: todayDay, ran: ranToday },
           { label: "Tomorrow", d: tomorrowDay, ran: false },
         ].map(({ label, d, ran }) => (
-          <div key={label} className={"run-session" + (d && (d.kind === "key" || d.kind === "long" || d.kind === "race") ? " key" : "")}>
+          <div key={label} className={"run-session" + (d && (d.kind === "key" || d.kind === "long" || d.kind === "race") ? " key" : "") + (d ? ` rt-row-${typeOfDay(d.kind)}` : "")}>
             <span className="label">{label}</span>
             <span className="run-session-text">{d ? d.text || "–" : "–"}</span>
             <span className="run-session-meta muted small">

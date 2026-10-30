@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
-import { addDays, useToday } from "../../core/time";
+import { useEffect, useMemo, useState } from "react";
+import { addDays, parseKey, useToday } from "../../core/time";
 import { ErrorNote } from "../../shell/ui";
 import { PlanCalendarSync } from "./planCalendar";
-import { resetPlan, savePlan, type Plan, type PlanRace, type PlanWeek } from "./plan";
+import { forecastWeek, fullWeekSessions } from "./forecast";
+import { resetPlan, savePlan, WEEK_KEYS, type DayKey, type Plan, type PlanRace, type PlanWeek } from "./plan";
 
-const DAYS = ["tue", "wed", "thu", "sun"] as const;
-const DAY_LABEL: Record<(typeof DAYS)[number], string> = { tue: "Tuesday", wed: "Wednesday", thu: "Thursday", sun: "Sunday" };
+const DAYS = WEEK_KEYS;
+const DAY_LABEL: Record<DayKey, string> = { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" };
 
 /**
  * Edit the plan itself: weeks, sessions, races and the weekly structure. Saved
@@ -33,7 +34,7 @@ export function PlanEditor({ plan }: { plan: Plan }) {
       p.weeks[i] = { ...p.weeks[i], ...patch };
       return p;
     });
-  const setSession = (i: number, day: (typeof DAYS)[number], text: string) =>
+  const setSession = (i: number, day: DayKey, text: string) =>
     change((p) => {
       const s = { ...p.weeks[i].sessions };
       if (text.trim()) s[day] = text;
@@ -77,6 +78,14 @@ export function PlanEditor({ plan }: { plan: Plan }) {
   };
 
   const visible = draft.weeks.map((w, i) => ({ w, i })).filter(({ w }) => showPast || w.end >= addDays(today, -7));
+  // What the app does with the days you haven't written: shown greyed in each empty box.
+  const auto = useMemo(() => new Map(visible.map(({ w }) => [w.start, forecastWeek(draft, w.start).days])), [draft, showPast]);
+  const writeOut = () =>
+    change((p) => {
+      p.weeks = p.weeks.map((w) => (w.end >= today ? { ...w, sessions: fullWeekSessions(p, w) } : w));
+      return p;
+    });
+  const unwritten = draft.weeks.filter((w) => w.end >= today && DAYS.some((d) => !w.sessions[d])).length;
   return (
     <div className="plan-editor">
       <div className="plan-save-bar">
@@ -116,6 +125,17 @@ export function PlanEditor({ plan }: { plan: Plan }) {
         Sessions written the way the plan does them ("12 km easy", "5 × 1 km at 3:20, 2 min jog", "28 km, last 6 at 4:05") get distances and paces worked out. Days left empty
         follow the weekly structure below. Adding or removing a week moves the later weeks.
       </p>
+      {unwritten > 0 && (
+        <div className="plan-writeout">
+          <span className="small">
+            {unwritten} week{unwritten > 1 ? "s" : ""} still leave some days to the weekly structure (shown greyed, sized to hit the week's km). Write them out to have every day
+            in the plan, then change any of them. Note: written-out days keep their distance if you later change the week's km.
+          </span>
+          <button className="btn" onClick={writeOut}>
+            Write out every day
+          </button>
+        </div>
+      )}
       <label className="inline small">
         <input type="checkbox" checked={showPast} onChange={(e) => setShowPast(e.target.checked)} /> Show past weeks
       </label>
@@ -141,13 +161,19 @@ export function PlanEditor({ plan }: { plan: Plan }) {
               </span>
             </div>
             <div className="plan-week-days">
-              {DAYS.map((d) => (
-                <label key={d}>
-                  <span className="label">{DAY_LABEL[d]}</span>
-                  <input value={w.sessions[d] ?? ""} onChange={(e) => setSession(i, d, e.target.value)} placeholder="from the structure" />
-                </label>
-              ))}
-              <label>
+              {DAYS.map((d, di) => {
+                const a = auto.get(w.start)?.[di];
+                const hint = a ? (a.kind === "rest" ? "Rest" : `${a.km ? `≈${a.km} km · ` : ""}${a.text}`) : "from the structure";
+                return (
+                  <label key={d} className={a ? `kind-${a.kind}` : ""}>
+                    <span className="label">
+                      {DAY_LABEL[d]} {parseKey(addDays(w.start, di)).getDate()}
+                    </span>
+                    <input value={w.sessions[d] ?? ""} onChange={(e) => setSession(i, d, e.target.value)} placeholder={hint} title={w.sessions[d] ? undefined : `Not written: ${hint}`} />
+                  </label>
+                );
+              })}
+              <label className="pw-notes">
                 <span className="label">Notes</span>
                 <input value={w.notes} onChange={(e) => setWeek(i, { notes: e.target.value })} />
               </label>

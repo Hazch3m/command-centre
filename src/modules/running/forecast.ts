@@ -1,5 +1,5 @@
 import { addDays, parseKey } from "../../core/time";
-import { blockFor, mondayOf, sessionFor, type Plan, type PlanRace, type PlanWeek } from "./plan";
+import { blockFor, mondayOf, sessionFor, WEEK_KEYS, type Plan, type PlanRace, type PlanWeek } from "./plan";
 import { km, parseTime } from "./stats";
 import type { Run } from "./strava";
 
@@ -292,3 +292,27 @@ export function forecastRange(plan: Plan, today: string): { first: string; last:
 
 export const isKeyDay = (d: ForecastDay) => d.kind === "key" || d.kind === "long" || d.kind === "race";
 export const dayOfMonth = (date: string) => parseKey(date).getDate();
+
+/**
+ * Every day of a plan week written out as its own session ("7 km recovery",
+ * "10 km easy + 6 × 20 s strides", "Rest"), using the distances the forecast
+ * gives the days the plan leaves to the weekly structure. Named days and race
+ * days are kept as they are.
+ */
+export function fullWeekSessions(plan: Plan, week: PlanWeek): PlanWeek["sessions"] {
+  const out: PlanWeek["sessions"] = { ...week.sessions };
+  const fw = forecastWeek(plan, week.start);
+  fw.days.forEach((d, i) => {
+    const key = WEEK_KEYS[i];
+    if (out[key] || d.race || d.kind === "race") return;
+    if (d.kind === "rest" || !d.km) {
+      out[key] = "Rest";
+      return;
+    }
+    const t = d.text.trim();
+    out[key] = /\d+(?:\.\d+)?(?:\s*[–-]\s*\d+(?:\.\d+)?)?\s*km/i.test(t)
+      ? t.replace(/\d+(?:\.\d+)?(?:\s*[–-]\s*\d+(?:\.\d+)?)?\s*km/i, `${d.km} km`)
+      : `${d.km} km ${t.charAt(0).toLowerCase()}${t.slice(1)}`;
+  });
+  return out;
+}

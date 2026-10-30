@@ -30,6 +30,11 @@ export interface PaceCheck {
   inRange: number | null;
   plannedKm: number | null;
   ranKm: number;
+  /** Sessions: pace of the quickest and slowest work segment (rep or km), s/km. */
+  fastest: number | null;
+  slowest: number | null;
+  /** Sessions only. */
+  session: boolean;
 }
 
 const TOLERANCE = 3; // s/km either side of the range still counts as on point
@@ -74,7 +79,7 @@ export function checkRun(day: ForecastDay, run: Run, detail: RunDetail | null): 
   if (!target || run.distance < 1500) return null;
   const easy = day.kind === "easy" || (day.kind === "long" && !/\bat\s+\d:\d\d/.test(day.text));
   const ranKm = run.distance / 1000;
-  const base = { runId: run.id, date: run.date, target, plannedKm: day.km, ranKm };
+  const base = { runId: run.id, date: run.date, target, plannedKm: day.km, ranKm, fastest: null as number | null, slowest: null as number | null, session: false };
 
   if (easy) {
     const actual = run.moving_time / ranKm;
@@ -113,7 +118,8 @@ export function checkRun(day: ForecastDay, run: Run, detail: RunDetail | null): 
   const off = offBy(actual, target);
   const verdict = verdictFor(off, false);
   const score = Math.round(Math.max(0, Math.min(100, 0.5 * inRange * 100 + 0.5 * Math.max(0, 100 - Math.abs(off) * 6))));
-  return { ...base, measured, actual, off, verdict, score, inRange };
+  const paces = segs.map((x) => x.time / (x.distance / 1000));
+  return { ...base, measured, actual, off, verdict, score, inRange, fastest: Math.min(...paces), slowest: Math.max(...paces), session: true };
 }
 
 /** Checks for every run on a planned day (several runs on one day: the longest). */

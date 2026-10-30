@@ -10,6 +10,7 @@ import { forecastWeek } from "./forecast";
 import { checkRun, fmtPace, VERDICT_LABEL } from "./pace";
 import { loadPlan } from "./plan";
 import { RouteMap } from "./route";
+import { RunTypeDot, typeOfDay, typeOfRun } from "./runType";
 import { duration, km, pace } from "./stats";
 import { loadDetails, loadFullRun, loadOverrides, loadRuns, loadShoes, type FullRun, type Run } from "./strava";
 
@@ -133,8 +134,20 @@ function WeekRuns({ monday, onBack, onClose }: { monday: string; onBack?: () => 
               return (
                 <tr key={d.date + (r?.id ?? "")} className={r ? "clickable" : "muted"} onClick={r ? () => openRun(r.id) : undefined}>
                   <td className="nowrap">{i === 0 ? fmtDay(d.date) : ""}</td>
-                  <td className="muted">{i === 0 ? d.text || "–" : ""}</td>
-                  <td>{r ? r.name : d.date <= today && d.km ? "not run" : ""}</td>
+                  <td className="muted">
+                    {i === 0 && fw.week ? <RunTypeDot type={typeOfDay(d.kind)} /> : null} {i === 0 ? d.text || "–" : ""}
+                  </td>
+                  <td>
+                    {r ? (
+                      <>
+                        <RunTypeDot type={typeOfRun(r, fw.week ? d.kind : null)} label /> {r.name}
+                      </>
+                    ) : d.date <= today && d.km ? (
+                      "not run"
+                    ) : (
+                      ""
+                    )}
+                  </td>
                   <td className="num-col">{r ? km(r.distance).toFixed(1) : ""}</td>
                   <td className="num-col">{r ? duration(r.moving_time) : ""}</td>
                   <td className="num-col">{r ? pace(r.distance, r.moving_time) : ""}</td>

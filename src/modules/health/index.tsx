@@ -3,12 +3,24 @@ import { backend } from "@backend";
 import { useDataVersion } from "../../core/events";
 import { addDays, relativeDayLabel, useEvery, useToday } from "../../core/time";
 import { useQuery } from "../../core/useQuery";
-import { kvGet } from "../../core/db";
 import { LineChart } from "../../shell/charts";
 import { CardHeader, ErrorNote } from "../../shell/ui";
 import type { CardProps, DashboardModule } from "../types";
 import { duration } from "../running/stats";
-import { getHealthSync, latest, loadHealth, migrations, syncHealth, type HealthDay, type SleepProbe } from "./data";
+import { loadFitnessConfig } from "../running/fitness";
+import { loadRuns } from "../running/strava";
+import { trimp } from "../running/vo2";
+import { ownReadiness, type Readiness } from "./readiness";
+
+/** Heart-rate training load per day (same TRIMP as the Fitness page), for the readiness score. */
+function useDailyLoad() {
+  const version = useDataVersion("running");
+  return useQuery(async () => {
+    const [runs, cfg] = await Promise.all([loadRuns(addDays(new Date().toISOString().slice(0, 10), -60)), loadFitnessConfig()]);
+    return runs.map((r) => ({ date: r.date, load: trimp(r.moving_time, r.avg_hr, cfg) }));
+  }, [version]).data;
+}
+import { getHealthSync, latest, loadHealth, migrations, syncHealth, type HealthDay } from "./data";
 
 const hm = (s: number | null | undefined) => (s == null ? "–" : `${Math.floor(s / 3600)}:${String(Math.round((s % 3600) / 60)).padStart(2, "0")}`);
 const avg = (xs: (number | null)[]) => {
@@ -107,24 +119,40 @@ function Connect() {
   );
 }
 
-function Metrics({ rows, today }: { rows: HealthDay[]; today: string }) {
+function Metrics({ rows, today, detail }: { rows: HealthDay[]; today: string; detail?: boolean }) {
   const L = latest(rows);
+  const load = useDailyLoad();
+  const ownFor = (d: string): Readiness | null => (load ? ownReadiness(rows, d, load) : null);
+  const own = ownFor(today);
   const last14 = Array.from({ length: 14 }, (_, i) => addDays(today, i - 13));
   const by = new Map(rows.map((r) => [r.date, r]));
   const series = (f: keyof HealthDay) => last14.map((d) => (by.get(d)?.[f] as number | null) ?? null);
   const rhr7 = avg(series("rhr").slice(-7));
   const rhrPrev = avg(series("rhr").slice(0, 7));
+  const ownSeries = last14.map((d) => ownFor(d)?.score ?? null);
   const when = (f: keyof HealthDay) => (L.dates[f as Exclude<keyof HealthDay, "date">] ? relativeDayLabel(L.dates[f as Exclude<keyof HealthDay, "date">]!, today) : undefined);
   return (
+    <>
     <div className="hm-grid">
-      <Metric
-        label="Training readiness"
-        value={L.readiness != null ? String(Math.round(L.readiness)) : "–"}
-        tone={READY_TONE(L.readiness)}
-        note={nice(L.readiness_level) || nice(L.readiness_note)}
-        spark={series("readiness")}
-        when={when("readiness")}
-      />
+      {L.readiness != null && L.dates.readiness === today ? (
+        <Metric
+          label="Training readiness"
+          value={String(Math.round(L.readiness))}
+          tone={READY_TONE(L.readiness)}
+          note={nice(L.readiness_level) || nice(L.readiness_note)}
+          spark={series("readiness")}
+          when="Garmin"
+        />
+      ) : (
+        <Metric
+          label="Readiness"
+          value={own ? String(own.score) : "–"}
+          tone={READY_TONE(own?.score)}
+          note={own ? `${own.level} · ${own.advice}${own.limiter ? ` · held back by ${own.limiter.name.toLowerCase()}` : ""}` : "Needs last night's HRV or sleep"}
+          spark={ownSeries}
+          when={own ? own.parts.map((p) => `${p.name} ${Math.round(p.score)}: ${p.note}`).join("\n") + "\n(Worked out from HRV, sleep, resting HR and training load)" : undefined}
+        />
+      )}
       <Metric
         label={L.dates.hrv === today ? "HRV last night" : "HRV"}
         value={L.hrv != null ? String(Math.round(L.hrv)) : "–"}
@@ -161,6 +189,20 @@ function Metrics({ rows, today }: { rows: HealthDay[]; today: string }) {
       />
       <Metric label="VO2 max (Garmin)" value={L.vo2 != null ? L.vo2.toFixed(1) : "–"} spark={series("vo2")} when={when("vo2")} />
     </div>
+    {detail && own && !(L.readiness != null && L.dates.readiness === today) && (
+      <div className="ready-parts">
+        <span className="label">Readiness today, worked out from</span>
+        {own.parts.map((p) => (
+          <div key={p.name} className="ready-part">
+            <span>{p.name}</span>
+            <span className="ready-bar"><span className={READY_TONE(p.score).replace("tone-", "fill-")} style={{ width: `${p.score}%` }} /></span>
+            <span className="num">{Math.round(p.score)}</span>
+            <span className="muted small">{p.note}</span>
+          </div>
+        ))}
+      </div>
+    )}
+    </>
   );
 }
 
@@ -188,8 +230,7 @@ function HealthCard({ variant, editing }: CardProps) {
     <>
       <CardHeader title="Health" to={editing ? undefined : "health"} right={right} />
       {!status?.connected && data && <div className="muted small">Garmin isn't connected — showing saved data. Connect again in Settings.</div>}
-      <Metrics rows={rows} today={today} />
-      {page && <SleepCheck />}
+      <Metrics rows={rows} today={today} detail={page} />
       {page && <HealthCharts rows={rows} today={today} />}
       {sync && sync.errors.length > 0 && (
         <details className="muted small health-diag">
@@ -306,7 +347,7 @@ export function GarminSetting() {
         <strong>Garmin</strong>
         <span className={status?.connected ? "tone-accent small" : "muted small"}>{status?.connected ? "Connected" : "Not connected"}</span>
       </div>
-      <div className="muted small">Health tab: VO2 max, HRV, sleep, resting HR, Body Battery, training readiness, race predictions (read-only).</div>
+      <div className="muted small">Health tab: VO2 max, HRV, sleep, resting HR, Body Battery, readiness, race predictions (read-only).</div>
       <div className="inline">
         {status?.connected ? (
           <button className="btn" onClick={() => backend.garminDisconnect().then(() => setTick((t) => t + 1))}>
@@ -339,63 +380,3 @@ export function GarminSetting() {
   );
 }
 
-/** Shows exactly what each Garmin sleep source returned, to pin down "wrong night" problems. */
-function SleepCheck() {
-  const version = useDataVersion("health");
-  const { data } = useQuery(() => Promise.all([kvGet<SleepProbe[]>("health.sleepDebug", []), getHealthSync()]), [version]);
-  const [copied, setCopied] = useState(false);
-  const probes = data?.[0] ?? [];
-  if (!probes.length || !("status" in probes[0])) return null;
-  const text = [
-    `Health sync ${data?.[1].lastSync ?? "never"} · errors: ${data?.[1].errors.join("; ") || "none"}`,
-    ...probes.map((p) => `${p.asked} ${p.via}: ${p.status} · calendarDate ${p.calendarDate ?? "-"} · ${p.start ?? "-"} → ${p.end ?? "-"} · ${p.secs ?? "-"} s`),
-  ].join("\n");
-  return (
-    <details className="small health-diag" open>
-      <summary className="muted">Sleep: what Garmin returned on the last sync</summary>
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Asked for</th>
-            <th>Source</th>
-            <th>Reply</th>
-            <th>Garmin's date</th>
-            <th>Slept</th>
-            <th>Woke</th>
-            <th className="num-col">Time asleep</th>
-          </tr>
-        </thead>
-        <tbody>
-          {probes.map((p, i) => (
-            <tr key={i}>
-              <td>{p.asked}</td>
-              <td>{p.via}</td>
-              <td className={p.status === "200" ? "" : "tone-danger"}>{p.status === "200" ? "OK" : p.status}</td>
-              <td>{p.calendarDate ?? "–"}</td>
-              <td>{p.start ?? "–"}</td>
-              <td>{p.end ?? "–"}</td>
-              <td className="num-col">{p.secs ? hm(p.secs) : "–"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="inline">
-        <button
-          className="btn"
-          onClick={() =>
-            navigator.clipboard?.writeText(text).then(
-              () => setCopied(true),
-              () => setCopied(false),
-            )
-          }
-        >
-          {copied ? "Copied" : "Copy these details"}
-        </button>
-        <button className="btn" onClick={() => syncHealth()}>
-          Sync again now
-        </button>
-        <span className="muted">Paste them to Claude if the wrong night still shows.</span>
-      </div>
-    </details>
-  );
-}

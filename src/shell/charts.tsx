@@ -5,7 +5,7 @@ import { useLayoutEffect, useRef, useState } from "react";
  * crisp at any tile size). With height "fill" the chart takes the space its
  * container gives it.
  */
-function useBox(fill: boolean) {
+export function useBox(fill: boolean) {
   const ref = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
   useLayoutEffect(() => {
