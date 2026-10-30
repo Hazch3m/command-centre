@@ -246,8 +246,8 @@ export function FitnessTab({ f }: { f: Fitness }) {
         <thead>
           <tr>
             <th>Distance</th>
-            <th className="num-col">Prediction</th>
-            {f.predictions.some((p) => p.garminSeconds) && <th className="num-col">Garmin</th>}
+            <th className="num-col">{f.predictions.some((p) => p.source === "garmin") ? "Garmin" : "Prediction"}</th>
+            <th className="num-col">Your curve</th>
             <th className="num-col">Equal endurance (VDOT)</th>
             <th className="num-col">Current form</th>
             <th>Next target</th>
@@ -260,7 +260,7 @@ export function FitnessTab({ f }: { f: Fitness }) {
               <td className="num-col">
                 <b>{p.seconds ? duration(p.seconds) : "–"}</b>
               </td>
-              {f.predictions.some((x) => x.garminSeconds) && <td className="num-col">{p.garminSeconds ? duration(p.garminSeconds) : "–"}</td>}
+              <td className="num-col">{p.ownSeconds ? duration(p.ownSeconds) : "–"}</td>
               <td className="num-col muted">{p.vdotSeconds ? duration(p.vdotSeconds) : "–"}</td>
               <td className="num-col muted">{p.formSeconds ? duration(p.formSeconds) : "–"}</td>
               <td>{p.target ?? "–"}</td>
@@ -271,7 +271,8 @@ export function FitnessTab({ f }: { f: Fitness }) {
       <p className="muted small">
         {f.endurance && (
           <>
-            <b>Prediction</b> uses your own speed–endurance curve: time grows with distance to the power of <b>{f.endurance.k.toFixed(3)}</b>
+            {f.predictions.some((p) => p.source === "garmin") ? <>The main column is Garmin's own predictor. </> : null}
+            <b>Your curve</b> is your own speed–endurance fit: time grows with distance to the power of <b>{f.endurance.k.toFixed(3)}</b>
             {f.endurance.fitted ? `, fitted to your best recent races (${f.endurance.used.join(", ")})` : " (a typical value; it's fitted once you have races at two distances in the last 9 months)"}, and
             anchored on {f.endurance.anchor === "current form" ? "your current form" : f.endurance.anchor} ({duration(f.endurance.ten)} for 10 km). That's the same idea as
             Garmin's predictor, which also learns how well you hold pace over longer races; plain VDOT assumes everyone's endurance is the same, which flatters the marathon

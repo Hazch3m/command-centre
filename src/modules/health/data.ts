@@ -33,6 +33,8 @@ export const migrations = [
      pred_marathon REAL,
      updated_at TEXT NOT NULL
    );`,
+  // 1 — when last night's sleep ended, so it's clear which night is shown
+  `ALTER TABLE health_daily ADD COLUMN sleep_end TEXT;`,
 ];
 
 export interface HealthDay {
@@ -52,6 +54,7 @@ export interface HealthDay {
   readiness: number | null;
   readiness_level: string | null;
   readiness_note: string | null;
+  sleep_end: string | null;
   pred_5k: number | null;
   pred_10k: number | null;
   pred_half: number | null;
@@ -75,6 +78,7 @@ const FIELDS: Field[] = [
   "readiness",
   "readiness_level",
   "readiness_note",
+  "sleep_end",
   "pred_5k",
   "pred_10k",
   "pred_half",
@@ -178,9 +182,15 @@ export function parseDailySleep(body: unknown, p: Patch) {
   if (!dto) return;
   const scores = isObj(dto.sleepScores) ? dto.sleepScores : null;
   const overall = scores && isObj(scores.overall) ? scores.overall : null;
-  put(p, dateOf(dto), {
-    sleep_secs: pickNum(dto, /^sleepTimeSeconds$/i, 0),
+  const secs = pickNum(dto, /^sleepTimeSeconds$/i, 0);
+  if (!secs) return; // an empty record for a night that hasn't been synced yet
+  // Garmin's "local" timestamps are local wall-clock time written as if it were UTC.
+  const endLocal = pickNum(dto, /^sleepEndTimestampLocal$/i, 0);
+  const end = endLocal ? new Date(endLocal).toISOString() : null;
+  put(p, end ? end.slice(0, 10) : dateOf(dto), {
+    sleep_secs: secs,
     sleep_score: (overall && pickNum(overall, /^value$/i, 0)) ?? pickNum(dto, /^(overallSleepScore|sleepScore)$/i, 1),
+    sleep_end: end ? end.slice(11, 16) : null,
   });
 }
 
@@ -291,6 +301,8 @@ async function doSync(): Promise<HealthSync> {
   });
   await step("HRV", async () => {
     for (const [a, b] of chunks(from, today, 28)) parseHrv(await get(`/hrv-service/hrv/daily/${a}/${b}`), patch);
+    // Last night on its own: the range list can lag behind by a day.
+    parseHrv(await get(`/hrv-service/hrv/${today}`), patch);
   });
   await step("sleep", async () => {
     for (const [a, b] of chunks(from, today, 28)) parseSleep(await get(`/sleep-service/stats/sleep/daily/${a}/${b}`), patch);

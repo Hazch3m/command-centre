@@ -6,6 +6,12 @@ import { showVo2, useFitness, type Fitness } from "./fitness";
 import { duration } from "./stats";
 import { useRunningData, useStravaSync } from "./useRunning";
 import { FitnessTab } from "./FitnessTab";
+import { GoalPath, ShapeView } from "./FitnessPlan";
+import { loadOverrides } from "./strava";
+import { useDataVersion } from "../../core/events";
+import { useQuery } from "../../core/useQuery";
+import { useState } from "react";
+import { Delta } from "./Predictions";
 import { type TrendStatus } from "./vo2";
 
 export const STATUS_LABEL: Record<TrendStatus, string> = { ahead: "Ahead of plan", "on-track": "On track", behind: "Behind plan", "no-data": "No key run yet" };
@@ -119,14 +125,16 @@ function FitnessCard({ editing }: CardProps) {
           )}
         </div>
       </div>
-      <div className="fit-predict-row" title="Your own speed–endurance curve from recent races">
+      <div className="fit-predict-row" title="Garmin's predictions when synced, otherwise your own speed–endurance curve">
         {f.predictions.map((p) => {
           const t = p.seconds;
           return (
             <div key={p.name} title={p.target ? `Next: ${p.target}` : undefined}>
               <span className="label">{p.name}</span>
               <span className={"num" + (p.targetSeconds && t && t <= p.targetSeconds ? " tone-accent" : "")}>{t ? duration(t) : "–"}</span>
-              {p.garminSeconds ? <span className="muted small">Garmin {duration(p.garminSeconds)}</span> : null}
+              <span className="small">
+                <Delta now={p.seconds} then={p.secondsMonthAgo} /> <span className="muted">30 d</span>
+              </span>
             </div>
           );
         })}
@@ -140,20 +148,46 @@ function FitnessCard({ editing }: CardProps) {
   );
 }
 
-/** The Fitness tab. */
+/** The Fitness tab: overview, the path to the goals, and marathon shape. */
 function FitnessPage() {
   useStravaSync();
   const { plan } = useRunningData();
   const f = useFitness(plan);
+  const version = useDataVersion("running");
+  const { data: overrides } = useQuery(loadOverrides, [version]);
+  const [tab, setTab] = useState<"overview" | "goal" | "shape">("overview");
   return (
     <div className="subpage">
       <header className="page-head">
         <div>
           <h1>Fitness &amp; VO2 max</h1>
-          <div className="muted small">Estimated from your key runs' heart rate and pace, on your race-result (VDOT) scale.</div>
+          <div className="muted small">From your key runs' heart rate and pace, your races, and Garmin.</div>
         </div>
       </header>
-      <div className="page-body">{f ? <FitnessTab f={f} /> : <p className="muted">Loading…</p>}</div>
+      <nav className="segmented page-tabs" role="tablist">
+        {(
+          [
+            ["overview", "Overview"],
+            ["goal", "Path to 2:45"],
+            ["shape", "Marathon shape"],
+          ] as const
+        ).map(([id, label]) => (
+          <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "on" : ""} onClick={() => setTab(id)}>
+            {label}
+          </button>
+        ))}
+      </nav>
+      <div className="page-body" key={tab}>
+        {!f || !plan ? (
+          <p className="muted">Loading…</p>
+        ) : tab === "overview" ? (
+          <FitnessTab f={f} />
+        ) : tab === "goal" ? (
+          <GoalPath f={f} />
+        ) : (
+          <ShapeView f={f} plan={plan} overrides={overrides} />
+        )}
+      </div>
     </div>
   );
 }

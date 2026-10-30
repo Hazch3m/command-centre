@@ -43,8 +43,13 @@ export function BarChart({
   labelEvery = 1,
   refLine,
   min = 0,
+  showValues = true,
+  digits = 0,
 }: {
   bars: Bar[];
+  /** Write each bar's value above it (when there's room). */
+  showValues?: boolean;
+  digits?: number;
   height?: number | "fill";
   unit?: string;
   labelEvery?: number;
@@ -57,7 +62,7 @@ export function BarChart({
   const [ref, box] = useBox(fill);
   const W = box.w || 1000;
   const H = fill ? Math.max(40, box.h - READOUT) : height;
-  const pad = { top: 8, bottom: 18, left: 0, right: 0 };
+  const pad = { top: showValues ? 16 : 8, bottom: 18, left: 0, right: 0 };
   const top = Math.max(min + 1, ...bars.map((b) => Math.max(b.value, b.targetMax ?? b.target ?? 0)), refLine?.value ?? 0);
   const max = min + (top - min) * 1.08;
   const bw = (W - pad.left - pad.right) / Math.max(1, bars.length);
@@ -84,6 +89,11 @@ export function BarChart({
                 className={"chart-bar" + (b.highlight ? " hl" : "") + (hover === i ? " hover" : "")}
               />
               {b.target != null && <line x1={x + bw * 0.1} x2={x + bw * 0.9} y1={y(b.target)} y2={y(b.target)} className="chart-target" />}
+              {showValues && bw >= 22 && b.value > min && (
+                <text x={x + bw / 2} y={Math.min(y(b.value), b.targetMax != null ? y(b.targetMax) : Infinity) - 4} className={"chart-value" + (b.highlight ? " hl" : "")} textAnchor="middle">
+                  {b.value.toFixed(digits)}
+                </text>
+              )}
               {i % Math.max(labelEvery, Math.ceil(24 / bw)) === 0 && (
                 <text x={x + bw / 2} y={H - 4} className="chart-label" textAnchor="middle">
                   {b.label}
@@ -125,6 +135,7 @@ export function LineChart({
   today,
   unit = "",
   digits = 1,
+  format,
 }: {
   series: LineSeries[];
   from: string;
@@ -136,13 +147,16 @@ export function LineChart({
   today?: string;
   unit?: string;
   digits?: number;
+  /** Formats values on the axis and in the readout (e.g. seconds as h:mm). */
+  format?: (v: number) => string;
 }) {
   const [hover, setHover] = useState<number | null>(null);
   const fill = height === "fill";
   const [ref, box] = useBox(fill);
   const W = box.w || 1000;
   const H = fill ? Math.max(50, box.h - READOUT) : height;
-  const pad = { top: 14, bottom: 20, left: 34, right: 8 };
+  const pad = { top: 14, bottom: 20, left: format ? 46 : 34, right: 8 };
+  const fmt = format ?? ((v: number) => v.toFixed(digits));
   const x0 = dayNum(from);
   const x1 = dayNum(to);
   const ys = series.flatMap((s) => s.points.map((p) => p.y)).filter((y): y is number => y != null && isFinite(y));
@@ -167,7 +181,7 @@ export function LineChart({
     const k = d.toISOString().slice(0, 10);
     ticks.push({ x: X(k), label: d.getUTCMonth() === 0 ? String(d.getUTCFullYear()) : MON[d.getUTCMonth()] });
   }
-  const yTicks = [...new Set([lo, (lo + hi) / 2, hi].map((v) => Math.round(v)))];
+  const yTicks = format ? [lo + (hi - lo) * 0.08, (lo + hi) / 2, hi - (hi - lo) * 0.08] : [...new Set([lo, (lo + hi) / 2, hi].map((v) => Math.round(v)))];
 
   const path = (pts: { x: string; y: number | null }[]) => {
     let d = "";
@@ -190,7 +204,7 @@ export function LineChart({
     ? series
         .map((s) => {
           const p = s.points.find((q) => q.x === hx && q.y != null);
-          return p ? `${p.label ?? s.name} ${p.y!.toFixed(digits)}${unit}` : null;
+          return p ? `${p.label ?? s.name} ${fmt(p.y!)}${unit}` : null;
         })
         .filter(Boolean)
         .join(" · ")
@@ -222,7 +236,7 @@ export function LineChart({
           <g key={v}>
             <line x1={pad.left} x2={W - pad.right} y1={Y(v)} y2={Y(v)} className="chart-grid" />
             <text x={pad.left - 6} y={Y(v) + 4} className="chart-label" textAnchor="end">
-              {v}
+              {format ? format(v) : v}
             </text>
           </g>
         ))}

@@ -57,6 +57,9 @@ function RunningCard({ editing }: CardProps) {
   const pct = hi ? Math.min(1, done / hi) : 0;
   const phase = week ? (/^R\d/.test(week.week) ? "Recovery" : week.phase.replace(/\s*\(.*\)$/, "").replace(/^Recovery and /, "")) : "";
   const ranToday = lastRun?.date === today;
+  const complete = history.slice(0, -1).map((b) => b.value);
+  const avg = complete.reduce((s, x) => s + x, 0) / Math.max(1, complete.length);
+  const best = Math.max(0, ...complete);
 
   return (
     <>
@@ -108,8 +111,13 @@ function RunningCard({ editing }: CardProps) {
       )}
       </div>
       <div className="run-history">
-        <div className="label">Last 10 weeks, km</div>
-        <BarChart bars={history} height="fill" unit=" km" />
+        <div className="run-history-head">
+          <span className="label">Last 10 weeks, km</span>
+          <span className="muted small">
+            avg <b className="num">{avg.toFixed(0)}</b> · best <b className="num">{best.toFixed(0)}</b>
+          </span>
+        </div>
+        <BarChart bars={history} height="fill" unit=" km" refLine={{ value: avg, label: `Average of the 9 complete weeks: ${avg.toFixed(1)} km` }} />
       </div>
 
       <div className="run-races">

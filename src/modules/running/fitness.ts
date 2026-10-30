@@ -84,6 +84,7 @@ export function splitsFor(d: RunDetail) {
 
 export interface Fitness {
   config: FitnessConfig;
+  runs: Run[];
   offset: number;
   calibration: "races" | "none";
   /** Garmin's VO2 max runs on its own scale: how far above the race scale your readings sit. */
@@ -104,7 +105,13 @@ export interface Fitness {
   predictions: {
     name: string;
     distance: number;
+    /** The prediction shown: Garmin's when synced, else your own curve. */
     seconds: number | null;
+    source: "garmin" | "own";
+    /** Your own speed–endurance curve. */
+    ownSeconds: number | null;
+    /** The shown prediction about a month ago. */
+    secondsMonthAgo: number | null;
     formSeconds: number | null;
     /** Equal-endurance (Daniels VDOT) prediction from the best recent level. */
     vdotSeconds: number | null;
@@ -363,7 +370,11 @@ export function computeFitness(
     return {
       name: d.name,
       distance: d.distance,
-      seconds: endurance ? endurance.predict(d.distance) : vdotSeconds,
+      // Garmin's predictor when synced (it tracks your racing well); otherwise your own curve.
+      seconds: garminPredictions?.values[d.name] ?? (endurance ? endurance.predict(d.distance) : vdotSeconds),
+      source: (garminPredictions?.values[d.name] ? "garmin" : "own") as "garmin" | "own",
+      ownSeconds: endurance ? endurance.predict(d.distance) : vdotSeconds,
+      secondsMonthAgo: garminPredictions?.values[d.name] ? garminPredictions?.monthAgo?.[d.name] ?? null : enduranceThen ? enduranceThen.predict(d.distance) : null,
       vdotSeconds,
       shapeSeconds: vdotSeconds != null && shape ? vdotSeconds * shapeFactor(d.distance, shape.total) : null,
       formSeconds: current != null ? predictTime(d.distance, current) : null,
@@ -417,6 +428,7 @@ export function computeFitness(
 
   return {
     config,
+    runs,
     offset,
     calibration,
     garmin: garminScale,

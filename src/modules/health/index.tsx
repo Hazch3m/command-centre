@@ -111,7 +111,7 @@ function Metrics({ rows, today }: { rows: HealthDay[]; today: string }) {
         when={when("readiness")}
       />
       <Metric
-        label="HRV last night"
+        label={L.dates.hrv === today ? "HRV last night" : "HRV"}
         value={L.hrv != null ? String(Math.round(L.hrv)) : "–"}
         unit="ms"
         tone={L.hrv_status ? HRV_TONE[L.hrv_status] : ""}
@@ -128,7 +128,14 @@ function Metrics({ rows, today }: { rows: HealthDay[]; today: string }) {
         spark={series("rhr")}
         when={when("rhr")}
       />
-      <Metric label="Sleep" value={hm(L.sleep_secs)} unit="h" note={L.sleep_score != null ? `Score ${Math.round(L.sleep_score)}` : undefined} spark={series("sleep_secs")} when={when("sleep_secs")} />
+      <Metric
+        label={L.dates.sleep_secs === today ? "Sleep last night" : "Sleep"}
+        value={hm(L.sleep_secs)}
+        unit="h"
+        note={[L.sleep_score != null ? `Score ${Math.round(L.sleep_score)}` : null, L.dates.sleep_secs && L.dates.sleep_secs !== today ? `night to ${relativeDayLabel(L.dates.sleep_secs, today).toLowerCase()}` : L.sleep_end ? `woke ${L.sleep_end}` : null].filter(Boolean).join(" · ") || undefined}
+        spark={series("sleep_secs")}
+        when={when("sleep_secs")}
+      />
       <Metric
         label="Body Battery"
         value={L.bb_now != null ? String(Math.round(L.bb_now)) : L.bb_high != null ? String(Math.round(L.bb_high)) : "–"}

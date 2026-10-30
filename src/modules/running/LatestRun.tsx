@@ -82,6 +82,7 @@ function LatestRunCard(_: CardProps) {
       <div className="lr-splits">
           {splits.length > 1 && (
         <BarChart
+          showValues={false}
           height={44}
           min={Math.max(0, Math.floor(Math.min(...splits.map((s) => s.speed * 3.6))) - 2)}
           labelEvery={splits.length > 16 ? 5 : splits.length > 8 ? 2 : 1}
