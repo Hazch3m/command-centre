@@ -398,7 +398,11 @@ function Legend({ series }: { series: LineSeries[] }) {
       {series.map((s) => (
         <span key={s.name}>
           <svg width="20" height="10" aria-hidden="true">
-            {s.kind === "dots" || s.kind === "diamonds" ? (
+            {s.kind === "diamonds" ? (
+              <g className={s.className}>
+                <rect x="6" y="1" width="8" height="8" transform="rotate(45 10 5)" className="chart-diamond" />
+              </g>
+            ) : s.kind === "dots" ? (
               <g className={s.className}>
                 <circle cx="10" cy="5" r="4" className="chart-dot" />
               </g>
