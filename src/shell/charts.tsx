@@ -83,7 +83,7 @@ export function BarChart({
     <div className={"chart" + (fill ? " chart-fill" : "")} ref={ref} onMouseLeave={() => setHover(null)}>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} role="img">
         {refLine && <line x1={0} x2={W} y1={y(refLine.value)} y2={y(refLine.value)} className="chart-ref" />}
-        {refLine && (
+        {refLine && refLine.label.length * 6.2 < W * 0.55 && (
           <text x={W - 4} y={y(refLine.value) - 5} textAnchor="end" className="chart-ref-label">
             {refLine.label}
           </text>

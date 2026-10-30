@@ -266,7 +266,12 @@ export function Dashboard() {
       findSpot({ x: 0, y: 0, w: Math.max(6, (m.minW ?? 3) * 2), h: Math.max(4, m.minH ?? 3) }, taken, ROWS_NOW) ??
       findSpot({ x: 0, y: 0, w: 4, h: 3 }, taken, ROWS_NOW);
     if (!spot) {
-      setNotice(`No room for ${m.title}. Shrink or hide another card first.`);
+      // Screen full: put it just below the line so it can be resized and dragged up once there's room.
+      const d = defaultFor(m, orient);
+      const below = { x: 0, y: ROWS_NOW, w: Math.min(d.w, COLS), h: d.h };
+      setNotice(`${m.title} is below the dashed line. Shrink or hide a card to make room, then drag it up.`);
+      persist({ items: { ...layout.items, [id]: below }, hidden: layout.hidden.filter((h) => h !== id), custom: true });
+      window.setTimeout(() => document.querySelector(`.card-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
       return;
     }
     setNotice(null);
