@@ -16,7 +16,7 @@ export function useBox(fill: boolean) {
       const cs = getComputedStyle(el);
       const px = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
       const py = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
-      setBox({ w: Math.round(el.clientWidth - px), h: Math.round(el.clientHeight - py) });
+      setBox({ w: Math.max(0, Math.round(el.clientWidth - px)), h: Math.max(0, Math.round(el.clientHeight - py)) });
     };
     measure();
     const ro = new ResizeObserver(measure);

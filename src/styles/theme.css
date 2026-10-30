@@ -4312,3 +4312,5 @@ select:focus {
 .chart-legend .chart-line.line { stroke-dasharray: none; animation: none; }
 .iv-band.auto { fill: transparent; stroke-dasharray: 4 3; stroke: var(--text-2); }
 .iv-band-l.auto { background: transparent; border: 1px dashed var(--text-2); }
+.card:not(.card-page) .chart-readout { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card:not(.card-page) .chart-legend { flex-wrap: nowrap; }
