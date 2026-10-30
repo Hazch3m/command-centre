@@ -15,7 +15,11 @@ export function useRunningData() {
   useEffect(() => {
     const onFocus = () => setPlanTick((t) => t + 1);
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    window.addEventListener("cc:plan-changed", onFocus);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("cc:plan-changed", onFocus);
+    };
   }, []);
 
   const plan = useQuery(loadPlan, [planTick]);

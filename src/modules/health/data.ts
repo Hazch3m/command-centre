@@ -85,6 +85,16 @@ const FIELDS: Field[] = [
   "pred_marathon",
 ];
 
+export interface SleepProbe {
+  asked: string;
+  via: string;
+  status: string;
+  calendarDate: string | null;
+  start: string | null;
+  end: string | null;
+  secs: number | null;
+}
+
 export interface HealthSync {
   lastSync: string | null;
   offline: boolean;
@@ -308,24 +318,50 @@ async function doSync(): Promise<HealthSync> {
   // then the daily stats list for older nights. The stats list can lag a day behind and may be
   // dated by the evening the night started, so it's lined up against the full records first.
   const nights: Patch = new Map();
-  const sleepDebug: { asked: string; via: string; wake: string | null; secs: number | null }[] = [];
+  const sleepDebug: SleepProbe[] = [];
   await step("last night's sleep", async () => {
     for (const d of [addDays(today, -2), addDays(today, -1), today]) {
-      let body: unknown = null;
-      let via = "sleep-service";
-      try {
-        body = await get(`/sleep-service/sleep/dailySleepData?date=${d}&nonSleepBufferMinutes=60`);
-      } catch {
-        body = null;
+      const dn = name ? encodeURIComponent(name) : null;
+      // Three places Garmin keeps a night's sleep; the first that has it wins.
+      const sources: [string, string | null][] = [
+        ["sleep-service", `/sleep-service/sleep/dailySleepData?date=${d}&nonSleepBufferMinutes=60`],
+        ["wellness-service", dn ? `/wellness-service/wellness/dailySleepData/${dn}?date=${d}&nonSleepBufferMinutes=60` : null],
+        ["daily summary", dn ? `/usersummary-service/usersummary/daily/${dn}?calendarDate=${d}` : null],
+      ];
+      let found = false;
+      for (const [via, path] of sources) {
+        if (!path) continue;
+        const probe: SleepProbe = { asked: d, via, status: "", calendarDate: null, start: null, end: null, secs: null };
+        try {
+          const r = await backend.garminRequest(path);
+          probe.status = String(r.status);
+          const body = r.body;
+          if (r.status === 200 && via === "daily summary") {
+            const secs = pickNum(body, /^sleepingSeconds$/i, 0);
+            probe.calendarDate = pickStr(body, /^calendarDate$/i, 0);
+            probe.secs = secs;
+            if (secs && !found) {
+              put(nights, d, { sleep_secs: secs });
+              found = true;
+            }
+          } else if (r.status === 200) {
+            const dto = isObj(body) && isObj(body.dailySleepDTO) ? body.dailySleepDTO : null;
+            probe.calendarDate = dto ? pickStr(dto, /^calendarDate$/i, 0) : null;
+            const st = dto ? pickNum(dto, /^sleepStartTimestampLocal$/i, 0) : null;
+            const en = dto ? pickNum(dto, /^sleepEndTimestampLocal$/i, 0) : null;
+            probe.start = st ? new Date(st).toISOString().slice(0, 16).replace("T", " ") : null;
+            probe.end = en ? new Date(en).toISOString().slice(0, 16).replace("T", " ") : null;
+            probe.secs = dto ? pickNum(dto, /^sleepTimeSeconds$/i, 0) : null;
+            if (probe.secs && !found) {
+              parseDailySleep(body, nights);
+              found = true;
+            }
+          }
+        } catch (e) {
+          probe.status = String((e as Error)?.message ?? e).slice(0, 80);
+        }
+        sleepDebug.push(probe);
       }
-      if (!isObj(body) || !isObj(body.dailySleepDTO) || !pickNum(body.dailySleepDTO, /^sleepTimeSeconds$/i, 0)) {
-        via = "wellness-service";
-        body = name ? await get(`/wellness-service/wellness/dailySleepData/${encodeURIComponent(name)}?date=${d}&nonSleepBufferMinutes=60`) : null;
-      }
-      const before = new Set(nights.keys());
-      parseDailySleep(body, nights);
-      const added = [...nights.keys()].find((k) => !before.has(k)) ?? null;
-      sleepDebug.push({ asked: d, via, wake: added, secs: added ? (nights.get(added)?.sleep_secs as number) ?? null : null });
     }
   });
   await kvSet("health.sleepDebug", sleepDebug);

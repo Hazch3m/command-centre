@@ -3919,3 +3919,55 @@ select:focus {
   gap: 1rem;
   flex-wrap: wrap;
 }
+.cal-col.can-add {
+  cursor: copy;
+}
+.cal-block.clickable,
+.cal-grid-allday .cal-allday {
+  cursor: pointer;
+}
+.cal-block.clickable:hover {
+  filter: brightness(1.15);
+}
+.event-editor {
+  width: min(32rem, 92vw);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.event-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+/* ---- v12: weekly bars under shape, plan editor, plan → calendar ---- */
+.chart-bar.planned { opacity: 0.35; }
+.chart-bar.planned.hover { opacity: 0.6; }
+.shape-weekly { margin-top: 1rem; }
+.shape-weekly-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.8rem; margin-top: 0.6rem; }
+.shape-weekly-head h3 { margin: 0; }
+
+.plan-editor { display: flex; flex-direction: column; gap: 0.6rem; padding-bottom: 3rem; }
+.plan-editor input:not([type="checkbox"]), .plan-editor select { background: var(--card-2); color: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 0.3rem 0.45rem; font: inherit; min-width: 0; }
+.plan-save-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.plan-weeks { display: flex; flex-direction: column; gap: 0.5rem; }
+.plan-week { border: 1px solid var(--line); border-radius: 10px; padding: 0.55rem 0.7rem; background: var(--card); }
+.plan-week.now { border-color: var(--accent); }
+.plan-week-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0.45rem; }
+.plan-week-head .pw-label { width: 4.5rem; font-weight: 600; }
+.plan-week-head .pw-km { width: 5.5rem; }
+.plan-week-head .pw-phase { flex: 1 1 10rem; }
+.plan-week-head .pw-actions { margin-left: auto; display: inline-flex; gap: 0.2rem; }
+.plan-week-days { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 0.4rem 0.6rem; }
+.plan-week-days label { display: flex; flex-direction: column; gap: 0.15rem; }
+.plan-races { display: flex; flex-direction: column; gap: 0.35rem; align-items: flex-start; }
+.plan-race { display: grid; grid-template-columns: 10rem minmax(10rem, 1fr) minmax(8rem, 14rem) auto; gap: 0.4rem; width: 100%; }
+.plan-structure input { width: 100%; }
+.plan-save-float { position: sticky; bottom: 0.6rem; align-self: flex-end; display: flex; align-items: center; gap: 0.6rem; padding: 0.4rem 0.5rem 0.4rem 0.9rem; border-radius: 999px; background: var(--card); border: 1px solid var(--accent); box-shadow: 0 6px 20px rgb(0 0 0 / 0.25); animation: cc-pop 0.2s ease-out; }
+@keyframes cc-pop { from { transform: translateY(8px); opacity: 0; } }
+.plan-gcal { border: 1px solid var(--line); border-radius: 10px; padding: 0.6rem 0.8rem; }
+.plan-gcal h3 { margin-top: 0; }
+.plan-gcal-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; margin: 0.3rem 0; }
+@media (max-width: 700px) { .plan-race { grid-template-columns: 1fr 1fr; } }

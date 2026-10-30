@@ -3,7 +3,7 @@ import { kvGet, kvSet } from "../../core/db";
 import { useDataVersion } from "../../core/events";
 import { addDays, parseKey, useToday } from "../../core/time";
 import { useQuery } from "../../core/useQuery";
-import { LineChart } from "../../shell/charts";
+import { BarChart, LineChart } from "../../shell/charts";
 import { loadHealth, type HealthDay } from "../health/data";
 import { marathonShape, SHAPE_DEFAULTS, showVo2, type Fitness, type ShapeOptions } from "./fitness";
 import { forecastWeek } from "./forecast";
@@ -328,7 +328,20 @@ export function ShapeView({ f, plan, overrides }: { f: Fitness; plan: Plan; over
       for (let k = 0.7; k <= 1.8; k += 0.05) if (at(date, [...done, ...scaled(base, k, set.longExtra)]).total >= need) return k;
       return null;
     };
-    return { past, ahead, at, scaleFor, now: marathonShape(f.runs, today, level(today), opts) };
+    // Week by week: what you ran, then what the plan (with the what-ifs) has.
+    const thisWeek = mondayOf(today);
+    const weeks: { week: string; km: number; longest: number; planned: boolean }[] = [];
+    const byWeek = new Map<string, { km: number; longest: number }>();
+    for (const r of planned) {
+      const w = mondayOf(r.date);
+      const k = r.distance / 1000;
+      const e = byWeek.get(w) ?? { km: 0, longest: 0 };
+      e.km += k;
+      e.longest = Math.max(e.longest, k);
+      byWeek.set(w, e);
+    }
+    for (let w = past[0].x; w <= final.date; w = addDays(w, 7)) weeks.push({ week: w, ...(byWeek.get(w) ?? { km: 0, longest: 0 }), planned: w > thisWeek });
+    return { past, ahead, at, scaleFor, weeks, thisWeek, now: marathonShape(f.runs, today, level(today), opts) };
   }, [f, base, today, final?.date, need, set.planScale, set.longExtra, set.weeklyWeeks, set.longWeeks, set.longMin, set.weeklyShare]);
   if (!f.shape || !data || !final) return <p className="muted">Not enough runs yet.</p>;
   const s = data.now;
@@ -418,10 +431,73 @@ export function ShapeView({ f, plan, overrides }: { f: Fitness; plan: Plan; over
           { name: "Ready", kind: "dashed", className: "s-goal", points: [{ x: data.past[0].x, y: 100 }, { x: final.date, y: 100 }] },
         ]}
       />
+      <WeeklyBars weeks={data.weeks} thisWeek={data.thisWeek} need={data.at(final.date)} finalLabel={final.label.split(" · ")[0]} longMin={set.longMin} />
       <p className="muted small">
         Targets grow with your fitness (VO2 max 50 → ~85 km/week and ~30 km long runs; 60 → ~105 and ~32). The projection uses the plan's weeks as estimated in the training
         calendar, including any days you've changed; the what-if buttons only change this page, not the plan.
       </p>
     </>
+  );
+}
+
+const shortDate = (d: string) => `${parseKey(d).getDate()} ${MON[parseKey(d).getMonth()]}`;
+
+/** Weekly km and longest run per week under the shape chart: run so far, then planned (faint). */
+function WeeklyBars({
+  weeks,
+  thisWeek,
+  need,
+  finalLabel,
+  longMin,
+}: {
+  weeks: { week: string; km: number; longest: number; planned: boolean }[];
+  thisWeek: string;
+  need: { targetKm: number; targetLong: number };
+  finalLabel: string;
+  longMin: number;
+}) {
+  const label = (w: string) => (parseKey(w).getDate() <= 7 ? monthLabel(w) : "");
+  const recent = weeks.filter((w) => !w.planned && w.week < thisWeek).slice(-4);
+  const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+  const peakPlan = weeks.filter((w) => w.planned);
+  return (
+    <div className="shape-weekly">
+      <div className="shape-weekly-head">
+        <h3>Weekly km</h3>
+        <span className="muted small">
+          Last 4 weeks {avg(recent.map((w) => w.km)).toFixed(0)} km/week · plan peaks at {Math.max(0, ...peakPlan.map((w) => w.km)).toFixed(0)} · solid = run, faint = planned
+        </span>
+      </div>
+      <BarChart
+        height={170}
+        unit=" km"
+        bars={weeks.map((w) => ({
+          label: label(w.week),
+          value: w.km,
+          planned: w.planned,
+          highlight: w.week === thisWeek,
+          title: `Week of ${shortDate(w.week)}: ${w.km.toFixed(1)} km${w.planned ? " planned" : ""} · longest ${w.longest.toFixed(1)} km`,
+        }))}
+        refLine={{ value: need.targetKm, label: `~${need.targetKm.toFixed(0)} km/week for full shape by ${finalLabel}` }}
+      />
+      <div className="shape-weekly-head">
+        <h3>Longest run each week</h3>
+        <span className="muted small">
+          Last 4 weeks' longest {Math.max(0, ...recent.map((w) => w.longest)).toFixed(0)} km · runs from {longMin} km count toward shape
+        </span>
+      </div>
+      <BarChart
+        height={150}
+        unit=" km"
+        bars={weeks.map((w) => ({
+          label: label(w.week),
+          value: w.longest,
+          planned: w.planned,
+          highlight: w.week === thisWeek,
+          title: `Week of ${shortDate(w.week)}: longest ${w.longest.toFixed(1)} km${w.planned ? " (planned)" : ""}`,
+        }))}
+        refLine={{ value: need.targetLong, label: `~${need.targetLong.toFixed(0)} km long run for full shape by ${finalLabel}` }}
+      />
+    </div>
   );
 }

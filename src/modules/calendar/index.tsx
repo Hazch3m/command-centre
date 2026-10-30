@@ -7,6 +7,7 @@ import { useQuery } from "../../core/useQuery";
 import { CardHeader, ErrorNote } from "../../shell/ui";
 import type { CardProps, DashboardModule } from "../types";
 import { CalendarFeeds } from "./Connect";
+import { EventEditor, type EditTarget } from "./EventEditor";
 import { calendarSources, getCalendars, getCalSync, hhmm, loadEvents, migrations, setShown, syncCalendar, type DayEvents } from "./data";
 
 function untilLabel(ms: number): string {
@@ -99,6 +100,7 @@ function CalendarCard({ variant }: CardProps) {
     [today, version, view, range.start, range.days],
   );
   const [choosing, setChoosing] = useState(false);
+  const [editing, setEditing] = useState<EditTarget | null>(null);
   const [days, cals, sync, status, rangeDays] = data ?? [[], [], null, null, []];
   // Only flag future days past the synced window (older days are simply past).
   const outside = addDays(range.start, range.days - 1) > addDays(today, 42) && view !== "month" ? true : view === "month" && range.start > addDays(today, 14);
@@ -167,6 +169,9 @@ function CalendarCard({ variant }: CardProps) {
               </button>
             ))}
           </div>
+          <button className="btn" onClick={() => setEditing({ kind: "new", date: view === "list" ? today : anchor })} title="Add an event to Google Calendar">
+            + Event
+          </button>
           {view !== "list" && (
             <div className="cal-nav">
               <button className="btn icon ghost" onClick={() => setAnchor((a) => step(view, a, -1))} aria-label="Previous">
@@ -199,7 +204,13 @@ function CalendarCard({ variant }: CardProps) {
               }}
             />
           ) : (
-            <TimeGrid days={rangeDays} now={now} today={today} />
+            <TimeGrid
+              days={rangeDays}
+              now={now}
+              today={today}
+              onSlot={(date, start) => setEditing({ kind: "new", date, start })}
+              onEvent={(event) => setEditing({ kind: "edit", event })}
+            />
           )}
         </div>
       )}
@@ -215,6 +226,7 @@ function CalendarCard({ variant }: CardProps) {
         <div className="muted small">Offline — showing events from {diffDays(sync.lastSync.slice(0, 10), today) === 0 ? hhmm(new Date(sync.lastSync)) : relativeDayLabel(sync.lastSync.slice(0, 10), today).toLowerCase()}.</div>
       )}
       {sync?.error && <ErrorNote error={sync.error} />}
+      {editing && <EventEditor target={editing} cals={cals} onClose={() => setEditing(null)} />}
     </>
   );
 }

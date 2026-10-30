@@ -21,6 +21,8 @@ export interface CalendarInfo {
   color: string;
   primary: boolean;
   show: boolean;
+  /** Google calendars you can add events to (owner or writer). */
+  writable?: boolean;
 }
 
 export const migrations = [
@@ -113,7 +115,7 @@ export async function syncCalendar(): Promise<CalSync> {
 
   if (google) {
     try {
-      const list = await get<{ items: { id: string; summary: string; summaryOverride?: string; backgroundColor: string; primary?: boolean; selected?: boolean }[] }>(
+      const list = await get<{ items: { id: string; summary: string; summaryOverride?: string; backgroundColor: string; primary?: boolean; selected?: boolean; accessRole?: string }[] }>(
         `${API}/users/me/calendarList?minAccessRole=reader`,
       );
       const gcals = list.items.map((c) => ({
@@ -121,6 +123,7 @@ export async function syncCalendar(): Promise<CalSync> {
         name: c.summaryOverride ?? c.summary,
         color: c.backgroundColor,
         primary: !!c.primary,
+        writable: c.accessRole === "owner" || c.accessRole === "writer",
         // New calendars follow Google's own "shown in my list" choice.
         show: known.get(c.id)?.show ?? (!!c.primary || !!c.selected),
       }));
@@ -197,3 +200,64 @@ export async function loadEvents(today: string, days = 8): Promise<DayEvents[]> 
 
 export const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 export { dateKey };
+
+
+// ---- Writing to Google Calendar ------------------------------------------------------
+
+export interface EventInput {
+  summary: string;
+  date: string; // YYYY-MM-DD
+  allDay: boolean;
+  start: string; // HH:MM
+  end: string; // HH:MM
+  endDate?: string; // all-day events spanning several days (exclusive end handled here)
+  location?: string;
+  description?: string;
+}
+
+const tz = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+function toGoogle(e: EventInput) {
+  if (e.allDay) {
+    const last = e.endDate && e.endDate >= e.date ? e.endDate : e.date;
+    return { start: { date: e.date }, end: { date: addDays(last, 1) } };
+  }
+  const endDate = e.end <= e.start ? addDays(e.date, 1) : e.date; // past midnight
+  return {
+    start: { dateTime: `${e.date}T${e.start}:00`, timeZone: tz() },
+    end: { dateTime: `${endDate}T${e.end}:00`, timeZone: tz() },
+  };
+}
+
+async function write(method: string, url: string, body?: unknown) {
+  const r = await backend.apiRequest<{ error?: { message?: string } }>("google", method, url, body);
+  if (r.status === 403 || r.status === 401) {
+    throw new Error("Google didn't allow this. Reconnect Google in Settings → Connections (Disconnect, then Connect) so the app can add events.");
+  }
+  if (r.status >= 300) throw new Error(r.body?.error?.message ?? `Google Calendar answered ${r.status}`);
+  return r.body;
+}
+
+export async function createEvent(calendarId: string, e: EventInput) {
+  const body = { summary: e.summary, location: e.location || undefined, description: e.description || undefined, ...toGoogle(e) };
+  const out = await write("POST", `${API}/calendars/${encodeURIComponent(calendarId)}/events`, body);
+  await syncCalendar();
+  return out as unknown as { id: string };
+}
+
+export async function updateEvent(calendarId: string, eventId: string, e: EventInput) {
+  const body = { summary: e.summary, location: e.location ?? "", description: e.description ?? "", ...toGoogle(e) };
+  await write("PATCH", `${API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`, body);
+  await syncCalendar();
+}
+
+export async function deleteEvent(calendarId: string, eventId: string) {
+  const r = await backend.apiRequest("google", "DELETE", `${API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`);
+  if (r.status === 403 || r.status === 401) throw new Error("Google didn't allow this. Reconnect Google in Settings → Connections.");
+  if (r.status >= 300 && r.status !== 404 && r.status !== 410) throw new Error(`Google Calendar answered ${r.status}`);
+  await syncCalendar();
+}
+
+/** Raw write access for other modules (the training-plan sync). */
+export const googleWrite = write;
+export const GOOGLE_CAL_API = API;

@@ -19,13 +19,15 @@ import { WeekCalendar } from "./WeekCalendar";
 import { RecentBlock } from "./RecentBlock";
 import { PaceOnPointTab } from "./PaceOnPoint";
 import { RunsTab } from "./RunsTab";
+import { PlanEditor } from "./PlanEditor";
 
-type Tab = "week" | "runs" | "pace" | "plan" | "races" | "progress" | "paces";
+type Tab = "week" | "runs" | "pace" | "plan" | "edit" | "races" | "progress" | "paces";
 const TABS: { id: Tab; label: string }[] = [
   { id: "week", label: "Week by week" },
   { id: "runs", label: "All runs" },
   { id: "pace", label: "Pace on point" },
   { id: "plan", label: "Plan" },
+  { id: "edit", label: "Edit plan" },
   { id: "races", label: "Races & benchmarks" },
   { id: "progress", label: "Progression" },
   { id: "paces", label: "Paces & strength" },
@@ -91,7 +93,7 @@ export function RunningPage() {
         <div>
           <h1>{plan.title}</h1>
           <div className="muted small">
-            From your training doc, exported {plan.exported} · {connected ? `Strava synced ${sync?.lastSync ? new Date(sync.lastSync).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}` : "Strava not connected"}
+            {plan.editedInApp ? "Edited in the app" : `From your training doc, exported ${plan.exported}`} · {connected ? `Strava synced ${sync?.lastSync ? new Date(sync.lastSync).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}` : "Strava not connected"}
           </div>
         </div>
       </header>
@@ -109,6 +111,7 @@ export function RunningPage() {
         {tab === "week" && <WeekCalendar plan={plan} runs={runs} count={6} />}
         {tab === "pace" && <PaceOnPointTab plan={plan} runs={runs} />}
         {tab === "runs" && <RunsTab runs={runs} />}
+        {tab === "edit" && <PlanEditor plan={plan} />}
 
         {tab === "plan" && (
           <>

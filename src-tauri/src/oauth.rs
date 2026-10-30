@@ -42,7 +42,7 @@ const PROVIDERS: &[Provider] = &[
         id: "google",
         auth_url: "https://accounts.google.com/o/oauth2/v2/auth",
         token_url: "https://oauth2.googleapis.com/token",
-        scopes: "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/tasks",
+        scopes: "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/tasks",
         extra_auth: &[("access_type", "offline"), ("prompt", "consent")],
         pkce: true,
         api_prefixes: &["https://www.googleapis.com/calendar/v3/", "https://tasks.googleapis.com/tasks/v1/", "https://www.googleapis.com/tasks/v1/"],

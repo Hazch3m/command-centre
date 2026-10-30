@@ -28,6 +28,8 @@ export interface Bar {
   target?: number | null;
   targetMax?: number | null;
   highlight?: boolean;
+  /** Not run yet: drawn faint (planned weeks). */
+  planned?: boolean;
   /** Tooltip text */
   title?: string;
 }
@@ -89,7 +91,7 @@ export function BarChart({
                 width={bw * 0.64}
                 height={Math.max(0, H - pad.bottom - y(b.value))}
                 rx={Math.min(3, bw * 0.15)}
-                className={"chart-bar" + (b.highlight ? " hl" : "") + (hover === i ? " hover" : "")}
+                className={"chart-bar" + (b.highlight ? " hl" : "") + (b.planned ? " planned" : "") + (hover === i ? " hover" : "")}
               />
               {b.target != null && <line x1={x + bw * 0.1} x2={x + bw * 0.9} y1={y(b.target)} y2={y(b.target)} className="chart-target" />}
               {showValues && bw >= 22 && b.value > min && (

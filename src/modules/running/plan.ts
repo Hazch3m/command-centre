@@ -42,6 +42,8 @@ export interface Plan {
   strength: { A: string[]; B: string[] };
   rules: string[];
   benchmarks: Benchmark[];
+  /** Set once the plan has been edited in the app; it's then the master copy. */
+  editedInApp?: string;
   /** Past races to show on the progression page (Strava activity ids). */
   history?: { races: { id: string; name: string; km: number }[]; marathons: { name: string; date: string }[] };
 }
@@ -63,7 +65,8 @@ export async function loadPlan(): Promise<{ plan: Plan; error: string | null }> 
     const plan = JSON.parse(text) as Plan;
     if (!Array.isArray(plan.weeks) || !Array.isArray(plan.races)) throw new Error("missing weeks or races");
     // An app update carrying a newer export of the plan replaces the older copy.
-    if ((BUNDLED_PLAN.exported ?? "") > (plan.exported ?? "")) {
+    // (Not once you've edited the plan in the app: then your version is the master copy.)
+    if (!plan.editedInApp && (BUNDLED_PLAN.exported ?? "") > (plan.exported ?? "")) {
       await backend.writeDataFile(PLAN_FILE, JSON.stringify(BUNDLED_PLAN, null, 2));
       return { plan: BUNDLED_PLAN, error: null };
     }
@@ -122,4 +125,29 @@ export function planWeekNumber(plan: Plan, day: string): { label: string; index:
   const i = plan.weeks.findIndex((w) => w.start <= day && day <= w.end);
   if (i < 0) return null;
   return { label: plan.weeks[i].week, index: i, total: plan.weeks.length };
+}
+
+/** "55", "70–80", "about 35 + race" → [min, max]. */
+export function kmRange(text: string): [number | null, number | null] {
+  const m = /(\d+(?:\.\d+)?)(?:\s*[–-]\s*(\d+(?:\.\d+)?))?/.exec(text);
+  if (!m) return [null, null];
+  return [+m[1], m[2] ? +m[2] : +m[1]];
+}
+
+/** Saves a plan edited in the app; from then on it's the master copy. */
+export async function savePlan(plan: Plan) {
+  const today = new Date().toISOString().slice(0, 10);
+  const weeks = plan.weeks.map((w) => {
+    const [lo, hi] = kmRange(w.km);
+    return { ...w, kmMin: lo, kmMax: hi, end: addDays(w.start, 6) };
+  });
+  const out: Plan = { ...plan, weeks, editedInApp: new Date().toISOString(), exported: plan.exported > today ? plan.exported : today };
+  await backend.writeDataFile(PLAN_FILE, JSON.stringify(out, null, 2));
+  window.dispatchEvent(new Event("cc:plan-changed"));
+}
+
+/** Throws away in-app edits and goes back to the plan from your doc (as shipped with the app). */
+export async function resetPlan() {
+  await backend.writeDataFile(PLAN_FILE, JSON.stringify(BUNDLED_PLAN, null, 2));
+  window.dispatchEvent(new Event("cc:plan-changed"));
 }

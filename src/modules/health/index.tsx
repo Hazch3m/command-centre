@@ -8,7 +8,7 @@ import { LineChart } from "../../shell/charts";
 import { CardHeader, ErrorNote } from "../../shell/ui";
 import type { CardProps, DashboardModule } from "../types";
 import { duration } from "../running/stats";
-import { getHealthSync, latest, loadHealth, migrations, syncHealth, type HealthDay } from "./data";
+import { getHealthSync, latest, loadHealth, migrations, syncHealth, type HealthDay, type SleepProbe } from "./data";
 
 const hm = (s: number | null | undefined) => (s == null ? "–" : `${Math.floor(s / 3600)}:${String(Math.round((s % 3600) / 60)).padStart(2, "0")}`);
 const avg = (xs: (number | null)[]) => {
@@ -325,19 +325,63 @@ export function GarminSetting() {
   );
 }
 
-/** Shows exactly which nights Garmin returned, to make "wrong night" problems visible. */
+/** Shows exactly what each Garmin sleep source returned, to pin down "wrong night" problems. */
 function SleepCheck() {
   const version = useDataVersion("health");
-  const { data } = useQuery(() => kvGet<{ asked: string; via: string; wake: string | null; secs: number | null }[]>("health.sleepDebug", []), [version]);
-  if (!data?.length) return null;
+  const { data } = useQuery(() => Promise.all([kvGet<SleepProbe[]>("health.sleepDebug", []), getHealthSync()]), [version]);
+  const [copied, setCopied] = useState(false);
+  const probes = data?.[0] ?? [];
+  if (!probes.length || !("status" in probes[0])) return null;
+  const text = [
+    `Health sync ${data?.[1].lastSync ?? "never"} · errors: ${data?.[1].errors.join("; ") || "none"}`,
+    ...probes.map((p) => `${p.asked} ${p.via}: ${p.status} · calendarDate ${p.calendarDate ?? "-"} · ${p.start ?? "-"} → ${p.end ?? "-"} · ${p.secs ?? "-"} s`),
+  ].join("\n");
   return (
-    <details className="muted small health-diag">
-      <summary>Which night is which</summary>
-      {data.map((d) => (
-        <div key={d.asked}>
-          Asked Garmin for {d.asked}: {d.wake ? `a night ending ${d.wake}, ${hm(d.secs)} h` : "no sleep recorded"} <span className="muted">({d.via})</span>
-        </div>
-      ))}
+    <details className="small health-diag" open>
+      <summary className="muted">Sleep: what Garmin returned on the last sync</summary>
+      <table className="table">
+        <thead>
+          <tr>
+            <th>Asked for</th>
+            <th>Source</th>
+            <th>Reply</th>
+            <th>Garmin's date</th>
+            <th>Slept</th>
+            <th>Woke</th>
+            <th className="num-col">Time asleep</th>
+          </tr>
+        </thead>
+        <tbody>
+          {probes.map((p, i) => (
+            <tr key={i}>
+              <td>{p.asked}</td>
+              <td>{p.via}</td>
+              <td className={p.status === "200" ? "" : "tone-danger"}>{p.status === "200" ? "OK" : p.status}</td>
+              <td>{p.calendarDate ?? "–"}</td>
+              <td>{p.start ?? "–"}</td>
+              <td>{p.end ?? "–"}</td>
+              <td className="num-col">{p.secs ? hm(p.secs) : "–"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="inline">
+        <button
+          className="btn"
+          onClick={() =>
+            navigator.clipboard?.writeText(text).then(
+              () => setCopied(true),
+              () => setCopied(false),
+            )
+          }
+        >
+          {copied ? "Copied" : "Copy these details"}
+        </button>
+        <button className="btn" onClick={() => syncHealth()}>
+          Sync again now
+        </button>
+        <span className="muted">Paste them to Claude if the wrong night still shows.</span>
+      </div>
     </details>
   );
 }

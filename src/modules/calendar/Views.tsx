@@ -44,7 +44,14 @@ export function step(view: CalView, anchor: string, n: number): string {
 const minutes = (d: Date) => d.getHours() * 60 + d.getMinutes();
 
 /** Events of one day laid out on an hour grid, side by side when they overlap. */
-function TimeColumn({ day, now, from, to }: { day: DayEvents; now: Date; from: number; to: number }) {
+type Ev = DayEvents["timed"][number];
+export interface GridActions {
+  /** Click on an empty part of a day: start a new event at that time (HH:MM). */
+  onSlot?: (date: string, time: string) => void;
+  onEvent?: (e: Ev | DayEvents["allDay"][number]) => void;
+}
+
+function TimeColumn({ day, now, from, to, onSlot, onEvent }: { day: DayEvents; now: Date; from: number; to: number } & GridActions) {
   const span = to - from;
   const dayStart = parseKey(day.date).getTime();
   const evs = day.timed.map((e) => {
@@ -67,11 +74,21 @@ function TimeColumn({ day, now, from, to }: { day: DayEvents; now: Date; from: n
   const n = Math.max(1, cols.length);
   const nowMin = dateKey(now) === day.date ? minutes(now) : null;
   return (
-    <div className="cal-col">
+    <div
+      className={"cal-col" + (onSlot ? " can-add" : "")}
+      onClick={(ev) => {
+        if (!onSlot || ev.target !== ev.currentTarget) return;
+        const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+        const m = from + Math.floor((((ev.clientY - r.top) / r.height) * span) / 30) * 30;
+        onSlot(day.date, `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
+      }}
+      title={onSlot ? "Click to add an event" : undefined}
+    >
       {placed.map(({ e, s, en, c }) => (
         <div
           key={e.calendar_id + e.id}
-          className={"cal-block" + (e.endDate < now ? " past" : "")}
+          onClick={onEvent ? () => onEvent(e) : undefined}
+          className={"cal-block" + (e.endDate < now ? " past" : "") + (onEvent ? " clickable" : "")}
           style={{ top: `${((s - from) / span) * 100}%`, height: `${((en - s) / span) * 100}%`, left: `${(c / n) * 100}%`, width: `${100 / n}%`, borderColor: e.color ?? "var(--info)" }}
           title={`${hhmm(e.startDate)}–${hhmm(e.endDate)} ${e.summary}${e.location ? ` · ${e.location}` : ""}`}
         >
@@ -95,7 +112,7 @@ function hoursFor(days: DayEvents[]) {
   return { from, to };
 }
 
-export function TimeGrid({ days, now, today }: { days: DayEvents[]; now: Date; today: string }) {
+export function TimeGrid({ days, now, today, onSlot, onEvent }: { days: DayEvents[]; now: Date; today: string } & GridActions) {
   const { from, to } = hoursFor(days);
   const hours: number[] = [];
   for (let h = from / 60; h < to / 60; h++) hours.push(h);
@@ -117,7 +134,7 @@ export function TimeGrid({ days, now, today }: { days: DayEvents[]; now: Date; t
           {days.map((d) => (
             <span key={d.date}>
               {d.allDay.map((e) => (
-                <span key={e.calendar_id + e.id} className="cal-allday" style={{ borderColor: e.color ?? undefined }}>
+                <span key={e.calendar_id + e.id} className="cal-allday" style={{ borderColor: e.color ?? undefined }} onClick={onEvent ? () => onEvent(e) : undefined}>
                   {e.summary}
                 </span>
               ))}
@@ -135,7 +152,7 @@ export function TimeGrid({ days, now, today }: { days: DayEvents[]; now: Date; t
         </div>
         {days.map((d) => (
           <div key={d.date} className={"cal-day-col" + (d.date === today ? " today" : "")} style={{ backgroundSize: `100% ${100 / hours.length}%` }}>
-            <TimeColumn day={d} now={now} from={from} to={to} />
+            <TimeColumn day={d} now={now} from={from} to={to} onSlot={onSlot} onEvent={onEvent} />
           </div>
         ))}
       </div>
