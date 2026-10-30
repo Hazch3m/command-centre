@@ -97,7 +97,7 @@ export function PlanList({ plan, runs }: { plan: Plan; runs: Run[] }) {
         lastPhase = phase || lastPhase;
         const isNow = fw.monday === thisMonday;
         return (
-          <div key={fw.monday} ref={isNow ? current : undefined}>
+          <div key={fw.monday} ref={isNow ? current : undefined} className="pw-wrap">
             {head && (
               <div className="plist-phase">
                 {head}

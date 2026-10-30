@@ -4139,7 +4139,9 @@ select:focus {
 .pw-chev { color: var(--muted); }
 .pw-card-body { padding: 0.2rem 0.9rem 0.6rem; display: flex; flex-direction: column; animation: cc-pop 0.18s ease-out; }
 .pw-notes-line { padding: 0.2rem 0 0.4rem; }
-.pw-day { display: grid; grid-template-columns: 3.4rem 5rem minmax(10rem, 1fr) 4rem 6.5rem minmax(9rem, 16rem); align-items: center; gap: 0.7rem; padding: 0.5rem 0.6rem; border-top: 1px solid var(--line); border-left: 4px solid var(--rt, var(--line-2)); }
+.pw-wrap { scroll-margin-top: 3.4rem; }
+.pw-day-pace { white-space: nowrap; }
+.pw-day { display: grid; grid-template-columns: 3.4rem 5rem minmax(10rem, 1fr) 4rem 8.5rem minmax(9rem, 16rem); align-items: center; gap: 0.7rem; padding: 0.5rem 0.6rem; border-top: 1px solid var(--line); border-left: 4px solid var(--rt, var(--line-2)); }
 .pw-day.rt-row-easy { --rt: var(--run-easy); }
 .pw-day.rt-row-long { --rt: var(--run-long); background: color-mix(in srgb, var(--run-long) 6%, transparent); }
 .pw-day.rt-row-speed { --rt: var(--run-speed); background: color-mix(in srgb, var(--run-speed) 6%, transparent); }
