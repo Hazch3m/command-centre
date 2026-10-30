@@ -255,8 +255,30 @@ function fakeTasksApi(method: string, u: URL, body: any): { status: number; body
   return null;
 }
 
-function fakeCalendar(fx: any, u: URL): { status: number; body: unknown } | null {
+// Events "added in Google" by the app during a test, kept in localStorage.
+type FakeEv = { id: string; summary: string; start: { date?: string; dateTime?: string }; end: { date?: string; dateTime?: string }; location?: string; description?: string };
+const fakeWritten = (): Record<string, FakeEv[]> => JSON.parse(localStorage.getItem("cc-fake-gcal") ?? "{}");
+function fakeCalendar(fx: any, u: URL, method = "GET", body?: unknown): { status: number; body: unknown } | null {
   const p = u.pathname.replace("/calendar/v3", "");
+  const w = /^\/calendars\/([^/]+)\/events(?:\/([^/]+))?$/.exec(p);
+  if (w && method !== "GET") {
+    const all = fakeWritten();
+    const cal = decodeURIComponent(w[1]);
+    const list = (all[cal] ??= []);
+    const save = () => localStorage.setItem("cc-fake-gcal", JSON.stringify(all));
+    if (method === "POST") {
+      const ev = { ...(body as FakeEv), id: "w" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) };
+      list.push(ev);
+      save();
+      return { status: 200, body: ev };
+    }
+    const i = list.findIndex((e) => e.id === decodeURIComponent(w[2] ?? ""));
+    if (i < 0) return { status: 404, body: { error: { message: "Not Found" } } };
+    if (method === "DELETE") list.splice(i, 1);
+    else list[i] = { ...list[i], ...(body as FakeEv) };
+    save();
+    return { status: method === "DELETE" ? 204 : 200, body: method === "DELETE" ? null : list[i] };
+  }
   if (p === "/users/me/calendarList") return { status: 200, body: { items: fx.calendars } };
   if (p.startsWith("/users/me/calendarList/primary")) return { status: 200, body: fx.calendars[0] };
   const m = /^\/calendars\/([^/]+)\/events$/.exec(p);
@@ -275,13 +297,13 @@ function fakeCalendar(fx: any, u: URL): { status: number; body: unknown } | null
     const s = new Date(base.getTime() + e.startMin * 60000);
     return { id: id + i, summary: e.summary, location: e.location, start: { dateTime: iso(s) }, end: { dateTime: iso(new Date(s.getTime() + e.durMin * 60000)) } };
   });
-  return { status: 200, body: { items } };
+  return { status: 200, body: { items: [...items, ...(fakeWritten()[id] ?? [])] } };
 }
 
 function fakeApi(fx: any, method: string, url: string, body: unknown): { status: number; body: unknown } {
   const u = new URL(url);
   if (u.hostname === "tasks.googleapis.com") return fakeTasksApi(method, u, body) ?? { status: 404, body: {} };
-  if (u.pathname.startsWith("/calendar/v3")) return fakeCalendar(fx, u) ?? { status: 404, body: {} };
+  if (u.pathname.startsWith("/calendar/v3")) return fakeCalendar(fx, u, method, body) ?? { status: 404, body: {} };
   if (u.pathname === "/api/v3/athlete/activities") {
     const after = Number(u.searchParams.get("after") ?? 0);
     const before = Number(u.searchParams.get("before") ?? Infinity);
