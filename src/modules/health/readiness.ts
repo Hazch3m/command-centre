@@ -54,10 +54,12 @@ export function ownReadiness(rows: HealthDay[], date: string, dailyLoad: { date:
     parts.push({ name: "Sleep", w: 0.25, score: sc, note: `${Math.floor(h)} h ${String(Math.round((h % 1) * 60)).padStart(2, "0")}${today.sleep_score != null ? `, score ${Math.round(today.sleep_score)}` : ""}` });
   }
   // Resting HR
-  const rhrs = window.map((r) => r.rhr).filter((x): x is number => x != null);
-  if (today?.rhr != null && rhrs.length >= 5) {
-    const diff = today.rhr - mean(rhrs);
-    parts.push({ name: "Resting HR", w: 0.15, score: clamp(82 - diff * 9), note: `${Math.round(today.rhr)} bpm (${diff >= 0 ? "+" : ""}${diff.toFixed(1)} vs normal)` });
+  // Garmin settles a day's resting HR as the day goes on, so early on yesterday's stands in.
+  const rhrNow = today?.rhr ?? by.get(addDays(date, -1))?.rhr ?? null;
+  const rhrs = window.filter((r) => r.date < addDays(date, -1)).map((r) => r.rhr).filter((x): x is number => x != null);
+  if (rhrNow != null && rhrs.length >= 5) {
+    const diff = rhrNow - mean(rhrs);
+    parts.push({ name: "Resting HR", w: 0.15, score: clamp(82 - diff * 9), note: `${Math.round(rhrNow)} bpm (${diff >= 0 ? "+" : ""}${diff.toFixed(1)} vs normal)` });
   }
   // Load
   const loadOn = (d: string) => dailyLoad.filter((x) => x.date === d).reduce((a, b) => a + b.load, 0);
