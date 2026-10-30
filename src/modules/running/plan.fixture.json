@@ -1,0 +1,914 @@
+{
+  "version": 1,
+  "title": "Sub-2:45 Training Plan",
+  "exported": "2026-10-29",
+  "source": "Claude doc: Sub-2:50 Training Plan — Nov 2026 to Edinburgh",
+  "phases": [
+    {
+      "name": "Base",
+      "start": "2026-11-09",
+      "end": "2027-01-03",
+      "summary": "build from 55 to 82 km, with threshold work, hill sprints and a 5k time trial."
+    },
+    {
+      "name": "Speed and volume",
+      "start": "2027-01-04",
+      "end": "2027-03-28",
+      "summary": "85–98 km, with fast intervals, threshold runs and long runs up to 32 km. Ends with Aix."
+    },
+    {
+      "name": "Spring marathon block",
+      "start": "2027-03-29",
+      "end": "2027-05-09",
+      "summary": "98–105 km, with long runs of 32–35 km at marathon pace. Ends with Killarney."
+    },
+    {
+      "name": "Summer",
+      "start": null,
+      "end": null,
+      "summary": "recover, then rebuild speed and base at 70–95 km."
+    },
+    {
+      "name": "Autumn marathon block",
+      "start": null,
+      "end": null,
+      "summary": "100–120 km, long runs of 32–36 km with 20–26 km at 3:52–3:56/km, then the taper into Valencia."
+    }
+  ],
+  "races": [
+    {
+      "date": "2026-12-19",
+      "approx": false,
+      "when": "Sat 19 Dec",
+      "name": "5k time trial",
+      "target": "17:15–17:30",
+      "role": "First benchmark"
+    },
+    {
+      "date": "2027-02-07",
+      "approx": false,
+      "when": "Sun 7 Feb",
+      "name": "Antigel Run 10k, Geneva",
+      "target": "35:30–36:00",
+      "role": "10k benchmark"
+    },
+    {
+      "date": "2027-03-28",
+      "approx": false,
+      "when": "Sun 28 Mar",
+      "name": "Aix-les-Bains 10k",
+      "target": "34:45–35:30",
+      "role": "Sub-35:30 attempt"
+    },
+    {
+      "date": "2027-05-08",
+      "approx": false,
+      "when": "Sat 8 May",
+      "name": "Run Killarney half",
+      "target": "1:17:30–1:18:30",
+      "role": "Final spring test"
+    },
+    {
+      "date": "2027-05-30",
+      "approx": false,
+      "when": "Sun 30 May",
+      "name": "Edinburgh Marathon",
+      "target": "2:48–2:52",
+      "role": "Sub-2:50 attempt"
+    },
+    {
+      "date": "2027-07-11",
+      "approx": true,
+      "when": "July",
+      "name": "A summer 5k or 10k",
+      "target": "16:45 / 34:45",
+      "role": "Speed check"
+    },
+    {
+      "date": "2027-10-24",
+      "approx": true,
+      "when": "Late October",
+      "name": "Lausanne half",
+      "target": "1:15:30–1:16:30",
+      "role": "Autumn test"
+    },
+    {
+      "date": "2027-12-05",
+      "approx": true,
+      "when": "Early December",
+      "name": "Valencia Marathon",
+      "target": "Sub-2:45",
+      "role": "Main goal"
+    }
+  ],
+  "weeks": [
+    {
+      "week": "R1",
+      "start": "2026-10-26",
+      "end": "2026-11-01",
+      "phase": "Recovery and Phase 1: Base (26 Oct – 3 Jan)",
+      "km": "15–25",
+      "kmMin": 15.0,
+      "kmMax": 25.0,
+      "sessions": {
+        "tue": "Rest",
+        "thu": "Easy 30 min if you feel fine",
+        "sun": "none"
+      },
+      "notes": "Walk, sleep, eat well"
+    },
+    {
+      "week": "R2",
+      "start": "2026-11-02",
+      "end": "2026-11-08",
+      "phase": "Recovery and Phase 1: Base (26 Oct – 3 Jan)",
+      "km": "35–45",
+      "kmMin": 35.0,
+      "kmMax": 45.0,
+      "sessions": {
+        "tue": "Easy 45 min",
+        "thu": "Easy 50 min + 4 strides",
+        "sun": "16 km easy"
+      },
+      "notes": "Check the hamstring"
+    },
+    {
+      "week": "1",
+      "start": "2026-11-09",
+      "end": "2026-11-15",
+      "phase": "Recovery and Phase 1: Base (26 Oct – 3 Jan)",
+      "km": "55",
+      "kmMin": 55.0,
+      "kmMax": 55.0,
+      "sessions": {
+        "tue": "10 km easy + 6 × 20 s strides",
+        "thu": "12 km with 8 × 10 s hill sprints",
+        "sun": "20 km easy"
+      },
+      "notes": "Start strength training, light"
+    },
+    {
+      "week": "2",
+      "start": "2026-11-16",
+      "end": "2026-11-22",
+      "phase": "Recovery and Phase 1: Base (26 Oct – 3 Jan)",
+      "km": "63",
+      "kmMin": 63.0,
+      "kmMax": 63.0,
+      "sessions": {
+        "tue": "4 × 6 min T at 3:46–3:50, 1 min jog",
+        "thu": "12 km with 8 × 10 s hill sprints",
+        "sun": "22 km easy"
+      },
+      "notes": ""
+    },
+    {
+      "week": "3",
+      "start": "2026-11-23",
+      "end": "2026-11-29",
+      "phase": "Recovery and Phase 1: Base (26 Oct – 3 Jan)",
+      "km": "70",
+      "kmMin": 70.0,
+      "kmMax": 70.0,
+      "sessions": {
+        "tue": "5 × 6 min T at 3:44–3:48, 1 min jog",
+        "thu": "12 km with 6 × 30 s hill reps",
+        "sun": "24 km easy"
+      },
+      "notes": ""
+    },
+    {
+      "week": "4",
+      "start": "2026-11-30",
+      "end": "2026-12-06",
+      "phase": "Recovery and Phase 1: Base (26 Oct – 3 Jan)",
+      "km": "58",
+      "kmMin": 58.0,
+      "kmMax": 58.0,
+      "sessions": {
+        "tue": "Fartlek 10 × 1 min on, 1 min off",
+        "thu": "Easy + strides",
+        "sun": "21 km easy"
+      },
+      "notes": "Easier week. The Escalade (5–6 Dec) can replace Tuesday"
+    },
+    {
+      "week": "5",
+      "start": "2026-12-07",
+      "end": "2026-12-13",
+      "phase": "Recovery and Phase 1: Base (26 Oct – 3 Jan)",
+      "km": "75",
+      "kmMin": 75.0,
+      "kmMax": 75.0,
+      "sessions": {
+        "tue": "3 × 10 min T at 3:42–3:46, 2 min jog",
+        "thu": "8 × 400 m at 3:12–3:15, 200 m jog",
+        "sun": "26 km easy"
+      },
+      "notes": ""
+    },
+    {
+      "week": "6",
+      "start": "2026-12-14",
+      "end": "2026-12-20",
+      "phase": "Recovery and Phase 1: Base (26 Oct – 3 Jan)",
+      "km": "70",
+      "kmMin": 70.0,
+      "kmMax": 70.0,
+      "sessions": {
+        "tue": "4 × 1 km at 3:25, 2 min jog",
+        "thu": "Easy + strides. Sat 19 Dec: 5k time trial, 17:15–17:30",
+        "sun": "22 km easy"
+      },
+      "notes": "Benchmark week. Track or a flat, measured route"
+    },
+    {
+      "week": "7",
+      "start": "2026-12-21",
+      "end": "2026-12-27",
+      "phase": "Recovery and Phase 1: Base (26 Oct – 3 Jan)",
+      "km": "65",
+      "kmMin": 65.0,
+      "kmMax": 65.0,
+      "sessions": {
+        "tue": "Fartlek 8 × 2 min on, 1 min off",
+        "thu": "Easy + strides",
+        "sun": "22 km easy"
+      },
+      "notes": "Easier week over Christmas"
+    },
+    {
+      "week": "8",
+      "start": "2026-12-28",
+      "end": "2027-01-03",
+      "phase": "Recovery and Phase 1: Base (26 Oct – 3 Jan)",
+      "km": "82",
+      "kmMin": 82.0,
+      "kmMax": 82.0,
+      "sessions": {
+        "tue": "3 × 12 min T at 3:42, 2 min jog",
+        "thu": "5 × 1 km at 3:22, 2 min jog",
+        "sun": "28 km, last 6 at 4:05"
+      },
+      "notes": ""
+    },
+    {
+      "week": "9",
+      "start": "2027-01-04",
+      "end": "2027-01-10",
+      "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
+      "km": "85",
+      "kmMin": 85.0,
+      "kmMax": 85.0,
+      "sessions": {
+        "tue": "6 × 1 km at 3:20–3:23, 2 min jog",
+        "thu": "2 × 5 km at 3:45–3:48, 2 min jog",
+        "sun": "26 km easy"
+      },
+      "notes": ""
+    },
+    {
+      "week": "10",
+      "start": "2027-01-11",
+      "end": "2027-01-17",
+      "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
+      "km": "88",
+      "kmMin": 88.0,
+      "kmMax": 88.0,
+      "sessions": {
+        "tue": "5 × 1,200 m at 3:20, 2:30 jog",
+        "thu": "25 min T at 3:43–3:46",
+        "sun": "28 km easy"
+      },
+      "notes": ""
+    },
+    {
+      "week": "11",
+      "start": "2027-01-18",
+      "end": "2027-01-24",
+      "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
+      "km": "90",
+      "kmMin": 90.0,
+      "kmMax": 90.0,
+      "sessions": {
+        "tue": "8 × 800 m at 3:15–3:18, 90 s jog",
+        "thu": "4 × 2.5 km T at 3:40–3:43, 90 s jog",
+        "sun": "30 km, last 8 at 4:02–4:05"
+      },
+      "notes": ""
+    },
+    {
+      "week": "12",
+      "start": "2027-01-25",
+      "end": "2027-01-31",
+      "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
+      "km": "72",
+      "kmMin": 72.0,
+      "kmMax": 72.0,
+      "sessions": {
+        "tue": "Easy + strides",
+        "thu": "6 × 3 min at 3:30, 2 min jog",
+        "sun": "22 km easy"
+      },
+      "notes": "Easier week"
+    },
+    {
+      "week": "13",
+      "start": "2027-02-01",
+      "end": "2027-02-07",
+      "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
+      "km": "80",
+      "kmMin": 80.0,
+      "kmMax": 80.0,
+      "sessions": {
+        "tue": "5 × 1 km at 3:20, 2 min jog",
+        "thu": "Easy + strides",
+        "sun": "Antigel 10k, 7 Feb: 35:30–36:00, plus warm-up and cool-down, about 21 km"
+      },
+      "notes": "Benchmark. If the course isn't fast, run a 10k track time trial that weekend instead"
+    },
+    {
+      "week": "14",
+      "start": "2027-02-08",
+      "end": "2027-02-14",
+      "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
+      "km": "90",
+      "kmMin": 90.0,
+      "kmMax": 90.0,
+      "sessions": {
+        "tue": "3 × 3 km T at 3:40–3:43, 2 min jog",
+        "thu": "10 × 400 m at 3:08–3:12, 200 m jog",
+        "sun": "30 km easy"
+      },
+      "notes": ""
+    },
+    {
+      "week": "15",
+      "start": "2027-02-15",
+      "end": "2027-02-21",
+      "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
+      "km": "95",
+      "kmMin": 95.0,
+      "kmMax": 95.0,
+      "sessions": {
+        "tue": "6 × 1 km at 3:18, 90 s jog",
+        "thu": "2 × 6 km at 3:44–3:46, 2 min jog",
+        "sun": "30 km, last 12 at 4:00–4:03"
+      },
+      "notes": ""
+    },
+    {
+      "week": "16",
+      "start": "2027-02-22",
+      "end": "2027-02-28",
+      "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
+      "km": "75",
+      "kmMin": 75.0,
+      "kmMax": 75.0,
+      "sessions": {
+        "tue": "Fartlek 6 × 3 min on, 90 s off",
+        "thu": "Easy + strides",
+        "sun": "24 km easy"
+      },
+      "notes": "Easier week"
+    },
+    {
+      "week": "17",
+      "start": "2027-03-01",
+      "end": "2027-03-07",
+      "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
+      "km": "95",
+      "kmMin": 95.0,
+      "kmMax": 95.0,
+      "sessions": {
+        "tue": "5 × 2 km at 3:28–3:32, 2 min jog",
+        "thu": "30 min T at 3:42",
+        "sun": "32 km easy"
+      },
+      "notes": ""
+    },
+    {
+      "week": "18",
+      "start": "2027-03-08",
+      "end": "2027-03-14",
+      "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
+      "km": "98",
+      "kmMin": 98.0,
+      "kmMax": 98.0,
+      "sessions": {
+        "tue": "8 × 1 km at 3:28–3:31, 75 s jog",
+        "thu": "3 × 4 km at 3:44, 2 min jog",
+        "sun": "32 km, last 15 at 4:00–4:03"
+      },
+      "notes": ""
+    },
+    {
+      "week": "19",
+      "start": "2027-03-15",
+      "end": "2027-03-21",
+      "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
+      "km": "85",
+      "kmMin": 85.0,
+      "kmMax": 85.0,
+      "sessions": {
+        "tue": "3 × 2 km at 3:30 + 4 × 200 m fast",
+        "thu": "Easy + strides",
+        "sun": "26 km easy"
+      },
+      "notes": ""
+    },
+    {
+      "week": "20",
+      "start": "2027-03-22",
+      "end": "2027-03-28",
+      "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
+      "km": "62",
+      "kmMin": 62.0,
+      "kmMax": 62.0,
+      "sessions": {
+        "tue": "4 × 1 km at 3:30, 2 min jog",
+        "thu": "Easy + strides",
+        "sun": "Aix 10k, 28 Mar: 34:45–35:30"
+      },
+      "notes": "Race week, so no long run. If Aix is on 21 March, swap weeks 19 and 20"
+    },
+    {
+      "week": "21",
+      "start": "2027-03-29",
+      "end": "2027-04-04",
+      "phase": "Phase 3: Marathon-specific (29 Mar – 9 May)",
+      "km": "78",
+      "kmMin": 78.0,
+      "kmMax": 78.0,
+      "sessions": {
+        "tue": "Easy",
+        "wed": "Easy 12 km. Thu: 2 × 5 km at 3:46",
+        "sun": "28 km easy"
+      },
+      "notes": "Recovery from Aix"
+    },
+    {
+      "week": "22",
+      "start": "2027-04-05",
+      "end": "2027-04-11",
+      "phase": "Phase 3: Marathon-specific (29 Mar – 9 May)",
+      "km": "98",
+      "kmMin": 98.0,
+      "kmMax": 98.0,
+      "sessions": {
+        "tue": "4 × 4 km at HMP 3:42–3:45, 2 min jog",
+        "wed": "18 km medium-long",
+        "sun": "32 km, 16 at 3:58–4:02"
+      },
+      "notes": ""
+    },
+    {
+      "week": "23",
+      "start": "2027-04-12",
+      "end": "2027-04-18",
+      "phase": "Phase 3: Marathon-specific (29 Mar – 9 May)",
+      "km": "102",
+      "kmMin": 102.0,
+      "kmMax": 102.0,
+      "sessions": {
+        "tue": "6 × 1.6 km at 3:32–3:35, 90 s jog",
+        "wed": "20 km medium-long",
+        "sun": "34 km, last 10 at 4:05–4:10"
+      },
+      "notes": ""
+    },
+    {
+      "week": "24",
+      "start": "2027-04-19",
+      "end": "2027-04-25",
+      "phase": "Phase 3: Marathon-specific (29 Mar – 9 May)",
+      "km": "105",
+      "kmMin": 105.0,
+      "kmMax": 105.0,
+      "sessions": {
+        "tue": "3 × 5 km at HMP 3:43, 2 min jog",
+        "wed": "20 km medium-long",
+        "sun": "35 km, 22 at 3:58–4:02"
+      },
+      "notes": "Peak week and key benchmark"
+    },
+    {
+      "week": "25",
+      "start": "2027-04-26",
+      "end": "2027-05-02",
+      "phase": "Phase 3: Marathon-specific (29 Mar – 9 May)",
+      "km": "85",
+      "kmMin": 85.0,
+      "kmMax": 85.0,
+      "sessions": {
+        "tue": "2 × 8 km at MP 3:57–4:00, 2 min jog",
+        "wed": "14 km easy",
+        "sun": "28 km easy"
+      },
+      "notes": "Easier week"
+    },
+    {
+      "week": "26",
+      "start": "2027-05-03",
+      "end": "2027-05-09",
+      "phase": "Phase 3: Marathon-specific (29 Mar – 9 May)",
+      "km": "65",
+      "kmMin": 65.0,
+      "kmMax": 65.0,
+      "sessions": {
+        "tue": "3 × 3 km at HMP 3:42, 2 min jog",
+        "wed": "10 km easy + strides",
+        "sun": "Sat 8 May: Killarney half, 1:17:30–1:18:30. Sun: 8–10 km very easy"
+      },
+      "notes": "Race week"
+    },
+    {
+      "week": "27",
+      "start": "2027-05-10",
+      "end": "2027-05-16",
+      "phase": "Phase 4: Taper and Edinburgh (10 – 30 May)",
+      "km": "78",
+      "kmMin": 78.0,
+      "kmMax": 78.0,
+      "sessions": {
+        "tue": "Easy, recovering from the half",
+        "thu": "10 km with 6 km at 3:58",
+        "sun": "28 km, 14 at 3:58"
+      },
+      "notes": "Last long run"
+    },
+    {
+      "week": "28",
+      "start": "2027-05-17",
+      "end": "2027-05-23",
+      "phase": "Phase 4: Taper and Edinburgh (10 – 30 May)",
+      "km": "60",
+      "kmMin": 60.0,
+      "kmMax": 60.0,
+      "sessions": {
+        "tue": "3 × 3 km at 3:55–3:58, 2 min jog",
+        "thu": "Easy + strides",
+        "sun": "21 km, 8 at MP"
+      },
+      "notes": ""
+    },
+    {
+      "week": "29",
+      "start": "2027-05-24",
+      "end": "2027-05-30",
+      "phase": "Phase 4: Taper and Edinburgh (10 – 30 May)",
+      "km": "about 35 + race",
+      "kmMin": 35.0,
+      "kmMax": 35.0,
+      "sessions": {
+        "tue": "6 km with 3 × 1 km at MP",
+        "thu": "5 km + strides. Sat: 15 min shakeout",
+        "sun": "Edinburgh Marathon, 30 May"
+      },
+      "notes": "Carb-load Fri–Sat at 8–10 g per kg"
+    }
+  ],
+  "paces": [
+    {
+      "zone": "Recovery",
+      "now": "5:30–6:00",
+      "autumn": "5:20–5:50",
+      "hr": "under 135",
+      "use": "The day after hard sessions"
+    },
+    {
+      "zone": "Easy",
+      "now": "5:00–5:40",
+      "autumn": "4:50–5:30",
+      "hr": "130–148",
+      "use": "Most of your running"
+    },
+    {
+      "zone": "Long run (easy part)",
+      "now": "4:50–5:15",
+      "autumn": "4:40–5:05",
+      "hr": "140–155",
+      "use": "Sunday long runs"
+    },
+    {
+      "zone": "Marathon pace (MP)",
+      "now": "4:00–4:05",
+      "autumn": "3:52–3:56",
+      "hr": "168–178",
+      "use": "Race-pace sections of long runs"
+    },
+    {
+      "zone": "Half marathon pace (HMP)",
+      "now": "3:43–3:48",
+      "autumn": "3:35–3:38",
+      "hr": "178–185",
+      "use": "Half-specific sessions"
+    },
+    {
+      "zone": "Threshold (T)",
+      "now": "3:40–3:48",
+      "autumn": "3:33–3:38",
+      "hr": "180–187",
+      "use": "Comfortably hard, about 1-hour race effort"
+    },
+    {
+      "zone": "10k pace",
+      "now": "3:30–3:35",
+      "autumn": "3:24–3:27",
+      "hr": "185–190",
+      "use": "10k-specific intervals"
+    },
+    {
+      "zone": "5k / VO2 intervals",
+      "now": "3:15–3:23",
+      "autumn": "3:10–3:15",
+      "hr": "188–195 by the end of a rep",
+      "use": "Fast intervals"
+    },
+    {
+      "zone": "Strides and hill sprints",
+      "now": "By feel",
+      "autumn": "By feel",
+      "hr": "not used",
+      "use": "Fast but relaxed, full recovery"
+    }
+  ],
+  "structure": [
+    {
+      "day": "Mon",
+      "phases12": "Rest, or 6–8 km recovery",
+      "phase3": "Rest, or 6–8 km recovery"
+    },
+    {
+      "day": "Tue",
+      "phases12": "Quality 1: intervals or threshold",
+      "phase3": "Quality 1: half-pace or marathon-pace work"
+    },
+    {
+      "day": "Wed",
+      "phases12": "10–14 km easy + strength A",
+      "phase3": "Medium-long run, 16–20 km easy + strength A"
+    },
+    {
+      "day": "Thu",
+      "phases12": "Quality 2: threshold or speed",
+      "phase3": "Easy 10–12 km + strides"
+    },
+    {
+      "day": "Fri",
+      "phases12": "Rest, or 6–8 km recovery + strength B",
+      "phase3": "Rest, or 6–8 km recovery + strength B"
+    },
+    {
+      "day": "Sat",
+      "phases12": "8–12 km easy + 6 × 20 s strides",
+      "phase3": "8–12 km easy + 6 × 20 s strides"
+    },
+    {
+      "day": "Sun",
+      "phases12": "Long run, at least 21 km",
+      "phase3": "Long run, 26–35 km"
+    }
+  ],
+  "strength": {
+    "A": [
+      "Romanian deadlift, 3 × 6–8",
+      "Bulgarian split squat, 3 × 8 per leg",
+      "Nordic hamstring curl (assisted), 3 × 4–6. Build up slowly, given your right hamstring",
+      "Single-leg calf raise, straight knee and bent knee, 3 × 12–15 each",
+      "Plank and side plank, 3 × 30–45 s"
+    ],
+    "B": [
+      "Step-ups, 3 × 10 per leg",
+      "Single-leg glute bridge, 3 × 12 per leg",
+      "Single-leg balance on a cushion, 3 × 30 s per leg, for your right ankle",
+      "Banded ankle eversion, 3 × 15 per side",
+      "Copenhagen plank, 3 × 20 s per side"
+    ]
+  },
+  "rules": [
+    "Building volume: up to 15–20% a week is fine while you return to volumes you've already handled (up to about 85 km). Beyond that, 5–10% a week. Never add more than about 25 km in one week: your jump from 41 to 116 km in August came five weeks before the ankle pain that cut a long run short.",
+    "No empty weeks: the dashboard shows 10 weeks under 15 km in the last year. Unless you're ill or injured, keep every week above 50 km, even when travelling, using shorter runs if needed.",
+    "Hamstring and ankle: stop a session if pain is sharp or changes how you run. Take 2–3 easy days, and see a physio if it isn't clearly better within a week.",
+    "Missed training: under 4 days, carry on as planned. One week missed, repeat the previous week. Two weeks or more, drop back two weeks in the plan.",
+    "Illness: symptoms only above the neck, run easy. Fever or chest symptoms, rest completely.",
+    "Shoes: Alphaflys for marathon-pace long runs, key sessions and races only. Everything else in your trainers, rotating two pairs once you pass 90 km a week.",
+    "Sleep and fuel: 7–9 hours of sleep, and a carbohydrate-rich meal within an hour of every long run and hard session.",
+    "Check the dashboard every few weeks: your Running progression review shows whether the weekly bars are steady and how many long runs you've done."
+  ],
+  "benchmarks": [
+    {
+      "name": "5k time trial",
+      "date": "2026-12-19",
+      "when": "19 Dec",
+      "onTrack": "17:20 or faster",
+      "behind": "slower than 17:40"
+    },
+    {
+      "name": "Antigel 10k",
+      "date": "2027-02-07",
+      "when": "7 Feb",
+      "onTrack": "35:45 or faster",
+      "behind": "slower than 36:30"
+    },
+    {
+      "name": "Aix 10k",
+      "date": "2027-03-28",
+      "when": "28 Mar",
+      "onTrack": "35:15 or faster",
+      "behind": "slower than 36:00"
+    },
+    {
+      "name": "35 km with 22 km at 3:58–4:02",
+      "date": "2027-04-25",
+      "when": "25 Apr",
+      "onTrack": "Heart rate mostly in the 170s, pace controlled",
+      "behind": "Heart rate above 182, or pace slipping"
+    },
+    {
+      "name": "Killarney half",
+      "date": "2027-05-08",
+      "when": "8 May",
+      "onTrack": "1:18:30 or faster",
+      "behind": "slower than 1:20:00"
+    },
+    {
+      "name": "Edinburgh",
+      "date": "2027-05-30",
+      "when": "30 May",
+      "onTrack": "2:51 or faster",
+      "behind": "slower than 2:55"
+    },
+    {
+      "name": "Summer 10k",
+      "date": "2027-07-11",
+      "when": "July",
+      "onTrack": "34:45 or faster",
+      "behind": "slower than 35:30"
+    },
+    {
+      "name": "Lausanne half",
+      "date": "2027-10-24",
+      "when": "October",
+      "onTrack": "1:16:00 or faster",
+      "behind": "slower than 1:17:30"
+    },
+    {
+      "name": "34 km with 24 km at 3:52–3:56",
+      "date": "2027-10-24",
+      "when": "October",
+      "onTrack": "Heart rate under 180, controlled",
+      "behind": "Heart rate above 183, or fading"
+    }
+  ],
+  "blocks": [
+    {
+      "name": "Recovery",
+      "start": "2027-05-31",
+      "end": "2027-06-13",
+      "km": "20–50",
+      "kmMin": 20.0,
+      "kmMax": 50.0,
+      "key": "Easy running only",
+      "race": ""
+    },
+    {
+      "name": "Summer speed and base",
+      "start": "2027-06-14",
+      "end": "2027-07-25",
+      "km": "70–95",
+      "kmMin": 70.0,
+      "kmMax": 95.0,
+      "key": "One VO2 session and one threshold session a week; long runs of 24–28 km",
+      "race": "A 5k or 10k in July: 16:45 / 34:45"
+    },
+    {
+      "name": "Transition",
+      "start": "2027-07-26",
+      "end": "2027-08-08",
+      "km": "90–100",
+      "kmMin": 90.0,
+      "kmMax": 100.0,
+      "key": "Threshold, long runs of 30 km",
+      "race": ""
+    },
+    {
+      "name": "Autumn marathon block",
+      "start": "2027-08-09",
+      "end": "2027-10-31",
+      "km": "100–120, an easier week every 3–4 weeks",
+      "kmMin": 100.0,
+      "kmMax": 120.0,
+      "key": "Long runs of 32–36 km with 20–26 km at 3:52–3:56; 2 × 10 km at MP; midweek 20–24 km; one easy double a week",
+      "race": "Lausanne half, late October: 1:15:30–1:16:30"
+    },
+    {
+      "name": "Sharpen and taper",
+      "start": null,
+      "end": null,
+      "km": "90, falling to 40",
+      "kmMin": 90.0,
+      "kmMax": 90.0,
+      "key": "Short MP and HMP sessions",
+      "race": "Valencia: sub-2:45"
+    }
+  ],
+  "history": {
+    "races": [
+      {
+        "id": "11452967146",
+        "name": "First 5k",
+        "km": 5
+      },
+      {
+        "id": "11500803488",
+        "name": "5k, May 2024",
+        "km": 5
+      },
+      {
+        "id": "12088984843",
+        "name": "10k, Aug 2024",
+        "km": 10
+      },
+      {
+        "id": "12350678201",
+        "name": "Dingle half",
+        "km": 21.0975
+      },
+      {
+        "id": "13372394383",
+        "name": "5k, Jan 2025",
+        "km": 5
+      },
+      {
+        "id": "14239914103",
+        "name": "5k time trial, Apr 2025",
+        "km": 5
+      },
+      {
+        "id": "14505331136",
+        "name": "Killarney half 2025",
+        "km": 21.0975
+      },
+      {
+        "id": "14946184231",
+        "name": "10k time trial, Jun 2025",
+        "km": 10
+      },
+      {
+        "id": "15239535708",
+        "name": "Kilkee half",
+        "km": 21.0975
+      },
+      {
+        "id": "15806879110",
+        "name": "Charleville half",
+        "km": 21.0975
+      },
+      {
+        "id": "16738923605",
+        "name": "Malaga marathon",
+        "km": 42.195
+      },
+      {
+        "id": "16872874509",
+        "name": "5k time trial, Dec 2025",
+        "km": 5
+      },
+      {
+        "id": "17814416249",
+        "name": "Presinge 10k",
+        "km": 10
+      },
+      {
+        "id": "18435848742",
+        "name": "Killarney half 2026",
+        "km": 21.0975
+      },
+      {
+        "id": "20314485615",
+        "name": "CERN road race 5.5 km",
+        "km": 5.5
+      },
+      {
+        "id": "20727686060",
+        "name": "Lausanne marathon",
+        "km": 42.195
+      }
+    ],
+    "marathons": [
+      {
+        "name": "Malaga",
+        "date": "2025-12-14"
+      },
+      {
+        "name": "Milan",
+        "date": "2026-04-12"
+      },
+      {
+        "name": "Lausanne",
+        "date": "2026-10-25"
+      }
+    ]
+  }
+}

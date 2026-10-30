@@ -41,7 +41,7 @@ function Spark({ values, invert }: { values: (number | null)[]; invert?: boolean
   const d = v.map((p, i) => `${i ? "L" : "M"}${(p[0] / (values.length - 1)) * 100},${invert ? 24 - y(p[1]) : y(p[1])}`).join(" ");
   return (
     <svg className="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true">
-      <path d={d} />
+      <path d={d} pathLength={1} />
     </svg>
   );
 }

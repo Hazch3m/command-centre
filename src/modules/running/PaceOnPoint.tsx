@@ -4,7 +4,7 @@ import { useDataVersion } from "../../core/events";
 import { addDays, parseKey, useToday } from "../../core/time";
 import { useQuery } from "../../core/useQuery";
 import { forecastWeek, type ForecastDay } from "./forecast";
-import { checkDays, fmtPace, VERDICT_LABEL, type PaceCheck } from "./pace";
+import { checkDays, checkUnplanned, fmtPace, VERDICT_LABEL, type PaceCheck } from "./pace";
 import { mondayOf, type Plan } from "./plan";
 import { loadDetails, loadOverrides, type Run } from "./strava";
 import { openRun } from "./RunView";
@@ -26,9 +26,20 @@ export function usePaceChecks(plan: Plan | undefined, runs: Run[] | undefined, w
       const fw = forecastWeek(plan, m, runs, overrides);
       const checks = checkDays(fw.days, details);
       for (const d of fw.days) for (const r of d.runs) if (checks.get(r.id)) rows.push({ day: d, check: checks.get(r.id)! });
+      // Weeks outside the plan: quick runs judged against the nearest training pace.
+      if (!fw.week)
+        for (const d of fw.days)
+          for (const r of d.runs) {
+            const c = checkUnplanned(r, details.get(r.id) ?? null, plan.paces);
+            if (c) rows.push({ day: { ...d, text: `${r.name} (before the plan: judged as ${c.autoZone})`, kind: "key" }, check: c });
+          }
     }
     rows.sort((a, b) => b.check.date.localeCompare(a.check.date));
-    const avg = (xs: PaceCheck[]) => (xs.length ? Math.round(xs.reduce((s, c) => s + c.score, 0) / xs.length) : null);
+    // Runs outside the plan show on the chart but don't count toward the scores.
+    const avg = (all: PaceCheck[]) => {
+      const xs = all.filter((c) => !c.autoZone);
+      return xs.length ? Math.round(xs.reduce((s, c) => s + c.score, 0) / xs.length) : null;
+    };
     return {
       rows,
       last14: avg(rows.filter((r) => r.check.date > addDays(today, -14)).map((r) => r.check)),
@@ -146,7 +157,12 @@ function IntervalChart({ rows }: { rows: { day: ForecastDay; check: PaceCheck }[
   const [hover, setHover] = useState<number | null>(null);
   const items = rows.filter((r) => r.check.session && r.check.fastest != null).sort((a, b) => a.check.date.localeCompare(b.check.date));
   if (!items.length)
-    return <p className="muted small">Key sessions will show here once there are runs with work laps or quick kilometres on session days.</p>;
+    return (
+      <div className="interval-chart">
+        <h3>Key sessions: fastest and slowest interval</h3>
+        <p className="muted small">No sessions with quick laps or kilometres in the last 12 weeks yet. Your plan's first is the threshold session on Tue 17 Nov.</p>
+      </div>
+    );
   const W = box.w || 800;
   const H = 230;
   const pad = { top: 14, bottom: 34, left: 44, right: 8 };
@@ -189,7 +205,7 @@ function IntervalChart({ rows }: { rows: { day: ForecastDay; check: PaceCheck }[
             return (
               <g key={c.runId} onMouseEnter={() => setHover(i)} onClick={() => openRun(c.runId)} style={{ cursor: "pointer" }}>
                 <rect x={x - bw / 2} y={pad.top} width={bw} height={H - pad.top - pad.bottom} fill="transparent" />
-                <rect x={x - w / 2} y={y(c.target[0] - 3)} width={w} height={Math.max(2, y(c.target[1] + 3) - y(c.target[0] - 3))} rx={3} className="iv-band" />
+                <rect x={x - w / 2} y={y(c.target[0] - 3)} width={w} height={Math.max(2, y(c.target[1] + 3) - y(c.target[0] - 3))} rx={3} className={"iv-band" + (c.autoZone ? " auto" : "")} />
                 <line x1={x} x2={x} y1={y(c.fastest!)} y2={y(c.slowest!)} className="iv-span" />
                 <circle cx={x} cy={y(c.fastest!)} r={hover === i ? 6 : 5} className={`iv-dot iv-${fb}`} />
                 <rect x={x - 4.5} y={y(c.slowest!) - 4.5} width={9} height={9} rx={1.5} className={`iv-dot iv-${sb}`} transform={`rotate(45 ${x} ${y(c.slowest!)})`} />
@@ -222,6 +238,9 @@ function IntervalChart({ rows }: { rows: { day: ForecastDay; check: PaceCheck }[
               </span>
               <span>
                 <i className="iv-band-l" /> target range (±3 s)
+              </span>
+              <span>
+                <i className="iv-band-l auto" /> before the plan: nearest training pace
               </span>
               <span>
                 <i className="iv-dot-l iv-fast" /> {BAND_LABEL.fast}

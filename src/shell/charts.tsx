@@ -11,7 +11,13 @@ export function useBox(fill: boolean) {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const measure = () => setBox({ w: Math.round(el.clientWidth), h: Math.round(el.clientHeight) });
+    // Inner size: the frame's padding isn't drawing space.
+    const measure = () => {
+      const cs = getComputedStyle(el);
+      const px = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+      const py = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      setBox({ w: Math.round(el.clientWidth - px), h: Math.round(el.clientHeight - py) });
+    };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
@@ -77,6 +83,11 @@ export function BarChart({
     <div className={"chart" + (fill ? " chart-fill" : "")} ref={ref} onMouseLeave={() => setHover(null)}>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} role="img">
         {refLine && <line x1={0} x2={W} y1={y(refLine.value)} y2={y(refLine.value)} className="chart-ref" />}
+        {refLine && (
+          <text x={W - 4} y={y(refLine.value) - 5} textAnchor="end" className="chart-ref-label">
+            {refLine.label}
+          </text>
+        )}
         {bars.map((b, i) => {
           const x = pad.left + i * bw;
           return (
@@ -92,6 +103,7 @@ export function BarChart({
                 height={Math.max(0, H - pad.bottom - y(b.value))}
                 rx={Math.min(3, bw * 0.15)}
                 className={"chart-bar" + (b.highlight ? " hl" : "") + (b.planned ? " planned" : "") + (hover === i ? " hover" : "")}
+                style={{ animationDelay: `${Math.min(i, 40) * 18}ms` }}
               />
               {b.target != null && <line x1={x + bw * 0.1} x2={x + bw * 0.9} y1={y(b.target)} y2={y(b.target)} className="chart-target" />}
               {showValues && bw >= 22 && b.value > min && (
@@ -264,7 +276,7 @@ export function LineChart({
         {series.map((s) => {
           const pts = s.points.filter((p) => p.y != null && p.x >= from && p.x <= to);
           if (s.kind === "line" || s.kind === "dashed")
-            return <path key={s.name} d={path(s.points.filter((p) => p.x >= from && p.x <= to))} className={`chart-line ${s.kind} ${s.className}`} />;
+            return <path key={s.name} d={path(s.points.filter((p) => p.x >= from && p.x <= to))} className={`chart-line ${s.kind} ${s.className}`} pathLength={s.kind === "line" ? 1 : undefined} />;
           if (s.kind === "area") {
             const d = path(pts);
             return d ? <path key={s.name} d={`${d}L${X(pts[pts.length - 1].x)},${H - pad.bottom}L${X(pts[0].x)},${H - pad.bottom}Z`} className={`chart-area ${s.className}`} /> : null;
@@ -376,5 +388,29 @@ export function XYChart({
         <b>{label}</b> {hp ? `${format(hp[1])} at ${hp[0].toFixed(2)} ${xUnit}` : ""}
       </div>
     </div>
+  );
+}
+
+/** What each line is: a small sample of its stroke, then its name. */
+function Legend({ series }: { series: LineSeries[] }) {
+  return (
+    <span className="chart-legend">
+      {series.map((s) => (
+        <span key={s.name}>
+          <svg width="20" height="10" aria-hidden="true">
+            {s.kind === "dots" || s.kind === "diamonds" ? (
+              <g className={s.className}>
+                <circle cx="10" cy="5" r="4" className="chart-dot" />
+              </g>
+            ) : s.kind === "area" ? (
+              <rect x="1" y="1" width="18" height="8" className={`chart-area ${s.className}`} />
+            ) : (
+              <line x1="1" x2="19" y1="5" y2="5" className={`chart-line ${s.kind} ${s.className}`} />
+            )}
+          </svg>
+          {s.name}
+        </span>
+      ))}
+    </span>
   );
 }

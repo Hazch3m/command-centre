@@ -21,10 +21,12 @@ import { PaceOnPointTab } from "./PaceOnPoint";
 import { RunsTab } from "./RunsTab";
 import { PlanEditor } from "./PlanEditor";
 import { PlanList } from "./PlanList";
+import { PlanWeekView } from "./PlanWeekView";
 
-type Tab = "plan" | "week" | "runs" | "pace" | "edit" | "races" | "progress" | "paces";
+type Tab = "plan" | "list" | "week" | "runs" | "pace" | "edit" | "races" | "progress" | "paces";
 const TABS: { id: Tab; label: string }[] = [
   { id: "plan", label: "Plan" },
+  { id: "list", label: "All weeks" },
   { id: "week", label: "Week by week" },
   { id: "runs", label: "All runs" },
   { id: "pace", label: "Pace on point" },
@@ -110,7 +112,8 @@ export function RunningPage() {
         {tab === "runs" && <RunsTab runs={runs} plan={plan} />}
         {tab === "edit" && <PlanEditor plan={plan} />}
 
-        {tab === "plan" && <PlanList plan={plan} runs={runs} />}
+        {tab === "plan" && <PlanWeekView plan={plan} runs={runs} />}
+        {tab === "list" && <PlanList plan={plan} runs={runs} />}
         {tab === "races" && (
           <>
             <div className="tiles">

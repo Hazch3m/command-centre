@@ -35,6 +35,8 @@ export interface PaceCheck {
   slowest: number | null;
   /** Sessions only. */
   session: boolean;
+  /** A run outside the plan: the training zone its work was judged against. */
+  autoZone?: string;
 }
 
 const TOLERANCE = 3; // s/km either side of the range still counts as on point
@@ -143,3 +145,54 @@ export const VERDICT_LABEL: Record<PaceVerdict, string> = {
 };
 
 export const fmtPace = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+
+/**
+ * A quick run that wasn't a planned session (before the plan started, or an
+ * unplanned workout): its work is the laps (or km) clearly quicker than easy,
+ * judged against the nearest of the plan's training paces.
+ */
+export function checkUnplanned(run: Run, detail: RunDetail | null, zones: { zone: string; now: string }[]): PaceCheck | null {
+  if (!detail || run.workout_type === 1 || run.distance < 4000) return null;
+  const easy = paceRange(zones.find((z) => /^easy/i.test(z.zone))?.now ?? null);
+  const quick = (easy ? easy[0] : 300) - 25;
+  const laps = (detail.laps ?? []).filter((l) => l.distance >= 300);
+  let segs = laps.length >= 3 ? laps.map((l) => ({ distance: l.distance, time: l.moving_time })) : [];
+  let measured = "quick laps";
+  if (!segs.length) {
+    segs = detail.splits.filter((x) => x.distance > 900).map((x) => ({ distance: x.distance, time: x.distance / (x.gap ?? x.speed) }));
+    measured = "quick km";
+  }
+  const work = segs.filter((x) => x.time / (x.distance / 1000) < quick);
+  if (work.length < 2 || work.length > segs.length * 0.85) return null; // a steady run, not a session
+  const paces = work.map((x) => x.time / (x.distance / 1000));
+  const median = [...paces].sort((a, b) => a - b)[Math.floor(paces.length / 2)];
+  const zone = zones
+    .map((z) => ({ z, r: paceRange(z.now) }))
+    .filter((x): x is { z: { zone: string; now: string }; r: [number, number] } => !!x.r && x.r[0] < quick)
+    .sort((a, b) => Math.abs((a.r[0] + a.r[1]) / 2 - median) - Math.abs((b.r[0] + b.r[1]) / 2 - median))[0];
+  if (!zone) return null;
+  const target = zone.r;
+  const dist = work.reduce((a, x) => a + x.distance, 0);
+  const actual = work.reduce((a, x) => a + x.time, 0) / (dist / 1000);
+  const inRange = work.filter((x) => offBy(x.time / (x.distance / 1000), target) === 0).length / work.length;
+  const off = offBy(actual, target);
+  const verdict = verdictFor(off, false);
+  const score = Math.round(Math.max(0, Math.min(100, 0.5 * inRange * 100 + 0.5 * Math.max(0, 100 - Math.abs(off) * 6))));
+  return {
+    runId: run.id,
+    date: run.date,
+    target,
+    plannedKm: null,
+    ranKm: run.distance / 1000,
+    measured: `${work.length} ${measured}`,
+    actual,
+    off,
+    verdict,
+    score,
+    inRange,
+    fastest: Math.min(...paces),
+    slowest: Math.max(...paces),
+    session: true,
+    autoZone: zone.z.zone,
+  };
+}

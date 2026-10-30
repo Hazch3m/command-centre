@@ -39,3 +39,16 @@ describe("resolveLayout", () => {
     expect(orientationOf(1536, 864)).toBe("landscape");
   });
 });
+
+describe("cards pushed off the screen", () => {
+  it("come back into free space, or are hidden when there's none", async () => {
+    const { fitToScreen } = await import("./layout");
+    const items = { a: { x: 0, y: 0, w: 24, h: 10 }, b: { x: 0, y: 22, w: 12, h: 6 }, c: { x: 0, y: 10, w: 24, h: 14 } };
+    const r = fitToScreen(items, 24);
+    expect(r.items.a).toEqual(items.a);
+    expect(r.hidden).toEqual(["b"]);
+    const r2 = fitToScreen({ a: { x: 0, y: 0, w: 24, h: 10 }, b: { x: 0, y: 22, w: 12, h: 6 } }, 24);
+    expect(r2.moved).toEqual(["b"]);
+    expect(r2.items.b.y + r2.items.b.h).toBeLessThanOrEqual(24);
+  });
+});

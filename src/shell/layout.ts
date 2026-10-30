@@ -104,6 +104,14 @@ export function resolveLayout(saved: SavedLayout | null, modules: DashboardModul
     if (saved.hidden.includes(m.id)) hidden.push(m.id);
     else if (saved.items[m.id]) items[m.id] = saved.items[m.id];
   }
+  // Cards pushed below the bottom of the screen (by dragging others onto them) come back
+  // into free space, or go to the hidden tray rather than being stuck out of sight.
+  const fixed = fitToScreen(items, rows);
+  for (const id of fixed.hidden) {
+    delete items[id];
+    hidden.push(id);
+  }
+  Object.assign(items, fixed.items);
   for (const m of modules) {
     if (items[m.id] || hidden.includes(m.id)) continue;
     const spot = shownByDefault(m, o) ? findSpot(defaultFor(m, o), Object.values(items), rows) : null;
@@ -120,4 +128,32 @@ export function loadLayout(o: Orientation) {
 export function saveLayout(l: ResolvedLayout, o: Orientation) {
   const saved: SavedLayout = { version: LAYOUT_VERSION, custom: l.custom, items: l.items, hidden: l.hidden };
   return kvSet(`layout.${o}`, saved);
+}
+
+/**
+ * Brings back cards that sit (partly) below the last row: first into free
+ * space at their own size, then at a smaller size, else they're listed as
+ * hidden. Cards already on screen don't move.
+ */
+export function fitToScreen(items: Record<string, GridPos>, rows: number): { items: Record<string, GridPos>; hidden: string[]; moved: string[] } {
+  const out: Record<string, GridPos> = {};
+  const off: [string, GridPos][] = [];
+  for (const [id, p] of Object.entries(items)) {
+    if (p.y + p.h <= rows && p.x + p.w <= COLS) out[id] = p;
+    else off.push([id, p]);
+  }
+  const hidden: string[] = [];
+  const moved: string[] = [];
+  for (const [id, p] of off.sort((a, b) => a[1].y - b[1].y)) {
+    const taken = Object.values(out);
+    const spot =
+      findSpot({ ...p, x: Math.min(p.x, COLS - p.w), y: Math.max(0, Math.min(p.y, rows - p.h)) }, taken, rows) ??
+      findSpot({ x: 0, y: 0, w: Math.min(p.w, 8), h: Math.min(p.h, Math.max(3, Math.round(rows / 6))) }, taken, rows) ??
+      findSpot({ x: 0, y: 0, w: 4, h: 3 }, taken, rows);
+    if (spot) {
+      out[id] = spot;
+      moved.push(id);
+    } else hidden.push(id);
+  }
+  return { items: out, hidden, moved };
 }

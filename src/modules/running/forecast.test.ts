@@ -1,6 +1,8 @@
+import type { Plan } from "./plan";
 import { describe, expect, it } from "vitest";
 import { forecastWeek, fullWeekSessions, sessionKm, raceKm } from "./forecast";
-import { BUNDLED_PLAN } from "./plan";
+import fixturePlan from "./plan.fixture.json";
+const BUNDLED_PLAN = fixturePlan as unknown as Plan;
 
 describe("session km", () => {
   it("reads distances from the plan's wording", () => {
@@ -78,5 +80,15 @@ describe("writing out the full week", () => {
     expect(after.plannedKm).toBeCloseTo(before.plannedKm!, -1);
     expect(after.days.filter((d) => d.kind !== "rest").length).toBe(before.days.filter((d) => d.kind !== "rest").length);
     expect(sessions.tue).toBe(week.sessions.tue);
+  });
+});
+
+describe("the shipped plan", () => {
+  it("has every day written out and at most six runs a week", async () => {
+    const { BUNDLED_PLAN: real } = await import("./plan");
+    for (const w of real.weeks.filter((x) => x.start >= "2026-11-09")) {
+      const f = forecastWeek(real, w.start);
+      expect(f.days.filter((d) => (d.km ?? 0) > 0 || d.race).length).toBeLessThanOrEqual(6);
+    }
   });
 });

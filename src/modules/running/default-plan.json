@@ -1,7 +1,7 @@
 {
   "version": 1,
   "title": "Sub-2:45 Training Plan",
-  "exported": "2026-10-29",
+  "exported": "2026-10-30",
   "source": "Claude doc: Sub-2:50 Training Plan — Nov 2026 to Edinburgh",
   "phases": [
     {
@@ -108,11 +108,15 @@
       "end": "2026-11-01",
       "phase": "Recovery and Phase 1: Base (26 Oct – 3 Jan)",
       "km": "15–25",
-      "kmMin": 15.0,
-      "kmMax": 25.0,
+      "kmMin": 15,
+      "kmMax": 25,
       "sessions": {
+        "mon": "Rest",
         "tue": "Rest",
+        "wed": "7 km easy",
         "thu": "Easy 30 min if you feel fine",
+        "fri": "Rest",
+        "sat": "7 km easy + 6 × 20 s strides",
         "sun": "none"
       },
       "notes": "Walk, sleep, eat well"
@@ -123,11 +127,15 @@
       "end": "2026-11-08",
       "phase": "Recovery and Phase 1: Base (26 Oct – 3 Jan)",
       "km": "35–45",
-      "kmMin": 35.0,
-      "kmMax": 45.0,
+      "kmMin": 35,
+      "kmMax": 45,
       "sessions": {
+        "mon": "Rest",
         "tue": "Easy 45 min",
+        "wed": "6 km easy",
         "thu": "Easy 50 min + 4 strides",
+        "fri": "Rest",
+        "sat": "Rest",
         "sun": "16 km easy"
       },
       "notes": "Check the hamstring"
@@ -138,11 +146,15 @@
       "end": "2026-11-15",
       "phase": "Recovery and Phase 1: Base (26 Oct – 3 Jan)",
       "km": "55",
-      "kmMin": 55.0,
-      "kmMax": 55.0,
+      "kmMin": 55,
+      "kmMax": 55,
       "sessions": {
+        "mon": "Rest",
         "tue": "10 km easy + 6 × 20 s strides",
+        "wed": "13 km easy",
         "thu": "12 km with 8 × 10 s hill sprints",
+        "fri": "Rest",
+        "sat": "Rest",
         "sun": "20 km easy"
       },
       "notes": "Start strength training, light"
@@ -153,11 +165,15 @@
       "end": "2026-11-22",
       "phase": "Recovery and Phase 1: Base (26 Oct – 3 Jan)",
       "km": "63",
-      "kmMin": 63.0,
-      "kmMax": 63.0,
+      "kmMin": 63,
+      "kmMax": 63,
       "sessions": {
+        "mon": "Rest",
         "tue": "4 × 6 min T at 3:46–3:50, 1 min jog",
+        "wed": "10 km easy",
         "thu": "12 km with 8 × 10 s hill sprints",
+        "fri": "Rest",
+        "sat": "7 km easy + 6 × 20 s strides",
         "sun": "22 km easy"
       },
       "notes": ""
@@ -168,11 +184,15 @@
       "end": "2026-11-29",
       "phase": "Recovery and Phase 1: Base (26 Oct – 3 Jan)",
       "km": "70",
-      "kmMin": 70.0,
-      "kmMax": 70.0,
+      "kmMin": 70,
+      "kmMax": 70,
       "sessions": {
+        "mon": "Rest",
         "tue": "5 × 6 min T at 3:44–3:48, 1 min jog",
+        "wed": "11 km easy",
         "thu": "12 km with 6 × 30 s hill reps",
+        "fri": "Rest",
+        "sat": "9 km easy + 6 × 20 s strides",
         "sun": "24 km easy"
       },
       "notes": ""
@@ -183,11 +203,15 @@
       "end": "2026-12-06",
       "phase": "Recovery and Phase 1: Base (26 Oct – 3 Jan)",
       "km": "58",
-      "kmMin": 58.0,
-      "kmMax": 58.0,
+      "kmMin": 58,
+      "kmMax": 58,
       "sessions": {
+        "mon": "Rest",
         "tue": "Fartlek 10 × 1 min on, 1 min off",
+        "wed": "11 km easy",
         "thu": "Easy + strides",
+        "fri": "Rest",
+        "sat": "9 km easy + 6 × 20 s strides",
         "sun": "21 km easy"
       },
       "notes": "Easier week. The Escalade (5–6 Dec) can replace Tuesday"
@@ -197,12 +221,16 @@
       "start": "2026-12-07",
       "end": "2026-12-13",
       "phase": "Recovery and Phase 1: Base (26 Oct – 3 Jan)",
-      "km": "75",
-      "kmMin": 75.0,
-      "kmMax": 75.0,
+      "km": "80",
+      "kmMin": 80,
+      "kmMax": 80,
       "sessions": {
+        "mon": "Rest",
         "tue": "3 × 10 min T at 3:42–3:46, 2 min jog",
+        "wed": "15 km easy",
         "thu": "8 × 400 m at 3:12–3:15, 200 m jog",
+        "fri": "Rest",
+        "sat": "15 km easy + 6 × 20 s strides",
         "sun": "26 km easy"
       },
       "notes": ""
@@ -212,12 +240,15 @@
       "start": "2026-12-14",
       "end": "2026-12-20",
       "phase": "Recovery and Phase 1: Base (26 Oct – 3 Jan)",
-      "km": "70",
-      "kmMin": 70.0,
-      "kmMax": 70.0,
+      "km": "68",
+      "kmMin": 68,
+      "kmMax": 68,
       "sessions": {
+        "mon": "10 km recovery",
         "tue": "4 × 1 km at 3:25, 2 min jog",
-        "thu": "Easy + strides. Sat 19 Dec: 5k time trial, 17:15–17:30",
+        "wed": "16 km easy",
+        "thu": "Easy + strides",
+        "fri": "Rest",
         "sun": "22 km easy"
       },
       "notes": "Benchmark week. Track or a flat, measured route"
@@ -227,12 +258,16 @@
       "start": "2026-12-21",
       "end": "2026-12-27",
       "phase": "Recovery and Phase 1: Base (26 Oct – 3 Jan)",
-      "km": "65",
-      "kmMin": 65.0,
-      "kmMax": 65.0,
+      "km": "71",
+      "kmMin": 71,
+      "kmMax": 71,
       "sessions": {
+        "mon": "6 km recovery",
         "tue": "Fartlek 8 × 2 min on, 1 min off",
+        "wed": "16 km easy",
         "thu": "Easy + strides",
+        "fri": "Rest",
+        "sat": "16 km easy + 6 × 20 s strides",
         "sun": "22 km easy"
       },
       "notes": "Easier week over Christmas"
@@ -242,12 +277,16 @@
       "start": "2026-12-28",
       "end": "2027-01-03",
       "phase": "Recovery and Phase 1: Base (26 Oct – 3 Jan)",
-      "km": "82",
-      "kmMin": 82.0,
-      "kmMax": 82.0,
+      "km": "90",
+      "kmMin": 90,
+      "kmMax": 90,
       "sessions": {
+        "mon": "6 km recovery",
         "tue": "3 × 12 min T at 3:42, 2 min jog",
+        "wed": "16 km easy",
         "thu": "5 × 1 km at 3:22, 2 min jog",
+        "fri": "Rest",
+        "sat": "14 km easy + 6 × 20 s strides",
         "sun": "28 km, last 6 at 4:05"
       },
       "notes": ""
@@ -257,13 +296,17 @@
       "start": "2027-01-04",
       "end": "2027-01-10",
       "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
-      "km": "85",
-      "kmMin": 85.0,
-      "kmMax": 85.0,
+      "km": "95",
+      "kmMin": 95,
+      "kmMax": 95,
       "sessions": {
+        "mon": "9 km recovery",
         "tue": "6 × 1 km at 3:20–3:23, 2 min jog",
+        "wed": "18 km easy",
         "thu": "2 × 5 km at 3:45–3:48, 2 min jog",
-        "sun": "26 km easy"
+        "fri": "Rest",
+        "sat": "12 km easy + 6 × 20 s strides",
+        "sun": "28 km easy"
       },
       "notes": ""
     },
@@ -272,13 +315,17 @@
       "start": "2027-01-11",
       "end": "2027-01-17",
       "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
-      "km": "88",
-      "kmMin": 88.0,
-      "kmMax": 88.0,
+      "km": "97",
+      "kmMin": 97,
+      "kmMax": 97,
       "sessions": {
+        "mon": "10 km recovery",
         "tue": "5 × 1,200 m at 3:20, 2:30 jog",
+        "wed": "20 km easy",
         "thu": "25 min T at 3:43–3:46",
-        "sun": "28 km easy"
+        "fri": "Rest",
+        "sat": "14 km easy + 6 × 20 s strides",
+        "sun": "30 km easy"
       },
       "notes": ""
     },
@@ -287,12 +334,16 @@
       "start": "2027-01-18",
       "end": "2027-01-24",
       "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
-      "km": "90",
-      "kmMin": 90.0,
-      "kmMax": 90.0,
+      "km": "103",
+      "kmMin": 103,
+      "kmMax": 103,
       "sessions": {
+        "mon": "10 km recovery",
         "tue": "8 × 800 m at 3:15–3:18, 90 s jog",
+        "wed": "20 km easy",
         "thu": "4 × 2.5 km T at 3:40–3:43, 90 s jog",
+        "fri": "Rest",
+        "sat": "14 km easy + 6 × 20 s strides",
         "sun": "30 km, last 8 at 4:02–4:05"
       },
       "notes": ""
@@ -302,12 +353,16 @@
       "start": "2027-01-25",
       "end": "2027-01-31",
       "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
-      "km": "72",
-      "kmMin": 72.0,
-      "kmMax": 72.0,
+      "km": "80",
+      "kmMin": 80,
+      "kmMax": 80,
       "sessions": {
+        "mon": "10 km recovery",
         "tue": "Easy + strides",
+        "wed": "20 km easy",
         "thu": "6 × 3 min at 3:30, 2 min jog",
+        "fri": "Rest",
+        "sat": "16 km easy + 6 × 20 s strides",
         "sun": "22 km easy"
       },
       "notes": "Easier week"
@@ -318,11 +373,15 @@
       "end": "2027-02-07",
       "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
       "km": "80",
-      "kmMin": 80.0,
-      "kmMax": 80.0,
+      "kmMin": 80,
+      "kmMax": 80,
       "sessions": {
+        "mon": "10 km recovery",
         "tue": "5 × 1 km at 3:20, 2 min jog",
+        "wed": "20 km easy",
         "thu": "Easy + strides",
+        "fri": "Rest",
+        "sat": "7 km easy + 6 × 20 s strides",
         "sun": "Antigel 10k, 7 Feb: 35:30–36:00, plus warm-up and cool-down, about 21 km"
       },
       "notes": "Benchmark. If the course isn't fast, run a 10k track time trial that weekend instead"
@@ -332,13 +391,17 @@
       "start": "2027-02-08",
       "end": "2027-02-14",
       "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
-      "km": "90",
-      "kmMin": 90.0,
-      "kmMax": 90.0,
+      "km": "102",
+      "kmMin": 102,
+      "kmMax": 102,
       "sessions": {
+        "mon": "10 km recovery",
         "tue": "3 × 3 km T at 3:40–3:43, 2 min jog",
+        "wed": "20 km easy",
         "thu": "10 × 400 m at 3:08–3:12, 200 m jog",
-        "sun": "30 km easy"
+        "fri": "Rest",
+        "sat": "14 km easy + 6 × 20 s strides",
+        "sun": "32 km easy"
       },
       "notes": ""
     },
@@ -347,13 +410,17 @@
       "start": "2027-02-15",
       "end": "2027-02-21",
       "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
-      "km": "95",
-      "kmMin": 95.0,
-      "kmMax": 95.0,
+      "km": "105",
+      "kmMin": 105,
+      "kmMax": 105,
       "sessions": {
+        "mon": "10 km recovery",
         "tue": "6 × 1 km at 3:18, 90 s jog",
+        "wed": "20 km easy",
         "thu": "2 × 6 km at 3:44–3:46, 2 min jog",
-        "sun": "30 km, last 12 at 4:00–4:03"
+        "fri": "Rest",
+        "sat": "14 km easy + 6 × 20 s strides",
+        "sun": "32 km, last 12 at 4:00–4:03"
       },
       "notes": ""
     },
@@ -362,13 +429,17 @@
       "start": "2027-02-22",
       "end": "2027-02-28",
       "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
-      "km": "75",
-      "kmMin": 75.0,
-      "kmMax": 75.0,
+      "km": "84",
+      "kmMin": 84,
+      "kmMax": 84,
       "sessions": {
+        "mon": "10 km recovery",
         "tue": "Fartlek 6 × 3 min on, 90 s off",
+        "wed": "20 km easy",
         "thu": "Easy + strides",
-        "sun": "24 km easy"
+        "fri": "Rest",
+        "sat": "16 km easy + 6 × 20 s strides",
+        "sun": "26 km easy"
       },
       "notes": "Easier week"
     },
@@ -377,13 +448,17 @@
       "start": "2027-03-01",
       "end": "2027-03-07",
       "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
-      "km": "95",
-      "kmMin": 95.0,
-      "kmMax": 95.0,
+      "km": "106",
+      "kmMin": 106,
+      "kmMax": 106,
       "sessions": {
+        "mon": "10 km recovery",
         "tue": "5 × 2 km at 3:28–3:32, 2 min jog",
+        "wed": "20 km easy",
         "thu": "30 min T at 3:42",
-        "sun": "32 km easy"
+        "fri": "Rest",
+        "sat": "14 km easy + 6 × 20 s strides",
+        "sun": "33 km easy"
       },
       "notes": ""
     },
@@ -392,13 +467,17 @@
       "start": "2027-03-08",
       "end": "2027-03-14",
       "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
-      "km": "98",
-      "kmMin": 98.0,
-      "kmMax": 98.0,
+      "km": "110",
+      "kmMin": 110,
+      "kmMax": 110,
       "sessions": {
+        "mon": "10 km recovery",
         "tue": "8 × 1 km at 3:28–3:31, 75 s jog",
+        "wed": "20 km easy",
         "thu": "3 × 4 km at 3:44, 2 min jog",
-        "sun": "32 km, last 15 at 4:00–4:03"
+        "fri": "Rest",
+        "sat": "14 km easy + 6 × 20 s strides",
+        "sun": "33 km, last 15 at 4:00–4:03"
       },
       "notes": ""
     },
@@ -407,13 +486,17 @@
       "start": "2027-03-15",
       "end": "2027-03-21",
       "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
-      "km": "85",
-      "kmMin": 85.0,
-      "kmMax": 85.0,
+      "km": "84",
+      "kmMin": 84,
+      "kmMax": 84,
       "sessions": {
+        "mon": "10 km recovery",
         "tue": "3 × 2 km at 3:30 + 4 × 200 m fast",
+        "wed": "20 km easy",
         "thu": "Easy + strides",
-        "sun": "26 km easy"
+        "fri": "Rest",
+        "sat": "14 km easy + 6 × 20 s strides",
+        "sun": "28 km easy"
       },
       "notes": ""
     },
@@ -423,11 +506,15 @@
       "end": "2027-03-28",
       "phase": "Phase 2: Speed and volume (4 Jan – 28 Mar)",
       "km": "62",
-      "kmMin": 62.0,
-      "kmMax": 62.0,
+      "kmMin": 62,
+      "kmMax": 62,
       "sessions": {
+        "mon": "10 km recovery",
         "tue": "4 × 1 km at 3:30, 2 min jog",
+        "wed": "20 km easy",
         "thu": "Easy + strides",
+        "fri": "Rest",
+        "sat": "7 km easy + 6 × 20 s strides",
         "sun": "Aix 10k, 28 Mar: 34:45–35:30"
       },
       "notes": "Race week, so no long run. If Aix is on 21 March, swap weeks 19 and 20"
@@ -437,13 +524,17 @@
       "start": "2027-03-29",
       "end": "2027-04-04",
       "phase": "Phase 3: Marathon-specific (29 Mar – 9 May)",
-      "km": "78",
-      "kmMin": 78.0,
-      "kmMax": 78.0,
+      "km": "89",
+      "kmMin": 89,
+      "kmMax": 89,
       "sessions": {
+        "mon": "10 km recovery",
         "tue": "Easy",
-        "wed": "Easy 12 km. Thu: 2 × 5 km at 3:46",
-        "sun": "28 km easy"
+        "wed": "Easy 20 km",
+        "thu": "2 × 5 km at 3:46",
+        "fri": "Rest",
+        "sat": "14 km easy + 6 × 20 s strides",
+        "sun": "30 km easy"
       },
       "notes": "Recovery from Aix"
     },
@@ -452,13 +543,17 @@
       "start": "2027-04-05",
       "end": "2027-04-11",
       "phase": "Phase 3: Marathon-specific (29 Mar – 9 May)",
-      "km": "98",
-      "kmMin": 98.0,
-      "kmMax": 98.0,
+      "km": "112",
+      "kmMin": 112,
+      "kmMax": 112,
       "sessions": {
+        "mon": "7 km recovery",
         "tue": "4 × 4 km at HMP 3:42–3:45, 2 min jog",
-        "wed": "18 km medium-long",
-        "sun": "32 km, 16 at 3:58–4:02"
+        "wed": "20 km medium-long",
+        "thu": "Easy 16 km + strides",
+        "fri": "Rest",
+        "sat": "14 km easy + 6 × 20 s strides",
+        "sun": "33 km, 16 at 3:58–4:02"
       },
       "notes": ""
     },
@@ -467,13 +562,17 @@
       "start": "2027-04-12",
       "end": "2027-04-18",
       "phase": "Phase 3: Marathon-specific (29 Mar – 9 May)",
-      "km": "102",
-      "kmMin": 102.0,
-      "kmMax": 102.0,
+      "km": "111",
+      "kmMin": 111,
+      "kmMax": 111,
       "sessions": {
+        "mon": "10 km recovery",
         "tue": "6 × 1.6 km at 3:32–3:35, 90 s jog",
         "wed": "20 km medium-long",
-        "sun": "34 km, last 10 at 4:05–4:10"
+        "thu": "Easy 16 km + strides",
+        "fri": "Rest",
+        "sat": "14 km easy + 6 × 20 s strides",
+        "sun": "35 km, last 10 at 4:05–4:10"
       },
       "notes": ""
     },
@@ -482,12 +581,16 @@
       "start": "2027-04-19",
       "end": "2027-04-25",
       "phase": "Phase 3: Marathon-specific (29 Mar – 9 May)",
-      "km": "105",
-      "kmMin": 105.0,
-      "kmMax": 105.0,
+      "km": "116",
+      "kmMin": 116,
+      "kmMax": 116,
       "sessions": {
+        "mon": "10 km recovery",
         "tue": "3 × 5 km at HMP 3:43, 2 min jog",
         "wed": "20 km medium-long",
+        "thu": "Easy 16 km + strides",
+        "fri": "Rest",
+        "sat": "14 km easy + 6 × 20 s strides",
         "sun": "35 km, 22 at 3:58–4:02"
       },
       "notes": "Peak week and key benchmark"
@@ -497,13 +600,17 @@
       "start": "2027-04-26",
       "end": "2027-05-02",
       "phase": "Phase 3: Marathon-specific (29 Mar – 9 May)",
-      "km": "85",
-      "kmMin": 85.0,
-      "kmMax": 85.0,
+      "km": "95",
+      "kmMin": 95,
+      "kmMax": 95,
       "sessions": {
+        "mon": "Rest",
         "tue": "2 × 8 km at MP 3:57–4:00, 2 min jog",
-        "wed": "14 km easy",
-        "sun": "28 km easy"
+        "wed": "18 km easy",
+        "thu": "Easy 14 km + strides",
+        "fri": "Rest",
+        "sat": "12 km easy + 6 × 20 s strides",
+        "sun": "30 km easy"
       },
       "notes": "Easier week"
     },
@@ -512,13 +619,16 @@
       "start": "2027-05-03",
       "end": "2027-05-09",
       "phase": "Phase 3: Marathon-specific (29 Mar – 9 May)",
-      "km": "65",
-      "kmMin": 65.0,
-      "kmMax": 65.0,
+      "km": "72",
+      "kmMin": 72,
+      "kmMax": 72,
       "sessions": {
+        "mon": "Rest",
         "tue": "3 × 3 km at HMP 3:42, 2 min jog",
-        "wed": "10 km easy + strides",
-        "sun": "Sat 8 May: Killarney half, 1:17:30–1:18:30. Sun: 8–10 km very easy"
+        "wed": "12 km easy + strides",
+        "thu": "Easy 10 km + strides",
+        "fri": "Rest",
+        "sun": "8–10 km very easy"
       },
       "notes": "Race week"
     },
@@ -527,13 +637,17 @@
       "start": "2027-05-10",
       "end": "2027-05-16",
       "phase": "Phase 4: Taper and Edinburgh (10 – 30 May)",
-      "km": "78",
-      "kmMin": 78.0,
-      "kmMax": 78.0,
+      "km": "84",
+      "kmMin": 84,
+      "kmMax": 84,
       "sessions": {
+        "mon": "10 km recovery",
         "tue": "Easy, recovering from the half",
+        "wed": "20 km easy",
         "thu": "10 km with 6 km at 3:58",
-        "sun": "28 km, 14 at 3:58"
+        "fri": "Rest",
+        "sat": "14 km easy + 6 × 20 s strides",
+        "sun": "30 km, 14 at 3:58"
       },
       "notes": "Last long run"
     },
@@ -542,13 +656,17 @@
       "start": "2027-05-17",
       "end": "2027-05-23",
       "phase": "Phase 4: Taper and Edinburgh (10 – 30 May)",
-      "km": "60",
-      "kmMin": 60.0,
-      "kmMax": 60.0,
+      "km": "72",
+      "kmMin": 72,
+      "kmMax": 72,
       "sessions": {
+        "mon": "Rest",
         "tue": "3 × 3 km at 3:55–3:58, 2 min jog",
+        "wed": "18 km easy",
         "thu": "Easy + strides",
-        "sun": "21 km, 8 at MP"
+        "fri": "Rest",
+        "sat": "15 km easy + 6 × 20 s strides",
+        "sun": "24 km, 8 at MP"
       },
       "notes": ""
     },
@@ -558,11 +676,15 @@
       "end": "2027-05-30",
       "phase": "Phase 4: Taper and Edinburgh (10 – 30 May)",
       "km": "about 35 + race",
-      "kmMin": 35.0,
-      "kmMax": 35.0,
+      "kmMin": 35,
+      "kmMax": 35,
       "sessions": {
+        "mon": "7 km recovery",
         "tue": "6 km with 3 × 1 km at MP",
-        "thu": "5 km + strides. Sat: 15 min shakeout",
+        "wed": "14 km easy",
+        "thu": "5 km + strides",
+        "fri": "Rest",
+        "sat": "15 min shakeout",
         "sun": "Edinburgh Marathon, 30 May"
       },
       "notes": "Carb-load Fri–Sat at 8–10 g per kg"
@@ -767,8 +889,8 @@
       "start": "2027-05-31",
       "end": "2027-06-13",
       "km": "20–50",
-      "kmMin": 20.0,
-      "kmMax": 50.0,
+      "kmMin": 20,
+      "kmMax": 50,
       "key": "Easy running only",
       "race": ""
     },
@@ -777,8 +899,8 @@
       "start": "2027-06-14",
       "end": "2027-07-25",
       "km": "70–95",
-      "kmMin": 70.0,
-      "kmMax": 95.0,
+      "kmMin": 70,
+      "kmMax": 95,
       "key": "One VO2 session and one threshold session a week; long runs of 24–28 km",
       "race": "A 5k or 10k in July: 16:45 / 34:45"
     },
@@ -787,8 +909,8 @@
       "start": "2027-07-26",
       "end": "2027-08-08",
       "km": "90–100",
-      "kmMin": 90.0,
-      "kmMax": 100.0,
+      "kmMin": 90,
+      "kmMax": 100,
       "key": "Threshold, long runs of 30 km",
       "race": ""
     },
@@ -797,8 +919,8 @@
       "start": "2027-08-09",
       "end": "2027-10-31",
       "km": "100–120, an easier week every 3–4 weeks",
-      "kmMin": 100.0,
-      "kmMax": 120.0,
+      "kmMin": 100,
+      "kmMax": 120,
       "key": "Long runs of 32–36 km with 20–26 km at 3:52–3:56; 2 × 10 km at MP; midweek 20–24 km; one easy double a week",
       "race": "Lausanne half, late October: 1:15:30–1:16:30"
     },
@@ -807,8 +929,8 @@
       "start": null,
       "end": null,
       "km": "90, falling to 40",
-      "kmMin": 90.0,
-      "kmMax": 90.0,
+      "kmMin": 90,
+      "kmMax": 90,
       "key": "Short MP and HMP sessions",
       "race": "Valencia: sub-2:45"
     }

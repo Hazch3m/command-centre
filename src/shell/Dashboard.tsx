@@ -8,7 +8,7 @@ import { useNow } from "../core/time";
 import { NavContext } from "./nav";
 import { moduleById, modules } from "../modules/registry";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { COLS, ROWS, defaultFor, findSpot, loadLayout, orientationOf, resolveLayout, saveLayout, type Orientation, type ResolvedLayout } from "./layout";
+import { COLS, ROWS, defaultFor, findSpot, fitToScreen, loadLayout, orientationOf, resolveLayout, saveLayout, type Orientation, type ResolvedLayout } from "./layout";
 import { SettingsPanel } from "./SettingsPanel";
 import { RunViewHost } from "../modules/running/RunView";
 import { usePlanCalendarSync } from "../modules/running/planCalendar";
@@ -214,6 +214,24 @@ export function Dashboard() {
     return () => window.removeEventListener("keydown", onKey);
   }, [tabs, go]);
 
+  // Leaving edit mode: anything left below the bottom of the screen comes back or goes to the tray.
+  const wasEditing = useRef(false);
+  useEffect(() => {
+    if (wasEditing.current && !editing && layout) {
+      const fixed = fitToScreen(layout.items, ROWS_NOW);
+      if (fixed.moved.length || fixed.hidden.length) {
+        persist({ items: fixed.items, hidden: [...layout.hidden, ...fixed.hidden], custom: true });
+        const name = (id: string) => moduleById.get(id)?.title ?? id;
+        setNotice(
+          [fixed.moved.length ? `Moved back on screen: ${fixed.moved.map(name).join(", ")}.` : "", fixed.hidden.length ? `No room for ${fixed.hidden.map(name).join(", ")}, so it's in the hidden list (Edit to add it back).` : ""]
+            .filter(Boolean)
+            .join(" "),
+        );
+      }
+    }
+    wasEditing.current = editing;
+  }, [editing]);
+
   if (!layout) return <div className="dashboard" ref={gridRef} />;
 
   const rowHeight = Math.max(8, (size.h - MARGIN * (ROWS_NOW + 1)) / ROWS_NOW);
@@ -256,6 +274,7 @@ export function Dashboard() {
   };
   const reset = () => persist(resolveLayout(null, modules, orient));
 
+
   const cursorHidden = idle && settings.hideCursor && !editing && !settingsOpen;
 
   return (
@@ -283,9 +302,17 @@ export function Dashboard() {
         </div>
       </header>
 
+      {!editing && notice && (
+        <div className="toast" role="status">
+          <span>{notice}</span>
+          <button className="btn icon ghost" onClick={() => setNotice(null)} aria-label="Dismiss">
+            ✕
+          </button>
+        </div>
+      )}
       {editing && (
         <div className="edit-bar">
-          <span>{notice ?? `Editing the ${orient} layout: drag tiles by their top bar, resize from any edge or corner. Tiles stay where you put them.`}</span>
+          <span>{notice ?? `Editing the ${orient} layout: drag tiles by their top bar, resize from any edge or corner. Anything pushed below the dashed line comes back on screen when you click Done.`}</span>
           {layout.hidden.length > 0 && (
             <span className="edit-hidden">
               Hidden:
@@ -314,11 +341,12 @@ export function Dashboard() {
         ref={gridRef}
         style={{ ["--col-w" as string]: `${(size.w - MARGIN) / COLS}px`, ["--row-h" as string]: `${rowHeight + MARGIN}px`, ["--gap" as string]: `${MARGIN}px` }}
       >
+        {editing && <div className="screen-edge" style={{ top: `${MARGIN + ROWS_NOW * (rowHeight + MARGIN) - MARGIN / 2}px` }} aria-hidden="true"><span>Bottom of the screen</span></div>}
         {size.w > 0 && (
           <GridLayout
             layout={gridLayout}
             cols={COLS}
-            maxRows={ROWS_NOW}
+            maxRows={editing ? ROWS_NOW * 2 : ROWS_NOW}
             width={size.w}
             rowHeight={rowHeight}
             margin={[MARGIN, MARGIN]}

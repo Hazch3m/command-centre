@@ -302,14 +302,22 @@ export const dayOfMonth = (date: string) => parseKey(date).getDate();
 export function fullWeekSessions(plan: Plan, week: PlanWeek): PlanWeek["sessions"] {
   const out: PlanWeek["sessions"] = { ...week.sessions };
   const fw = forecastWeek(plan, week.start);
+  const crossDay = /\.\s+(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b[^:.]*:/;
   fw.days.forEach((d, i) => {
     const key = WEEK_KEYS[i];
+    // A cell that also holds another day's session ("Easy 12 km. Thu: 2 × 5 km at 3:46") keeps only its own part.
+    if (out[key] && crossDay.test(out[key]!)) out[key] = d.text;
     if (out[key] || d.race || d.kind === "race") return;
     if (d.kind === "rest" || !d.km) {
       out[key] = "Rest";
       return;
     }
     const t = d.text.trim();
+    // Sessions and anything already given in km or minutes are written as the plan has them.
+    if (d.kind === "key" || /\d\s*(?:km|min)\b/i.test(t.replace(/\d+(?:\.\d+)?\s*[–-]\s*\d+(?:\.\d+)?\s*km/i, ""))) {
+      out[key] = t.replace(/\d+(?:\.\d+)?\s*[–-]\s*\d+(?:\.\d+)?\s*km/i, `${d.km} km`);
+      return;
+    }
     out[key] = /\d+(?:\.\d+)?(?:\s*[–-]\s*\d+(?:\.\d+)?)?\s*km/i.test(t)
       ? t.replace(/\d+(?:\.\d+)?(?:\s*[–-]\s*\d+(?:\.\d+)?)?\s*km/i, `${d.km} km`)
       : `${d.km} km ${t.charAt(0).toLowerCase()}${t.slice(1)}`;

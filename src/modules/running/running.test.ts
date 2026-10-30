@@ -1,5 +1,8 @@
+import type { Plan } from "./plan";
 import { describe, expect, it } from "vitest";
-import { BUNDLED_PLAN, mondayOf, sessionFor, upcomingRaces, weekFor } from "./plan";
+import { mondayOf, sessionFor, upcomingRaces, weekFor } from "./plan";
+import fixturePlan from "./plan.fixture.json";
+const BUNDLED_PLAN = fixturePlan as unknown as Plan;
 import { judgeBenchmark, marathonEquivalent, pace, parseTime, raceHistory, weekDays, weeklyTotals, yearSummary } from "./stats";
 import type { Run } from "./strava";
 
