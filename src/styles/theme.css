@@ -3228,7 +3228,7 @@ select:focus {
 .run-races {
   margin-top: 0;
 }
-@container (min-width: 36rem) {
+@container (min-width: 29rem) {
   .run-tile {
     display: grid;
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
@@ -3284,7 +3284,7 @@ select:focus {
 .fit-predict-row {
   order: 2;
 }
-@container (min-width: 36rem) {
+@container (min-width: 29rem) {
   .fit-tile {
     display: grid;
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
@@ -3364,7 +3364,10 @@ select:focus {
 }
 
 .run-history .chart-fill {
-  min-height: 4.5rem;
+  min-height: 3.5rem;
+}
+.run-tile {
+  overflow: hidden;
 }
 
 /* Race predictions tile */
