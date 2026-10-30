@@ -65,7 +65,92 @@ export const migrations = [
      text TEXT NOT NULL,
      updated_at TEXT NOT NULL
    );`,
+  // 3 — full activity data (laps and second-by-second streams), fetched when you open a run
+  `CREATE TABLE strava_full (
+     id TEXT PRIMARY KEY,
+     json TEXT NOT NULL,
+     fetched_at TEXT NOT NULL
+   );`,
 ];
+
+export interface FullRun {
+  laps: { name: string; distance: number; moving_time: number; elapsed_time: number; speed: number; hr: number | null; max_hr: number | null; cadence: number | null; elev: number | null }[];
+  splits: { distance: number; moving_time: number; speed: number; gap: number | null; hr: number | null; elev: number | null }[];
+  streams: { distance?: number[]; time?: number[]; heartrate?: number[]; velocity?: number[]; altitude?: number[]; cadence?: number[] } | null;
+  description: string | null;
+  calories: number | null;
+  device: string | null;
+}
+
+/** Laps, splits and streams for one run: from the cache, else from Strava (then cached). */
+export async function loadFullRun(id: string): Promise<FullRun> {
+  const rows = await db.select<{ json: string }>("SELECT json FROM strava_full WHERE id = ?", [id]);
+  if (rows[0]) {
+    try {
+      return JSON.parse(rows[0].json);
+    } catch {
+      /* fetch again */
+    }
+  }
+  type A = {
+    laps?: { name?: string; distance: number; moving_time: number; elapsed_time: number; average_speed: number; average_heartrate?: number; max_heartrate?: number; average_cadence?: number; total_elevation_gain?: number }[];
+    splits_metric?: { distance: number; moving_time: number; average_speed: number; average_grade_adjusted_speed?: number; average_heartrate?: number; elevation_difference?: number }[];
+    description?: string | null;
+    calories?: number;
+    device_name?: string;
+  };
+  const a = await backend.apiRequest<A>("strava", "GET", `https://www.strava.com/api/v3/activities/${id}?include_all_efforts=false`);
+  if (a.status !== 200) throw new Error(`Strava answered ${a.status}`);
+  let streams: FullRun["streams"] = null;
+  try {
+    const st = await backend.apiRequest<Record<string, { data: number[] }>>(
+      "strava",
+      "GET",
+      `https://www.strava.com/api/v3/activities/${id}/streams?keys=time,distance,heartrate,velocity_smooth,altitude,cadence&key_by_type=true`,
+    );
+    const b = st.body;
+    if (st.status === 200 && b && typeof b === "object" && !Array.isArray(b) && b.distance?.data) {
+      streams = {
+        distance: b.distance?.data,
+        time: b.time?.data,
+        heartrate: b.heartrate?.data,
+        velocity: b.velocity_smooth?.data,
+        altitude: b.altitude?.data,
+        cadence: b.cadence?.data,
+      };
+    }
+  } catch {
+    streams = null;
+  }
+  const body = a.body;
+  const full: FullRun = {
+    laps: (body.laps ?? []).map((l, i) => ({
+      name: l.name ?? `Lap ${i + 1}`,
+      distance: l.distance,
+      moving_time: l.moving_time,
+      elapsed_time: l.elapsed_time,
+      speed: l.average_speed,
+      hr: l.average_heartrate ?? null,
+      max_hr: l.max_heartrate ?? null,
+      cadence: l.average_cadence != null ? l.average_cadence * 2 : null,
+      elev: l.total_elevation_gain ?? null,
+    })),
+    splits: (body.splits_metric ?? []).map((s) => ({
+      distance: s.distance,
+      moving_time: s.moving_time,
+      speed: s.average_speed,
+      gap: s.average_grade_adjusted_speed ?? null,
+      hr: s.average_heartrate ?? null,
+      elev: s.elevation_difference ?? null,
+    })),
+    streams,
+    description: body.description ?? null,
+    calories: body.calories ?? null,
+    device: body.device_name ?? null,
+  };
+  await db.execute("INSERT OR REPLACE INTO strava_full (id, json, fetched_at) VALUES (?, ?, ?)", [id, JSON.stringify(full), new Date().toISOString()]);
+  return full;
+}
 
 /** Your edits to the plan, by date. */
 export async function loadOverrides(): Promise<Map<string, string>> {

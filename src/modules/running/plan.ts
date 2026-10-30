@@ -62,6 +62,11 @@ export async function loadPlan(): Promise<{ plan: Plan; error: string | null }> 
   try {
     const plan = JSON.parse(text) as Plan;
     if (!Array.isArray(plan.weeks) || !Array.isArray(plan.races)) throw new Error("missing weeks or races");
+    // An app update carrying a newer export of the plan replaces the older copy.
+    if ((BUNDLED_PLAN.exported ?? "") > (plan.exported ?? "")) {
+      await backend.writeDataFile(PLAN_FILE, JSON.stringify(BUNDLED_PLAN, null, 2));
+      return { plan: BUNDLED_PLAN, error: null };
+    }
     return { plan: { ...plan, history: plan.history ?? BUNDLED_PLAN.history }, error: null };
   } catch (e) {
     // A half-edited file shouldn't blank the card: keep showing the bundled plan.

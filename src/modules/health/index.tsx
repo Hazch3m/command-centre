@@ -3,6 +3,7 @@ import { backend } from "@backend";
 import { useDataVersion } from "../../core/events";
 import { addDays, relativeDayLabel, useEvery, useToday } from "../../core/time";
 import { useQuery } from "../../core/useQuery";
+import { kvGet } from "../../core/db";
 import { LineChart } from "../../shell/charts";
 import { CardHeader, ErrorNote } from "../../shell/ui";
 import type { CardProps, DashboardModule } from "../types";
@@ -174,6 +175,7 @@ function HealthCard({ variant, editing }: CardProps) {
       <CardHeader title="Health" to={editing ? undefined : "health"} right={right} />
       {!status?.connected && data && <div className="muted small">Garmin isn't connected — showing saved data. Connect again in Settings.</div>}
       <Metrics rows={rows} today={today} />
+      {page && <SleepCheck />}
       {page && <HealthCharts rows={rows} today={today} />}
       {sync && sync.errors.length > 0 && (
         <details className="muted small health-diag">
@@ -320,5 +322,22 @@ export function GarminSetting() {
       </div>
       <ErrorNote error={err} />
     </div>
+  );
+}
+
+/** Shows exactly which nights Garmin returned, to make "wrong night" problems visible. */
+function SleepCheck() {
+  const version = useDataVersion("health");
+  const { data } = useQuery(() => kvGet<{ asked: string; via: string; wake: string | null; secs: number | null }[]>("health.sleepDebug", []), [version]);
+  if (!data?.length) return null;
+  return (
+    <details className="muted small health-diag">
+      <summary>Which night is which</summary>
+      {data.map((d) => (
+        <div key={d.asked}>
+          Asked Garmin for {d.asked}: {d.wake ? `a night ending ${d.wake}, ${hm(d.secs)} h` : "no sleep recorded"} <span className="muted">({d.via})</span>
+        </div>
+      ))}
+    </details>
   );
 }

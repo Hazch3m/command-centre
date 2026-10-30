@@ -107,8 +107,9 @@ export async function syncCalendar(): Promise<CalSync> {
   };
 
   const now = new Date();
-  const from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-  const to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 9);
+  // A week back to six weeks ahead, enough for the week and month views.
+  const from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 8);
+  const to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 43);
 
   if (google) {
     try {
@@ -125,7 +126,7 @@ export async function syncCalendar(): Promise<CalSync> {
       }));
       cals.push(...gcals);
       for (const c of gcals.filter((x) => x.show)) {
-        const q = new URLSearchParams({ timeMin: from.toISOString(), timeMax: to.toISOString(), singleEvents: "true", orderBy: "startTime", maxResults: "250" });
+        const q = new URLSearchParams({ timeMin: from.toISOString(), timeMax: to.toISOString(), singleEvents: "true", orderBy: "startTime", maxResults: "2500" });
         const ev = await get<{ items: GEvent[] }>(`${API}/calendars/${encodeURIComponent(c.id)}/events?${q}`);
         for (const e of ev.items ?? []) {
           if (e.status === "cancelled") continue;

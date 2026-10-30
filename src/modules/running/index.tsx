@@ -11,6 +11,7 @@ import { loadOverrides, migrations } from "./strava";
 import { useDataVersion } from "../../core/events";
 import { useQuery } from "../../core/useQuery";
 import { usePaceChecks } from "./PaceOnPoint";
+import { openWeek } from "./RunView";
 import { useRunningData, useStravaSync } from "./useRunning";
 
 export function shortSession(text: string): string {
@@ -117,7 +118,7 @@ function RunningCard({ editing }: CardProps) {
             avg <b className="num">{avg.toFixed(0)}</b> · best <b className="num">{best.toFixed(0)}</b>
           </span>
         </div>
-        <BarChart bars={history} height="fill" unit=" km" refLine={{ value: avg, label: `Average of the 9 complete weeks: ${avg.toFixed(1)} km` }} />
+        <BarChart bars={history} height="fill" unit=" km" onBar={(i) => openWeek(addDays(mondayOf(today), (i - history.length + 1) * 7))} refLine={{ value: avg, label: `Average of the 9 complete weeks: ${avg.toFixed(1)} km` }} />
       </div>
 
       <div className="run-races">

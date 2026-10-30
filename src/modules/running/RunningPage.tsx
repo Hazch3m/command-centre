@@ -18,10 +18,12 @@ import { useRunningData } from "./useRunning";
 import { WeekCalendar } from "./WeekCalendar";
 import { RecentBlock } from "./RecentBlock";
 import { PaceOnPointTab } from "./PaceOnPoint";
+import { RunsTab } from "./RunsTab";
 
-type Tab = "week" | "pace" | "plan" | "races" | "progress" | "paces";
+type Tab = "week" | "runs" | "pace" | "plan" | "races" | "progress" | "paces";
 const TABS: { id: Tab; label: string }[] = [
   { id: "week", label: "Week by week" },
+  { id: "runs", label: "All runs" },
   { id: "pace", label: "Pace on point" },
   { id: "plan", label: "Plan" },
   { id: "races", label: "Races & benchmarks" },
@@ -106,6 +108,7 @@ export function RunningPage() {
       <div className="page-body" key={tab}>
         {tab === "week" && <WeekCalendar plan={plan} runs={runs} count={6} />}
         {tab === "pace" && <PaceOnPointTab plan={plan} runs={runs} />}
+        {tab === "runs" && <RunsTab runs={runs} />}
 
         {tab === "plan" && (
           <>

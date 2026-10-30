@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { kvGet, kvSet } from "../../core/db";
 import { useDataVersion } from "../../core/events";
 import { addDays, parseKey, useToday } from "../../core/time";
 import { useQuery } from "../../core/useQuery";
 import { LineChart } from "../../shell/charts";
 import { loadHealth, type HealthDay } from "../health/data";
-import { marathonShape, showVo2, type Fitness } from "./fitness";
+import { marathonShape, SHAPE_DEFAULTS, showVo2, type Fitness, type ShapeOptions } from "./fitness";
 import { forecastWeek } from "./forecast";
 import { mondayOf, type Plan } from "./plan";
 import { ShapeBar } from "./Predictions";
@@ -62,6 +63,7 @@ const DISTS = [
 export function GoalPath({ f }: { f: Fitness }) {
   const today = useToday();
   const health = useHealthHistory();
+  const [dist, setDist] = useState<(typeof DISTS)[number]["name"]>("Marathon");
   const goals: Goal[] = f.config.projection.milestones.map((m) => ({ date: m.date, label: m.label, seconds: Math.round(predictTime(42195, m.vo2) / 60) * 60 }));
   const final = [...goals].sort((a, b) => b.date.localeCompare(a.date))[0];
 
@@ -82,7 +84,10 @@ export function GoalPath({ f }: { f: Fitness }) {
   }, [f, health, today, final?.date]);
 
   if (!model || !final) return <p className="muted">Needs a marathon prediction first (connect Garmin, or race at two distances).</p>;
-  const { required, path, actual, startDate, now } = model;
+  const { required, startDate, now } = model;
+  const key = DISTS.find((x) => x.name === dist)!.key;
+  const series = health.filter((h) => h[key] != null).map((h) => ({ date: h.date, m: h[key] as number }));
+  const needAt = (d: string) => required(dist, d);
   const from = addDays(today, -120) < startDate ? addDays(today, -120) : startDate;
 
   // Month-end checkpoints from the start to the final goal.
@@ -94,16 +99,16 @@ export function GoalPath({ f }: { f: Fitness }) {
     checkpoints.push(key > final.date ? final.date : key);
     d = addDays(key, 1);
   }
-  const actualAt = (date: string) => actual.filter((a) => a.date <= date && a.date > addDays(date, -10)).pop() ?? null;
-  const nowM = now.Marathon!;
-  const reqNow = path(today);
+  const actualAt = (date: string) => series.filter((a) => a.date <= date && a.date > addDays(date, -10)).pop() ?? null;
+  const nowM = now[dist] ?? required(dist, today);
+  const reqNow = needAt(today);
   const onTrack = nowM <= reqNow + 5;
 
   return (
     <>
       <p className="lead">
-        To run <b>{hmm(final.seconds)}</b> at {final.label.split(" · ")[1] ?? "the goal race"} ({fmtDate(final.date)}), your marathon prediction needs to come down steadily from{" "}
-        {duration(model.base.Marathon)} ({fmtDate(startDate)}). Today it should be <b>{duration(reqNow)}</b>; it's <b className={onTrack ? "tone-accent" : "tone-danger"}>{duration(nowM)}</b>{" "}
+        To run <b>{hmm(final.seconds)}</b> at {final.label.split(" · ")[1] ?? "the goal race"} ({fmtDate(final.date)}), your {dist === "Marathon" ? "marathon" : dist} prediction needs to come down
+        steadily from {duration(model.base[dist])} ({fmtDate(startDate)}) to {duration(required(dist, final.date))}. Today it should be <b>{duration(reqNow)}</b>; it's <b className={onTrack ? "tone-accent" : "tone-danger"}>{duration(nowM)}</b>{" "}
         ({onTrack ? "on track" : `${duration(nowM - reqNow)} behind`}).
       </p>
       <div className="goal-targets">
@@ -135,17 +140,26 @@ export function GoalPath({ f }: { f: Fitness }) {
         ))}
       </div>
 
-      <h3>Marathon prediction against the path</h3>
+      <div className="goal-bar">
+        <h3>{dist} prediction against the path</h3>
+        <div className="segmented small-seg">
+          {DISTS.map((d) => (
+            <button key={d.name} className={dist === d.name ? "on" : ""} onClick={() => setDist(d.name)}>
+              {d.name}
+            </button>
+          ))}
+        </div>
+      </div>
       <LineChart
         from={from}
         to={final.date}
         height={220}
         today={today}
-        format={hmm}
+        format={dist === "Marathon" || dist === "Half" ? hmm : (v: number) => duration(v)}
         markers={goals.map((g) => ({ x: g.date, label: g.label.split(" · ")[0] }))}
         series={[
-          { name: "Needed", kind: "dashed", className: "s-proj", points: checkpoints.map((d) => ({ x: d, y: path(d) })).concat([{ x: startDate, y: path(startDate) }]).sort((a, b) => a.x.localeCompare(b.x)) },
-          { name: f.predictions.some((p) => p.source === "garmin") ? "Garmin prediction" : "Prediction", kind: "line", className: "s-trend", points: actual.map((a) => ({ x: a.date, y: a.m })) },
+          { name: "Needed", kind: "dashed", className: "s-proj", points: checkpoints.map((d) => ({ x: d, y: needAt(d) })).concat([{ x: startDate, y: needAt(startDate) }]).sort((a, b) => a.x.localeCompare(b.x)) },
+          { name: f.predictions.some((p) => p.source === "garmin") ? "Garmin prediction" : "Prediction", kind: "line", className: "s-trend", points: series.map((a) => ({ x: a.date, y: a.m })) },
           { name: "Now", kind: "dots", className: "s-est", points: [{ x: today, y: nowM }] },
         ]}
       />
@@ -163,14 +177,14 @@ export function GoalPath({ f }: { f: Fitness }) {
             <th className="num-col">Half needed</th>
             <th className="num-col">10k needed</th>
             <th className="num-col">VO2 max needed</th>
-            <th className="num-col">Your marathon</th>
+            <th className="num-col">Your {dist === "Marathon" ? "marathon" : dist}</th>
             <th>Status</th>
           </tr>
         </thead>
         <tbody>
           {checkpoints.map((d) => {
             const a = d <= today ? actualAt(d) : d === checkpoints.find((c) => c >= today) ? { m: nowM } : null;
-            const need = path(d);
+            const need = needAt(d);
             const st = a ? (a.m <= need + 5 ? "ok" : "behind") : "to come";
             return (
               <tr key={d} className={d < today ? "row-past" : ""}>
@@ -242,53 +256,147 @@ const fake = (date: string, km: number): Run => ({
   gear_id: null,
 });
 
+const SHAPE_DISTS = [
+  { name: "Marathon", need: 1 },
+  { name: "Half", need: 0.43 },
+  { name: "10k", need: 0.17 },
+  { name: "5k", need: 0.07 },
+] as const;
+type DistName = (typeof SHAPE_DISTS)[number]["name"];
+
+interface ShapeSettings extends ShapeOptions {
+  dist: DistName;
+  /** What-if: scale the plan's weekly km. */
+  planScale: number;
+  /** What-if: add to every planned long run. */
+  longExtra: number;
+}
+const SHAPE_SETTINGS: ShapeSettings = { ...SHAPE_DEFAULTS, dist: "Marathon", planScale: 1, longExtra: 0 };
+
+/** Planned runs with the what-if changes applied (Sunday = the long run). */
+function scaled(runs: Run[], scale: number, longExtra: number): Run[] {
+  return runs.map((r) => {
+    const sunday = parseKey(r.date).getDay() === 0;
+    const kmv = (r.distance / 1000) * scale + (sunday && r.distance >= 14000 ? longExtra : 0);
+    return { ...r, distance: kmv * 1000 };
+  });
+}
+
+function Choice<T extends string | number>({ label, value, options, onChange }: { label: string; value: T; options: { v: T; l: string }[]; onChange: (v: T) => void }) {
+  return (
+    <div className="shape-choice">
+      <span className="label">{label}</span>
+      <div className="segmented small-seg">
+        {options.map((o) => (
+          <button key={String(o.v)} className={o.v === value ? "on" : ""} onClick={() => onChange(o.v)}>
+            {o.l}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function ShapeView({ f, plan, overrides }: { f: Fitness; plan: Plan; overrides?: Map<string, string> }) {
   const today = useToday();
+  const [set, setSet] = useState<ShapeSettings>(SHAPE_SETTINGS);
+  useEffect(() => {
+    kvGet<ShapeSettings | null>("shape.settings", null).then((v) => v && setSet({ ...SHAPE_SETTINGS, ...v, planScale: 1, longExtra: 0 }));
+  }, []);
+  const update = (patch: Partial<ShapeSettings>) => {
+    const next = { ...set, ...patch };
+    setSet(next);
+    kvSet("shape.settings", next);
+  };
   const final = [...f.config.projection.milestones].sort((a, b) => b.date.localeCompare(a.date))[0];
+  const need = SHAPE_DISTS.find((d) => d.name === set.dist)!.need;
+  const opts: ShapeOptions = { weeklyWeeks: set.weeklyWeeks, longWeeks: set.longWeeks, longMin: set.longMin, weeklyShare: set.weeklyShare };
+  const base = useMemo(() => (final ? plannedRuns(plan, today, final.date, overrides) : []), [plan, today, final?.date, overrides]);
   const data = useMemo(() => {
     if (!f.shape || !final) return null;
     const level = (d: string) => f.project(d) ?? f.current ?? 55;
+    const pct = (x: number) => (x / need) * 100;
     const past: { x: string; y: number }[] = [];
-    for (let w = addDays(mondayOf(today), -26 * 7); w <= mondayOf(today); w = addDays(w, 7)) past.push({ x: w, y: marathonShape(f.runs, addDays(w, 6), level(w)).total * 100 });
-    const planned = [...f.runs.filter((r) => r.date <= today), ...plannedRuns(plan, today, final.date, overrides)];
+    for (let w = addDays(mondayOf(today), -26 * 7); w <= mondayOf(today); w = addDays(w, 7)) past.push({ x: w, y: pct(marathonShape(f.runs, addDays(w, 6), level(w), opts).total) });
+    const done = f.runs.filter((r) => r.date <= today);
+    const planned = [...done, ...scaled(base, set.planScale, set.longExtra)];
     const ahead: { x: string; y: number }[] = [];
-    for (let w = mondayOf(today); w <= final.date; w = addDays(w, 7)) ahead.push({ x: w, y: marathonShape(planned, addDays(w, 6), level(w)).total * 100 });
-    const at = (date: string) => marathonShape(planned, date, level(date));
-    return { past, ahead, at };
-  }, [f, plan, overrides, today, final?.date]);
+    for (let w = mondayOf(today); w <= final.date; w = addDays(w, 7)) ahead.push({ x: w, y: pct(marathonShape(planned, addDays(w, 6), level(w), opts).total) });
+    const at = (date: string, runs = planned) => marathonShape(runs, date, level(date), opts);
+    // How much more weekly volume would get each race to 100 % of what this distance needs.
+    const scaleFor = (date: string) => {
+      for (let k = 0.7; k <= 1.8; k += 0.05) if (at(date, [...done, ...scaled(base, k, set.longExtra)]).total >= need) return k;
+      return null;
+    };
+    return { past, ahead, at, scaleFor, now: marathonShape(f.runs, today, level(today), opts) };
+  }, [f, base, today, final?.date, need, set.planScale, set.longExtra, set.weeklyWeeks, set.longWeeks, set.longMin, set.weeklyShare]);
   if (!f.shape || !data || !final) return <p className="muted">Not enough runs yet.</p>;
-  const s = f.shape;
+  const s = data.now;
+  const pctOf = (x: number) => Math.round((x / need) * 100);
   return (
     <>
+      <div className="shape-controls">
+        <Choice label="Race" value={set.dist} options={SHAPE_DISTS.map((d) => ({ v: d.name, l: d.name }))} onChange={(v) => update({ dist: v })} />
+        <Choice
+          label="What if the plan's weekly km were"
+          value={Math.round(set.planScale * 100)}
+          options={[80, 90, 100, 110, 120, 130].map((v) => ({ v, l: `${v}%` }))}
+          onChange={(v) => update({ planScale: v / 100 })}
+        />
+        <Choice label="Long runs" value={set.longExtra} options={[0, 2, 4, 6].map((v) => ({ v, l: v ? `+${v} km` : "as planned" }))} onChange={(v) => update({ longExtra: v })} />
+      </div>
+      <details className="shape-advanced">
+        <summary className="small">How the shape is worked out</summary>
+        <div className="shape-controls">
+          <Choice label="Weekly km over" value={set.weeklyWeeks} options={[13, 26, 39].map((v) => ({ v, l: `${Math.round(v / 4.33)} months` }))} onChange={(v) => update({ weeklyWeeks: v })} />
+          <Choice label="Long runs over" value={set.longWeeks} options={[6, 10, 14].map((v) => ({ v, l: `${v} weeks` }))} onChange={(v) => update({ longWeeks: v })} />
+          <Choice label="Long runs count from" value={set.longMin} options={[10, 13, 16].map((v) => ({ v, l: `${v} km` }))} onChange={(v) => update({ longMin: v })} />
+          <Choice
+            label="Weekly km share"
+            value={Math.round(set.weeklyShare * 100)}
+            options={[50, 67, 80].map((v) => ({ v, l: `${v}%` }))}
+            onChange={(v) => update({ weeklyShare: v === 67 ? 2 / 3 : v / 100 })}
+          />
+          <button className="btn" onClick={() => update({ ...SHAPE_DEFAULTS })}>
+            Runalyze defaults
+          </button>
+        </div>
+      </details>
       <p className="lead">
-        Marathon shape (as in Runalyze) says whether the training volume is there for the marathon your fitness could run. A marathon needs <b>100%</b>, a half 43%, a 10k 17%.
+        {set.dist} shape: whether the training volume is there for {set.dist === "Marathon" ? "a marathon" : `a ${set.dist.toLowerCase()}`} at your fitness. 100% means fully ready
+        {set.dist !== "Marathon" ? ` (a ${set.dist.toLowerCase()} needs ${Math.round(need * 100)}% of marathon shape)` : ""}.
       </p>
       <div className="tiles">
         <div className="tile">
-          <div className="label">Shape now</div>
-          <div className="tile-value num">{Math.round(s.total * 100)}%</div>
-          <ShapeBar value={s.total} label={false} />
+          <div className="label">Now</div>
+          <div className={"tile-value num " + (pctOf(s.total) >= 100 ? "tone-accent" : "")}>{pctOf(s.total)}%</div>
+          <ShapeBar value={s.total / need} label={false} />
         </div>
         <div className="tile">
-          <div className="label">Weekly km (counts 2/3)</div>
+          <div className="label">Weekly km ({Math.round(set.weeklyShare * 100)}%)</div>
           <div className="tile-value num">{Math.round(s.weekly * 100)}%</div>
           <div className="muted small">
-            {s.kmPerWeek.toFixed(0)} km/week over 6 months, recent weeks counting more · needs ~{s.targetKm.toFixed(0)}
+            {s.kmPerWeek.toFixed(0)} km/week (recent weeks count more) · marathon needs ~{s.targetKm.toFixed(0)}
           </div>
         </div>
         <div className="tile">
-          <div className="label">Long runs (counts 1/3)</div>
+          <div className="label">Long runs ({Math.round((1 - set.weeklyShare) * 100)}%)</div>
           <div className="tile-value num">{Math.round(s.long * 100)}%</div>
-          <div className="muted small">Weekly longest run over 10 weeks, from 13 km up to ~{s.targetLong.toFixed(0)} km</div>
+          <div className="muted small">
+            Weekly longest run, from {set.longMin} km up to ~{s.targetLong.toFixed(0)} km
+          </div>
         </div>
         {f.config.projection.milestones.map((m) => {
           const at = data.at(m.date);
+          const k = data.scaleFor(m.date);
+          const p = pctOf(at.total);
           return (
             <div className="tile" key={m.date}>
-              <div className="label">{m.label.split(" · ")[1] ?? m.label} if you follow the plan</div>
-              <div className={"tile-value num " + (at.total >= 1 ? "tone-accent" : at.total >= 0.85 ? "tone-warn" : "tone-danger")}>{Math.round(at.total * 100)}%</div>
+              <div className="label">{m.label.split(" · ")[1] ?? m.label}</div>
+              <div className={"tile-value num " + (p >= 100 ? "tone-accent" : p >= 85 ? "tone-warn" : "tone-danger")}>{p}%</div>
               <div className="muted small">
                 ~{at.kmPerWeek.toFixed(0)} km/week · needs {at.targetKm.toFixed(0)}
+                {p < 100 && k ? ` · 100% needs the plan at ~${Math.round(k * 100)}% volume` : ""}
               </div>
             </div>
           );
@@ -298,7 +406,7 @@ export function ShapeView({ f, plan, overrides }: { f: Fitness; plan: Plan; over
       <LineChart
         from={data.past[0].x}
         to={final.date}
-        height={200}
+        height={220}
         today={today}
         digits={0}
         unit="%"
@@ -306,13 +414,13 @@ export function ShapeView({ f, plan, overrides }: { f: Fitness; plan: Plan; over
         markers={f.config.projection.milestones.map((m) => ({ x: m.date, label: m.label.split(" · ")[0] }))}
         series={[
           { name: "Your shape", kind: "line", className: "s-trend", points: data.past },
-          { name: "If you follow the plan", kind: "dashed", className: "s-proj", points: data.ahead },
-          { name: "Marathon needs", kind: "dashed", className: "s-goal", points: [{ x: data.past[0].x, y: 100 }, { x: final.date, y: 100 }] },
+          { name: set.planScale !== 1 || set.longExtra ? "Plan with your changes" : "If you follow the plan", kind: "dashed", className: "s-proj", points: data.ahead },
+          { name: "Ready", kind: "dashed", className: "s-goal", points: [{ x: data.past[0].x, y: 100 }, { x: final.date, y: 100 }] },
         ]}
       />
       <p className="muted small">
-        The targets grow as your fitness does (VO2 max 50 → ~85 km/week and ~30 km long runs; 60 → ~105 and ~32). The dashed line assumes the plan's weeks as estimated in
-        the training calendar, including any changes you've made.
+        Targets grow with your fitness (VO2 max 50 → ~85 km/week and ~30 km long runs; 60 → ~105 and ~32). The projection uses the plan's weeks as estimated in the training
+        calendar, including any days you've changed; the what-if buttons only change this page, not the plan.
       </p>
     </>
   );

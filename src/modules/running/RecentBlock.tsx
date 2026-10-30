@@ -4,6 +4,7 @@ import { BarChart } from "../../shell/charts";
 import { mondayOf, weekFor, type Plan } from "./plan";
 import { recentVsPrevious, weeklyTotals, type PeriodStats } from "./stats";
 import type { Run } from "./strava";
+import { openWeek } from "./RunView";
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const fmt = (d: string) => `${parseKey(d).getDate()} ${MON[parseKey(d).getMonth()]}`;
@@ -38,6 +39,7 @@ export function RecentBlock({ runs, plan }: { runs: Run[]; plan: Plan }) {
       };
     });
   }, [runs, plan, today, cmp.recentFrom]);
+  const weeks = useMemo(() => Array.from({ length: 16 }, (_, i) => addDays(mondayOf(today), (i - 15) * 7)), [today]);
   return (
     <section className="recent-block">
       <div className="recent-head">
@@ -46,6 +48,7 @@ export function RecentBlock({ runs, plan }: { runs: Run[]; plan: Plan }) {
           {fmt(cmp.recentFrom)} – today, against {fmt(cmp.prevFrom)} – {fmt(cmp.prevTo)} (per-week averages)
         </span>
       </div>
+      <div className="recent-body">
       <div className="recent-grid">
         {ROWS.map((r) => {
           const a = r.get(cmp.recent);
@@ -73,8 +76,17 @@ export function RecentBlock({ runs, plan }: { runs: Run[]; plan: Plan }) {
           );
         })}
       </div>
-      <BarChart bars={bars} height={110} unit=" km" refLine={{ value: cmp.previous.kmPerWeek, label: `Previous 12-week average: ${cmp.previous.kmPerWeek.toFixed(0)} km` }} />
-      <div className="muted small">Highlighted bars are the last 4 weeks; the dashed line is the 12-week average before them; marks show the plan's target.</div>
+      <div className="recent-chart">
+        <BarChart
+          bars={bars}
+          height={220}
+          unit=" km"
+          onBar={(i) => openWeek(weeks[i])}
+          refLine={{ value: cmp.previous.kmPerWeek, label: `Previous 12-week average: ${cmp.previous.kmPerWeek.toFixed(0)} km` }}
+        />
+        <div className="muted small">Last 4 weeks highlighted · dashed: the 12-week average before · marks: the plan's target · click a week to see its runs</div>
+      </div>
+      </div>
     </section>
   );
 }

@@ -45,7 +45,10 @@ export function BarChart({
   min = 0,
   showValues = true,
   digits = 0,
+  onBar,
 }: {
+  /** Makes bars clickable. */
+  onBar?: (index: number) => void;
   bars: Bar[];
   /** Write each bar's value above it (when there's room). */
   showValues?: boolean;
@@ -75,7 +78,7 @@ export function BarChart({
         {bars.map((b, i) => {
           const x = pad.left + i * bw;
           return (
-            <g key={i} onMouseEnter={() => setHover(i)}>
+            <g key={i} onMouseEnter={() => setHover(i)} onClick={onBar ? () => onBar(i) : undefined} style={onBar ? { cursor: "pointer" } : undefined}>
               <rect x={x} y={pad.top} width={bw} height={H - pad.top - pad.bottom} fill="transparent" />
               {b.targetMax != null && b.target != null && b.targetMax > b.target && (
                 <rect x={x + bw * 0.1} y={y(b.targetMax)} width={bw * 0.8} height={y(b.target) - y(b.targetMax)} className="chart-band" />
@@ -279,6 +282,97 @@ export function LineChart({
         {hx && <line x1={X(hx)} x2={X(hx)} y1={pad.top} y2={H - pad.bottom} className="chart-hover" />}
       </svg>
       <div className="chart-readout small">{readout ? `${hx}: ${readout}` : " "}</div>
+    </div>
+  );
+}
+
+/**
+ * A line over a numeric x axis (e.g. distance in km), for a run's pace, heart
+ * rate or elevation. `invert` puts lower values at the top (faster pace).
+ */
+export function XYChart({
+  points,
+  height = 110,
+  invert = false,
+  format = (v: number) => v.toFixed(0),
+  xUnit = "km",
+  className = "s-trend",
+  area = false,
+  label,
+  marks = [],
+}: {
+  points: [number, number][];
+  height?: number;
+  invert?: boolean;
+  format?: (v: number) => string;
+  xUnit?: string;
+  className?: string;
+  area?: boolean;
+  label: string;
+  /** Vertical lines, e.g. lap boundaries. */
+  marks?: number[];
+}) {
+  const [ref, box] = useBox(false);
+  const [hover, setHover] = useState<number | null>(null);
+  const W = box.w || 1000;
+  const H = height;
+  const pad = { top: 8, bottom: 16, left: 46, right: 6 };
+  if (points.length < 2) return null;
+  const xs = points.map((p) => p[0]);
+  const ys = points.map((p) => p[1]).filter((y) => Number.isFinite(y));
+  const x0 = xs[0];
+  const x1 = xs[xs.length - 1] || 1;
+  // Trim outliers (GPS glitches) for the y range.
+  const sorted = [...ys].sort((a, b) => a - b);
+  const lo = sorted[Math.floor(sorted.length * 0.02)];
+  const hi = sorted[Math.ceil(sorted.length * 0.98) - 1];
+  const span = hi - lo || 1;
+  const X = (x: number) => pad.left + ((x - x0) / (x1 - x0 || 1)) * (W - pad.left - pad.right);
+  const Y = (y: number) => {
+    const t = (Math.min(hi, Math.max(lo, y)) - lo) / span;
+    return pad.top + (invert ? t : 1 - t) * (H - pad.top - pad.bottom);
+  };
+  const d = points.map((p, i) => `${i ? "L" : "M"}${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join("");
+  const hp = hover != null ? points[hover] : null;
+  const ticks = [lo, (lo + hi) / 2, hi];
+  return (
+    <div className="chart xy" ref={ref}>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        width="100%"
+        height={H}
+        onMouseMove={(e) => {
+          const r = (e.currentTarget as SVGSVGElement).getBoundingClientRect();
+          const xv = x0 + (((e.clientX - r.left) / r.width) * W - pad.left) / (W - pad.left - pad.right) * (x1 - x0);
+          let best = 0;
+          for (let i = 0; i < points.length; i++) if (Math.abs(points[i][0] - xv) < Math.abs(points[best][0] - xv)) best = i;
+          setHover(best);
+        }}
+        onMouseLeave={() => setHover(null)}
+      >
+        {ticks.map((v, i) => (
+          <g key={i}>
+            <line x1={pad.left} x2={W - pad.right} y1={Y(v)} y2={Y(v)} className="chart-grid" />
+            <text x={pad.left - 6} y={Y(v) + 4} className="chart-label" textAnchor="end">
+              {format(v)}
+            </text>
+          </g>
+        ))}
+        {marks.map((m) => (
+          <line key={m} x1={X(m)} x2={X(m)} y1={pad.top} y2={H - pad.bottom} className="chart-marker" />
+        ))}
+        {area && <path d={`${d}L${X(x1)},${H - pad.bottom}L${X(x0)},${H - pad.bottom}Z`} className={`chart-area ${className}`} />}
+        <path d={d} className={`chart-line ${className}`} />
+        {[0.25, 0.5, 0.75, 1].map((f) => (
+          <text key={f} x={X(x0 + (x1 - x0) * f)} y={H - 3} className="chart-label" textAnchor={f === 1 ? "end" : "middle"}>
+            {(x0 + (x1 - x0) * f).toFixed(1)}
+          </text>
+        ))}
+        {hp && <line x1={X(hp[0])} x2={X(hp[0])} y1={pad.top} y2={H - pad.bottom} className="chart-hover" />}
+      </svg>
+      <div className="chart-readout small">
+        <b>{label}</b> {hp ? `${format(hp[1])} at ${hp[0].toFixed(2)} ${xUnit}` : ""}
+      </div>
     </div>
   );
 }

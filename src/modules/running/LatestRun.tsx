@@ -5,6 +5,7 @@ import { CardHeader, Empty } from "../../shell/ui";
 import type { CardProps, DashboardModule } from "../types";
 import { fmtVo2, useFitness } from "./fitness";
 import { RouteMap } from "./route";
+import { openRun } from "./RunView";
 import { duration, km, pace } from "./stats";
 import { useRunningData, useStravaSync } from "./useRunning";
 import { judge } from "./vo2";
@@ -44,9 +45,9 @@ function LatestRunCard(_: CardProps) {
           <RouteMap polyline={r.polyline} height={140} />
         </div>
         <div className="lr-stats">
-          <div className="lr-title one-line" title={r.name}>
+          <button className="link lr-title one-line" title="Laps, splits and charts" onClick={() => openRun(r.id)}>
             {r.name}
-          </div>
+          </button>
           <div className="muted small">
             {relativeDayLabel(r.date, today)} · {time}
             {r.shoe ? ` · ${r.shoe.name}` : ""}

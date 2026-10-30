@@ -10,6 +10,7 @@ import { moduleById, modules } from "../modules/registry";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { COLS, ROWS, defaultFor, findSpot, loadLayout, orientationOf, resolveLayout, saveLayout, type Orientation, type ResolvedLayout } from "./layout";
 import { SettingsPanel } from "./SettingsPanel";
+import { RunViewHost } from "../modules/running/RunView";
 
 const MARGIN = 10;
 
@@ -349,6 +350,7 @@ export function Dashboard() {
       </main>
 
       {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+      <RunViewHost />
     </div>
     </NavContext.Provider>
   );

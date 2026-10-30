@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type WheelEvent } from "react";
 import { createPortal } from "react-dom";
-import { backend } from "@backend";
 import { addDays, parseKey, useToday } from "../../core/time";
 import { CardHeader } from "../../shell/ui";
 import type { CardProps, DashboardModule } from "../types";
@@ -11,6 +10,7 @@ import { loadDetails, loadOverrides, setOverride, type Run, type RunDetail } fro
 import { checkDays, type PaceCheck } from "./pace";
 import { PaceBadge } from "./PaceOnPoint";
 import { useRunningData, useStravaSync } from "./useRunning";
+import { openRun, openWeek } from "./RunView";
 import { useDataVersion } from "../../core/events";
 import { useQuery } from "../../core/useQuery";
 
@@ -48,7 +48,7 @@ function Day({ d, today, onEdit, checks }: { d: ForecastDay; today: string; onEd
       {d.runs.length > 0 && (
         <div className="wk-actual">
           {d.runs.map((r: Run) => (
-            <button key={r.id} className="link wk-run" onClick={() => backend.openStravaActivity(r.id)} title={`${r.name} — open in Strava`}>
+            <button key={r.id} className="link wk-run" onClick={() => openRun(r.id)} title={`${r.name} — laps, splits and charts`}>
               ✓ <span className="num">{km(r.distance).toFixed(1)}</span> km · <span className="num">{pace(r.distance, r.moving_time)}</span>
               {r.avg_hr ? <> · {Math.round(r.avg_hr)}</> : null}
               {checks?.get(r.id) && <PaceBadge c={checks.get(r.id)!} />}
@@ -168,7 +168,9 @@ function WeekHead({ fw, thisMonday }: { fw: ForecastWeek; thisMonday: string }) 
   const offset = Math.round((parseKey(fw.monday).getTime() - parseKey(thisMonday).getTime()) / (7 * 86400000));
   return (
     <div className="wk-subhead small">
-      <b>{fw.week ? `Week ${fw.week.week}` : fw.block ? fw.block.name : "Outside the plan"}</b>
+      <button className="link wk-title-link" onClick={() => openWeek(fw.monday)} title="See this week's runs">
+        <b>{fw.week ? `Week ${fw.week.week}` : fw.block ? fw.block.name : "Outside the plan"}</b>
+      </button>
       <span className="muted">
         {" "}
         · {fmt(fw.monday)} – {fmt(addDays(fw.monday, 6))}
@@ -266,7 +268,9 @@ export function WeekCalendar({ plan, runs, compact, count = 1 }: { plan: Plan; r
           ‹
         </button>
         <div className="wk-title">
-          <b>{f.week ? `Week ${f.week.week}` : f.block ? f.block.name : "Outside the plan"}</b>
+          <button className="link wk-title-link" onClick={() => openWeek(monday)} title="See this week's runs">
+            <b>{f.week ? `Week ${f.week.week}` : f.block ? f.block.name : "Outside the plan"}</b>
+          </button>
           <span className="muted">
             {" "}
             · {fmt(monday)} – {fmt(addDays(monday, 6))}

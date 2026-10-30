@@ -167,7 +167,19 @@ const interp = (pts: [number, number][], x: number) => {
  * needs, recent weeks counting more. Targets follow Runalyze's table
  * (VO2 max 50 → ~85 km/week and ~30 km long runs; 70 → ~124 and ~34).
  */
-export function marathonShape(runs: Run[], today: string, vdotNow: number): MarathonShape {
+export interface ShapeOptions {
+  /** Weeks of weekly km that count (Runalyze: about 6 months). */
+  weeklyWeeks: number;
+  /** Weeks of long runs that count (Runalyze: 10). */
+  longWeeks: number;
+  /** Long runs count from this distance (Runalyze: 13 km). */
+  longMin: number;
+  /** Share of the shape from weekly km (Runalyze: 2/3); the rest is long runs. */
+  weeklyShare: number;
+}
+export const SHAPE_DEFAULTS: ShapeOptions = { weeklyWeeks: 26, longWeeks: 10, longMin: 13, weeklyShare: 2 / 3 };
+
+export function marathonShape(runs: Run[], today: string, vdotNow: number, o: ShapeOptions = SHAPE_DEFAULTS): MarathonShape {
   const targetKm = interp([[25, 39], [50, 85], [70, 124]], vdotNow);
   const targetLong = interp([[25, 22], [50, 30], [70, 34]], vdotNow);
   const thisMonday = mondayOf(today);
@@ -175,24 +187,26 @@ export function marathonShape(runs: Run[], today: string, vdotNow: number): Mara
   let kmW = 0;
   let longW = 0;
   let lSum = 0;
-  for (let i = 1; i <= 26; i++) {
+  for (let i = 1; i <= Math.max(o.weeklyWeeks, o.longWeeks); i++) {
     const mon = addDays(thisMonday, -7 * i);
     const wk = runs.filter((r) => r.date >= mon && r.date < addDays(mon, 7));
-    const kmWeek = wk.reduce((s, r) => s + r.distance / 1000, 0);
-    const w = 27 - i; // recent weeks count more
-    kmW += kmWeek * w;
-    wSum += w;
-    if (i <= 10) {
+    if (i <= o.weeklyWeeks) {
+      const kmWeek = wk.reduce((s, r) => s + r.distance / 1000, 0);
+      const w = o.weeklyWeeks + 1 - i; // recent weeks count more
+      kmW += kmWeek * w;
+      wSum += w;
+    }
+    if (i <= o.longWeeks) {
       const longest = wk.reduce((m, r) => Math.max(m, r.distance / 1000), 0);
-      const lw = 11 - i;
-      longW += Math.max(0, Math.min(1, (longest - 13) / (targetLong - 13))) * lw;
+      const lw = o.longWeeks + 1 - i;
+      longW += Math.max(0, Math.min(1, (longest - o.longMin) / (targetLong - o.longMin))) * lw;
       lSum += lw;
     }
   }
   const kmPerWeek = kmW / wSum;
   const weekly = Math.min(1.5, kmPerWeek / targetKm);
   const long = longW / lSum;
-  return { total: (2 / 3) * weekly + (1 / 3) * long, weekly, long, kmPerWeek, targetKm, targetLong };
+  return { total: o.weeklyShare * weekly + (1 - o.weeklyShare) * long, weekly, long, kmPerWeek, targetKm, targetLong };
 }
 
 /** How much slower than the VO2 max prediction, given the shape (needs: 5k 7 %, 10k 17 %, half 43 %, marathon 100 %). */

@@ -304,11 +304,49 @@ async function doSync(): Promise<HealthSync> {
     // Last night on its own: the range list can lag behind by a day.
     parseHrv(await get(`/hrv-service/hrv/${today}`), patch);
   });
-  await step("sleep", async () => {
-    for (const [a, b] of chunks(from, today, 28)) parseSleep(await get(`/sleep-service/stats/sleep/daily/${a}/${b}`), patch);
-    // Last night and the night before, in full (the stats list lags behind).
-    if (name) for (const d of [addDays(today, -1), today]) parseDailySleep(await get(`/wellness-service/wellness/dailySleepData/${encodeURIComponent(name)}?date=${d}&nonSleepBufferMinutes=60`), patch);
+  // Sleep: the full record for each of the last three nights (dated by the morning you woke),
+  // then the daily stats list for older nights. The stats list can lag a day behind and may be
+  // dated by the evening the night started, so it's lined up against the full records first.
+  const nights: Patch = new Map();
+  const sleepDebug: { asked: string; via: string; wake: string | null; secs: number | null }[] = [];
+  await step("last night's sleep", async () => {
+    for (const d of [addDays(today, -2), addDays(today, -1), today]) {
+      let body: unknown = null;
+      let via = "sleep-service";
+      try {
+        body = await get(`/sleep-service/sleep/dailySleepData?date=${d}&nonSleepBufferMinutes=60`);
+      } catch {
+        body = null;
+      }
+      if (!isObj(body) || !isObj(body.dailySleepDTO) || !pickNum(body.dailySleepDTO, /^sleepTimeSeconds$/i, 0)) {
+        via = "wellness-service";
+        body = name ? await get(`/wellness-service/wellness/dailySleepData/${encodeURIComponent(name)}?date=${d}&nonSleepBufferMinutes=60`) : null;
+      }
+      const before = new Set(nights.keys());
+      parseDailySleep(body, nights);
+      const added = [...nights.keys()].find((k) => !before.has(k)) ?? null;
+      sleepDebug.push({ asked: d, via, wake: added, secs: added ? (nights.get(added)?.sleep_secs as number) ?? null : null });
+    }
   });
+  await kvSet("health.sleepDebug", sleepDebug);
+  await step("sleep history", async () => {
+    const stats: Patch = new Map();
+    for (const [a, b] of chunks(from, today, 28)) parseSleep(await get(`/sleep-service/stats/sleep/daily/${a}/${b}`), stats);
+    // Line the list up with the full records: same night, same length.
+    let shift = 0;
+    for (const [date, n] of nights) {
+      if (stats.get(date)?.sleep_secs === n.sleep_secs) break;
+      if (stats.get(addDays(date, -1))?.sleep_secs === n.sleep_secs) {
+        shift = 1;
+        break;
+      }
+    }
+    for (const [date, f] of stats) {
+      const d = addDays(date, shift);
+      if (!nights.has(d) && d <= today) put(patch, d, f);
+    }
+  });
+  for (const [d, f] of nights) put(patch, d, f);
   await step("Body Battery", async () => {
     for (const [a, b] of chunks(from, today, 28)) parseBodyBattery(await get(`/wellness-service/wellness/bodyBattery/reports/daily?startDate=${a}&endDate=${b}`), patch, today);
   });

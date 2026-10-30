@@ -3556,3 +3556,366 @@ select:focus {
   stroke-dasharray: 2 5;
   opacity: 0.8;
 }
+
+/* Calendar views */
+.cal-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.45rem;
+}
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+.cal-nav-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+  min-width: 8rem;
+  text-align: center;
+}
+.cal-view {
+  display: flex;
+  flex-direction: column;
+}
+.cal-grid-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.cal-grid-head,
+.cal-grid-allday {
+  display: grid;
+  gap: 2px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+.cal-grid-head .today {
+  color: var(--accent);
+}
+.cal-grid-allday > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.cal-grid-allday .cal-allday {
+  font-size: 0.68rem;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cal-grid {
+  flex: 1;
+  min-height: 18rem;
+  display: grid;
+  gap: 2px;
+  position: relative;
+}
+.cal-hours {
+  position: relative;
+}
+.cal-hours span {
+  position: absolute;
+  right: 0.3rem;
+  transform: translateY(-50%);
+  font-size: 0.62rem;
+  color: var(--muted);
+}
+.cal-day-col {
+  position: relative;
+  background-image: linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+  border-radius: 6px;
+}
+.cal-day-col.today {
+  background-color: var(--accent-dim);
+}
+.cal-col {
+  position: absolute;
+  inset: 0;
+}
+.cal-block {
+  position: absolute;
+  padding: 1px 4px;
+  border-left: 3px solid;
+  background: var(--card-2);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  line-height: 1.25;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--card);
+}
+.cal-block.past {
+  opacity: 0.55;
+}
+.cal-block-time {
+  color: var(--muted);
+}
+.cal-now {
+  position: absolute;
+  left: -3px;
+  right: 0;
+  height: 2px;
+  background: var(--danger);
+  z-index: 2;
+}
+.cal-month {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: auto repeat(6, minmax(3.2rem, 1fr));
+  gap: 2px;
+}
+.cal-month-dow {
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.cal-month-day {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1px;
+  text-align: left;
+  padding: 0.2rem 0.25rem;
+  border: 0;
+  border-radius: 6px;
+  background: var(--card-2);
+  color: inherit;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.66rem;
+}
+.cal-month-day:hover {
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+.cal-month-day.other {
+  opacity: 0.45;
+}
+.cal-month-day.today {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+.cal-month-num {
+  font-weight: 600;
+  font-size: 0.72rem;
+}
+.cal-month-ev {
+  border-left: 2px solid;
+  padding-left: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cal-month-more {
+  font-size: 0.6rem;
+}
+@container (max-width: 26rem) {
+  .cal-month-ev {
+    display: none;
+  }
+}
+.recent-block {
+  container-type: inline-size;
+}
+.recent-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.recent-chart {
+  min-width: 0;
+}
+@container (min-width: 62rem) {
+  .recent-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    gap: 1.2rem;
+    align-items: start;
+  }
+  .recent-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Run and week views */
+.run-modal {
+  width: min(64rem, 94vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  animation: fade-up 0.2s ease both;
+}
+.run-head-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.run-head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.run-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: 0.4rem;
+  flex: 1;
+}
+.run-stat {
+  background: var(--card-2);
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+}
+.run-stat-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.run-detail-top {
+  display: flex;
+  gap: 0.7rem;
+  align-items: stretch;
+}
+.run-detail-map {
+  flex: 0 0 15rem;
+  background: var(--card-2);
+  border-radius: 10px;
+  padding: 0.4rem;
+}
+.run-plan-line {
+  background: var(--card-2);
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+}
+.run-desc {
+  margin: 0;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+}
+.run-charts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.run-list tr.clickable {
+  cursor: pointer;
+}
+.run-list tr.clickable:hover td {
+  background: var(--hover);
+}
+.split-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.78rem;
+}
+.split-row {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) 3.5rem 6rem 5rem 4rem;
+  gap: 0.5rem;
+  align-items: center;
+}
+.split-bar {
+  height: 0.6rem;
+  background: var(--track);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.split-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--info);
+  border-radius: 99px;
+}
+.wk-title-link,
+.lr-title.link {
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.wk-title-link:hover b,
+.lr-title.link:hover {
+  color: var(--accent);
+}
+.s-eff.chart-line {
+  stroke: var(--purple);
+}
+@media (max-width: 900px) {
+  .run-detail-top {
+    flex-direction: column;
+  }
+}
+.runs-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: stretch;
+}
+.runs-week {
+  background: var(--card-2);
+  border-radius: 10px;
+  padding: 0.4rem 0.6rem;
+}
+.runs-week-head {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.2rem 0;
+  color: inherit;
+  cursor: pointer;
+}
+.runs-row {
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr) 5rem 5rem 5.5rem 5rem;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.25rem 0;
+  border-top: 1px solid var(--line);
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+.runs-row:hover {
+  color: var(--accent);
+}
+.runs-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.shape-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.4rem;
+  align-items: flex-end;
+  margin-bottom: 0.4rem;
+}
+.shape-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.shape-advanced {
+  margin-bottom: 0.6rem;
+}
+.shape-advanced summary {
+  cursor: pointer;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+}
+.goal-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}

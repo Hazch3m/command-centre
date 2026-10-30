@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { kvGet, kvSet } from "../../core/db";
+import { rangeFor, step, VIEWS, MonthGrid, TimeGrid, type CalView } from "./Views";
 import { useDataVersion } from "../../core/events";
-import { dateKey, diffDays, relativeDayLabel, useEvery, useNow } from "../../core/time";
+import { addDays, dateKey, diffDays, relativeDayLabel, useEvery, useNow } from "../../core/time";
 import { useQuery } from "../../core/useQuery";
 import { CardHeader, ErrorNote } from "../../shell/ui";
 import type { CardProps, DashboardModule } from "../types";
@@ -72,12 +74,33 @@ function CalendarCard({ variant }: CardProps) {
   useEvery(10 * 60_000, () => {
     syncCalendar().catch(() => {});
   });
+  const viewKey = `calendar.view.${variant === "page" ? "page" : "tile"}`;
+  const [view, setViewState] = useState<CalView>(variant === "page" ? "week" : "list");
+  const [anchor, setAnchor] = useState(today);
+  useEffect(() => {
+    kvGet<CalView | null>(viewKey, null).then((v) => v && setViewState(v));
+  }, [viewKey]);
+  useEffect(() => setAnchor(today), [today]);
+  const setView = (v: CalView) => {
+    setViewState(v);
+    setAnchor(today);
+    kvSet(viewKey, v);
+  };
+  const range = rangeFor(view, anchor);
   const { data } = useQuery(
-    () => Promise.all([loadEvents(today), getCalendars(), getCalSync(), calendarSources().then((s) => ({ connected: s.google || s.feeds.length > 0 }))]),
-    [today, version],
+    () =>
+      Promise.all([
+        loadEvents(today),
+        getCalendars(),
+        getCalSync(),
+        calendarSources().then((s) => ({ connected: s.google || s.feeds.length > 0 })),
+        view === "list" ? Promise.resolve([] as DayEvents[]) : loadEvents(range.start, range.days),
+      ]),
+    [today, version, view, range.start, range.days],
   );
   const [choosing, setChoosing] = useState(false);
-  const [days, cals, sync, status] = data ?? [[], [], null, null];
+  const [days, cals, sync, status, rangeDays] = data ?? [[], [], null, null, []];
+  const outside = range.start < addDays(today, -8) || addDays(range.start, range.days - 1) > addDays(today, 42);
 
   // Re-read when the window regains focus (e.g. after connecting in Settings).
   useEffect(() => {
@@ -135,6 +158,51 @@ function CalendarCard({ variant }: CardProps) {
         </div>
       )}
       {status?.connected && !choosing && (
+        <div className="cal-bar">
+          <div className="segmented small-seg" role="tablist">
+            {VIEWS.map((v) => (
+              <button key={v.id} role="tab" aria-selected={view === v.id} className={view === v.id ? "on" : ""} onClick={() => setView(v.id)}>
+                {v.label}
+              </button>
+            ))}
+          </div>
+          {view !== "list" && (
+            <div className="cal-nav">
+              <button className="btn icon ghost" onClick={() => setAnchor((a) => step(view, a, -1))} aria-label="Previous">
+                ‹
+              </button>
+              <span className="cal-nav-title">{range.title}</span>
+              <button className="btn icon ghost" onClick={() => setAnchor((a) => step(view, a, 1))} aria-label="Next">
+                ›
+              </button>
+              {anchor !== today && (
+                <button className="btn" onClick={() => setAnchor(today)}>
+                  Today
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      {status?.connected && !choosing && view !== "list" && (
+        <div className="card-scroll cal-view">
+          {outside && <div className="muted small">Only a week back and six weeks ahead are synced, so this may be incomplete.</div>}
+          {view === "month" ? (
+            <MonthGrid
+              days={rangeDays}
+              anchor={anchor}
+              today={today}
+              onPick={(d) => {
+                setViewState("day");
+                setAnchor(d);
+              }}
+            />
+          ) : (
+            <TimeGrid days={rangeDays} now={now} today={today} />
+          )}
+        </div>
+      )}
+      {status?.connected && !choosing && view === "list" && (
         <div className={"card-scroll " + (variant === "page" ? "cal-days" : "cal-list")}>
           {days.map((d) => (
             <Day key={d.date} day={d} now={now} today={today} />
