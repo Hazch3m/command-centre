@@ -89,6 +89,8 @@ function FitnessCard({ editing }: CardProps) {
           </span>
         }
       />
+      <div className="fit-tile">
+        <div className="fit-main">
       <div className="fit-top">
         <div>
           <div className="num fit-big">{showVo2(f, f.current)}</div>
@@ -117,9 +119,6 @@ function FitnessCard({ editing }: CardProps) {
           )}
         </div>
       </div>
-      <div className="fit-chart">
-        <LineChart series={vo2Series(f, from, to2)} from={from} to={to2} height={170} today={today} markers={f.config.projection.milestones.map((m) => ({ x: m.date, label: m.label.split(" · ")[0] }))} />
-      </div>
       <div className="fit-predict-row" title="Your own speed–endurance curve from recent races">
         {f.predictions.map((p) => {
           const t = p.seconds;
@@ -131,6 +130,11 @@ function FitnessCard({ editing }: CardProps) {
             </div>
           );
         })}
+      </div>
+        </div>
+      <div className="fit-chart">
+        <LineChart series={vo2Series(f, from, to2)} from={from} to={to2} height="fill" today={today} markers={f.config.projection.milestones.map((m) => ({ x: m.date, label: m.label.split(" · ")[0] }))} />
+      </div>
       </div>
     </>
   );

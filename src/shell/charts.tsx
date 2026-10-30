@@ -1,4 +1,25 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+
+/**
+ * The chart's real size in pixels, so drawing is never stretched (text stays
+ * crisp at any tile size). With height "fill" the chart takes the space its
+ * container gives it.
+ */
+function useBox(fill: boolean) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ w: 0, h: 0 });
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setBox({ w: Math.round(el.clientWidth), h: Math.round(el.clientHeight) });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [fill]);
+  return [ref, box] as const;
+}
+const READOUT = 20;
 
 export interface Bar {
   label: string;
@@ -24,7 +45,7 @@ export function BarChart({
   min = 0,
 }: {
   bars: Bar[];
-  height?: number;
+  height?: number | "fill";
   unit?: string;
   labelEvery?: number;
   refLine?: { value: number; label: string } | null;
@@ -32,8 +53,10 @@ export function BarChart({
   min?: number;
 }) {
   const [hover, setHover] = useState<number | null>(null);
-  const W = 1000;
-  const H = height;
+  const fill = height === "fill";
+  const [ref, box] = useBox(fill);
+  const W = box.w || 1000;
+  const H = fill ? Math.max(40, box.h - READOUT) : height;
   const pad = { top: 8, bottom: 18, left: 0, right: 0 };
   const top = Math.max(min + 1, ...bars.map((b) => Math.max(b.value, b.targetMax ?? b.target ?? 0)), refLine?.value ?? 0);
   const max = min + (top - min) * 1.08;
@@ -41,8 +64,8 @@ export function BarChart({
   const y = (v: number) => pad.top + (H - pad.top - pad.bottom) * (1 - (Math.max(v, min) - min) / (max - min));
   const h = hover != null ? bars[hover] : null;
   return (
-    <div className="chart" onMouseLeave={() => setHover(null)}>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" width="100%" height={H} role="img">
+    <div className={"chart" + (fill ? " chart-fill" : "")} ref={ref} onMouseLeave={() => setHover(null)}>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} role="img">
         {refLine && <line x1={0} x2={W} y1={y(refLine.value)} y2={y(refLine.value)} className="chart-ref" />}
         {bars.map((b, i) => {
           const x = pad.left + i * bw;
@@ -57,11 +80,11 @@ export function BarChart({
                 y={y(b.value)}
                 width={bw * 0.64}
                 height={Math.max(0, H - pad.bottom - y(b.value))}
-                rx={Math.min(4, bw * 0.15)}
+                rx={Math.min(3, bw * 0.15)}
                 className={"chart-bar" + (b.highlight ? " hl" : "") + (hover === i ? " hover" : "")}
               />
               {b.target != null && <line x1={x + bw * 0.1} x2={x + bw * 0.9} y1={y(b.target)} y2={y(b.target)} className="chart-target" />}
-              {i % labelEvery === 0 && (
+              {i % Math.max(labelEvery, Math.ceil(24 / bw)) === 0 && (
                 <text x={x + bw / 2} y={H - 4} className="chart-label" textAnchor="middle">
                   {b.label}
                 </text>
@@ -106,7 +129,7 @@ export function LineChart({
   series: LineSeries[];
   from: string;
   to: string;
-  height?: number;
+  height?: number | "fill";
   yMin?: number;
   yMax?: number;
   markers?: { x: string; label: string }[];
@@ -115,8 +138,10 @@ export function LineChart({
   digits?: number;
 }) {
   const [hover, setHover] = useState<number | null>(null);
-  const W = 1000;
-  const H = height;
+  const fill = height === "fill";
+  const [ref, box] = useBox(fill);
+  const W = box.w || 1000;
+  const H = fill ? Math.max(50, box.h - READOUT) : height;
   const pad = { top: 14, bottom: 20, left: 34, right: 8 };
   const x0 = dayNum(from);
   const x1 = dayNum(to);
@@ -142,7 +167,7 @@ export function LineChart({
     const k = d.toISOString().slice(0, 10);
     ticks.push({ x: X(k), label: d.getUTCMonth() === 0 ? String(d.getUTCFullYear()) : MON[d.getUTCMonth()] });
   }
-  const yTicks = [lo, (lo + hi) / 2, hi].map((v) => Math.round(v));
+  const yTicks = [...new Set([lo, (lo + hi) / 2, hi].map((v) => Math.round(v)))];
 
   const path = (pts: { x: string; y: number | null }[]) => {
     let d = "";
@@ -172,12 +197,11 @@ export function LineChart({
     : null;
 
   return (
-    <div className="chart">
+    <div className={"chart" + (fill ? " chart-fill" : "")} ref={ref}>
       <svg
         viewBox={`0 0 ${W} ${H}`}
         width="100%"
         height={H}
-        preserveAspectRatio="none"
         onMouseMove={(e) => {
           const r = (e.currentTarget as SVGSVGElement).getBoundingClientRect();
           const px = ((e.clientX - r.left) / r.width) * W;

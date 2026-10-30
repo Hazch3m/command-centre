@@ -72,6 +72,8 @@ function RunningCard({ editing }: CardProps) {
         }
       />
       <ErrorNote error={planError} />
+      <div className="run-tile">
+      <div className="run-main">
       <div className="run-km">
         <span className="num big">{connected ? done.toFixed(1) : "–"}</span>
         <span className="muted"> / {week ? week.km : "–"} km this week</span>
@@ -104,9 +106,10 @@ function RunningCard({ editing }: CardProps) {
           <span className="label">Pace on point</span> <b className="num">{pace.last14}%</b> <span className="muted">last 14 days</span>
         </div>
       )}
+      </div>
       <div className="run-history">
         <div className="label">Last 10 weeks, km</div>
-        <BarChart bars={history} height={105} unit=" km" />
+        <BarChart bars={history} height="fill" unit=" km" />
       </div>
 
       <div className="run-races">
@@ -119,6 +122,7 @@ function RunningCard({ editing }: CardProps) {
             </span>
           </div>
         ))}
+      </div>
       </div>
       {!connected && <div className="muted small">Connect Strava in Settings to track your runs.</div>}
       {sync?.offline && <div className="muted small">Offline — showing runs synced {sync.lastSync ? relativeDayLabel(sync.lastSync.slice(0, 10), today).toLowerCase() : "earlier"}.</div>}

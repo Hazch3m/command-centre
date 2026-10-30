@@ -75,16 +75,60 @@ fn entry(key: &str) -> Result<keyring::Entry, String> {
     keyring::Entry::new(SERVICE, key).map_err(|e| e.to_string())
 }
 
+/// Windows Credential Manager holds at most 2,560 bytes per entry (1,280 UTF-16
+/// characters), and Garmin's tokens are longer, so long values are split
+/// across numbered entries: "key" holds "chunked:N", the parts "key#0"…"key#N-1".
+const CHUNK: usize = 1000;
+const CHUNKED: &str = "chunked:";
+
+fn read_raw(key: &str) -> Option<String> {
+    let head = entry(key).ok()?.get_password().ok()?;
+    match head.strip_prefix(CHUNKED).and_then(|n| n.parse::<usize>().ok()) {
+        Some(n) => {
+            let mut out = String::new();
+            for i in 0..n {
+                out.push_str(&entry(&format!("{key}#{i}")).ok()?.get_password().ok()?);
+            }
+            Some(out)
+        }
+        None => Some(head),
+    }
+}
+
 pub(crate) fn load<T: for<'de> Deserialize<'de>>(key: &str) -> Option<T> {
-    entry(key).ok()?.get_password().ok().and_then(|s| serde_json::from_str(&s).ok())
+    read_raw(key).and_then(|s| serde_json::from_str(&s).ok())
+}
+
+/// Splits on character boundaries (the JSON may contain non-ASCII text).
+pub(crate) fn chunks(s: &str, size: usize) -> Vec<String> {
+    let chars: Vec<char> = s.chars().collect();
+    chars.chunks(size).map(|c| c.iter().collect()).collect()
 }
 
 pub(crate) fn save<T: Serialize>(key: &str, v: &T) -> Result<(), String> {
-    entry(key)?.set_password(&serde_json::to_string(v).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
+    let text = serde_json::to_string(v).map_err(|e| e.to_string())?;
+    forget(key);
+    if text.chars().count() <= CHUNK {
+        return entry(key)?.set_password(&text).map_err(|e| e.to_string());
+    }
+    let parts = chunks(&text, CHUNK);
+    for (i, part) in parts.iter().enumerate() {
+        entry(&format!("{key}#{i}"))?.set_password(part).map_err(|e| e.to_string())?;
+    }
+    entry(key)?.set_password(&format!("{CHUNKED}{}", parts.len())).map_err(|e| e.to_string())
 }
 
 pub(crate) fn forget(key: &str) {
     if let Ok(e) = entry(key) {
+        if let Ok(head) = e.get_password() {
+            if let Some(n) = head.strip_prefix(CHUNKED).and_then(|n| n.parse::<usize>().ok()) {
+                for i in 0..n {
+                    if let Ok(p) = entry(&format!("{key}#{i}")) {
+                        let _ = p.delete_credential();
+                    }
+                }
+            }
+        }
         let _ = e.delete_credential();
     }
 }
@@ -414,6 +458,15 @@ pub async fn ics_fetch(http: tauri::State<'_, reqwest::Client>, id: String) -> R
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn splits_long_values_on_character_boundaries() {
+        let s = "é".repeat(2500);
+        let parts = chunks(&s, 1000);
+        assert_eq!(parts.len(), 3);
+        assert_eq!(parts.concat(), s);
+        assert!(parts.iter().all(|p| p.encode_utf16().count() * 2 <= 2560));
+    }
 
     #[test]
     fn normalises_calendar_addresses() {

@@ -8,7 +8,7 @@ import { useNow } from "../core/time";
 import { NavContext } from "./nav";
 import { moduleById, modules } from "../modules/registry";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { COLS, ROWS, findSpot, loadLayout, resolveLayout, saveLayout, type ResolvedLayout } from "./layout";
+import { COLS, ROWS, defaultFor, findSpot, loadLayout, orientationOf, resolveLayout, saveLayout, type Orientation, type ResolvedLayout } from "./layout";
 import { SettingsPanel } from "./SettingsPanel";
 
 const MARGIN = 10;
@@ -146,14 +146,32 @@ export function Dashboard() {
   const idle = useIdle(4000);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
+  // Portrait and landscape screens keep separate layouts.
+  const [win, setWin] = useState({ w: window.innerWidth, h: window.innerHeight });
   useEffect(() => {
-    loadLayout().then((saved) => setLayout(resolveLayout(saved, modules)));
+    const f = () => setWin({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener("resize", f);
+    return () => window.removeEventListener("resize", f);
   }, []);
+  const orient: Orientation = orientationOf(win.w, win.h);
+  const orientRef = useRef(orient);
+  orientRef.current = orient;
+  const ROWS_NOW = ROWS[orient];
+
+  useEffect(() => {
+    let live = true;
+    setLayout(null);
+    loadLayout(orient).then((saved) => live && setLayout(resolveLayout(saved, modules, orient)));
+    return () => {
+      live = false;
+    };
+  }, [orient]);
 
   const persist = useCallback((next: ResolvedLayout) => {
     setLayout(next);
     clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => saveLayout(next), 300);
+    const o = orientRef.current;
+    saveTimer.current = setTimeout(() => saveLayout(next, o), 300);
   }, []);
 
   // Keyboard: Ctrl+1…9 tabs, Ctrl+E edit layout, Ctrl+, settings, F11 full-screen, Esc closes.
@@ -191,13 +209,13 @@ export function Dashboard() {
 
   if (!layout) return <div className="dashboard" ref={gridRef} />;
 
-  const rowHeight = Math.max(8, (size.h - MARGIN * (ROWS + 1)) / ROWS);
+  const rowHeight = Math.max(8, (size.h - MARGIN * (ROWS_NOW + 1)) / ROWS_NOW);
   const visible = modules.filter((m) => layout.items[m.id]);
   const gridLayout: Layout[] = visible.map((m) => ({
     i: m.id,
     ...layout.items[m.id],
-    minW: m.minW ?? 2,
-    minH: m.minH ?? 2,
+    minW: 3,
+    minH: 2,
   }));
 
   const onLayoutChange = (l: Layout[]) => {
@@ -219,7 +237,9 @@ export function Dashboard() {
     const m = moduleById.get(id)!;
     const taken = Object.values(layout.items);
     const spot =
-      findSpot(m.defaultPos, taken) ?? findSpot({ x: 0, y: 0, w: m.minW ?? 2, h: m.minH ?? 2 }, taken);
+      findSpot(defaultFor(m, orient), taken, ROWS_NOW) ??
+      findSpot({ x: 0, y: 0, w: Math.max(6, (m.minW ?? 3) * 2), h: Math.max(4, m.minH ?? 3) }, taken, ROWS_NOW) ??
+      findSpot({ x: 0, y: 0, w: 4, h: 3 }, taken, ROWS_NOW);
     if (!spot) {
       setNotice(`No room for ${m.title}. Shrink or hide another card first.`);
       return;
@@ -227,7 +247,7 @@ export function Dashboard() {
     setNotice(null);
     persist({ items: { ...layout.items, [id]: spot }, hidden: layout.hidden.filter((h) => h !== id), custom: true });
   };
-  const reset = () => persist(resolveLayout(null, modules));
+  const reset = () => persist(resolveLayout(null, modules, orient));
 
   const cursorHidden = idle && settings.hideCursor && !editing && !settingsOpen;
 
@@ -258,7 +278,7 @@ export function Dashboard() {
 
       {editing && (
         <div className="edit-bar">
-          <span>{notice ?? "Drag cards by their top bar, resize from the corner."}</span>
+          <span>{notice ?? `Editing the ${orient} layout: drag tiles by their top bar, resize from any edge or corner. Tiles stay where you put them.`}</span>
           {layout.hidden.length > 0 && (
             <span className="edit-hidden">
               Hidden:
@@ -282,12 +302,16 @@ export function Dashboard() {
       {tab !== "overview" ? (
         <ModulePage id={tab} />
       ) : (
-      <div className="dashboard" ref={gridRef}>
+      <div
+        className="dashboard"
+        ref={gridRef}
+        style={{ ["--col-w" as string]: `${(size.w - MARGIN) / COLS}px`, ["--row-h" as string]: `${rowHeight + MARGIN}px`, ["--gap" as string]: `${MARGIN}px` }}
+      >
         {size.w > 0 && (
           <GridLayout
             layout={gridLayout}
             cols={COLS}
-            maxRows={ROWS}
+            maxRows={ROWS_NOW}
             width={size.w}
             rowHeight={rowHeight}
             margin={[MARGIN, MARGIN]}
@@ -295,9 +319,10 @@ export function Dashboard() {
             isDraggable={editing}
             isResizable={editing}
             draggableHandle=".drag-handle"
-            compactType="vertical"
+            compactType={null}
+            preventCollision={false}
             onLayoutChange={onLayoutChange}
-            resizeHandles={["se"]}
+            resizeHandles={["se", "e", "s", "sw", "w"]}
             useCSSTransforms={false}
           >
             {visible.map((m) => (

@@ -33,7 +33,8 @@
   --gap: 10px;
   color-scheme: dark;
   /* Scales with the window (about 14px on a 1440p portrait screen at 125%), times the text-size setting. */
-  font-size: calc(clamp(12px, calc(100vw / 80), 22px) * var(--scale, 1));
+  /* Scales with the screen's shorter side, so portrait and landscape read alike. */
+  font-size: calc(clamp(12px, min(calc(100vw / 80), calc(100vh / 60)), 22px) * var(--scale, 1));
 }
 :root[data-theme="light"] {
   /* Soft light: paper grey rather than white. */
@@ -858,6 +859,8 @@ ul {
 }
 .react-grid-item > .react-resizable-handle::after {
   border-color: var(--muted) !important;
+}
+.react-grid-item > .react-resizable-handle-se::after {
   width: 10px !important;
   height: 10px !important;
   right: 6px !important;
@@ -3183,4 +3186,179 @@ select:focus {
 }
 .card-page.card-health .card-body {
   overflow-y: auto;
+}
+
+/* =====================================================================
+   v4: tiles adapt to their own size (container queries), charts fill
+   ===================================================================== */
+.react-grid-item > .card-body,
+.card > .card-body {
+  container-type: size;
+}
+.chart-label {
+  font-size: 11px;
+}
+.chart-fill {
+  flex: 1;
+  min-height: 0;
+}
+.chart-fill svg {
+  display: block;
+}
+
+/* Running tile: one column when narrow; text left, chart right when wide. */
+.run-tile {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.run-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.run-history {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.run-races {
+  margin-top: 0;
+}
+@container (min-width: 36rem) {
+  .run-tile {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas: "main hist" "races hist";
+    column-gap: 1.2rem;
+  }
+  .run-main {
+    grid-area: main;
+  }
+  .run-history {
+    grid-area: hist;
+  }
+  .run-races {
+    grid-area: races;
+    align-self: end;
+  }
+}
+@container (max-height: 17rem) {
+  .run-sessions .run-session-meta,
+  .run-pace {
+    display: none;
+  }
+  .run-race:nth-child(n + 3) {
+    display: none;
+  }
+}
+@container (max-height: 13rem) {
+  .run-history {
+    display: none;
+  }
+}
+
+/* Fitness tile */
+.fit-tile {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.fit-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.fit-chart {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.fit-predict-row {
+  order: 2;
+}
+@container (min-width: 36rem) {
+  .fit-tile {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    column-gap: 1.2rem;
+  }
+  .fit-main {
+    justify-content: space-between;
+  }
+  .fit-predict-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 0.4rem;
+  }
+}
+@container (max-height: 13rem) {
+  .fit-chart {
+    display: none;
+  }
+}
+
+/* Health tile: fewer, bigger numbers when short */
+@container (max-height: 14rem) {
+  .card-health .spark,
+  .card-health .hm-note {
+    display: none;
+  }
+}
+
+/* Training week tile when short: drop the details, keep the session */
+@container (max-height: 15rem) {
+  .card-training-week .wk-foot,
+  .card-training-week .wk-actual {
+    display: none;
+  }
+  .card-training-week .wk-text {
+    -webkit-line-clamp: 2;
+  }
+  .card-training-week .wk-bar .wk-totals {
+    display: none;
+  }
+}
+
+/* Edit mode: show the grid so tiles are easy to line up */
+.is-editing .dashboard {
+  background-image: linear-gradient(to right, var(--line) 1px, transparent 1px), linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+  background-size: var(--col-w) var(--row-h);
+  background-position: calc(var(--gap) / 2) calc(var(--gap) / 2);
+}
+.is-editing .react-grid-item > .react-resizable-handle {
+  opacity: 0.8;
+}
+.react-grid-item > .react-resizable-handle-e,
+.react-grid-item > .react-resizable-handle-w {
+  top: 35%;
+  height: 30%;
+  width: 14px;
+  margin-top: 0;
+  transform: none;
+}
+.react-grid-item > .react-resizable-handle-s {
+  left: 35%;
+  width: 30%;
+  height: 14px;
+  margin-left: 0;
+  transform: none;
+}
+.react-grid-item > .react-resizable-handle-e::after,
+.react-grid-item > .react-resizable-handle-w::after,
+.react-grid-item > .react-resizable-handle-s::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 0 !important;
+  border-radius: 3px;
+  background: var(--muted);
+  opacity: 0.5;
+  transform: none;
 }
