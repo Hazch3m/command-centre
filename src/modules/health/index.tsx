@@ -54,6 +54,20 @@ function useHealth(days: number) {
   useEvery(30 * 60_000, () => {
     syncHealth().catch(() => {});
   });
+  // Mornings: the watch often reaches Garmin after the app's last sync, so until
+  // last night's sleep has arrived, check every 5 minutes (and when the window gets focus).
+  const today = useToday();
+  const hasLastNight = !!data?.[0]?.some((d) => d.date === today && d.sleep_secs != null);
+  useEvery(5 * 60_000, () => {
+    const h = new Date().getHours();
+    if (!hasLastNight && h >= 4 && h < 14 && data?.[2]?.connected) syncHealth().catch(() => {});
+  }, [hasLastNight, !!data?.[2]?.connected]);
+  useEffect(() => {
+    if (hasLastNight) return;
+    const f = () => syncHealth().catch(() => {});
+    window.addEventListener("focus", f);
+    return () => window.removeEventListener("focus", f);
+  }, [hasLastNight]);
   return data;
 }
 
