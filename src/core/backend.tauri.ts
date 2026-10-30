@@ -42,4 +42,5 @@ export const backend: Backend = {
   garminConnect: () => invoke("garmin_connect"),
   garminDisconnect: () => invoke("garmin_disconnect"),
   garminRequest: (path) => invoke("garmin_request", { path }),
+  weatherFetch: (lat, lon) => invoke("weather_fetch", { lat, lon }),
 };

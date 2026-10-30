@@ -50,3 +50,12 @@ describe("reading Garmin's replies", () => {
     expect(p.size).toBe(0);
   });
 });
+
+import { parseDailySleep } from "./data";
+describe("last night's sleep", () => {
+  it("reads the full-night record", () => {
+    const p: Patch = new Map();
+    parseDailySleep({ dailySleepDTO: { calendarDate: "2026-10-30", sleepTimeSeconds: 26100, sleepScores: { overall: { value: 79, qualifierKey: "FAIR" } } } }, p);
+    expect(p.get("2026-10-30")).toEqual({ sleep_secs: 26100, sleep_score: 79 });
+  });
+});

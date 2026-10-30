@@ -174,6 +174,11 @@ export const backend: Backend = {
       .sort((a, b) => b.length - a.length)[0];
     return key ? { status: 200, body: fx[key] as T } : { status: 404, body: null as T };
   },
+  weatherFetch: async () => {
+    const fx = await fixture("weather");
+    if (!fx) throw new Error("offline: no test weather");
+    return fx;
+  },
   icsFetch: async () => {
     const r = await fetch("fixtures/calendar.ics").catch(() => null);
     if (!r?.ok) throw new Error("offline: no test calendar");

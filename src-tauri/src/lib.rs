@@ -3,6 +3,7 @@ mod config;
 mod db;
 mod oauth;
 mod garmin;
+mod weather;
 mod quickadd;
 mod window;
 
@@ -226,6 +227,7 @@ pub fn run() {
             garmin::garmin_disconnect,
             garmin::garmin_connect,
             garmin::garmin_request,
+            weather::weather_fetch,
             window::list_monitors,
             window::set_monitor,
             window::set_fullscreen_mode,

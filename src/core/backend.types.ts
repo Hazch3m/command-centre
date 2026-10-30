@@ -97,4 +97,7 @@ export interface Backend {
   garminDisconnect(): Promise<void>;
   /** GET a read-only health endpoint. Rejects with "offline: …" when there's no connection. */
   garminRequest<T = unknown>(path: string): Promise<{ status: number; body: T }>;
+
+  /** Open-Meteo forecast. Rejects with "offline: …" when there's no connection. */
+  weatherFetch(lat: number, lon: number): Promise<unknown>;
 }

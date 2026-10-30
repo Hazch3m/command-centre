@@ -112,6 +112,10 @@ export interface Fitness {
     shapeSeconds: number | null;
     /** Garmin's own prediction, when synced. */
     garminSeconds: number | null;
+    /** Garmin's prediction about a month earlier. */
+    garminMonthAgo: number | null;
+    /** This prediction as it stood 30 days ago. */
+    monthAgoSeconds: number | null;
     target: string | null;
     targetSeconds: number | null;
   }[];
@@ -260,7 +264,7 @@ export function computeFitness(
   config: FitnessConfig,
   plan: Plan | undefined,
   today: string,
-  garminPredictions: { values: Record<string, number>; date: string } | null = null,
+  garminPredictions: { values: Record<string, number>; date: string; monthAgo?: Record<string, number> | null } | null = null,
 ): Fitness {
   // Raw estimates first, then calibrate to Garmin if there are readings.
   const raw: RunEstimate[] = [];
@@ -344,6 +348,14 @@ export function computeFitness(
     today,
     current != null ? predictTime(10000, current) : null,
   );
+  // The same prediction as it stood a month ago (races and form up to then), for the trend.
+  const then = addDays(today, -30);
+  const formThen = [...weekly].reverse().find((w) => w.week <= mondayOf(then) && w.smooth != null)?.smooth ?? null;
+  const enduranceThen = enduranceModel(
+    raceRows.filter((r) => r.date <= then).map((r) => ({ date: r.date, name: r.name, distance: r.km * 1000, seconds: r.time })),
+    then,
+    formThen != null ? predictTime(10000, formThen) : null,
+  );
   const predictions = DIST.map((d) => {
     const race = plan?.races.find((r) => d.match.test(r.name) && r.date && r.date >= today);
     const targetSeconds = race ? targetTime(race.target, d.distance) : null;
@@ -356,6 +368,8 @@ export function computeFitness(
       shapeSeconds: vdotSeconds != null && shape ? vdotSeconds * shapeFactor(d.distance, shape.total) : null,
       formSeconds: current != null ? predictTime(d.distance, current) : null,
       garminSeconds: garminPredictions?.values[d.name] ?? null,
+      garminMonthAgo: garminPredictions?.monthAgo?.[d.name] ?? null,
+      monthAgoSeconds: enduranceThen ? enduranceThen.predict(d.distance) : null,
       target: race ? `${race.name}: ${race.target}` : null,
       targetSeconds,
     };
@@ -394,12 +408,19 @@ export function computeFitness(
       }
     : null;
 
+  // Garmin scale: anchored so that today's estimate shows exactly Garmin's latest
+  // VO2 max (one number everywhere), when that reading is recent. Otherwise the
+  // typical gap between readings and nearby estimates.
+  const recentReading = latestReading && latestReading.date >= addDays(today, -28) ? latestReading : null;
+  const anchorOff = recentReading && current != null ? recentReading.vo2 - current : gOff;
+  const garminScale = latestReading && anchorOff != null ? { offset: anchorOff, latest: latestReading, equivalent: current != null ? current + anchorOff : null } : null;
+
   return {
     config,
     offset,
     calibration,
-    garmin: latestReading && gOff != null ? { offset: gOff, latest: latestReading, equivalent: current != null ? current + gOff : null } : null,
-    shift: config.displayScale !== "race" && latestReading && gOff != null ? gOff : 0,
+    garmin: garminScale,
+    shift: config.displayScale !== "race" && garminScale ? garminScale.offset : 0,
     estimates,
     weekly,
     readings,

@@ -169,6 +169,21 @@ export function parseSleep(body: unknown, p: Patch) {
   }
 }
 
+/**
+ * One night in full (wellness-service dailySleepData). The daily stats list
+ * only fills in later in the day, so last night comes from here.
+ */
+export function parseDailySleep(body: unknown, p: Patch) {
+  const dto = isObj(body) && isObj(body.dailySleepDTO) ? body.dailySleepDTO : null;
+  if (!dto) return;
+  const scores = isObj(dto.sleepScores) ? dto.sleepScores : null;
+  const overall = scores && isObj(scores.overall) ? scores.overall : null;
+  put(p, dateOf(dto), {
+    sleep_secs: pickNum(dto, /^sleepTimeSeconds$/i, 0),
+    sleep_score: (overall && pickNum(overall, /^value$/i, 0)) ?? pickNum(dto, /^(overallSleepScore|sleepScore)$/i, 1),
+  });
+}
+
 export function parseBodyBattery(body: unknown, p: Patch, today: string) {
   for (const row of asList(body)) {
     const arr = isObj(row) && Array.isArray(row.bodyBatteryValuesArray) ? (row.bodyBatteryValuesArray as unknown[]) : [];
@@ -187,7 +202,12 @@ export function parseReadiness(body: unknown, p: Patch) {
   const rows = asList(body).filter(isObj);
   rows.sort((a, b) => String(a.timestampLocal ?? a.timestamp ?? "").localeCompare(String(b.timestampLocal ?? b.timestamp ?? "")));
   for (const row of rows) {
-    put(p, dateOf(row), { readiness: pickNum(row, /^score$/i, 0), readiness_level: pickStr(row, /^level$/i, 0), readiness_note: pickStr(row, /^feedbackShort$/i, 0) });
+    const rec = pickNum(row, /^recoveryTime$/i, 0); // minutes
+    put(p, dateOf(row), {
+      readiness: pickNum(row, /^score$/i, 0),
+      readiness_level: pickStr(row, /^level$/i, 0),
+      readiness_note: rec != null && rec > 0 ? `Recovery ${Math.round(rec / 60)} h` : pickStr(row, /^feedbackShort$/i, 0),
+    });
   }
 }
 
@@ -274,6 +294,8 @@ async function doSync(): Promise<HealthSync> {
   });
   await step("sleep", async () => {
     for (const [a, b] of chunks(from, today, 28)) parseSleep(await get(`/sleep-service/stats/sleep/daily/${a}/${b}`), patch);
+    // Last night and the night before, in full (the stats list lags behind).
+    if (name) for (const d of [addDays(today, -1), today]) parseDailySleep(await get(`/wellness-service/wellness/dailySleepData/${encodeURIComponent(name)}?date=${d}&nonSleepBufferMinutes=60`), patch);
   });
   await step("Body Battery", async () => {
     for (const [a, b] of chunks(from, today, 28)) parseBodyBattery(await get(`/wellness-service/wellness/bodyBattery/reports/daily?startDate=${a}&endDate=${b}`), patch, today);
@@ -300,8 +322,9 @@ async function doSync(): Promise<HealthSync> {
   // Garmin's VO2 max also feeds the Fitness page's Garmin comparison: one reading per change.
   const vo2 = [...patch.entries()].filter(([, f]) => typeof f.vo2 === "number").sort(([a], [b]) => a.localeCompare(b));
   let lastVo2 = (await db.select<{ vo2: number }>("SELECT vo2 FROM vo2_readings WHERE date < ? ORDER BY date DESC LIMIT 1", [vo2[0]?.[0] ?? today]))[0]?.vo2 ?? null;
-  for (const [date, f] of vo2) {
-    if (f.vo2 !== lastVo2) stmts.push({ sql: "INSERT OR REPLACE INTO vo2_readings (date, vo2, source) VALUES (?, ?, 'garmin-sync')", params: [date, f.vo2 as number] });
+  for (const [i, [date, f]] of vo2.entries()) {
+    // One reading per change, plus the latest day so the Fitness page knows it's current.
+    if (f.vo2 !== lastVo2 || i === vo2.length - 1) stmts.push({ sql: "INSERT OR REPLACE INTO vo2_readings (date, vo2, source) VALUES (?, ?, 'garmin-sync')", params: [date, f.vo2 as number] });
     lastVo2 = f.vo2 as number;
   }
   if (stmts.length) await db.batch(stmts);
@@ -328,19 +351,21 @@ export function latest(rows: HealthDay[]): Partial<HealthDay> & { dates: Partial
   return out;
 }
 
-/** Garmin's latest race predictions, for the Fitness page. */
-export async function latestPredictions(): Promise<{ values: Record<string, number>; date: string } | null> {
-  const rows = await db
-    .select<{ date: string; pred_5k: number | null; pred_10k: number | null; pred_half: number | null; pred_marathon: number | null }>(
-      "SELECT date, pred_5k, pred_10k, pred_half, pred_marathon FROM health_daily WHERE pred_10k IS NOT NULL ORDER BY date DESC LIMIT 1",
-    )
-    .catch(() => []);
-  const r = rows[0];
+/** Garmin's latest race predictions, and the ones from about a month before, for the Fitness page. */
+export async function latestPredictions(): Promise<{ values: Record<string, number>; date: string; monthAgo: Record<string, number> | null } | null> {
+  type Row = { date: string; pred_5k: number | null; pred_10k: number | null; pred_half: number | null; pred_marathon: number | null };
+  const q = (where: string, params: string[]) =>
+    db.select<Row>(`SELECT date, pred_5k, pred_10k, pred_half, pred_marathon FROM health_daily WHERE pred_10k IS NOT NULL ${where} ORDER BY date DESC LIMIT 1`, params).catch(() => [] as Row[]);
+  const r = (await q("", []))[0];
   if (!r) return null;
-  const values: Record<string, number> = {};
-  if (r.pred_5k) values["5k"] = r.pred_5k;
-  if (r.pred_10k) values["10k"] = r.pred_10k;
-  if (r.pred_half) values["Half"] = r.pred_half;
-  if (r.pred_marathon) values["Marathon"] = r.pred_marathon;
-  return { values, date: r.date };
+  const old = (await q("AND date <= ?", [addDays(r.date, -30)]))[0];
+  const vals = (x: Row) => {
+    const v: Record<string, number> = {};
+    if (x.pred_5k) v["5k"] = x.pred_5k;
+    if (x.pred_10k) v["10k"] = x.pred_10k;
+    if (x.pred_half) v["Half"] = x.pred_half;
+    if (x.pred_marathon) v["Marathon"] = x.pred_marathon;
+    return v;
+  };
+  return { values: vals(r), date: r.date, monthAgo: old && old.date >= addDays(r.date, -45) ? vals(old) : null };
 }

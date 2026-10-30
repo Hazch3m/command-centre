@@ -3366,3 +3366,113 @@ select:focus {
 .run-history .chart-fill {
   min-height: 4.5rem;
 }
+
+/* Race predictions tile */
+.pred-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.pred-table th,
+.pred-table td {
+  padding: 0.28rem 0.3rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  font-weight: 500;
+}
+.pred-table thead th {
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+.pred-table .num-col {
+  text-align: right;
+}
+.pred-table tbody tr:last-child th,
+.pred-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.pred-table b {
+  font-size: 1rem;
+  font-weight: 600;
+}
+@container (max-width: 24rem) {
+  .pred-target {
+    display: none;
+  }
+}
+
+/* Weather tile */
+.wx {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.wx-now {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.wx-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+.wx-temp {
+  font-size: 2.2rem;
+  font-weight: 600;
+}
+.wx-run {
+  background: var(--accent-dim);
+  border-radius: 8px;
+  padding: 0.3rem 0.55rem;
+}
+.wx-hours {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 2px;
+  font-size: 0.72rem;
+  text-align: center;
+}
+.wx-hour {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 0.2rem 0;
+  border-radius: 6px;
+}
+.wx-hour.best {
+  background: var(--accent-dim);
+}
+.wx-rain {
+  color: var(--info);
+  font-size: 0.65rem;
+}
+.wx-days {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  color: var(--text-2);
+}
+.weather-places {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+@container (max-height: 13rem) {
+  .wx-days {
+    display: none;
+  }
+}
+@container (max-width: 26rem) {
+  .wx-hours {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .wx-hour:nth-child(n + 7) {
+    display: none;
+  }
+}
