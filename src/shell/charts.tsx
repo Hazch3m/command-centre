@@ -295,7 +295,7 @@ export function LineChart({
         })}
         {hx && <line x1={X(hx)} x2={X(hx)} y1={pad.top} y2={H - pad.bottom} className="chart-hover" />}
       </svg>
-      <div className="chart-readout small">{readout ? `${hx}: ${readout}` : " "}</div>
+      <div className="chart-readout small">{readout ? `${hx}: ${readout}` : <Legend series={series} />}</div>
     </div>
   );
 }
