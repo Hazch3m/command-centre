@@ -97,7 +97,35 @@ export interface Backend {
   garminDisconnect(): Promise<void>;
   /** GET a read-only health endpoint. Rejects with "offline: …" when there's no connection. */
   garminRequest<T = unknown>(path: string): Promise<{ status: number; body: T }>;
+  // ---- Watch: the user's garmin-coach MCP server, run as a child process ----
+  /** Empty folder/python = find them (the folder's .venv). */
+  watchStatus(folder: string, python: string): Promise<WatchStatus>;
+  /** Starts garmin-coach if needed; returns its tools (name, description, inputSchema). */
+  watchConnect(folder: string, python: string): Promise<McpTool[]>;
+  /** Calls one tool; the raw MCP CallToolResult. */
+  watchCall(name: string, args: Record<string, unknown>): Promise<McpCallResult>;
+  watchDisconnect(): Promise<void>;
 
   /** Open-Meteo forecast. Rejects with "offline: …" when there's no connection. */
   weatherFetch(lat: number, lon: number): Promise<unknown>;
+}
+
+export interface WatchStatus {
+  folder: string;
+  serverFound: boolean;
+  python: string | null;
+  tokensFound: boolean;
+  tokensDir: string;
+  running: boolean;
+  stderr: string[];
+}
+export interface McpTool {
+  name: string;
+  description?: string;
+  inputSchema: { type?: string; properties?: Record<string, { type?: string; default?: unknown; anyOf?: unknown[] }>; required?: string[] };
+}
+export interface McpCallResult {
+  content?: { type: string; text?: string }[];
+  structuredContent?: unknown;
+  isError?: boolean;
 }

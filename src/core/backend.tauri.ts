@@ -42,5 +42,9 @@ export const backend: Backend = {
   garminConnect: () => invoke("garmin_connect"),
   garminDisconnect: () => invoke("garmin_disconnect"),
   garminRequest: (path) => invoke("garmin_request", { path }),
+  watchStatus: (folder, python) => invoke("watch_status", { folder, python }),
+  watchConnect: (folder, python) => invoke("watch_connect", { folder, python }),
+  watchCall: (name, args) => invoke("watch_call", { name, args }),
+  watchDisconnect: () => invoke("watch_disconnect"),
   weatherFetch: (lat, lon) => invoke("weather_fetch", { lat, lon }),
 };

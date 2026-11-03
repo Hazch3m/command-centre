@@ -6,6 +6,7 @@
 import initSqlJs, { type Database } from "sql.js";
 import wasmUrl from "sql.js/dist/sql-wasm.wasm?url";
 import type { Backend, BackupStatus, ExecResult, SqlParam } from "./backend.types";
+import { FAKE_TOOLS, fakeCall, fakeStatus } from "./fakeGarminCoach";
 
 const STORAGE_KEY = "cc-browser-db";
 const channel = new BroadcastChannel("cc-events");
@@ -174,6 +175,18 @@ export const backend: Backend = {
       .sort((a, b) => b.length - a.length)[0];
     return key ? { status: 200, body: fx[key] as T } : { status: 404, body: null as T };
   },
+  // Test harness: garmin-coach is "installed" when fixtures/garmin-coach.json exists (its seed calendar).
+  watchStatus: async () => fakeStatus(!!(await fixture("garmin-coach"))),
+  watchConnect: async () => {
+    if (!(await fixture("garmin-coach"))) throw new Error("No Python with garmin-coach's packages found (test data missing).");
+    return FAKE_TOOLS;
+  },
+  watchCall: async (name, args) => {
+    const seed = await fixture("garmin-coach");
+    if (!seed) throw new Error("garmin-coach isn't running");
+    return fakeCall(name, args as Record<string, unknown>, seed);
+  },
+  watchDisconnect: async () => {},
   weatherFetch: async () => {
     const fx = await fixture("weather");
     if (!fx) throw new Error("offline: no test weather");

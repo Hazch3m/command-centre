@@ -4,6 +4,7 @@ mod db;
 mod oauth;
 mod garmin;
 mod weather;
+mod watch;
 mod quickadd;
 mod window;
 
@@ -171,6 +172,7 @@ pub fn run() {
                     .build()?,
             );
             app.manage(DataDir(data_dir));
+            app.manage(watch::WatchState::default());
 
             // Launch at login is on by default for the installed app; turning it off in settings sticks.
             let cfg = store.get();
@@ -228,6 +230,10 @@ pub fn run() {
             garmin::garmin_connect,
             garmin::garmin_request,
             weather::weather_fetch,
+            watch::watch_status,
+            watch::watch_connect,
+            watch::watch_call,
+            watch::watch_disconnect,
             window::list_monitors,
             window::set_monitor,
             window::set_fullscreen_mode,

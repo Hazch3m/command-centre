@@ -25,7 +25,9 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 keyring = { version = "3", features = ["windows-native"] }
-tokio = { version = "1", features = ["net", "io-util", "time", "sync"] }
+tokio = { version = "1", features = ["net", "io-util", "time", "sync", "process", "rt"] }
+# Official MCP SDK: the Watch module talks to the user's garmin-coach server over stdio.
+rmcp = { version = "=3.5.1", default-features = false, features = ["client", "transport-child-process"] }
 sha2 = "0.10"
 base64 = "0.22"
 rand = "0.8"

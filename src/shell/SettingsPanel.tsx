@@ -5,6 +5,7 @@ import { getSettings, subscribeSettings, TEXT_SIZES, updateSettings } from "../c
 import { Connections } from "./Connections";
 import { CalendarFeeds } from "../modules/calendar/Connect";
 import { GarminSetting } from "../modules/health";
+import { WatchSetting } from "../modules/watch";
 import { getTaskSync, setTaskSyncEnabled } from "../modules/tasks/gsync";
 
 function Row({ label, hint, children, path }: { label: string; hint?: string; children: ReactNode; path?: boolean }) {
@@ -158,6 +159,9 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
         <CalendarFeeds />
         <h3>Connections</h3>
         <GarminSetting />
+        <Row label="Watch (garmin-coach)" hint="The Watch tab starts your garmin-coach server from this folder to put workouts on your Garmin calendar.">
+          <WatchSetting />
+        </Row>
         <Connections />
         <Row label="Sync tasks with Google Tasks" hint="Projects become lists on your phone. Title, notes, due date, done and subtasks sync both ways.">
           {taskSync != null && (
