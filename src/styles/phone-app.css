@@ -1012,3 +1012,9 @@ button.p-row-main {
 .p-adjust .rm-tapers { grid-template-columns: 1fr 1fr; }
 .p-adjust .pb-nav .btn { flex: 1; }
 .p-adjust .pb-nav .inline { flex: 1; display: flex; flex-direction: column; gap: 0.4rem; }
+.p-head-right { display: flex; align-items: center; gap: 0.4rem; }
+.p-refresh { display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--text); }
+.p-refresh:disabled { opacity: 0.8; }
+.p-refresh.spin svg { animation: p-spin 0.9s linear infinite; }
+@keyframes p-spin { to { transform: rotate(360deg); } }
+.p-note { margin: 0.2rem 1rem 0; padding: 0.55rem 0.8rem; border-radius: 12px; background: var(--card); border: 1px solid var(--line); font-size: 0.88rem; display: flex; gap: 0.5rem; align-items: center; }

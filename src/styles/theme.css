@@ -4666,3 +4666,6 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
   .pb-fields { grid-template-columns: 1fr 1fr; }
   .pb-fields label:first-child { grid-column: 1 / -1; }
 }
+.refresh-btn svg { display: block; }
+.refresh-btn.busy svg { animation: refresh-spin 0.9s linear infinite; }
+@keyframes refresh-spin { to { transform: rotate(360deg); } }

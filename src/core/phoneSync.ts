@@ -12,7 +12,7 @@ import {
   packSnapshot,
   pairId,
   PHONE_FILES,
-  phoneMayWrite,
+  phoneMayWrite, REFRESH_KEY,
   seal,
   sealForCode,
   unseal,
@@ -154,11 +154,13 @@ export async function pullPhoneChanges(): Promise<number> {
   await setStatus({ lastPull: new Date().toISOString() });
   if (!rows.length) return 0;
   let upto = st.applied;
+  let refreshAsked = false;
   let planChanged = false;
   for (const row of rows) {
     try {
       const op = JSON.parse(new TextDecoder().decode(await unseal(c.keys.key, b64url.decode(row.body.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""))))) as PhoneOp;
       const stmts = (op.stmts ?? []).filter((s) => phoneMayWrite(s.sql, s.params));
+      if (stmts.some((s) => s.params[0] === REFRESH_KEY)) refreshAsked = true;
       if (stmts.length) await db.batch(stmts);
       if (op.file && PHONE_FILES.has(op.file.name) && typeof op.file.contents === "string") {
         JSON.parse(op.file.contents); // only well-formed files
@@ -175,7 +177,9 @@ export async function pullPhoneChanges(): Promise<number> {
   await call(c.link, c.keys, "/ops/ack", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ upto }) });
   for (const t of ["tasks", "checklist", "running", "calendar"]) await notifyChanged(t);
   if (planChanged) window.dispatchEvent(new Event("cc:plan-changed"));
-  await pushSnapshot().catch(() => {});
+  // The phone asked for fresh data: sync everything first (Background jobs does it, then sends a copy).
+  if (refreshAsked) window.dispatchEvent(new Event("cc:refresh-request"));
+  else await pushSnapshot().catch(() => {});
   return rows.length;
 }
 
@@ -194,7 +198,7 @@ export function usePhoneSync() {
     const pull = () => pullPhoneChanges().catch(() => {});
     pull();
     schedulePush(15_000);
-    const iv = window.setInterval(pull, 30_000);
+    const iv = window.setInterval(pull, 15_000);
     const iv2 = window.setInterval(() => schedulePush(0), 10 * 60_000);
     let off: (() => void) | undefined;
     backend.listen("data-changed", () => schedulePush(60_000)).then((u) => (alive ? (off = u) : u()));

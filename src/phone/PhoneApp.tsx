@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { db, kvGet, kvSet } from "../core/db";
 import { notifyChanged } from "../core/events";
+import { REFRESHED_KEY, REFRESH_KEY } from "../core/sync";
 import { flush, phoneState, refresh, unpair } from "../core/backend.phone";
 import { RunViewHost } from "../modules/running/RunView";
 import { ModulePage } from "../shell/Dashboard";
@@ -78,6 +80,48 @@ export function PhoneApp() {
     [tab],
   );
 
+  // Refresh: ask the PC to sync Strava, Garmin and the calendar now, then wait for the copy it sends back.
+  const [note, setNote] = useState<string | null>(null);
+  const [asking, setAsking] = useState(false);
+  const askPc = async () => {
+    if (asking) return;
+    setAsking(true);
+    setNote("Asking your PC for the latest runs and data…");
+    const stamp = new Date().toISOString();
+    const count = async () => {
+      try {
+        return (await db.select<{ n: number }>("SELECT count(*) AS n FROM strava_activities"))[0]?.n ?? 0;
+      } catch {
+        return 0;
+      }
+    };
+    const before = await count();
+    let answer: string;
+    try {
+      await kvSet(REFRESH_KEY, stamp);
+      await flush();
+      answer = "Your PC didn't answer in time. It needs to be on with Command Centre open; showing what was last synced.";
+      for (const until = Date.now() + 150_000; Date.now() < until; ) {
+        await new Promise((r) => window.setTimeout(r, 5000));
+        if (await refresh()) await notifyChanged("*");
+        if ((await kvGet<string | null>(REFRESHED_KEY, null)) === stamp) {
+          const n = (await count()) - before;
+          answer = n > 0 ? `${n} new run${n === 1 ? "" : "s"} from Strava.` : "Up to date: nothing new on Strava yet.";
+          break;
+        }
+        if (phoneState.error) {
+          answer = phoneState.error;
+          break;
+        }
+      }
+    } catch (e) {
+      answer = `Couldn't ask the PC: ${String((e as Error)?.message ?? e)}`;
+    }
+    setNote(answer);
+    setAsking(false);
+    window.setTimeout(() => setNote((x) => (x === answer ? null : x)), 8000);
+  };
+
   const check = async () => {
     setBusy(true);
     try {
@@ -117,8 +161,21 @@ export function PhoneApp() {
             ) : (
               <span />
             )}
-            <SyncLine onRefresh={() => (flush().catch(() => {}), check())} busy={busy} />
+            <span className="p-head-right">
+              <SyncLine onRefresh={askPc} busy={busy || asking} />
+              <button className={"p-refresh" + (asking ? " spin" : "")} onClick={askPc} disabled={asking} aria-label="Refresh">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                  <path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </span>
           </header>
+          {note && (
+            <div className="p-note" role="status" onClick={() => setNote(null)}>
+              {asking && <span className="sync-dot spin" />}
+              {note}
+            </div>
+          )}
           <div className="p-title">
             <h1>{title}</h1>
             {sub && <span>{sub}</span>}

@@ -115,7 +115,11 @@ export interface PhoneOp {
 /** Tables the phone may change. Everything else (synced data, caches) comes only from the PC. */
 export const PHONE_TABLES = new Set(["tasks", "projects", "checklist_items", "checklist_log", "plan_overrides", "vo2_readings", "kv"]);
 /** kv keys the phone may change: view choices and settings, never sync state. */
-const KV_ALLOWED = [/^calendar\.view\./, /^shape\.settings$/, /^checklist\./, /^tasks\.(view|filter|sort)/];
+const KV_ALLOWED = [/^calendar\.view\./, /^shape\.settings$/, /^checklist\./, /^tasks\.(view|filter|sort)/, /^phone\.refresh$/];
+/** The phone's "refresh" button: asks the PC to sync Strava, Garmin and the calendar now and send a fresh copy. */
+export const REFRESH_KEY = "phone.refresh";
+/** Set by the PC (never the phone) to the request it has just answered. */
+export const REFRESHED_KEY = "phone.refreshed";
 export const PHONE_FILES = new Set(["training-plan.json", "fitness.json"]);
 
 /** The table a single write statement changes, or null if it isn't a plain single write. */

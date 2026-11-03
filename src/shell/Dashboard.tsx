@@ -13,10 +13,12 @@ import { SettingsPanel } from "./SettingsPanel";
 import { RunViewHost } from "../modules/running/RunView";
 import { usePlanCalendarSync } from "../modules/running/planCalendar";
 import { usePhoneSync } from "../core/phoneSync";
+import { useAutoRefresh, useRefresh } from "./refresh";
 
 function BackgroundJobs() {
   usePlanCalendarSync();
   usePhoneSync();
+  useAutoRefresh();
   return null;
 }
 
@@ -150,6 +152,10 @@ export function Dashboard() {
   const [editing, setEditing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const refresh = useRefresh((m) => {
+    setNotice(m);
+    window.setTimeout(() => setNotice((x) => (x === m ? null : x)), 8000);
+  });
   const [gridRef, size] = useSize();
   const settings = useSyncExternalStore(subscribeSettings, getSettings);
   const idle = useIdle(4000);
@@ -305,6 +311,11 @@ export function Dashboard() {
               Edit
             </button>
           )}
+          <button className={"btn ghost icon refresh-btn" + (refresh.busy ? " busy" : "")} onClick={refresh.go} disabled={refresh.busy} title="Refresh: Strava, Garmin, calendar and weather now (F5)" aria-label="Refresh">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
           <button className="btn ghost icon" onClick={() => setSettingsOpen(true)} title="Settings (Ctrl+,)" aria-label="Settings">
             ⚙
           </button>

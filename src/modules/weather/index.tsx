@@ -84,6 +84,11 @@ async function refresh(place: Place) {
   await notifyChanged("weather");
 }
 
+/** For the refresh button: the forecast for the chosen place, now. */
+export async function refreshWeather() {
+  await refresh((await load()).place);
+}
+
 function WeatherCard({ editing }: CardProps) {
   const now = useNow("minute");
   const version = useDataVersion("weather");
