@@ -202,7 +202,7 @@ export function forecastWeek(plan: Plan, monday: string, runs: Run[] = [], overr
       if (st) base.strength = st[1] as "A" | "B";
     }
     if (race) {
-      const rk = raceKm(race.name);
+      const rk = race.km ?? raceKm(race.name);
       const said = s?.key ? /about\s+([\d.]+)\s*km/i.exec(s.text) : null;
       const k = said ? num(said[1]) : rk == null ? null : rk > 40 ? rk : rk + WARM;
       days.push({ ...base, text: `${race.name} · ${race.target}`, kind: "race", km: k, pace: null });

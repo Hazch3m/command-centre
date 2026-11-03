@@ -9,6 +9,8 @@ import { ErrorNote } from "../../shell/ui";
 import { forecastWeek } from "./forecast";
 import { checkRun, fmtPace, VERDICT_LABEL } from "./pace";
 import { loadPlan } from "./plan";
+import { MedalBadges } from "./Medals";
+import { collectEfforts, medalsByRun } from "./pbs";
 import { RouteMap } from "./route";
 import { RunTypeDot, typeOfDay, typeOfRun } from "./runType";
 import { duration, km, pace } from "./stats";
@@ -218,6 +220,7 @@ function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; o
   if (!run) return <Head title="Run" onClose={onClose} onBack={onBack} />;
   const [, shoes, { plan }, overrides, details] = data!;
   const shoe = shoes.find((s) => s.id === run.gear_id);
+  const medals = medalsByRun(collectEfforts(data![0], details)).get(run.id);
   const day = forecastWeek(plan, addDays(run.date, -((parseKey(run.date).getDay() + 6) % 7)), [run], overrides).days.find((d) => d.date === run.date);
   const check = day ? checkRun(day, run, details.get(run.id) ? { ...details.get(run.id)!, laps: full?.laps.map((l) => ({ distance: l.distance, moving_time: l.moving_time, speed: l.speed, hr: l.hr })) ?? details.get(run.id)!.laps } : null) : null;
   const lapMarks = (() => {
@@ -250,6 +253,11 @@ function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; o
           {full?.calories ? <Stat label="Calories" value={String(Math.round(full.calories))} /> : null}
         </div>
       </div>
+      {medals && (
+        <div className="run-medals">
+          <MedalBadges medals={medals} max={8} full />
+        </div>
+      )}
       {day && day.text && (
         <div className="run-plan-line small">
           <span className="label">Planned</span> {day.text || "–"}

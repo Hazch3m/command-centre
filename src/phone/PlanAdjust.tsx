@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { PlanBuilder } from "../modules/running/BuildPlan";
+import { ImportPlan } from "../modules/running/ImportPlan";
 import { AboutPlan, PlanSettings } from "../modules/running/PlanSettings";
+import { RaceManager } from "../modules/running/RaceManager";
 import { useRunningData } from "../modules/running/useRunning";
 
 const VIEWS = [
   { id: "build", label: "Build" },
+  { id: "races", label: "Races" },
+  { id: "import", label: "Import" },
   { id: "adjust", label: "Adjust" },
   { id: "about", label: "About" },
 ] as const;
@@ -24,6 +28,8 @@ export function PlanAdjustPage() {
         ))}
       </div>
       {view === "build" && <PlanBuilder plan={plan} compact />}
+      {view === "races" && <RaceManager plan={plan} />}
+      {view === "import" && <ImportPlan plan={plan} compact />}
       {view === "adjust" && <PlanSettings plan={plan} compact />}
       {view === "about" && <AboutPlan plan={plan} />}
     </div>

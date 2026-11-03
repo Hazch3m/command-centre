@@ -1,3 +1,5 @@
+import { MedalBadges } from "./Medals";
+import { usePbData } from "./PbsTab";
 import { useMemo, useState } from "react";
 import { plannedKinds, RunTypeDot, typeOfRun } from "./runType";
 import { addDays, parseKey } from "../../core/time";
@@ -13,6 +15,7 @@ const fmt = (d: string) => `${parseKey(d).getDate()} ${MON[parseKey(d).getMonth(
 /** Every run, week by week (newest first), like an activity log. */
 export function RunsTab({ runs, plan }: { runs: Run[]; plan?: Plan }) {
   const [weeks, setWeeks] = useState(12);
+  const pb = usePbData();
   const newest = runs.length ? mondayOf(runs[runs.length - 1].date) : mondayOf(new Date().toISOString().slice(0, 10));
   const list = Array.from({ length: weeks }, (_, i) => addDays(newest, -7 * i));
   const kinds = useMemo(() => (plan ? plannedKinds(plan, list[list.length - 1], addDays(newest, 6)) : new Map()), [plan, weeks, newest]);
@@ -38,7 +41,9 @@ export function RunsTab({ runs, plan }: { runs: Run[]; plan?: Plan }) {
                   {DOW[parseKey(r.date).getDay()]} {parseKey(r.date).getDate()}
                 </span>
                 <RunTypeDot type={typeOfRun(r, kinds.get(r.date))} label />
-                <span className="runs-name">{r.name}</span>
+                <span className="runs-name">
+                  {r.name} <MedalBadges medals={pb?.medals.get(r.id)} />
+                </span>
                 <span className="num">{km(r.distance).toFixed(1)} km</span>
                 <span className="num">{duration(r.moving_time)}</span>
                 <span className="num">{pace(r.distance, r.moving_time)}/km</span>

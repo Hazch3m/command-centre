@@ -4538,3 +4538,131 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .plan-builder.compact .pb-days span { display: flex; gap: 0.5rem; }
 .plan-builder.compact .pb-days span i { display: inline; width: 1rem; flex: none; }
 .plan-builder.compact .ps-actions { flex-direction: column; align-items: stretch; }
+
+/* ---- PBs and medals ------------------------------------------------------- */
+.s-pb.chart-line { stroke: var(--accent); stroke-width: 2.5; fill: none; }
+.medals { display: inline-flex; gap: 0.25rem; align-items: center; vertical-align: middle; flex-wrap: wrap; }
+.medal { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.78rem; }
+.medal i { font-style: normal; display: inline-grid; place-items: center; min-width: 1.35rem; height: 1.35rem; padding: 0 0.2rem; border-radius: 999px; font-size: 0.62rem; font-weight: 800; color: #2a2108; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.18); }
+.medal-1 i { background: linear-gradient(#f4d774, #d9a92c); }
+.medal-2 i { background: linear-gradient(#e4e8ec, #a9b2bb); }
+.medal-3 i { background: linear-gradient(#e7b58c, #b8743f); }
+.medals .medal + .medal { margin-left: 0.15rem; }
+.run-medals { padding: 0.4rem 1.1rem; }
+.run-medals .medals { gap: 0.8rem; }
+.pbs { display: flex; flex-direction: column; gap: 1rem; }
+.pb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.6rem; }
+.pb-card { text-align: left; border: 1px solid var(--line); background: var(--card-2); color: inherit; border-radius: 12px; padding: 0.7rem 0.8rem; font: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 0.15rem; }
+.pb-card b { font-size: 1.35rem; }
+.pb-card.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.pb-card .pill { align-self: flex-start; margin-top: 0.2rem; }
+.pb-detail { border: 1px solid var(--line); border-radius: 12px; background: var(--card-2); padding: 0.9rem 1rem; }
+.pb-detail h3 { margin: 0 0 0.3rem; }
+.pb-detail-head { display: flex; gap: 0.8rem; align-items: baseline; }
+.pb-lists { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-top: 0.8rem; }
+.pb-lists h4 { margin: 0 0 0.4rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.pb-line { display: flex; gap: 0.7rem; align-items: center; width: 100%; text-align: left; padding: 0.35rem 0.2rem; border-bottom: 1px solid var(--line); background: none; border-left: 0; border-right: 0; border-top: 0; color: inherit; font: inherit; cursor: pointer; }
+.pb-line:hover { background: var(--hover); }
+.pb-run { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-medal-row .medals { flex: none; }
+.pb-year { margin-top: 0.5rem; }
+@container (max-width: 700px) { .pb-lists { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .pb-lists { grid-template-columns: 1fr; } .pb-medal-row { flex-wrap: wrap; } }
+
+/* ---- Plan builder steps ------------------------------------------------- */
+.pb-steps { list-style: none; margin: 0; padding: 0; display: flex; gap: 0.4rem; counter-reset: s; }
+.pb-steps li { flex: 1; min-width: 0; }
+.pb-steps button { width: 100%; display: flex; align-items: center; gap: 0.5rem; background: var(--card-2); border: 1px solid var(--line); border-radius: 10px; padding: 0.45rem 0.6rem; color: var(--muted); font: inherit; font-size: 0.85rem; cursor: pointer; }
+.pb-steps button i { font-style: normal; display: inline-grid; place-items: center; width: 1.4rem; height: 1.4rem; border-radius: 999px; border: 1px solid var(--line-2); font-size: 0.75rem; flex: none; }
+.pb-steps li.on button { color: var(--text); border-color: var(--accent); }
+.pb-steps li.on button i { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.pb-steps li.done button { color: var(--text-2); }
+.pb-steps li.done button i { background: var(--accent-dim); color: var(--accent); border-color: transparent; }
+.pb-steps button:disabled { opacity: 0.5; cursor: default; }
+.pb-steps span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-step h3 { margin: 0 0 0.2rem; font-size: 1.05rem; }
+.pb-step { gap: 0.8rem; }
+.pb-nav { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; border-top: 1px solid var(--line); padding-top: 0.8rem; margin-top: 0.2rem; flex-wrap: wrap; }
+.pb-race-list { display: flex; flex-direction: column; gap: 0.4rem; }
+.pb-race { display: flex; align-items: center; gap: 0.7rem; text-align: left; border: 1px solid var(--line); background: var(--card); color: inherit; border-radius: 10px; padding: 0.6rem 0.8rem; font: inherit; cursor: pointer; }
+.pb-race:hover { background: var(--hover); }
+.pb-race.on { border-color: var(--accent); background: var(--accent-dim); }
+.pb-race-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.pb-radio { color: var(--accent); font-size: 1.1rem; }
+.pb-other, .pb-goal { display: flex; flex-direction: column; gap: 0.5rem; }
+.pb-goal { max-width: 220px; }
+.pb-block { display: flex; flex-direction: column; gap: 0.5rem; }
+.pb-block h4 { margin: 0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.pb-two { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+.pb-days-pick { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.35rem; }
+.pb-days-pick button { border: 1px solid var(--line); background: var(--card); color: inherit; border-radius: 10px; padding: 0.5rem 0; font: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; }
+.pb-days-pick button b { font-size: 1.2rem; }
+.pb-days-pick button small { font-size: 0.62rem; color: var(--muted); }
+.pb-days-pick button.on { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+.pb-days-pick button.on small { color: inherit; }
+.pb-weeks-pick { display: flex; align-items: center; gap: 0.8rem; }
+.pb-weeks-pick input { flex: 1; accent-color: var(--accent); }
+.pb-tuneups { display: flex; flex-direction: column; gap: 0.3rem; }
+.pb-tuneup { display: flex; gap: 0.5rem; align-items: center; font-size: 0.86rem; }
+
+/* ---- Races ------------------------------------------------------------------ */
+.race-manager { display: flex; flex-direction: column; gap: 0.5rem; }
+.rm-intro { margin-bottom: 0.3rem; }
+.rm-race { border: 1px solid var(--line); border-radius: 12px; background: var(--card-2); overflow: hidden; }
+.rm-race.open { border-color: var(--line-2); }
+.rm-summary { width: 100%; display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 0.8rem; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.rm-name { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.rm-pri { display: inline-grid; place-items: center; width: 1.7rem; height: 1.7rem; border-radius: 8px; font-weight: 800; font-size: 0.85rem; background: var(--card); border: 1px solid var(--line); flex: none; }
+.rm-pri.pr-A { background: var(--danger-dim); color: var(--danger); border-color: transparent; }
+.rm-pri.pr-B { background: var(--warn-dim); color: var(--warn); border-color: transparent; }
+.rm-pri.pr-C { background: var(--info-dim); color: var(--info); border-color: transparent; }
+.rm-score { font-weight: 700; }
+.rm-edit { padding: 0.2rem 0.8rem 0.8rem; display: flex; flex-direction: column; gap: 0.7rem; border-top: 1px solid var(--line); }
+.rm-row { display: flex; flex-direction: column; gap: 0.35rem; }
+.rm-km { width: 5rem; }
+.rm-tapers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; }
+.rm-tapers button { text-align: left; border: 1px solid var(--line); background: var(--card); color: inherit; border-radius: 10px; padding: 0.5rem 0.6rem; font: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 0.15rem; }
+.rm-tapers button small { color: var(--muted); font-size: 0.72rem; }
+.rm-tapers button.on { border-color: var(--accent); background: var(--accent-dim); }
+.rm-actions { display: flex; justify-content: flex-end; }
+.rm-foot { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.3rem; }
+.rm-foot .spacer { flex: 1; }
+
+/* ---- Readiness ---------------------------------------------------------- */
+.readiness { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 0.75rem 0.9rem; display: flex; flex-direction: column; gap: 0.6rem; }
+.rd-head { display: flex; gap: 0.9rem; align-items: center; }
+.rd-score { font-size: 2rem; font-weight: 750; line-height: 1; }
+.rd-score small { font-size: 0.9rem; }
+.rd-parts { display: grid; grid-template-columns: auto 1fr auto; gap: 0.25rem 0.7rem; align-items: center; }
+.rd-part { display: contents; }
+.rd-label { font-size: 0.82rem; }
+.rd-bar { height: 7px; border-radius: 999px; background: var(--track); overflow: hidden; }
+.rd-bar i { display: block; height: 100%; border-radius: 999px; background: currentColor; }
+.rd-pct { font-size: 0.8rem; text-align: right; }
+.rd-note { grid-column: 1 / -1; margin: -0.1rem 0 0.35rem; }
+.ip-compare { display: flex; flex-direction: column; gap: 0.4rem; }
+
+/* ---- CSV import ------------------------------------------------------------ */
+.import-plan { display: flex; flex-direction: column; gap: 0.9rem; }
+.ip-pick { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+.ip-pick label.btn { cursor: pointer; }
+.ip-paste { width: 100%; font-family: ui-monospace, monospace; font-size: 0.8rem; background: var(--card); color: inherit; border: 1px solid var(--line); border-radius: 8px; padding: 0.5rem; resize: vertical; }
+.ip-templates { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+.ip-templates pre { margin: 0.3rem 0 0; font-size: 0.7rem; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 0.5rem; overflow-x: auto; }
+.ip-template-head { display: flex; gap: 0.4rem; align-items: center; }
+.ip-template-head b { flex: 1; }
+
+@media (max-width: 700px) {
+  .pb-two, .ip-templates { grid-template-columns: 1fr; }
+  .rm-tapers { grid-template-columns: 1fr 1fr; }
+  .pb-steps span { display: none; }
+  .pb-steps li.on span { display: inline; }
+}
+.plan-builder.compact .pb-two, .import-plan.compact .ip-templates { grid-template-columns: 1fr; }
+.plan-builder.compact .pb-steps span { display: none; }
+.plan-builder.compact .pb-steps li.on span { display: inline; }
+.plan-builder.compact .pb-steps li.on { flex: 2.5; }
+@media (max-width: 700px) {
+  .pb-fields { grid-template-columns: 1fr 1fr; }
+  .pb-fields label:first-child { grid-column: 1 / -1; }
+}

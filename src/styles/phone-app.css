@@ -1007,3 +1007,8 @@ button.p-row-main {
 .p-seg button.on { background: var(--card-2); color: var(--text); font-weight: 600; }
 .p-adjust .plan-builder .btn { padding: 0.75rem 1rem; font-size: 1rem; border-radius: 12px; }
 .p-adjust .pb-fields input { font-size: 16px; }
+.p-adjust .p-seg { overflow-x: auto; }
+.p-adjust .p-seg button { font-size: 0.85rem; padding: 0.5rem 0.4rem; white-space: nowrap; }
+.p-adjust .rm-tapers { grid-template-columns: 1fr 1fr; }
+.p-adjust .pb-nav .btn { flex: 1; }
+.p-adjust .pb-nav .inline { flex: 1; display: flex; flex-direction: column; gap: 0.4rem; }

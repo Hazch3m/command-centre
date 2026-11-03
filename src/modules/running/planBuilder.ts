@@ -1,7 +1,7 @@
 import { addDays, diffDays } from "../../core/time";
 import { targetTime } from "./fitness";
 import { raceKm } from "./forecast";
-import { mondayOf, WEEK_KEYS, type DayKey, type Plan, type PlanRace, type PlanWeek } from "./plan";
+import { mondayOf, priorityOf, WEEK_KEYS, type DayKey, type Plan, type PlanRace, type PlanWeek } from "./plan";
 import { weeklyTotals } from "./stats";
 import type { Run } from "./strava";
 import { predictTime, vdot as vdotOf } from "./vo2";
@@ -400,7 +400,8 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
     role: "Goal race",
   };
   const inside = old.races.filter((r) => r.date && !r.approx && r.date >= start && r.date <= end && r.date !== o.raceDate);
-  const tuneUps = o.keepRaces ? inside : [];
+  // Tune-ups get the taper you chose for them (Races), else one that fits how much they matter; applied when the plan loads.
+  const tuneUps = o.keepRaces ? inside.map((r) => ({ ...r, taper: r.taper ?? (priorityOf(r) === "A" || priorityOf(r) === "B" ? ("mini" as const) : ("none" as const)) })) : [];
 
   // Write each week day by day.
   const longDay: DayKey = o.longDay;
@@ -429,7 +430,7 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
     if (b.phase === "taper" || b.phase === "race" || raceHere.length) nQ = Math.min(nQ, 1);
     if (o.level === "beginner" && b.phase === "base" && i < 2) nQ = 0;
     let km = b.km;
-    if (raceHere.length && b.phase !== "race") km = Math.round(km * 0.85 - raceHere.reduce((a, r) => a + (raceKm(r.name) ?? 10), 0));
+    if (raceHere.length && b.phase !== "race") km = Math.round(km - raceHere.reduce((a, r) => a + (r.km ?? raceKm(r.name) ?? 10), 0));
 
     for (const r of raceHere) s[WEEK_KEYS[diffDays(b.monday, r.date!)]] = r.name;
     // Long run: on its day unless a race is there or the day before/after.
@@ -564,7 +565,8 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
   const keepBefore = old.weeks.filter((w) => w.end < start);
   const keepAfter = old.weeks.filter((w) => w.start > end);
   const races = [
-    ...old.races.filter((r) => !r.date || r.date < start || r.date > end || (!r.approx && tuneUps.includes(r))),
+    ...old.races.filter((r) => !r.date || r.date < start || r.date > end),
+    ...tuneUps,
     goalRace,
   ]
     .filter((r, i, all) => all.findIndex((x) => x.date === r.date && x.name === r.name) === i)

@@ -26,6 +26,21 @@ export interface PlanRace {
   name: string;
   target: string;
   role: string;
+  /** A = goal race, B = a race to run well, C = training / time trial. Unset: worked out from the role. */
+  priority?: "A" | "B" | "C";
+  /** How the plan eases off for it. Unset: as the plan already has it. */
+  taper?: "full" | "mini" | "none";
+  /** Distance in km, when the name doesn't say. */
+  km?: number;
+}
+
+export type RacePriority = NonNullable<PlanRace["priority"]>;
+/** A race's priority: as set, else from its role ("Main goal", "Sub-2:50 attempt") and distance. */
+export function priorityOf(r: PlanRace): RacePriority {
+  if (r.priority) return r.priority;
+  if (/time trial|check|parkrun/i.test(`${r.name} ${r.role}`)) return "C";
+  if (/goal|attempt|main/i.test(r.role) && /marathon/i.test(r.name)) return "A";
+  return "B";
 }
 export interface Benchmark {
   name: string;
@@ -71,11 +86,11 @@ export const BUNDLED_PLAN = defaultPlan as unknown as Plan;
  */
 export async function loadPlan(): Promise<{ plan: Plan; error: string | null }> {
   const r = await loadPlanFile();
-  if (!r.plan.adjust) return r;
+  if (!r.plan.adjust && !r.plan.races.some((x) => x.taper)) return r;
   // Imported here, not at the top: planAdjust uses the forecast, which uses this file.
-  const { applyAdjust } = await import("./planAdjust");
+  const { applyAdjust, applyRaceTapers } = await import("./planAdjust");
   try {
-    return { ...r, plan: applyAdjust(r.plan) };
+    return { ...r, plan: applyRaceTapers(applyAdjust(r.plan)) };
   } catch (e) {
     return { ...r, error: `Your plan settings couldn't be applied (${(e as Error).message}); showing the plan as written.` };
   }
@@ -171,6 +186,14 @@ export async function savePlan(plan: Plan) {
   const { baseWeeks: _b, ...rest } = plan;
   const out: Plan = { ...rest, weeks, editedInApp: new Date().toISOString(), exported: plan.exported > today ? plan.exported : today };
   await backend.writeDataFile(PLAN_FILE, JSON.stringify(out, null, 2));
+  window.dispatchEvent(new Event("cc:plan-changed"));
+}
+
+/** Saves the race list (dates, priorities, tapers); the plan's weeks stay as written. */
+export async function savePlanRaces(races: PlanRace[]) {
+  const { plan } = await loadPlanFile();
+  const sorted = [...races].sort((a, b) => (a.date ?? "9").localeCompare(b.date ?? "9"));
+  await backend.writeDataFile(PLAN_FILE, JSON.stringify({ ...plan, races: sorted, editedInApp: new Date().toISOString() }, null, 2));
   window.dispatchEvent(new Event("cc:plan-changed"));
 }
 

@@ -5,8 +5,10 @@ import { ErrorNote } from "../../shell/ui";
 import { marathonShape, useFitness } from "./fitness";
 import { plannedRuns } from "./FitnessPlan";
 import { raceKm } from "./forecast";
-import { mondayOf, restorePreviousPlan, savePlan, WEEK_KEYS, type Plan } from "./plan";
+import { mondayOf, priorityOf, restorePreviousPlan, savePlan, WEEK_KEYS, type Plan, type PlanRace } from "./plan";
 import { buildPlan, DEFAULT_WEEKS, DIST_LABEL, LEVELS, pacesFor, recommend, summarizeHistory, type BuildOptions, type Level, type RaceDist } from "./planBuilder";
+import { raceReadiness } from "./readiness";
+import { ReadinessView, useReadinessInputs } from "./Readiness";
 import { useRunningData } from "./useRunning";
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -16,8 +18,12 @@ const pace = (s: number) => `${Math.floor(Math.round(s) / 60)}:${String(Math.rou
 const DAY_SHORT = ["M", "T", "W", "T", "F", "S", "S"];
 const PHASE_CLASS: Record<string, string> = { Base: "base", Build: "build", "Race-specific": "specific", Taper: "taper", "Race week": "taper" };
 
-function distOf(name: string): RaceDist {
-  const k = raceKm(name);
+const DIST_KM: Record<RaceDist, number> = { "5k": 5, "10k": 10, half: 21.1, marathon: 42.2 };
+const TAPER_LABEL = { full: "full taper", mini: "mini taper", none: "train through" } as const;
+const defaultTaperFor = (r: PlanRace) => (priorityOf(r) === "A" ? "full" : priorityOf(r) === "B" ? "mini" : "none");
+
+function distOf(name: string, km?: number): RaceDist {
+  const k = km ?? raceKm(name);
   if (k == null) return "marathon";
   return k > 40 ? "marathon" : k > 20 ? "half" : k >= 9 ? "10k" : "5k";
 }
@@ -81,7 +87,7 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
     }
     const goal = races.find((r) => /marathon/i.test(r.name) && !/half/i.test(r.name)) ?? races[0];
     const raceDate = goal?.date ?? addDays(today, 16 * 7);
-    const dist = goal ? distOf(goal.name) : "marathon";
+    const dist = goal ? distOf(goal.name, goal.km) : "marathon";
     const avail = Math.max(1, diffDays(firstMonday, mondayOf(raceDate)) / 7 + 1);
     const at = addDays(raceDate, -14);
     const need = f && dist === "marathon" ? marathonShape(f.runs, at, f.project(at) ?? f.current ?? 55).targetKm : null;
@@ -93,47 +99,51 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
   const [armed, setArmed] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
-  const set = (patch: Partial<BuildOptions>) => {
-    setO((x) => (x ? { ...x, ...patch } : x));
-    setArmed(false);
-    setDone(null);
-  };
 
+  const [step, setStep] = useState(0);
+  const [touched, setTouched] = useState(false);
+  const [other, setOther] = useState(false);
+  // The plan is only worked out on the review step, so choosing things doesn't make anything jump around.
   const built = useMemo(() => {
-    if (!o) return null;
+    if (!o || step < 3) return null;
     try {
       return buildPlan(base, o, atStartFor(o.raceDate)(o.weeks), today);
     } catch (e) {
       return { error: String((e as Error).message) } as const;
     }
-  }, [base, o, atStartFor, today]);
+  }, [base, o, atStartFor, today, step]);
 
-  const shape = useMemo(() => {
-    if (!f || !o || o.dist !== "marathon" || !built || "error" in built) return null;
-    const at = addDays(o.raceDate, -14);
-    const level = f.project(at) ?? f.current ?? 55;
-    const done = f.runs.filter((r) => r.date <= today);
-    const now = marathonShape([...done, ...plannedRuns(base, today, at)], at, level).total;
-    const next = marathonShape([...done, ...plannedRuns(built.plan, today, at)], at, level).total;
-    return { now: Math.round(now * 100), next: Math.round(next * 100) };
-  }, [f, o, built, base, today]);
+  const { actual, vdotAt, ready } = useReadinessInputs(plan);
+  const goalRace = o ? { date: o.raceDate, name: o.raceName || DIST_LABEL[o.dist], km: DIST_KM[o.dist], target: o.target } : null;
+  const readiness = useMemo(() => {
+    if (!built || "error" in built || !goalRace || !ready) return null;
+    return { next: raceReadiness(built.plan, goalRace, today, vdotAt, actual), now: raceReadiness(plan, goalRace, today, vdotAt, actual) };
+  }, [built, ready, vdotAt, actual, today, plan]);
 
   if (!o || !rec) return <p className="muted">Looking at your training…</p>;
-  if (!built || "error" in built) return <ErrorNote error={built && "error" in built ? `Couldn't build the plan: ${built.error}` : null} />;
 
-  const { plan: next, weeks } = built;
-  const start = weeks[0]?.monday ?? firstMonday;
-  const peak = Math.max(...weeks.map((w) => w.km));
-  const longest = Math.max(...weeks.map((w) => w.long));
-  const newWeeks = next.weeks.filter((w) => w.start >= start && w.start <= mondayOf(o.raceDate));
-  const sessionsPerWeek =
-    newWeeks.reduce((s, w) => s + WEEK_KEYS.filter((k) => /\bwith\b|hill sprints/.test(w.sessions[k] ?? "")).length, 0) / Math.max(1, newWeeks.length);
-  const p0 = pacesFor(history.vdot ?? 42);
-  const replaced = base.weeks.filter((w) => w.start >= start && w.start <= mondayOf(o.raceDate)).length;
-  const isRec = o.level === rec.level && o.days === rec.days && o.weeks === Math.min(rec.weeks, available);
+  const set = (patch: Partial<BuildOptions>, own = true) => {
+    setO((x) => (x ? { ...x, ...patch } : x));
+    if (own && ("level" in patch || "days" in patch || "weeks" in patch)) setTouched(true);
+    setArmed(false);
+    setDone(null);
+  };
+  const recWeeks = Math.min(rec.weeks, available);
+  const isRec = o.level === rec.level && o.days === rec.days && o.weeks === recWeeks;
+  const startFor = (weeks: number) => addDays(firstMonday, Math.max(0, available - weeks) * 7);
+  const start = startFor(o.weeks);
   const tuneUps = base.races.filter((r) => r.date && !r.approx && r.date >= start && r.date < o.raceDate);
+  const chosen = races.find((r) => r.date === o.raceDate && r.name === o.raceName);
+  const raceOk = !!o.raceDate && o.raceDate > addDays(today, 21);
+  const next = (to: number) => {
+    // Leaving the race step: the length, level and days follow the suggestion for that race unless you've set them.
+    if (step === 0 && to > 0 && !touched) set({ level: rec.level, days: rec.days, weeks: recWeeks }, false);
+    setStep(to);
+  };
+  const STEPS = ["Race", "Your training", "Plan", "Review"];
 
   const use = async () => {
+    if (!built || "error" in built) return;
     if (!armed) {
       setArmed(true);
       window.setTimeout(() => setArmed(false), 5000);
@@ -142,8 +152,8 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
     setBusy(true);
     setErr(null);
     try {
-      await savePlan(next);
-      setDone(`Your plan now runs ${fmt(start)} → ${o.raceName || DIST_LABEL[o.dist]} on ${fmt(o.raceDate)}.`);
+      await savePlan(built.plan);
+      setDone(`Done: your plan now runs ${fmt(built.weeks[0].monday)} → ${o.raceName || DIST_LABEL[o.dist]} on ${fmt(o.raceDate)}.`);
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
     } finally {
@@ -163,230 +173,355 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
     }
   };
 
-  const bars = weeks.map((w, i) => ({
-    label: compact ? (parseKey(w.monday).getDate() <= 7 ? MON[parseKey(w.monday).getMonth()] : "") : String(i + 1),
-    value: w.km,
-    planned: w.cut,
-    title: `Week ${i + 1} (${fmt(w.monday)}), ${newWeeks[i]?.phase ?? w.phase}: ${w.km} km${w.long ? `, long run ${w.long} km` : ""}${w.cut ? " · easier week" : ""}`,
-  }));
-  const phaseSpans = newWeeks.reduce<{ name: string; n: number }[]>((acc, w) => {
-    const name = w.phase === "Race week" ? "Taper" : w.phase;
-    if (acc.length && acc[acc.length - 1].name === name) acc[acc.length - 1].n++;
-    else acc.push({ name, n: 1 });
-    return acc;
-  }, []);
-
   return (
     <div className={"plan-builder" + (compact ? " compact" : "")}>
-      <section className="ps-card pb-history">
-        <h4>Your training</h4>
-        <div className="ps-stats">
-          <div>
-            <span className="label">Last 4 weeks</span>
-            <b className="num">{Math.round(history.recent4)} km/week</b>
-          </div>
-          <div>
-            <span className="label">Last 12 weeks</span>
-            <b className="num">{Math.round(history.recent12)} km/week</b>
-            <small className="muted">biggest {Math.round(history.peak12)}</small>
-          </div>
-          <div>
-            <span className="label">Runs a week</span>
-            <b className="num">{history.runsPerWeek.toFixed(1)}</b>
-            <small className="muted">ran in {history.weeksRun12} of 12 weeks</small>
-          </div>
-          <div>
-            <span className="label">Longest run (8 weeks)</span>
-            <b className="num">{history.longest8.toFixed(1)} km</b>
-          </div>
-          <div>
-            <span className="label">Fitness</span>
-            <b className="num">{history.vdot != null ? `VDOT ${history.vdot.toFixed(1)}` : "–"}</b>
-            {history.vdot != null && <small className="muted">marathon pace ≈ {pace(p0.mp)}/km</small>}
-          </div>
-        </div>
-        <div className="pb-rec">
-          <div>
-            <b>Suggested for this race:</b> {LEVELS[rec.level].label}, {rec.days} days a week, {Math.min(rec.weeks, available)} weeks.
-            <ul className="bullets">
-              {rec.why.map((w) => (
-                <li key={w}>{w}</li>
-              ))}
-            </ul>
-          </div>
-          <button className={"btn" + (isRec ? "" : " btn-primary")} disabled={isRec} onClick={() => set({ level: rec.level, days: rec.days, weeks: Math.min(rec.weeks, available) })}>
-            {isRec ? "Using the suggestion" : "Use the suggestion"}
-          </button>
-        </div>
-      </section>
-
-      <div className="ps-grid">
-        <section className="ps-card">
-          <h4>Race</h4>
-          <Chips
-            value={races.some((r) => r.date === o.raceDate && r.name === o.raceName) ? `${o.raceDate}|${o.raceName}` : "other"}
-            options={[...races.map((r) => ({ v: `${r.date}|${r.name}`, l: r.name.replace(/ Marathon$/, " M."), sub: `${r.when}${r.target ? ` · ${r.target}` : ""}` })), { v: "other", l: "Another race" }]}
-            onChange={(v) => {
-              if (v === "other") return set({ raceName: "", target: "" });
-              const r = races.find((x) => `${x.date}|${x.name}` === v)!;
-              const dist = distOf(r.name);
-              set({ raceName: r.name, raceDate: r.date!, dist, target: r.target, weeks: Math.min(o.weeks, Math.max(1, diffDays(firstMonday, mondayOf(r.date!)) / 7 + 1)) });
-            }}
-          />
-          <div className="pb-fields">
-            <label>
-              <span className="label">Name</span>
-              <input value={o.raceName} placeholder="e.g. Berlin Marathon" onChange={(e) => set({ raceName: e.target.value })} />
-            </label>
-            <label>
-              <span className="label">Date</span>
-              <input type="date" value={o.raceDate} min={addDays(today, 21)} onChange={(e) => e.target.value && set({ raceDate: e.target.value })} />
-            </label>
-            <label>
-              <span className="label">Goal time (optional)</span>
-              <input value={o.target} placeholder={o.dist === "marathon" ? "2:49" : o.dist === "half" ? "1:18:00" : "35:30"} onChange={(e) => set({ target: e.target.value })} />
-            </label>
-          </div>
-          <Chips value={o.dist} options={(["5k", "10k", "half", "marathon"] as RaceDist[]).map((d) => ({ v: d, l: DIST_LABEL[d] }))} onChange={(d) => set({ dist: d })} />
-        </section>
-
-        <section className="ps-card">
-          <h4>How long</h4>
-          <div className="ps-value num">
-            {Math.min(o.weeks, available)} weeks<small> · from {fmt(start)}</small>
-          </div>
-          <Chips
-            value={Math.min(o.weeks, available)}
-            options={[...new Set([6, 8, 10, 12, 14, 16, 18, 20, 24, available].filter((n) => n <= available && n <= 30 && n >= 4))]
-              .sort((a, b) => a - b)
-              .map((n) => ({ v: n, l: n === available ? `${n} (from now)` : String(n) }))}
-            onChange={(n) => set({ weeks: n })}
-          />
-          <p className="ps-note">
-            {DEFAULT_WEEKS[o.dist]}+ weeks suits a {DIST_LABEL[o.dist].toLowerCase()}.{" "}
-            {available > o.weeks ? `Your current plan carries on until ${fmt(start)}.` : ""} Weeks after the race stay as they are in your current plan.
-          </p>
-          <h4>Days a week</h4>
-          <div className="ps-value num">
-            {o.days} days<small> · long run on {o.longDay === "sat" ? "Saturday" : "Sunday"}</small>
-          </div>
-          <Chips value={o.days} options={[3, 4, 5, 6, 7].map((n) => ({ v: n, l: String(n) }))} onChange={(n) => set({ days: n })} />
-          <Chips value={o.longDay} options={[{ v: "sat" as const, l: "Long run Saturday" }, { v: "sun" as const, l: "Long run Sunday" }]} onChange={(v) => set({ longDay: v })} />
-        </section>
-      </div>
-
-      <section className="ps-card">
-        <h4>Level</h4>
-        <div className="pb-levels">
-          {(Object.keys(LEVELS) as Level[]).map((lv) => (
-            <button key={lv} type="button" className={"pb-level" + (o.level === lv ? " on" : "")} onClick={() => set({ level: lv })}>
-              <b>
-                {LEVELS[lv].label}
-                {lv === rec.level && <span className="pill small">suggested</span>}
-              </b>
-              <span>{LEVELS[lv].blurb}</span>
-              <small className="num">
-                Peaks near {LEVELS[lv].peak[o.dist]} km · long runs to {LEVELS[lv].longCap[o.dist]} km
-              </small>
+      <ol className="pb-steps">
+        {STEPS.map((t, i) => (
+          <li key={t} className={(i === step ? "on" : i < step ? "done" : "") + (i > step && !raceOk ? " off" : "")}>
+            <button type="button" disabled={i > step && !raceOk} onClick={() => next(i)}>
+              <i>{i < step ? "✓" : i + 1}</i>
+              <span>{t}</span>
             </button>
-          ))}
-        </div>
-        {tuneUps.length > 0 && (
-          <label className="inline small pb-keep">
-            <input type="checkbox" checked={o.keepRaces} onChange={(e) => set({ keepRaces: e.target.checked })} /> Keep my other races as tune-ups ({tuneUps.map((r) => r.name).join(", ")})
-          </label>
-        )}
-      </section>
+          </li>
+        ))}
+      </ol>
 
-      <section className="ps-card ps-preview">
-        <div className="ps-preview-head">
-          <h4>Your new plan</h4>
-          <span className="ps-sub">
-            {fmtYear(start)} → {fmtYear(o.raceDate)}
-          </span>
-        </div>
-        <div className="ps-stats">
-          <div>
-            <span className="label">First week</span>
-            <b className="num">{weeks[0]?.km} km</b>
+      {step === 0 && (
+        <section className="ps-card pb-step">
+          <h3>Which race are you training for?</h3>
+          <div className="pb-race-list">
+            {races.map((r) => {
+              const on = !other && r.date === o.raceDate && r.name === o.raceName;
+              const k = r.km ?? raceKm(r.name);
+              return (
+                <button
+                  key={`${r.date}${r.name}`}
+                  type="button"
+                  className={"pb-race" + (on ? " on" : "")}
+                  onClick={() => {
+                    setOther(false);
+                    set({ raceName: r.name, raceDate: r.date!, dist: distOf(r.name, r.km), target: r.target }, false);
+                  }}
+                >
+                  <span className={"rm-pri pr-" + priorityOf(r)}>{priorityOf(r)}</span>
+                  <span className="pb-race-main">
+                    <b>{r.name}</b>
+                    <span className="muted small">
+                      {r.approx ? r.when : fmtYear(r.date!)}
+                      {k ? ` · ${k} km` : ""}
+                      {r.target ? ` · goal ${r.target}` : ""}
+                    </span>
+                  </span>
+                  <span className="pb-radio" aria-hidden>
+                    {on ? "●" : "○"}
+                  </span>
+                </button>
+              );
+            })}
+            <button type="button" className={"pb-race" + (other || (!chosen && !races.length) ? " on" : "")} onClick={() => (setOther(true), set({ raceName: "", target: "" }, false))}>
+              <span className="rm-pri">+</span>
+              <span className="pb-race-main">
+                <b>Another race</b>
+                <span className="muted small">Any date at least three weeks away</span>
+              </span>
+              <span className="pb-radio" aria-hidden>
+                {other ? "●" : "○"}
+              </span>
+            </button>
           </div>
-          <div>
-            <span className="label">Peak week</span>
-            <b className="num">{peak} km</b>
-          </div>
-          <div>
-            <span className="label">Longest run</span>
-            <b className="num">{longest} km</b>
-          </div>
-          <div>
-            <span className="label">Sessions a week</span>
-            <b className="num">{sessionsPerWeek.toFixed(1)}</b>
-          </div>
-          <div>
-            <span className="label">Easy / threshold</span>
-            <b className="num">
-              {pace(p0.easy[0])}–{pace(p0.easy[1])} / {pace(p0.threshold)}
-            </b>
-          </div>
-          {shape && (
-            <div>
-              <span className="label">Marathon shape, 2 weeks out</span>
-              <b className={"num " + (shape.next >= 100 ? "tone-accent" : shape.next < shape.now ? "tone-warn" : "")}>
-                {shape.now}% → {shape.next}%
-              </b>
-              <small className="muted">current plan → new</small>
+          {(other || (!chosen && !races.length)) && (
+            <div className="pb-other">
+              <div className="pb-fields">
+                <label>
+                  <span className="label">Name</span>
+                  <input value={o.raceName} placeholder="e.g. Berlin Marathon" onChange={(e) => set({ raceName: e.target.value }, false)} />
+                </label>
+                <label>
+                  <span className="label">Date</span>
+                  <input type="date" value={o.raceDate} min={addDays(today, 22)} onChange={(e) => e.target.value && set({ raceDate: e.target.value }, false)} />
+                </label>
+                <label>
+                  <span className="label">Goal time (optional)</span>
+                  <input value={o.target} placeholder={o.dist === "marathon" ? "2:49" : o.dist === "half" ? "1:18:00" : "35:30"} onChange={(e) => set({ target: e.target.value }, false)} />
+                </label>
+              </div>
+              <Chips value={o.dist} options={(["5k", "10k", "half", "marathon"] as RaceDist[]).map((d) => ({ v: d, l: DIST_LABEL[d] }))} onChange={(d) => set({ dist: d }, false)} />
             </div>
           )}
-        </div>
-        <div className="pb-phases">
-          {phaseSpans.map((p, i) => (
-            <span key={i} className={"pb-phase " + (PHASE_CLASS[p.name] ?? "")} style={{ flex: p.n }}>
-              {p.name} · {p.n}
+          {!other && chosen && (
+            <label className="pb-goal">
+              <span className="label">Goal time (optional)</span>
+              <input value={o.target} onChange={(e) => set({ target: e.target.value }, false)} />
+            </label>
+          )}
+          {!raceOk && <p className="ps-note tone-warn">Pick a race at least three weeks away.</p>}
+          <div className="pb-nav">
+            <span />
+            <button className="btn btn-primary" disabled={!raceOk} onClick={() => next(1)}>
+              Next: your training ›
+            </button>
+          </div>
+        </section>
+      )}
+
+      {step === 1 && (
+        <section className="ps-card pb-step pb-history">
+          <h3>Where you are now</h3>
+          <div className="ps-stats">
+            <div>
+              <span className="label">Last 4 weeks</span>
+              <b className="num">{Math.round(history.recent4)} km/week</b>
+            </div>
+            <div>
+              <span className="label">Last 12 weeks</span>
+              <b className="num">{Math.round(history.recent12)} km/week</b>
+              <small className="muted">biggest {Math.round(history.peak12)}</small>
+            </div>
+            <div>
+              <span className="label">Runs a week</span>
+              <b className="num">{history.runsPerWeek.toFixed(1)}</b>
+              <small className="muted">ran in {history.weeksRun12} of 12 weeks</small>
+            </div>
+            <div>
+              <span className="label">Longest run (8 weeks)</span>
+              <b className="num">{history.longest8.toFixed(1)} km</b>
+            </div>
+            <div>
+              <span className="label">Fitness</span>
+              <b className="num">{history.vdot != null ? `VDOT ${history.vdot.toFixed(1)}` : "–"}</b>
+              {history.vdot != null && <small className="muted">marathon pace ≈ {pace(pacesFor(history.vdot).mp)}/km</small>}
+            </div>
+          </div>
+          <div className="pb-rec">
+            <div>
+              <b>
+                Suggested for {o.raceName || DIST_LABEL[o.dist]}: {LEVELS[rec.level].label}, {rec.days} days a week, {recWeeks} weeks
+              </b>
+              <ul className="bullets">
+                {rec.why.map((w) => (
+                  <li key={w}>{w}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <div className="pb-nav">
+            <button className="btn ghost" onClick={() => setStep(0)}>
+              ‹ Race
+            </button>
+            <span className="inline">
+              {!isRec && (
+                <button className="btn" onClick={() => (set({ level: rec.level, days: rec.days, weeks: recWeeks }), setStep(3))}>
+                  Use the suggestion
+                </button>
+              )}
+              <button className="btn btn-primary" onClick={() => next(2)}>
+                Next: choose the plan ›
+              </button>
             </span>
-          ))}
-        </div>
-        <BarChart bars={bars} height={compact ? 130 : 160} unit=" km" showValues={!compact} />
-        <p className="ps-note">Faint bars: easier weeks. Hover a bar for the week.</p>
-        <details className="fold">
-          <summary>Week by week</summary>
-          <div className="pb-weeks">
-            {newWeeks.map((w) => (
-              <div key={w.start} className="pb-week">
-                <div className="pb-week-head">
-                  <b>Week {w.week}</b> <span className="muted">{fmt(w.start)}</span> <span className={"pb-tag " + (PHASE_CLASS[w.phase] ?? "")}>{w.phase}</span>
-                  <span className="num">{w.km} km</span>
-                </div>
-                <div className="pb-days">
-                  {WEEK_KEYS.map((k, i) => (
-                    <span key={k} className={/rest/i.test(w.sessions[k] ?? "Rest") ? "rest" : /\bwith\b|sprints|long run|MP/.test(w.sessions[k] ?? "") ? "hard" : ""}>
-                      <i>{DAY_SHORT[i]}</i>
-                      {w.sessions[k]}
+          </div>
+        </section>
+      )}
+
+      {step === 2 && (
+        <section className="ps-card pb-step">
+          <h3>Shape the plan</h3>
+          <div className="pb-block">
+            <h4>Level</h4>
+            <div className="pb-levels">
+              {(Object.keys(LEVELS) as Level[]).map((lv) => (
+                <button key={lv} type="button" className={"pb-level" + (o.level === lv ? " on" : "")} onClick={() => set({ level: lv })}>
+                  <b>
+                    {LEVELS[lv].label}
+                    {lv === rec.level && <span className="pill small">suggested</span>}
+                  </b>
+                  <span>{LEVELS[lv].blurb}</span>
+                  <small className="num">
+                    Peaks near {LEVELS[lv].peak[o.dist]} km · long runs to {LEVELS[lv].longCap[o.dist]} km
+                  </small>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="pb-two">
+            <div className="pb-block">
+              <h4>Days a week</h4>
+              <div className="pb-days-pick">
+                {[3, 4, 5, 6, 7].map((n) => (
+                  <button key={n} type="button" className={o.days === n ? "on" : ""} onClick={() => set({ days: n })}>
+                    <b>{n}</b>
+                    {n === rec.days && <small>suggested</small>}
+                  </button>
+                ))}
+              </div>
+              <Chips value={o.longDay} options={[{ v: "sat" as const, l: "Long run Saturday" }, { v: "sun" as const, l: "Long run Sunday" }]} onChange={(v) => set({ longDay: v })} />
+            </div>
+            <div className="pb-block">
+              <h4>
+                Length <span className="muted small">· starts {fmt(start)}</span>
+              </h4>
+              <div className="pb-weeks-pick">
+                <input type="range" min={Math.min(4, available)} max={Math.min(30, available)} value={Math.min(o.weeks, available)} onChange={(e) => set({ weeks: +e.target.value })} aria-label="Weeks" />
+                <b className="num">{Math.min(o.weeks, available)} weeks</b>
+              </div>
+              <p className="ps-note">
+                {DEFAULT_WEEKS[o.dist]}–{DEFAULT_WEEKS[o.dist] + 6} weeks suits a {DIST_LABEL[o.dist].toLowerCase()}.{" "}
+                {available > o.weeks ? `Your current plan carries on until ${fmt(start)}.` : "It starts next Monday."}
+              </p>
+            </div>
+          </div>
+          {tuneUps.length > 0 && (
+            <div className="pb-block">
+              <h4>Other races in this time</h4>
+              <label className="inline small">
+                <input type="checkbox" checked={o.keepRaces} onChange={(e) => set({ keepRaces: e.target.checked })} /> Keep them as tune-ups
+              </label>
+              {o.keepRaces && (
+                <div className="pb-tuneups">
+                  {tuneUps.map((r) => (
+                    <span key={r.date + r.name} className="pb-tuneup">
+                      <span className={"rm-pri pr-" + priorityOf(r)}>{priorityOf(r)}</span>
+                      {r.name} <span className="muted small">{fmt(r.date!)} · {TAPER_LABEL[r.taper ?? defaultTaperFor(r)]}</span>
                     </span>
                   ))}
+                  <span className="ps-note">Change priorities and tapers under Races.</span>
                 </div>
-                {w.notes && <div className="ps-note">{w.notes}</div>}
-              </div>
-            ))}
+              )}
+            </div>
+          )}
+          <div className="pb-nav">
+            <button className="btn ghost" onClick={() => setStep(1)}>
+              ‹ Your training
+            </button>
+            <button className="btn btn-primary" onClick={() => next(3)}>
+              Build and review ›
+            </button>
           </div>
-        </details>
-      </section>
+        </section>
+      )}
 
-      <div className="ps-actions">
-        <button className="btn btn-primary" disabled={busy} onClick={use}>
-          {busy ? "Saving…" : armed ? `Tap again to replace ${replaced} week${replaced === 1 ? "" : "s"} of your plan` : "Use this plan"}
-        </button>
-        {plan.previous && (
-          <button className="btn" disabled={busy} onClick={restore}>
-            Bring back my previous plan
-          </button>
-        )}
-        <span className="ps-note">
-          Replaces your plan from {fmt(start)} to race week; earlier weeks and weeks after the race stay. Your current plan is kept, so you can bring it back. The training calendar,
-          Google Calendar and the phone follow.
-        </span>
-      </div>
+      {step === 3 && (!built || "error" in built) && <ErrorNote error={built && "error" in built ? `Couldn't build the plan: ${built.error}` : null} />}
+      {step === 3 && built && !("error" in built) && review()}
       {done && <div className="pb-done">{done}</div>}
       <ErrorNote error={err} />
     </div>
   );
+
+  function review() {
+    if (!built || "error" in built || !o) return null;
+    const { plan: np, weeks } = built;
+    const s0 = weeks[0]?.monday ?? firstMonday;
+    const peak = Math.max(...weeks.map((w) => w.km));
+    const longest = Math.max(...weeks.map((w) => w.long));
+    const newWeeks = np.weeks.filter((w) => w.start >= s0 && w.start <= mondayOf(o.raceDate));
+    const sessionsPerWeek = newWeeks.reduce((s, w) => s + WEEK_KEYS.filter((k) => /\bwith\b|hill sprints/.test(w.sessions[k] ?? "")).length, 0) / Math.max(1, newWeeks.length);
+    const p0 = pacesFor(history.vdot ?? 42);
+    const replaced = base.weeks.filter((w) => w.start >= s0 && w.start <= mondayOf(o.raceDate)).length;
+    const bars = weeks.map((w, i) => ({
+      label: compact ? (parseKey(w.monday).getDate() <= 7 ? MON[parseKey(w.monday).getMonth()] : "") : String(i + 1),
+      value: w.km,
+      planned: w.cut,
+      title: `Week ${i + 1} (${fmt(w.monday)}), ${newWeeks[i]?.phase ?? w.phase}: ${w.km} km${w.long ? `, long run ${w.long} km` : ""}${w.cut ? " · easier week" : ""}`,
+    }));
+    const phaseSpans = newWeeks.reduce<{ name: string; n: number }[]>((acc, w) => {
+      const name = w.phase === "Race week" ? "Taper" : w.phase;
+      if (acc.length && acc[acc.length - 1].name === name) acc[acc.length - 1].n++;
+      else acc.push({ name, n: 1 });
+      return acc;
+    }, []);
+    return (
+      <>
+        <section className="ps-card ps-preview pb-step">
+          <div className="ps-preview-head">
+            <h3>
+              {o.raceName || DIST_LABEL[o.dist]} · {LEVELS[o.level].label}, {o.days} days a week
+            </h3>
+            <span className="ps-sub">
+              {fmtYear(s0)} → {fmtYear(o.raceDate)} · {weeks.length} weeks
+            </span>
+          </div>
+          {readiness?.next && (
+            <div className="ip-compare">
+              <ReadinessView r={readiness.next} compact={compact} />
+              {readiness.now && (
+                <div className="ip-old muted small">
+                  Your current plan for this race: <b className="num">{readiness.now.score}%</b> ready.
+                </div>
+              )}
+            </div>
+          )}
+          <div className="ps-stats">
+            <div>
+              <span className="label">First week</span>
+              <b className="num">{weeks[0]?.km} km</b>
+            </div>
+            <div>
+              <span className="label">Peak week</span>
+              <b className="num">{peak} km</b>
+            </div>
+            <div>
+              <span className="label">Longest run</span>
+              <b className="num">{longest} km</b>
+            </div>
+            <div>
+              <span className="label">Sessions a week</span>
+              <b className="num">{sessionsPerWeek.toFixed(1)}</b>
+            </div>
+            <div>
+              <span className="label">Easy / threshold pace</span>
+              <b className="num">
+                {pace(p0.easy[0])}–{pace(p0.easy[1])} / {pace(p0.threshold)}
+              </b>
+            </div>
+          </div>
+          <div className="pb-phases">
+            {phaseSpans.map((p, i) => (
+              <span key={i} className={"pb-phase " + (PHASE_CLASS[p.name] ?? "")} style={{ flex: p.n }}>
+                {p.name} · {p.n}
+              </span>
+            ))}
+          </div>
+          <BarChart bars={bars} height={compact ? 130 : 160} unit=" km" showValues={!compact} />
+          <p className="ps-note">Faint bars: easier weeks. Hover a bar for the week.</p>
+          <details className="fold">
+            <summary>Week by week</summary>
+            <div className="pb-weeks">
+              {newWeeks.map((w) => (
+                <div key={w.start} className="pb-week">
+                  <div className="pb-week-head">
+                    <b>Week {w.week}</b> <span className="muted">{fmt(w.start)}</span> <span className={"pb-tag " + (PHASE_CLASS[w.phase] ?? "")}>{w.phase}</span>
+                    <span className="num">{w.km} km</span>
+                  </div>
+                  <div className="pb-days">
+                    {WEEK_KEYS.map((k, i) => (
+                      <span key={k} className={/rest/i.test(w.sessions[k] ?? "Rest") ? "rest" : /\bwith\b|sprints|long run|MP/.test(w.sessions[k] ?? "") ? "hard" : ""}>
+                        <i>{DAY_SHORT[i]}</i>
+                        {w.sessions[k]}
+                      </span>
+                    ))}
+                  </div>
+                  {w.notes && <div className="ps-note">{w.notes}</div>}
+                </div>
+              ))}
+            </div>
+          </details>
+          <div className="pb-nav">
+            <button className="btn ghost" onClick={() => setStep(2)}>
+              ‹ Change the plan
+            </button>
+            <span className="inline">
+              {plan.previous && (
+                <button className="btn" disabled={busy} onClick={restore}>
+                  Bring back my previous plan
+                </button>
+              )}
+              <button className="btn btn-primary" disabled={busy} onClick={use}>
+                {busy ? "Saving…" : armed ? `Tap again to replace ${replaced} week${replaced === 1 ? "" : "s"}` : "Use this plan"}
+              </button>
+            </span>
+          </div>
+          <p className="ps-note">Replaces your plan from {fmt(s0)} to race week; earlier weeks and weeks after the race stay. Your current plan is kept, so you can bring it back.</p>
+        </section>
+      </>
+    );
+  }
 }

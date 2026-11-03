@@ -1,6 +1,6 @@
 import { addDays } from "../../core/time";
-import { forecastWeek, fullWeekSessions, type ForecastDay } from "./forecast";
-import { WEEK_KEYS, type DayKey, type Plan, type PlanWeek } from "./plan";
+import { forecastWeek, fullWeekSessions, raceKm, type ForecastDay } from "./forecast";
+import { mondayOf, priorityOf, WEEK_KEYS, type DayKey, type Plan, type PlanWeek } from "./plan";
 
 /**
  * Your own settings on top of the plan, like Runna's plan settings: how much
@@ -172,3 +172,78 @@ export function planStats(plan: Plan, from: string, to: string) {
 }
 
 export const nextMonday = (today: string) => addDays(today, 7 - ((new Date(today + "T12:00").getDay() + 6) % 7));
+
+// ---- Race tapers -----------------------------------------------------------------------
+
+/** How each kind of taper eases the weeks before a race: [weeks before the race week, share of the usual km]. */
+function taperSteps(kind: "full" | "mini" | "none", km: number): [number, number][] {
+  if (kind === "none") return [];
+  if (kind === "mini") return [[0, 0.8]];
+  if (km >= 30) return [[2, 0.8], [1, 0.65], [0, 0.5]];
+  if (km >= 15) return [[1, 0.8], [0, 0.6]];
+  return [[1, 0.9], [0, 0.7]];
+}
+
+/**
+ * Applies the tapers you've chosen for races (Races → taper). Easy runs and
+ * long runs shrink; sessions stay, except in the three days before the race,
+ * which are easy, with a short shakeout the day before. A full taper for a
+ * marathon is followed by an easy week. Races without a chosen taper are
+ * left as the plan has them.
+ */
+export function applyRaceTapers(plan: Plan): Plan {
+  const races = plan.races.filter((r) => r.date && !r.approx && r.taper);
+  if (!races.length) return plan;
+  let weeks = plan.weeks.map((w) => ({ ...w, sessions: { ...w.sessions } }));
+  const write = (monday: string, change: (d: ForecastDay, i: number) => string | null) => {
+    const wi = weeks.findIndex((w) => w.start <= monday && monday <= w.end);
+    if (wi < 0) return;
+    const p: Plan = { ...plan, weeks };
+    const full = { ...weeks[wi], sessions: fullWeekSessions(p, weeks[wi]) };
+    const fp: Plan = { ...plan, weeks: weeks.map((w, j) => (j === wi ? full : w)) };
+    const days = forecastWeek(fp, weeks[wi].start).days;
+    const sessions = { ...full.sessions };
+    let total = 0;
+    let raceKmIn = 0;
+    days.forEach((d, i) => {
+      const t = d.race || d.kind === "race" ? null : change(d, i);
+      if (t != null) sessions[WEEK_KEYS[i]] = t;
+      const k = t != null ? (/^rest$/i.test(t) ? 0 : parseFloat(t) || 0) : d.km ?? 0;
+      if (d.race || d.kind === "race") raceKmIn += d.km ?? 0;
+      else total += k;
+    });
+    const plusRace = raceKmIn > 0 && /\+\s*race/i.test(weeks[wi].km);
+    weeks = weeks.map((w, j) => (j === wi ? { ...full, sessions, km: plusRace ? `about ${Math.round(total)} + race` : String(Math.round(total + raceKmIn)), kmMin: Math.round(total), kmMax: Math.round(total) } : w));
+  };
+  const scaled = (d: ForecastDay, f: number) => {
+    if (!d.km || d.kind === "rest") return null;
+    if (d.kind === "key") return null;
+    return withKm(d.text, Math.max(4, Math.round(d.km * f)), d.kind === "long" ? "long run" : "easy");
+  };
+  for (const r of races) {
+    const k = r.km ?? raceKm(r.name) ?? 10;
+    const rm = mondayOf(r.date!);
+    const steps = taperSteps(r.taper!, k);
+    for (const [before, f] of steps) {
+      const monday = addDays(rm, -7 * before);
+      write(monday, (d) => {
+        if (d.date >= r.date!) return null;
+        const until = (Date.parse(r.date!) - Date.parse(d.date)) / 86400000;
+        if (until === 1) return d.km ? "5 km easy + 4 × 20 s strides" : "Rest";
+        if (until <= 3 && (d.kind === "key" || d.kind === "long")) return `${Math.max(5, Math.min(10, Math.round((d.km ?? 8) * 0.6)))} km easy`;
+        return scaled(d, f);
+      });
+    }
+    // After the race: an easy day (or a recovery week after a full-taper marathon).
+    const after = addDays(r.date!, 1);
+    const marathonRecovery = r.taper === "full" && k >= 30 && priorityOf(r) === "A";
+    write(mondayOf(after), (d) => {
+      if (d.date === after) return d.km ? `${Math.min(6, d.km)} km recovery` : null;
+      if (marathonRecovery && d.date > after && d.date <= addDays(r.date!, 7)) return d.km ? `${Math.max(4, Math.round(d.km * 0.5))} km easy` : null;
+      return null;
+    });
+    if (marathonRecovery && mondayOf(addDays(r.date!, 7)) !== mondayOf(after))
+      write(mondayOf(addDays(r.date!, 7)), (d) => (d.date <= addDays(r.date!, 7) && d.km ? `${Math.max(4, Math.round(d.km * 0.5))} km easy` : null));
+  }
+  return { ...plan, baseWeeks: plan.baseWeeks ?? plan.weeks, weeks };
+}

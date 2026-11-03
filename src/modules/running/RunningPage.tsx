@@ -21,17 +21,21 @@ import { PaceOnPointTab } from "./PaceOnPoint";
 import { RunsTab } from "./RunsTab";
 import { AboutPlan, PlanSettings } from "./PlanSettings";
 import { PlanBuilder } from "./BuildPlan";
+import { PbsTab } from "./PbsTab";
+import { RaceManager } from "./RaceManager";
+import { ImportPlan } from "./ImportPlan";
 import { PlanEditor } from "./PlanEditor";
 import { PlanList } from "./PlanList";
 import { PlanWeekView } from "./PlanWeekView";
 
-type Tab = "plan" | "runs" | "pace" | "edit" | "progress";
+type Tab = "plan" | "runs" | "pace" | "edit" | "progress" | "pbs";
 const TABS: { id: Tab; label: string }[] = [
   { id: "plan", label: "Plan" },
   { id: "runs", label: "Runs" },
   { id: "pace", label: "Pace on point" },
   { id: "progress", label: "Races & progress" },
-  { id: "edit", label: "Plan settings" },
+  { id: "pbs", label: "PBs" },
+  { id: "edit", label: "Plan & races" },
 ];
 const PLAN_VIEWS = [
   { id: "week", label: "Week" },
@@ -40,6 +44,8 @@ const PLAN_VIEWS = [
 ] as const;
 const EDIT_VIEWS = [
   { id: "build", label: "Build a plan" },
+  { id: "races", label: "Races" },
+  { id: "import", label: "Import CSV" },
   { id: "adjust", label: "Adjust" },
   { id: "about", label: "About this plan" },
   { id: "weeks", label: "Edit week by week" },
@@ -120,6 +126,7 @@ export function RunningPage() {
       <div className="page-body" key={tab}>
         {tab === "pace" && <PaceOnPointTab plan={plan} runs={runs} />}
         {tab === "runs" && <RunsTab runs={runs} plan={plan} />}
+        {tab === "pbs" && <PbsTab />}
         {tab === "edit" && (
           <>
             <div className="plan-view-switch">
@@ -133,6 +140,8 @@ export function RunningPage() {
               {plan.adjust && <span className="pill small">Your settings are on</span>}
             </div>
             {editView === "build" && <PlanBuilder plan={plan} />}
+            {editView === "races" && <RaceManager plan={plan} />}
+            {editView === "import" && <ImportPlan plan={plan} />}
             {editView === "adjust" && <PlanSettings plan={plan} />}
             {editView === "about" && <AboutPlan plan={plan} />}
             {editView === "weeks" && <PlanEditor plan={plan} />}
