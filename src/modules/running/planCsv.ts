@@ -80,7 +80,6 @@ export interface CsvPlan {
   warnings: string[];
 }
 
-const DAY_NAMES: Record<string, DayKey> = { mon: "mon", tue: "tue", wed: "wed", thu: "thu", fri: "fri", sat: "sat", sun: "sun" };
 const RACE = /\brace\b|marathon|parkrun|\bhalf\b|\b10k\b|\b5k\b|time trial/i;
 const asKm = (s: string | undefined) => {
   if (!s) return null;
