@@ -180,7 +180,7 @@ export function recommend(
     if (peak >= LEVELS[lv].peak[dist] * 0.85 && h.recent12 >= LEVELS[lv].peak[dist] * 0.55) level = lv;
   }
   if (h.vdot != null && h.vdot >= 55 && level === "beginner") level = "intermediate";
-  const goal = needKm ? Math.round(needKm * 1.1) : null;
+  const goal = needKm ? Math.round(needKm * 1.05) : null;
   const baseDays = days;
   if (goal && h.weeksRun12 >= 8) {
     // Step up (level, then days, then weeks) until the plan peaks where a marathon at your fitness needs.
@@ -423,6 +423,8 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
     const [qa0, qb0] = sessions(o, b.phase === "race" || tune ? "taper" : b.phase, t, alt, p, rp);
     let qa = qa0;
     let qb = qb0;
+    // Before the race-specific weeks, a tune-up week keeps a short threshold session rather than race-pace work.
+    if (tune && (b.phase === "base" || b.phase === "build")) qa = reps(4, 1, p.threshold, "90 s jog", 90);
     let nQ = Math.min(L.quality, o.days >= 4 ? 2 : 1);
     if (b.phase === "taper" || b.phase === "race" || raceHere.length) nQ = Math.min(nQ, 1);
     if (o.level === "beginner" && b.phase === "base" && i < 2) nQ = 0;
