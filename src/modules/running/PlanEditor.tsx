@@ -15,14 +15,16 @@ const DAY_LABEL: Record<DayKey, string> = { mon: "Mon", tue: "Tue", wed: "Wed", 
  */
 export function PlanEditor({ plan }: { plan: Plan }) {
   const today = useToday();
-  const [draft, setDraft] = useState<Plan>(plan);
+  // Edit the plan as written; your plan settings (Adjust) are applied on top when it's loaded.
+  const written = (p: Plan): Plan => ({ ...p, weeks: p.baseWeeks ?? p.weeks, baseWeeks: undefined });
+  const [draft, setDraft] = useState<Plan>(() => written(plan));
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [showPast, setShowPast] = useState(false);
   const [armed, setArmed] = useState(false);
   useEffect(() => {
-    if (!dirty) setDraft(plan);
+    if (!dirty) setDraft(written(plan));
   }, [plan, dirty]);
 
   const change = (fn: (p: Plan) => Plan) => {

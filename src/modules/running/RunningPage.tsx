@@ -19,6 +19,7 @@ import { WeekCalendar } from "./WeekCalendar";
 import { RecentBlock } from "./RecentBlock";
 import { PaceOnPointTab } from "./PaceOnPoint";
 import { RunsTab } from "./RunsTab";
+import { AboutPlan, PlanSettings } from "./PlanSettings";
 import { PlanEditor } from "./PlanEditor";
 import { PlanList } from "./PlanList";
 import { PlanWeekView } from "./PlanWeekView";
@@ -29,12 +30,17 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "runs", label: "Runs" },
   { id: "pace", label: "Pace on point" },
   { id: "progress", label: "Races & progress" },
-  { id: "edit", label: "Edit plan" },
+  { id: "edit", label: "Plan settings" },
 ];
 const PLAN_VIEWS = [
   { id: "week", label: "Week" },
   { id: "list", label: "All weeks" },
   { id: "six", label: "6 weeks" },
+] as const;
+const EDIT_VIEWS = [
+  { id: "adjust", label: "Adjust" },
+  { id: "about", label: "About this plan" },
+  { id: "weeks", label: "Edit week by week" },
 ] as const;
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const STATUS_LABEL: Record<BenchStatus, string> = {
@@ -66,6 +72,7 @@ export function RunningPage() {
   const { plan, planError, runs = [], connected, sync } = useRunningData();
   const [tab, setTab] = useState<Tab>("plan");
   const [view, setView] = useState<(typeof PLAN_VIEWS)[number]["id"]>("week");
+  const [editView, setEditView] = useState<(typeof EDIT_VIEWS)[number]["id"]>("adjust");
 
   const data = useMemo(() => {
     if (!plan) return null;
@@ -111,7 +118,23 @@ export function RunningPage() {
       <div className="page-body" key={tab}>
         {tab === "pace" && <PaceOnPointTab plan={plan} runs={runs} />}
         {tab === "runs" && <RunsTab runs={runs} plan={plan} />}
-        {tab === "edit" && <PlanEditor plan={plan} />}
+        {tab === "edit" && (
+          <>
+            <div className="plan-view-switch">
+              <span className="segmented small-seg">
+                {EDIT_VIEWS.map((v) => (
+                  <button key={v.id} className={editView === v.id ? "on" : ""} onClick={() => setEditView(v.id)}>
+                    {v.label}
+                  </button>
+                ))}
+              </span>
+              {plan.adjust && <span className="pill small">Your settings are on</span>}
+            </div>
+            {editView === "adjust" && <PlanSettings plan={plan} />}
+            {editView === "about" && <AboutPlan plan={plan} />}
+            {editView === "weeks" && <PlanEditor plan={plan} />}
+          </>
+        )}
 
         {tab === "plan" && (
           <>

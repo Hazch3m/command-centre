@@ -92,3 +92,30 @@ describe("the shipped plan", () => {
     }
   });
 });
+
+describe("plan settings", () => {
+  it("scales mileage, changes long runs and moves run days", async () => {
+    const { adjustWeek, applyAdjust } = await import("./planAdjust");
+    const week = BUNDLED_PLAN.weeks.find((w) => w.week === "5")!;
+    const base = forecastWeek(BUNDLED_PLAN, week.start);
+    const a = { volume: 1.1, longExtra: 2, longMax: null, runDays: ["mon", "tue", "thu", "fri", "sat"] as const, longDay: "sat" as const, from: "2026-01-01" };
+    const plan = applyAdjust({ ...BUNDLED_PLAN, adjust: { ...a, runDays: [...a.runDays] } });
+    const after = forecastWeek(plan, week.start);
+    expect(after.plannedKm!).toBeGreaterThan(base.plannedKm! * 1.03);
+    const runDays = after.days.filter((d) => (d.km ?? 0) > 0).map((d) => d.dow);
+    expect(runDays).toEqual(["Mon", "Tue", "Thu", "Fri", "Sat"]);
+    expect(after.days[5].kind).toBe("long");
+    const baseLong = Math.max(...base.days.filter((d) => d.kind === "long").map((d) => d.km ?? 0));
+    expect(after.days[5].km).toBeGreaterThanOrEqual(baseLong + 2);
+    // every session from the week is still in it
+    const keys = (f: typeof base) => f.days.filter((d) => d.kind === "key").map((d) => d.text).sort();
+    expect(keys(after)).toEqual(keys(base));
+    expect(plan.baseWeeks).toBe(BUNDLED_PLAN.weeks);
+    expect(adjustWeek(BUNDLED_PLAN, week, { ...a, runDays: [...a.runDays], from: "2099-01-01" })).toBe(week);
+  });
+  it("caps long runs", async () => {
+    const { applyAdjust } = await import("./planAdjust");
+    const plan = applyAdjust({ ...BUNDLED_PLAN, adjust: { volume: 1, longExtra: 0, longMax: 24, runDays: ["tue", "wed", "thu", "sat", "sun"], longDay: "sun", from: "2026-01-01" } });
+    for (const w of plan.weeks.slice(0, 30)) for (const d of forecastWeek(plan, w.start).days) if (d.kind === "long") expect(d.km!).toBeLessThanOrEqual(24);
+  });
+});

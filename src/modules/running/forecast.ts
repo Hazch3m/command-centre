@@ -227,6 +227,15 @@ export function forecastWeek(plan: Plan, monday: string, runs: Run[] = [], overr
     }
   }
 
+  // The long run needn't be on Sunday (the plan can move it): the week's longest easy run of 16 km+ is the long run.
+  if (!days.some((d) => d.kind === "long")) {
+    // An easy run of 16 km+, or a run with marathon-pace work of 24 km+ ("32 km, 16 at 3:58").
+    const cand = days
+      .filter((d) => !d.flex && !/medium/i.test(d.text) && ((d.kind === "easy" && (d.km ?? 0) >= 16) || (d.kind === "key" && (d.km ?? 0) >= 24)))
+      .sort((a, b) => (b.km ?? 0) - (a.km ?? 0))[0];
+    if (cand) cand.kind = "long";
+  }
+
   // Size the flexible days so the week lands in the middle of its target.
   let plannedKm: number | null = null;
   if (week) {

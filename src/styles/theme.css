@@ -4466,3 +4466,30 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .phone-pair .qr { grid-row: span 3; border-radius: 8px; }
 .phone-pair ol { margin: 0; padding-left: 1.1rem; line-height: 1.6; }
 .phone-code { font-size: 2rem; font-weight: 700; letter-spacing: 0.1em; }
+
+/* ---- Plan settings (Adjust) ---------------------------------------------- */
+.plan-settings { display: flex; flex-direction: column; gap: 0.9rem; }
+.ps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.9rem; }
+.ps-card { border: 1px solid var(--line); border-radius: 12px; background: var(--card-2); padding: 0.85rem 1rem; display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
+.ps-card h4 { margin: 0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+.ps-value { font-size: 1.5rem; font-weight: 650; }
+.ps-value small { font-size: 0.8rem; font-weight: 400; color: var(--muted); }
+.ps-card input[type="range"] { width: 100%; accent-color: var(--accent); }
+.ps-scale { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--muted); }
+.ps-sub { font-size: 0.78rem; color: var(--muted); display: inline-flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.ps-note { font-size: 0.76rem; color: var(--muted); margin: 0; }
+.ps-choice { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.ps-choice button, .ps-days button { border: 1px solid var(--line); background: transparent; color: inherit; border-radius: 999px; padding: 0.28rem 0.7rem; font: inherit; font-size: 0.8rem; cursor: pointer; }
+.ps-choice button.on, .ps-days button.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent, #fff); }
+.ps-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3rem; }
+.ps-days button { padding: 0.45rem 0; border-radius: 8px; }
+.ps-days button.long { box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.25); font-weight: 650; }
+.ps-preview-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+.ps-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.6rem; }
+.ps-stats > div { display: flex; flex-direction: column; gap: 0.1rem; }
+.ps-stats b { font-size: 1.05rem; }
+.ps-actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.about-plan { max-width: 75ch; line-height: 1.5; }
+.about-plan h4 { margin: 1rem 0 0.3rem; }
+.plan-settings.compact .ps-grid { grid-template-columns: 1fr; }
+.plan-settings.compact .ps-actions { flex-direction: column; align-items: stretch; }

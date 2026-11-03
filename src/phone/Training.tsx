@@ -127,6 +127,13 @@ export function Training() {
       </Section>
 
       <Section title="More">
+        <button className="p-row p-row-btn" onClick={() => nav.push("adjust")}>
+          <span className="p-row-main">
+            <span className="p-row-title">Adjust plan</span>
+            <span className="p-row-sub">{plan?.adjust ? `Your settings: ${Math.round(plan.adjust.volume * 100)}% mileage, ${plan.adjust.runDays.length} days a week` : "Mileage, long runs, which days you run"}</span>
+          </span>
+          <span className="p-chev">›</span>
+        </button>
         <button className="p-row p-row-btn" onClick={() => nav.push("plan")}>
           <span className="p-row-main">
             <span className="p-row-title">Full plan, pace on point and progress</span>

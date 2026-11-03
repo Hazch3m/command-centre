@@ -1,6 +1,7 @@
 import { backend } from "@backend";
 import { addDays, diffDays, parseKey } from "../../core/time";
 import defaultPlan from "./default-plan.json";
+import type { PlanAdjust } from "./planAdjust";
 
 export type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 export const WEEK_KEYS: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
@@ -48,6 +49,10 @@ export interface Plan {
   benchmarks: Benchmark[];
   /** Set once the plan has been edited in the app; it's then the master copy. */
   editedInApp?: string;
+  /** Your settings on top of the plan (mileage, long runs, run days). Applied when loaded. */
+  adjust?: PlanAdjust | null;
+  /** The weeks as written, before `adjust` (only on a loaded plan; never saved). */
+  baseWeeks?: PlanWeek[];
   /** Past races to show on the progression page (Strava activity ids). */
   history?: { races: { id: string; name: string; km: number }[]; marathons: { name: string; date: string }[] };
 }
@@ -60,6 +65,19 @@ export const BUNDLED_PLAN = defaultPlan as unknown as Plan;
  * ships with the app is written there, so it can be replaced by a fresh export.
  */
 export async function loadPlan(): Promise<{ plan: Plan; error: string | null }> {
+  const r = await loadPlanFile();
+  if (!r.plan.adjust) return r;
+  // Imported here, not at the top: planAdjust uses the forecast, which uses this file.
+  const { applyAdjust } = await import("./planAdjust");
+  try {
+    return { ...r, plan: applyAdjust(r.plan) };
+  } catch (e) {
+    return { ...r, error: `Your plan settings couldn't be applied (${(e as Error).message}); showing the plan as written.` };
+  }
+}
+
+/** The plan as written in training-plan.json, without your settings applied. */
+export async function loadPlanFile(): Promise<{ plan: Plan; error: string | null }> {
   const text = await backend.readDataFile(PLAN_FILE);
   if (text == null) {
     await backend.writeDataFile(PLAN_FILE, JSON.stringify(BUNDLED_PLAN, null, 2));
@@ -141,11 +159,12 @@ export function kmRange(text: string): [number | null, number | null] {
 /** Saves a plan edited in the app; from then on it's the master copy. */
 export async function savePlan(plan: Plan) {
   const today = new Date().toISOString().slice(0, 10);
-  const weeks = plan.weeks.map((w) => {
+  const weeks = (plan.baseWeeks ?? plan.weeks).map((w) => {
     const [lo, hi] = kmRange(w.km);
     return { ...w, kmMin: lo, kmMax: hi, end: addDays(w.start, 6) };
   });
-  const out: Plan = { ...plan, weeks, editedInApp: new Date().toISOString(), exported: plan.exported > today ? plan.exported : today };
+  const { baseWeeks: _b, ...rest } = plan;
+  const out: Plan = { ...rest, weeks, editedInApp: new Date().toISOString(), exported: plan.exported > today ? plan.exported : today };
   await backend.writeDataFile(PLAN_FILE, JSON.stringify(out, null, 2));
   window.dispatchEvent(new Event("cc:plan-changed"));
 }
@@ -153,5 +172,13 @@ export async function savePlan(plan: Plan) {
 /** Throws away in-app edits and goes back to the plan from your doc (as shipped with the app). */
 export async function resetPlan() {
   await backend.writeDataFile(PLAN_FILE, JSON.stringify(BUNDLED_PLAN, null, 2));
+  window.dispatchEvent(new Event("cc:plan-changed"));
+}
+
+/** Saves your plan settings (null = back to the plan as written). Keeps the plan itself as it is. */
+export async function savePlanAdjust(adjust: PlanAdjust | null) {
+  const { plan } = await loadPlanFile();
+  const out: Plan = { ...plan, adjust };
+  await backend.writeDataFile(PLAN_FILE, JSON.stringify(out, null, 2));
   window.dispatchEvent(new Event("cc:plan-changed"));
 }

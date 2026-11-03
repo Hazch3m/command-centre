@@ -7,6 +7,7 @@ import { NavContext } from "../shell/nav";
 import { Calendar } from "./Calendar";
 import { PhoneNav, type Pushed, type Tab } from "./common";
 import { Habits } from "./Habits";
+import { PlanAdjustPage } from "./PlanAdjust";
 import { Tasks } from "./Tasks";
 import { Today } from "./Today";
 import { Training } from "./Training";
@@ -18,10 +19,11 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "tasks", label: "Tasks", icon: "M4 6l2 2 4-4M4 13l2 2 4-4M13 7h7M13 14h7M4 20h16" },
   { id: "habits", label: "Habits", icon: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8 12l3 3 5-6" },
 ];
-const PUSHED: Record<Exclude<Pushed, null>, { title: string; module: string }> = {
+const PUSHED: Record<Exclude<Pushed, null>, { title: string; module: string | null }> = {
   health: { title: "Health", module: "health" },
   fitness: { title: "Fitness", module: "fitness" },
   plan: { title: "Plan", module: "running" },
+  adjust: { title: "Adjust plan", module: null },
 };
 
 function useSync() {
@@ -124,7 +126,7 @@ export function PhoneApp() {
           <main className="p-main" key={pushed ?? tab}>
             {pushed ? (
               <div className="p-pushed">
-                <ModulePage id={PUSHED[pushed].module} />
+                {PUSHED[pushed].module ? <ModulePage id={PUSHED[pushed].module!} /> : <PlanAdjustPage />}
               </div>
             ) : tab === "today" ? (
               <>

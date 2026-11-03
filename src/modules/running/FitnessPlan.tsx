@@ -211,7 +211,7 @@ export function GoalPath({ f }: { f: Fitness }) {
 // ---- Marathon shape ----------------------------------------------------------------
 
 /** Planned runs as if done, so the shape can be projected forward. */
-function plannedRuns(plan: Plan, from: string, to: string, overrides?: Map<string, string>): Run[] {
+export function plannedRuns(plan: Plan, from: string, to: string, overrides?: Map<string, string>): Run[] {
   const out: Run[] = [];
   for (let m = mondayOf(from); m <= to; m = addDays(m, 7)) {
     const fw = forecastWeek(plan, m, [], overrides);

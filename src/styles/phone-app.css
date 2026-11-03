@@ -996,3 +996,7 @@ button.p-row-main {
 :root[data-theme="light"] .p-head {
   background: color-mix(in srgb, var(--bg) 85%, transparent);
 }
+
+.p-adjust { display: flex; flex-direction: column; gap: 0.8rem; padding-bottom: 2rem; }
+.p-adjust .ps-days button { padding: 0.6rem 0; }
+.p-about { margin: 0; }
