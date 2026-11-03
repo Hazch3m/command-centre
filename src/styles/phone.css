@@ -333,3 +333,21 @@ body.phone #root {
   padding: 0.75rem;
   font-size: 1rem;
 }
+
+/* Habits: the day squares go under the name */
+.phone .check-row {
+  flex-wrap: wrap;
+  row-gap: 0.4rem;
+}
+.phone .check-row .check-main {
+  flex: 1 1 calc(100% - 7rem);
+}
+.phone .habit-days {
+  order: 5;
+  flex: 1 1 100%;
+}
+.phone .habit-day {
+  width: auto;
+  aspect-ratio: 1;
+  height: auto;
+}

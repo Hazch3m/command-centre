@@ -264,7 +264,7 @@ function localWrite(d: Database, s: string, params: SqlParam[]): { result: ExecR
 const offline = (what: string) => () => Promise.reject(new Error(`offline: ${what} is updated on your PC and synced to the phone.`));
 
 export const backend: Backend = {
-  kind: "browser",
+  kind: "phone",
   async select<T>(s: string, params: SqlParam[] = []) {
     const stmt = db().prepare(s);
     stmt.bind(norm(params));

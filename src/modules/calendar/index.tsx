@@ -1,3 +1,4 @@
+import { onPhone } from "../../core/platform";
 import { useEffect, useState } from "react";
 import { kvGet, kvSet } from "../../core/db";
 import { rangeFor, step, VIEWS, MonthGrid, TimeGrid, type CalView } from "./Views";
@@ -223,7 +224,7 @@ function CalendarCard({ variant }: CardProps) {
         </div>
       )}
       {sync?.offline && sync.lastSync && (
-        <div className="muted small">Offline — showing events from {diffDays(sync.lastSync.slice(0, 10), today) === 0 ? hhmm(new Date(sync.lastSync)) : relativeDayLabel(sync.lastSync.slice(0, 10), today).toLowerCase()}.</div>
+        <div className="muted small" hidden={onPhone}>Offline — showing events from {diffDays(sync.lastSync.slice(0, 10), today) === 0 ? hhmm(new Date(sync.lastSync)) : relativeDayLabel(sync.lastSync.slice(0, 10), today).toLowerCase()}.</div>
       )}
       {sync?.error && <ErrorNote error={sync.error} />}
       {editing && <EventEditor target={editing} cals={cals} onClose={() => setEditing(null)} />}

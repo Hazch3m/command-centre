@@ -19,7 +19,7 @@ const TABS: { id: string; label: string; icon: string }[] = [
 ];
 
 /** Today: the key cards from the PC's overview, one under another. */
-const TODAY = ["running", "health", "checklist", "tasks", "calendar", "training-week", "predictions", "weather", "fitness"];
+const TODAY = ["running", "health", "checklist", "tasks", "calendar", "predictions", "weather", "fitness"];
 
 function useSync() {
   return useSyncExternalStore(

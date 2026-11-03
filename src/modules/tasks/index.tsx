@@ -1,3 +1,4 @@
+import { onPhone } from "../../core/platform";
 import { useCallback, useEffect, useMemo, useState, type DragEvent, type ReactNode } from "react";
 import { kvGet, kvSet } from "../../core/db";
 import { useDataVersion } from "../../core/events";
@@ -294,7 +295,7 @@ function TasksCard({ editing, variant }: CardProps) {
     const t = setTimeout(() => syncGoogleTasks().catch(() => {}), 8000);
     return () => clearTimeout(t);
   }, [version]);
-  const syncLabel = !syncState?.lastSync
+  const syncLabel = onPhone || !syncState?.lastSync
     ? null
     : syncState.offline
       ? "Offline"

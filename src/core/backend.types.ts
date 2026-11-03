@@ -47,7 +47,7 @@ export interface ApiResponse<T = unknown> {
 }
 
 export interface Backend {
-  readonly kind: "tauri" | "browser";
+  readonly kind: "tauri" | "browser" | "phone";
   select<T = Row>(sql: string, params?: SqlParam[]): Promise<T[]>;
   execute(sql: string, params?: SqlParam[]): Promise<ExecResult>;
   batch(statements: Statement[]): Promise<ExecResult[]>;

@@ -1,3 +1,4 @@
+import { onPhone } from "../../core/platform";
 import { useEffect, useState } from "react";
 import { backend } from "@backend";
 import { useDataVersion } from "../../core/events";
@@ -284,7 +285,7 @@ function HealthCard({ variant, editing }: CardProps) {
     syncHealth().catch(() => {});
   }, []);
   const [rows, sync, status] = data ?? [[], null, null];
-  const right = sync?.lastSync ? (
+  const right = sync?.lastSync && !onPhone ? (
     <button className="btn icon ghost sync-btn" onClick={() => syncHealth()} title="Sync with Garmin now">
       ↻ <span className="small">{sync.offline ? "Offline" : new Date(sync.lastSync).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span>
     </button>

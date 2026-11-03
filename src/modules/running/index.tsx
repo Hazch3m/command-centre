@@ -1,3 +1,4 @@
+import { onPhone } from "../../core/platform";
 import { typeOfDay } from "./runType";
 import { useMemo } from "react";
 import { addDays, parseKey, relativeDayLabel, useToday } from "../../core/time";
@@ -135,7 +136,7 @@ function RunningCard({ editing }: CardProps) {
       </div>
       </div>
       {!connected && <div className="muted small">Connect Strava in Settings to track your runs.</div>}
-      {sync?.offline && <div className="muted small">Offline — showing runs synced {sync.lastSync ? relativeDayLabel(sync.lastSync.slice(0, 10), today).toLowerCase() : "earlier"}.</div>}
+      {sync?.offline && !onPhone && <div className="muted small">Offline — showing runs synced {sync.lastSync ? relativeDayLabel(sync.lastSync.slice(0, 10), today).toLowerCase() : "earlier"}.</div>}
       {sync?.lastError && <ErrorNote error={`Strava: ${sync.lastError}`} />}
     </>
   );
