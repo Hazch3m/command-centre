@@ -135,6 +135,23 @@ The address is stored in Windows Credential Manager. Outlook and iCloud calendar
 
 The app requests access to your calendar events (to read them and to add the events you create or the training plan) and to your Google Tasks. If you connected before the version that added event editing, click **Disconnect** then **Connect** once so Google grants the new permission.
 
+## Phone
+
+Command Centre runs on your iPhone as a home-screen app, kept in step through your own small Cloudflare service (free plan).
+
+**How it works.** About once a minute after something changes (and every 10 minutes anyway), the PC encrypts a copy of the dashboard's data and sends it to the service. The phone downloads it, so everything works offline and loads instantly. Tasks, habits, plan-day changes, plan edits and a few view settings made on the phone go back the same way; the PC applies them within 30 seconds while Command Centre is open. Strava, Google and Garmin are only ever reached from the PC, and their sign-ins never leave it. Everything is encrypted on the device before it's sent (AES-256-GCM, with a key only your PC and linked phones have), so Cloudflare stores data it can't read.
+
+**One-time setup (about 10 minutes).**
+
+1. Make a free account at <https://dash.cloudflare.com>. Open **Workers & Pages** once; if it asks you to pick a `workers.dev` subdomain, choose one.
+2. **My Profile → API Tokens → Create Token**, use the **Edit Cloudflare Workers** template, pick your account, and create it. Copy the token.
+3. Copy your **Account ID** (shown on the Workers & Pages overview, right-hand side).
+4. In this repository on GitHub: **Settings → Secrets and variables → Actions → New repository secret**. Add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. (Keep both out of chats and files.)
+5. Run the build again (**Actions → Build Windows installer → Run workflow**). The **phone** job deploys the service and shows its address, like `https://command-centre-sync.yourname.workers.dev`.
+6. In Command Centre: **Settings → Phone**, paste the address and click **Connect**.
+
+**Linking a phone.** Settings → Phone → **Link a phone** shows a QR code and an 8-character code (valid 15 minutes). Point the iPhone camera at the QR code, open the link, then in Safari tap **Share → Add to Home Screen**. Open Command Centre from the home screen and type the code. **Unlink all phones** makes a new key, so every phone has to be linked again.
+
 ## Development
 
 Requirements: Node 22+, Rust (stable), and on Windows the Visual Studio C++ Build Tools. WebView2 is already part of Windows 11.
