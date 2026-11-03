@@ -5,6 +5,7 @@ import { isLinked, loadLocal, phoneState, refresh } from "./core/backend.phone";
 import { Pair } from "./phone/Pair";
 import { PhoneApp } from "./phone/PhoneApp";
 import "./styles/phone.css";
+import "./styles/phone-app.css";
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 
