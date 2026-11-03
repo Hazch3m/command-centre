@@ -44,6 +44,7 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
   const { runs = [] } = useRunningData();
   const f = useFitness(plan);
   const base: Plan = useMemo(() => ({ ...plan, weeks: plan.baseWeeks ?? plan.weeks, baseWeeks: undefined, adjust: null }), [plan]);
+  const firstMonday = mondayOf(today) < today ? addDays(mondayOf(today), 7) : mondayOf(today);
   const history = useMemo(() => summarizeHistory(runs, today, f?.current ?? null), [runs, today, f?.current]);
   // A plan that starts later builds on the weeks of your current plan before it: your training as it will be then.
   const atStartFor = useMemo(() => {
@@ -60,7 +61,6 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
       return cache.get(start)!;
     };
   }, [history, runs, base, today, firstMonday, f?.current]);
-  const firstMonday = mondayOf(today) < today ? addDays(mondayOf(today), 7) : mondayOf(today);
   const races = useMemo(() => base.races.filter((r) => r.date && r.date > addDays(today, 21)), [base, today]);
 
   const [o, setO] = useState<BuildOptions | null>(null);
