@@ -45,6 +45,21 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
   const f = useFitness(plan);
   const base: Plan = useMemo(() => ({ ...plan, weeks: plan.baseWeeks ?? plan.weeks, baseWeeks: undefined, adjust: null }), [plan]);
   const history = useMemo(() => summarizeHistory(runs, today, f?.current ?? null), [runs, today, f?.current]);
+  // A plan that starts later builds on the weeks of your current plan before it: your training as it will be then.
+  const atStartFor = useMemo(() => {
+    const cache = new Map<string, ReturnType<typeof summarizeHistory>>();
+    return (raceDate: string) => (weeks: number) => {
+      const avail = Math.max(1, diffDays(firstMonday, mondayOf(raceDate)) / 7 + 1);
+      const start = addDays(firstMonday, Math.max(0, avail - weeks) * 7);
+      if (start <= firstMonday) return history;
+      if (!cache.has(start)) {
+        const done = runs.filter((r) => r.date <= today);
+        const planned = plannedRuns(base, today, addDays(start, -1));
+        cache.set(start, summarizeHistory([...done, ...planned], start, f?.current ?? null));
+      }
+      return cache.get(start)!;
+    };
+  }, [history, runs, base, today, firstMonday, f?.current]);
   const firstMonday = mondayOf(today) < today ? addDays(mondayOf(today), 7) : mondayOf(today);
   const races = useMemo(() => base.races.filter((r) => r.date && r.date > addDays(today, 21)), [base, today]);
 
@@ -56,7 +71,7 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
     const at = addDays(o.raceDate, -14);
     return marathonShape(f.runs, at, f.project(at) ?? f.current ?? 55).targetKm;
   }, [f, o?.dist, o?.raceDate]);
-  const rec = useMemo(() => (o ? recommend(history, o.dist, available, firstMonday, needKm) : null), [history, o?.dist, available, firstMonday, needKm]);
+  const rec = useMemo(() => (o ? recommend(history, o.dist, available, firstMonday, needKm, atStartFor(o.raceDate)) : null), [history, o?.dist, o?.raceDate, available, firstMonday, needKm, atStartFor]);
   // Start from the plan's own settings if it was built here, else from the next big race and the recommendation.
   useEffect(() => {
     if (o || !runs.length || !f) return;
@@ -70,9 +85,9 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
     const avail = Math.max(1, diffDays(firstMonday, mondayOf(raceDate)) / 7 + 1);
     const at = addDays(raceDate, -14);
     const need = f && dist === "marathon" ? marathonShape(f.runs, at, f.project(at) ?? f.current ?? 55).targetKm : null;
-    const r = recommend(history, dist, avail, firstMonday, need);
+    const r = recommend(history, dist, avail, firstMonday, need, atStartFor(raceDate));
     setO({ raceName: goal?.name ?? "", raceDate, dist, target: goal?.target ?? "", weeks: r.weeks, level: r.level, days: r.days, longDay: "sun", keepRaces: true });
-  }, [runs.length, plan.built, races, history, today, firstMonday, o, f]);
+  }, [runs.length, plan.built, races, history, today, firstMonday, o, f, atStartFor]);
 
   const [busy, setBusy] = useState(false);
   const [armed, setArmed] = useState(false);
@@ -87,11 +102,11 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
   const built = useMemo(() => {
     if (!o) return null;
     try {
-      return buildPlan(base, o, history, today);
+      return buildPlan(base, o, atStartFor(o.raceDate)(o.weeks), today);
     } catch (e) {
       return { error: String((e as Error).message) } as const;
     }
-  }, [base, o, history, today]);
+  }, [base, o, atStartFor, today]);
 
   const shape = useMemo(() => {
     if (!f || !o || o.dist !== "marathon" || !built || "error" in built) return null;

@@ -157,7 +157,15 @@ export interface Recommendation {
  * marathon at your fitness needs (from marathon shape): the suggestion aims
  * to peak a little above it, when that's reachable from where you are.
  */
-export function recommend(h: History, dist: RaceDist, weeksAvailable: number, firstMonday: string, needKm: number | null = null): Recommendation {
+export function recommend(
+  h: History,
+  dist: RaceDist,
+  weeksAvailable: number,
+  firstMonday: string,
+  needKm: number | null = null,
+  /** Your training as it will be when a plan of n weeks starts (following the current plan until then). */
+  atStart: (weeks: number) => History = () => h,
+): Recommendation {
   const why: string[] = [];
   const order: Level[] = ["beginner", "intermediate", "advanced", "elite"];
   let weeks = Math.max(4, Math.min(weeksAvailable, DEFAULT_WEEKS[dist] + (dist === "marathon" ? 4 : 2)));
@@ -168,7 +176,7 @@ export function recommend(h: History, dist: RaceDist, weeksAvailable: number, fi
   // The highest level whose peak you can reach from where you are, and that your recent weeks support.
   let level: Level = "beginner";
   for (const lv of order) {
-    const peak = peakFor(h, { dist, level: lv, days, weeks });
+    const peak = peakFor(atStart(weeks), { dist, level: lv, days, weeks });
     if (peak >= LEVELS[lv].peak[dist] * 0.85 && h.recent12 >= LEVELS[lv].peak[dist] * 0.55) level = lv;
   }
   if (h.vdot != null && h.vdot >= 55 && level === "beginner") level = "intermediate";
@@ -176,11 +184,12 @@ export function recommend(h: History, dist: RaceDist, weeksAvailable: number, fi
   const baseDays = days;
   if (goal && h.weeksRun12 >= 8) {
     // Step up (level, then days, then weeks) until the plan peaks where a marathon at your fitness needs.
-    const reach = () => peakFor(h, { dist, level, days, weeks });
+    const reach = () => peakFor(atStart(weeks), { dist, level, days, weeks });
     for (let n = 0; n < 12 && reach() < goal; n++) {
       if (order.indexOf(level) < 3 && LEVELS[level].peak[dist] < goal && h.recent12 >= LEVELS[order[order.indexOf(level) + 1]].peak[dist] * 0.4) level = order[order.indexOf(level) + 1];
-      else if (days < 7 && capForDays(days, dist, level) < goal) days++;
+      else if (days < 6 && capForDays(days, dist, level) < goal) days++;
       else if (weeks < Math.min(weeksAvailable, 24)) weeks += 2;
+      else if (days < 7 && capForDays(days, dist, level) < goal) days++;
       else break;
     }
     why.push(
@@ -194,8 +203,10 @@ export function recommend(h: History, dist: RaceDist, weeksAvailable: number, fi
     level = order[order.indexOf(level) - 1];
     why.push(`You ran in ${h.weeksRun12} of the last 12 weeks, so it starts a level lower to rebuild consistency.`);
   }
-  why.push(`${LEVELS[level].label}: from ${startKmFor(h)} km a week to about ${peakFor(h, { dist, level, days, weeks })} km${h.recent12 > 0 ? `; your 12-week average is ${Math.round(h.recent12)} km` : ""}.`);
-  if (h.recent12 > 0 && h.recent4 < h.recent12 * 0.75)
+  const hs = atStart(weeks);
+  why.push(`${LEVELS[level].label}: from ${startKmFor(hs)} km a week to about ${peakFor(hs, { dist, level, days, weeks })} km${h.recent12 > 0 ? `; your 12-week average is ${Math.round(h.recent12)} km` : ""}.`);
+  if (hs !== h && weeksAvailable > weeks) why.push(`It starts from where your current plan has you by then (${Math.round(hs.recent4)} km weeks, long runs to ${Math.round(hs.longest8)} km).`);
+  else if (h.recent12 > 0 && h.recent4 < h.recent12 * 0.75)
     why.push(`Your last 4 weeks (${Math.round(h.recent4)} km a week) are well below the 12-week average, so it starts from ${startKmFor(h)} km rather than where you were.`);
   weeks = Math.min(weeks, weeksAvailable);
   if (weeksAvailable > weeks) why.push(`${weeks} weeks is enough: it starts on ${fmtDay(addDays(firstMonday, (weeksAvailable - weeks) * 7))}, and your current plan runs until then.`);
