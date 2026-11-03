@@ -50,10 +50,16 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
 
   const [o, setO] = useState<BuildOptions | null>(null);
   const available = o ? Math.max(1, diffDays(firstMonday, mondayOf(o.raceDate)) / 7 + 1) : 0;
-  const rec = useMemo(() => (o ? recommend(history, o.dist, available) : null), [history, o?.dist, available]);
+  // What a marathon at your fitness needs each week (marathon shape's target), so the suggestion can aim for it.
+  const needKm = useMemo(() => {
+    if (!f || !o || o.dist !== "marathon") return null;
+    const at = addDays(o.raceDate, -14);
+    return marathonShape(f.runs, at, f.project(at) ?? f.current ?? 55).targetKm;
+  }, [f, o?.dist, o?.raceDate]);
+  const rec = useMemo(() => (o ? recommend(history, o.dist, available, firstMonday, needKm) : null), [history, o?.dist, available, firstMonday, needKm]);
   // Start from the plan's own settings if it was built here, else from the next big race and the recommendation.
   useEffect(() => {
-    if (o || !runs.length) return;
+    if (o || !runs.length || !f) return;
     if (plan.built && plan.built.raceDate > today) {
       setO({ ...plan.built });
       return;
@@ -62,9 +68,11 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
     const raceDate = goal?.date ?? addDays(today, 16 * 7);
     const dist = goal ? distOf(goal.name) : "marathon";
     const avail = Math.max(1, diffDays(firstMonday, mondayOf(raceDate)) / 7 + 1);
-    const r = recommend(history, dist, avail);
+    const at = addDays(raceDate, -14);
+    const need = f && dist === "marathon" ? marathonShape(f.runs, at, f.project(at) ?? f.current ?? 55).targetKm : null;
+    const r = recommend(history, dist, avail, firstMonday, need);
     setO({ raceName: goal?.name ?? "", raceDate, dist, target: goal?.target ?? "", weeks: r.weeks, level: r.level, days: r.days, longDay: "sun", keepRaces: true });
-  }, [runs.length, plan.built, races, history, today, firstMonday, o]);
+  }, [runs.length, plan.built, races, history, today, firstMonday, o, f]);
 
   const [busy, setBusy] = useState(false);
   const [armed, setArmed] = useState(false);

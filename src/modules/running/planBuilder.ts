@@ -152,29 +152,53 @@ export interface Recommendation {
   why: string[];
 }
 
-export function recommend(h: History, dist: RaceDist, weeksAvailable: number): Recommendation {
+/**
+ * A suggested level, days a week and length. `needKm` is the weekly volume a
+ * marathon at your fitness needs (from marathon shape): the suggestion aims
+ * to peak a little above it, when that's reachable from where you are.
+ */
+export function recommend(h: History, dist: RaceDist, weeksAvailable: number, firstMonday: string, needKm: number | null = null): Recommendation {
   const why: string[] = [];
-  const weeks = Math.max(4, Math.min(weeksAvailable, Math.max(DEFAULT_WEEKS[dist], Math.min(weeksAvailable, dist === "marathon" ? 20 : 14))));
+  const order: Level[] = ["beginner", "intermediate", "advanced", "elite"];
+  let weeks = Math.max(4, Math.min(weeksAvailable, DEFAULT_WEEKS[dist] + (dist === "marathon" ? 4 : 2)));
   let days = Math.round(h.runsPerWeek) + 1;
   if (dist === "marathon") days = Math.max(days, 4);
   days = Math.max(3, Math.min(6, days));
-  why.push(`You've run ${h.runsPerWeek.toFixed(1)} times a week lately, so ${days} days a week is a small step up.`);
-  // The highest level whose peak you can reach from where you are.
-  const order: Level[] = ["beginner", "intermediate", "advanced", "elite"];
+  const daysWhy = `You've run ${h.runsPerWeek.toFixed(1)} times a week lately, so ${days} days a week is a small step up.`;
+  // The highest level whose peak you can reach from where you are, and that your recent weeks support.
   let level: Level = "beginner";
   for (const lv of order) {
     const peak = peakFor(h, { dist, level: lv, days, weeks });
     if (peak >= LEVELS[lv].peak[dist] * 0.85 && h.recent12 >= LEVELS[lv].peak[dist] * 0.55) level = lv;
   }
   if (h.vdot != null && h.vdot >= 55 && level === "beginner") level = "intermediate";
+  const goal = needKm ? Math.round(needKm * 1.1) : null;
+  const baseDays = days;
+  if (goal && h.weeksRun12 >= 8) {
+    // Step up (level, then days, then weeks) until the plan peaks where a marathon at your fitness needs.
+    const reach = () => peakFor(h, { dist, level, days, weeks });
+    for (let n = 0; n < 12 && reach() < goal; n++) {
+      if (order.indexOf(level) < 3 && LEVELS[level].peak[dist] < goal && h.recent12 >= LEVELS[order[order.indexOf(level) + 1]].peak[dist] * 0.4) level = order[order.indexOf(level) + 1];
+      else if (days < 7 && capForDays(days, dist, level) < goal) days++;
+      else if (weeks < Math.min(weeksAvailable, 24)) weeks += 2;
+      else break;
+    }
+    why.push(
+      reach() >= goal
+        ? `At your fitness a marathon needs about ${Math.round(needKm!)} km weeks; this peaks at ${reach()} km so you reach 100% marathon shape.`
+        : `At your fitness a marathon needs about ${Math.round(needKm!)} km weeks; ${reach()} km is as high as is safe from where you are in the time there is.`,
+    );
+  }
+  why.unshift(days > baseDays ? `You've run ${h.runsPerWeek.toFixed(1)} times a week lately; ${days} days a week makes room for the mileage a marathon needs (shorter runs, not longer ones).` : daysWhy);
   if (h.weeksRun12 < 8 && level !== "beginner") {
     level = order[order.indexOf(level) - 1];
     why.push(`You ran in ${h.weeksRun12} of the last 12 weeks, so it starts a level lower to rebuild consistency.`);
   }
-  why.push(`${LEVELS[level].label}: from ${startKmFor(h)} km a week to about ${peakFor(h, { dist, level, days, weeks })} km, which ${h.recent12 > 0 ? `compares with your ${Math.round(h.recent12)} km average over 12 weeks` : "is a safe build from little recent running"}.`);
+  why.push(`${LEVELS[level].label}: from ${startKmFor(h)} km a week to about ${peakFor(h, { dist, level, days, weeks })} km${h.recent12 > 0 ? `; your 12-week average is ${Math.round(h.recent12)} km` : ""}.`);
   if (h.recent12 > 0 && h.recent4 < h.recent12 * 0.75)
     why.push(`Your last 4 weeks (${Math.round(h.recent4)} km a week) are well below the 12-week average, so it starts from ${startKmFor(h)} km rather than where you were.`);
-  if (weeksAvailable > weeks) why.push(`${weeks} weeks is enough for a ${DIST_LABEL[dist].toLowerCase()}; it starts on ${fmtDay(addDays(mondayOf(new Date().toISOString().slice(0, 10)), (weeksAvailable - weeks) * 7))}, and your current plan runs until then.`);
+  weeks = Math.min(weeks, weeksAvailable);
+  if (weeksAvailable > weeks) why.push(`${weeks} weeks is enough: it starts on ${fmtDay(addDays(firstMonday, (weeksAvailable - weeks) * 7))}, and your current plan runs until then.`);
   return { level, days, weeks, why };
 }
 

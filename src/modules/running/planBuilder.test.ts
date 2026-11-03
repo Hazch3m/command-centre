@@ -47,11 +47,15 @@ describe("plan builder", () => {
   });
 
   it("suggests something sensible from your training", () => {
-    const r = recommend(H, "marathon", 25);
+    const r = recommend(H, "marathon", 25, "2026-11-09");
     expect(r.days).toBeGreaterThanOrEqual(4);
     expect(r.weeks).toBeLessThanOrEqual(25);
     expect(["intermediate", "advanced"]).toContain(r.level);
-    expect(recommend({ ...H, recent4: 5, recent12: 8, runsPerWeek: 1, weeksRun12: 5, vdot: null }, "half", 12).level).toBe("beginner");
+    // Aiming for what a marathon needs pushes the suggestion up.
+    const big = recommend(H, "marathon", 25, "2026-11-09", 100);
+    expect(["advanced", "elite"]).toContain(big.level);
+    expect(big.days).toBeGreaterThanOrEqual(r.days);
+    expect(recommend({ ...H, recent4: 5, recent12: 8, runsPerWeek: 1, weeksRun12: 5, vdot: null }, "half", 12, "2026-11-09").level).toBe("beginner");
   });
 
   it("gives Daniels-like paces", () => {
