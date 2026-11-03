@@ -30,6 +30,43 @@ jobs:
           git -c user.name=ci -c user.email=ci@localhost commit -qm "Preview of ${GITHUB_SHA}"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}" preview
 
+  # The phone app, and (once Cloudflare is set up) the sync service that serves it.
+  phone:
+    needs: browser-preview
+    runs-on: ubuntu-latest
+    env:
+      HAS_CF: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: bash ci/run.sh "Phone build" npm run build:phone
+      - name: Push to phone-preview branch
+        run: |
+          cp -r cloud/public phone-dist
+          cd phone-dist
+          git init -q -b phone-preview
+          git -c user.name=ci -c user.email=ci@localhost add -A
+          git -c user.name=ci -c user.email=ci@localhost commit -qm "Phone app of ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}" phone-preview
+      - name: Deploy the sync service to Cloudflare
+        if: env.HAS_CF == 'true'
+        working-directory: cloud
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npm install --no-audit --no-fund
+          set -o pipefail
+          npx wrangler deploy 2>&1 | tee deploy.log
+          url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' deploy.log | head -1)
+          echo "::notice title=Sync service address::${url:-see the deploy log}"
+      - name: Cloudflare not set up yet
+        if: env.HAS_CF != 'true'
+        run: echo "::notice title=Phone sync::Add the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repository secrets to deploy the sync service."
+
   windows:
     runs-on: windows-latest
     steps:

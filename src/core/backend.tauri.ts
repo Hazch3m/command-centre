@@ -47,4 +47,7 @@ export const backend: Backend = {
   watchCall: (name, args) => invoke("watch_call", { name, args }),
   watchDisconnect: () => invoke("watch_disconnect"),
   weatherFetch: (lat, lon) => invoke("weather_fetch", { lat, lon }),
+  phoneLinkGet: () => invoke("phone_link_get"),
+  phoneLinkSet: (link) => invoke("phone_link_set", { link }),
+  phoneSnapshot: async () => new Uint8Array(await invoke<ArrayBuffer>("phone_snapshot")),
 };

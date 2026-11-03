@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
     "tauri": "tauri",
-    "preview:browser": "vite --mode browser"
+    "preview:browser": "vite --mode browser",
+    "build:phone": "vite build --mode phone --outDir cloud/public --emptyOutDir --base ./ && node -e \"require('fs').renameSync('cloud/public/phone.html','cloud/public/index.html')\""
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.5",
@@ -17,7 +18,8 @@
     "@tauri-apps/plugin-opener": "^2.2.6",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-grid-layout": "^1.5.1"
+    "react-grid-layout": "^1.5.1",
+    "qrcode-generator": "^1.4.4"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.5.0",

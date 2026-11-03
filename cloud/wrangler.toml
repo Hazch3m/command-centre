@@ -1,0 +1,19 @@
+# Command Centre sync service: stores the PC's encrypted snapshot and the
+# phone's encrypted changes, and serves the phone app. It can't read either.
+name = "command-centre-sync"
+main = "src/worker.ts"
+compatibility_date = "2026-01-15"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[[durable_objects.bindings]]
+name = "STORE"
+class_name = "Store"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Store"]

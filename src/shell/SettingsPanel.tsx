@@ -3,6 +3,7 @@ import { backend } from "@backend";
 import type { AppConfig, BackupStatus, MonitorInfo } from "../core/backend.types";
 import { getSettings, subscribeSettings, TEXT_SIZES, updateSettings } from "../core/settings";
 import { Connections } from "./Connections";
+import { PhoneSetting } from "./PhoneSetting";
 import { CalendarFeeds } from "../modules/calendar/Connect";
 import { GarminSetting } from "../modules/health";
 import { WatchSetting } from "../modules/watch";
@@ -168,6 +169,9 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
             <Toggle on={taskSync} label="Sync tasks with Google Tasks" onChange={(v) => setTaskSyncEnabled(v).then(() => setTaskSync(v))} />
           )}
         </Row>
+
+        <h3>Phone</h3>
+        <PhoneSetting />
 
         <h3>Data</h3>
         <Row label="Data folder" hint={folder} path>

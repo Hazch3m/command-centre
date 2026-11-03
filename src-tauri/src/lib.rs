@@ -2,6 +2,7 @@ mod backup;
 mod config;
 mod db;
 mod oauth;
+mod phone;
 mod garmin;
 mod weather;
 mod watch;
@@ -230,6 +231,9 @@ pub fn run() {
             garmin::garmin_connect,
             garmin::garmin_request,
             weather::weather_fetch,
+            phone::phone_link_get,
+            phone::phone_link_set,
+            phone::phone_snapshot,
             watch::watch_status,
             watch::watch_connect,
             watch::watch_call,

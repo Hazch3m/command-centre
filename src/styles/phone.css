@@ -1,0 +1,335 @@
+/* Command Centre on the phone: one column, scrolling page, tabs along the bottom. */
+
+:root.phone-root {
+  font-size: calc(15px * var(--scale, 1));
+  -webkit-text-size-adjust: 100%;
+}
+body.phone {
+  overflow: auto;
+  overscroll-behavior-y: contain;
+  user-select: auto;
+  -webkit-tap-highlight-color: transparent;
+  background: var(--bg);
+}
+body.phone #root {
+  height: auto;
+  min-height: 100dvh;
+}
+
+.phone-app {
+  min-height: 100dvh;
+  padding-bottom: calc(4.4rem + env(safe-area-inset-bottom));
+}
+.phone-top {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: calc(env(safe-area-inset-top) + 0.5rem) 0.9rem 0.55rem;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+.phone-top h1 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sync-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 58vw;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--text-2);
+  font-size: 0.72rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sync-chip.warn {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 40%, var(--line));
+}
+.sync-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+}
+.sync-chip.warn .sync-dot {
+  background: var(--warn);
+}
+.sync-dot.spin {
+  animation: sync-pulse 0.9s ease-in-out infinite;
+}
+@keyframes sync-pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.phone-main {
+  padding: 0.7rem 0.7rem 1rem;
+}
+.phone-today {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.phone .card {
+  height: auto;
+  min-height: 0;
+}
+.phone .card-body {
+  container-type: inline-size;
+  padding: 0.8rem 0.85rem;
+}
+.phone .chart-fill {
+  height: 170px;
+  flex: none;
+}
+.phone .card-running .card-body,
+.phone .card-fitness .card-body {
+  min-height: 18rem;
+}
+
+/* Bottom tabs */
+.phone-tabs {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  padding: 0.3rem 0.2rem calc(0.3rem + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--line);
+}
+.phone-tab {
+  --mod: var(--accent);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.3rem 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 600;
+}
+.phone-tab svg {
+  width: 1.45rem;
+  height: 1.45rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.phone-tab.on {
+  color: var(--mod);
+}
+.phone-tab.tab-running { --mod: var(--c-running); }
+.phone-tab.tab-fitness { --mod: var(--c-fitness); }
+.phone-tab.tab-health { --mod: var(--c-health); }
+.phone-tab.tab-calendar { --mod: var(--c-calendar); }
+.phone-tab.tab-tasks { --mod: var(--c-tasks); }
+.phone-tab.tab-checklist { --mod: var(--c-checklist); }
+
+/* Full pages on a narrow screen */
+.phone .tab-page,
+.phone .subpage,
+.phone .card-page {
+  height: auto;
+  overflow: visible;
+}
+.phone .subpage {
+  padding: 0.8rem 0.75rem 1.2rem;
+}
+.phone .page-head h1 {
+  font-size: 1.2rem;
+}
+.phone .page-tabs,
+.phone .segmented {
+  max-width: 100%;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+}
+.phone .page-tabs button,
+.phone .segmented button {
+  flex: none;
+  white-space: nowrap;
+}
+.phone .table {
+  display: block;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.phone .two-col,
+.phone .recent-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+.phone .recent-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.phone .tiles {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.phone .hm-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Plan week: days as rows */
+.phone .pwv-head {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.phone .pwv-title {
+  order: 1;
+  flex: 1 1 60%;
+}
+.phone .pwv-km {
+  order: 3;
+  flex: 1 1 100%;
+  align-items: stretch;
+}
+.phone .pwv-arrow {
+  width: 2.3rem;
+  height: 2.3rem;
+}
+.phone .pwv-days {
+  grid-template-columns: 1fr;
+  min-height: 0;
+  gap: 0.45rem;
+}
+.phone .pwv-day {
+  display: grid;
+  grid-template-columns: 3.2rem 1fr auto;
+  grid-template-areas: "top text km" "top pace km" "top done done";
+  align-items: start;
+  gap: 0.15rem 0.6rem;
+  padding: 0.6rem 0.7rem;
+  border-top-width: 1px;
+  border-left: 4px solid var(--rt);
+}
+.phone .pwv-day-top {
+  grid-area: top;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.phone .pwv-day .rt-pill {
+  display: none;
+}
+.phone .pwv-km-big {
+  grid-area: km;
+  font-size: 1.4rem;
+}
+.phone .pwv-text {
+  grid-area: text;
+}
+.phone .pwv-pace {
+  grid-area: pace;
+  justify-self: start;
+}
+.phone .pwv-tags {
+  display: none;
+}
+.phone .pwv-done {
+  grid-area: done;
+}
+.phone .pwv-strip {
+  display: none;
+}
+
+/* Run and week pop-ups fill the screen */
+.phone .modal-backdrop {
+  align-items: stretch;
+  padding: 0;
+}
+.phone .modal {
+  width: 100vw !important;
+  max-width: none;
+  max-height: none;
+  min-height: 100dvh;
+  border-radius: 0;
+  padding-top: calc(env(safe-area-inset-top) + 0.6rem);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+}
+
+/* Nothing to arrange or set up here */
+.phone .wk-edit,
+.phone .drag-handle {
+  display: none;
+}
+
+.phone-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+  text-align: center;
+  padding: 1rem 0.5rem 0;
+}
+
+/* Linking */
+.pair {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  padding: calc(env(safe-area-inset-top) + 1.5rem) 1.4rem calc(env(safe-area-inset-bottom) + 1.5rem);
+  text-align: center;
+  max-width: 28rem;
+  margin: 0 auto;
+}
+.pair h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+.pair ol {
+  text-align: left;
+  line-height: 1.6;
+}
+.pair-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+}
+.pair-code {
+  width: 100%;
+  font-size: 1.8rem;
+  letter-spacing: 0.12em;
+  text-align: center;
+  padding: 0.6rem;
+  border-radius: 12px;
+  border: 1px solid var(--line-2);
+  background: var(--card);
+  color: var(--text);
+}
+.pair-go {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+}

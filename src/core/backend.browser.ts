@@ -192,6 +192,20 @@ export const backend: Backend = {
     if (!fx) throw new Error("offline: no test weather");
     return fx;
   },
+  // Test harness: the link lives in localStorage; the snapshot is sql.js's own export.
+  phoneLinkGet: async () => JSON.parse(localStorage.getItem("cc-phone-link") ?? "null"),
+  phoneLinkSet: async (link) => (link ? localStorage.setItem("cc-phone-link", JSON.stringify(link)) : localStorage.removeItem("cc-phone-link")),
+  phoneSnapshot: async () => {
+    const copy = new SQL!.Database((await getDb()).export());
+    try {
+      copy.exec("DELETE FROM strava_full");
+    } catch {
+      /* no such table yet */
+    }
+    const out = copy.export();
+    copy.close();
+    return out;
+  },
   icsFetch: async () => {
     const r = await fetch("fixtures/calendar.ics").catch(() => null);
     if (!r?.ok) throw new Error("offline: no test calendar");

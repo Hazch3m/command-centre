@@ -10,17 +10,23 @@ export default defineConfig(({ mode }) => ({
   clearScreen: false,
   resolve: {
     alias: {
-      "@backend": resolve(__dirname, mode === "browser" ? "src/core/backend.browser.ts" : "src/core/backend.tauri.ts"),
+      "@backend": resolve(__dirname, mode === "browser" ? "src/core/backend.browser.ts" : mode === "phone" ? "src/core/backend.phone.ts" : "src/core/backend.tauri.ts"),
+      "qr-lib": resolve(__dirname, "node_modules/qrcode-generator/qrcode.js"),
     },
   },
+  // The phone app (`npm run build:phone`) is its own small site, served by the sync service.
+  publicDir: mode === "phone" ? "phone-public" : "public",
   server: { port: 1420, strictPort: true },
   build: {
     target: "es2022",
     rollupOptions: {
-      input: {
-        main: resolve(__dirname, "index.html"),
-        quickadd: resolve(__dirname, "quickadd.html"),
-      },
+      input:
+        mode === "phone"
+          ? { phone: resolve(__dirname, "phone.html") }
+          : {
+              main: resolve(__dirname, "index.html"),
+              quickadd: resolve(__dirname, "quickadd.html"),
+            },
     },
   },
   test: { environment: "node", include: ["src/**/*.test.ts"] },

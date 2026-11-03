@@ -4457,3 +4457,12 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .watch-tile-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.9rem; }
 .watch-tile-list li { padding: 0.3rem 0.5rem; border-radius: 8px; background: var(--card-2); border-left: 3px solid var(--c-watch); }
 @media (max-width: 1100px) { .watch-step { grid-template-columns: 2rem 7rem 1fr; } .watch-step .watch-target, .watch-step .watch-notes { grid-column: 2 / -1; } .watch-days { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* Settings → Phone */
+.phone-setting { display: flex; flex-direction: column; gap: 0.55rem; }
+.phone-url { flex: 1; min-width: 18rem; padding: 0.4rem 0.55rem; border-radius: 8px; border: 1px solid var(--line-2); background: var(--card-2); color: var(--text); font: inherit; }
+.phone-actions { flex-wrap: wrap; gap: 0.4rem; }
+.phone-pair { display: grid; grid-template-columns: auto 1fr; gap: 0.4rem 1.2rem; align-items: center; padding: 0.8rem; border: 1px solid var(--line); border-radius: 12px; background: var(--card-2); }
+.phone-pair .qr { grid-row: span 3; border-radius: 8px; }
+.phone-pair ol { margin: 0; padding-left: 1.1rem; line-height: 1.6; }
+.phone-code { font-size: 2rem; font-weight: 700; letter-spacing: 0.1em; }

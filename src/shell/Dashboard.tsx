@@ -12,9 +12,11 @@ import { COLS, ROWS, defaultFor, fillGaps, findSpot, fitToScreen, loadLayout, or
 import { SettingsPanel } from "./SettingsPanel";
 import { RunViewHost } from "../modules/running/RunView";
 import { usePlanCalendarSync } from "../modules/running/planCalendar";
+import { usePhoneSync } from "../core/phoneSync";
 
 function BackgroundJobs() {
   usePlanCalendarSync();
+  usePhoneSync();
   return null;
 }
 
@@ -87,7 +89,7 @@ function useTabs() {
   );
 }
 
-function ModulePage({ id }: { id: string }) {
+export function ModulePage({ id }: { id: string }) {
   const m = moduleById.get(id);
   if (!m) return null;
   const Page = m.page?.Page;

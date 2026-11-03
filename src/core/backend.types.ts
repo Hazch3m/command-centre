@@ -108,6 +108,18 @@ export interface Backend {
 
   /** Open-Meteo forecast. Rejects with "offline: …" when there's no connection. */
   weatherFetch(lat: number, lon: number): Promise<unknown>;
+
+  // ---- Phone link (cloud sync) ----
+  /** The sync service address and the link's secret (kept in the keychain). */
+  phoneLinkGet(): Promise<PhoneLink | null>;
+  phoneLinkSet(link: PhoneLink | null): Promise<void>;
+  /** A copy of the database for the phone (SQLite file bytes, big run streams left out). */
+  phoneSnapshot(): Promise<Uint8Array>;
+}
+
+export interface PhoneLink {
+  url: string;
+  secret: string;
 }
 
 export interface WatchStatus {

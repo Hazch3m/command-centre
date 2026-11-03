@@ -3,3 +3,6 @@ dist/
 src-tauri/target/
 src-tauri/gen/
 *.log
+cloud/public/
+cloud/node_modules/
+cloud/.wrangler/
