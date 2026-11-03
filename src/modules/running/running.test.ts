@@ -86,3 +86,11 @@ describe("stats", () => {
     expect(h.map((r) => [r.name, r.km])).toEqual([["Lausanne marathon", 42.195], ["TT", 5]]);
   });
 });
+
+describe("Strava errors", () => {
+  it("explains an inactive API app", async () => {
+    const { stravaError } = await import("./strava");
+    expect(stravaError(403, { message: "Forbidden", errors: [{ resource: "Application", field: "Status", code: "Inactive" }] })).toMatch(/subscription/);
+    expect(stravaError(403, { message: "Forbidden", errors: [{ resource: "Thing", field: "x", code: "y" }] })).toBe("Strava answered 403 (Thing x y)");
+  });
+});

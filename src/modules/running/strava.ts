@@ -100,7 +100,7 @@ export async function loadFullRun(id: string): Promise<FullRun> {
     device_name?: string;
   };
   const a = await backend.apiRequest<A>("strava", "GET", `https://www.strava.com/api/v3/activities/${id}?include_all_efforts=false`);
-  if (a.status !== 200) throw new Error(`Strava answered ${a.status}`);
+  if (a.status !== 200) throw new Error(stravaError(a.status, a.body));
   let streams: FullRun["streams"] = null;
   try {
     const st = await backend.apiRequest<Record<string, { data: number[] }>>(
@@ -204,6 +204,23 @@ interface StravaDetail {
   laps?: { distance: number; moving_time: number; average_speed: number; average_heartrate?: number }[];
 }
 
+/**
+ * Strava's reason in plain words. Its 403s say why in the body: an "Inactive"
+ * application is one whose owner has no Strava subscription, which Strava
+ * has required of personal API apps since 30 June 2026.
+ */
+export function stravaError(status: number, body: unknown): string {
+  const errs = (body as { errors?: { resource?: string; field?: string; code?: string }[] } | null)?.errors ?? [];
+  if (errs.some((e) => e.resource === "Application" && /inactive/i.test(e.code ?? "")))
+    return "Strava has switched off your Strava API app (status: Inactive). Since 30 June 2026 Strava only lets an API app work while the Strava account that owns it has a subscription. Subscribe on that account, then reactivate the app at strava.com/settings/api.";
+  if (status === 401 || errs.some((e) => /access_token|authorization/i.test(`${e.field} ${e.code}`)))
+    return "Strava no longer accepts the app's sign-in. Reconnect Strava in Settings.";
+  if (status === 403 && errs.some((e) => /activity:read/i.test(`${e.field} ${e.code}`)))
+    return "Strava didn't give the app permission to read your activities. Reconnect Strava in Settings and allow activity access.";
+  const detail = errs.map((e) => [e.resource, e.field, e.code].filter(Boolean).join(" ")).join("; ");
+  return `Strava answered ${status}${detail ? ` (${detail})` : ""}`;
+}
+
 /** Detail requests per sync. Strava allows 100 requests per 15 minutes; this leaves plenty of headroom. */
 const DETAIL_BATCH = 25;
 
@@ -236,7 +253,7 @@ async function doSyncStrava(): Promise<SyncState> {
         `https://www.strava.com/api/v3/athlete/activities?after=${after}&per_page=200&page=${page}`,
       );
       if (r.status === 429) throw new Error("Strava's rate limit was hit; trying again later.");
-      if (r.status !== 200 || !Array.isArray(r.body)) throw new Error(`Strava answered ${r.status}`);
+      if (r.status !== 200 || !Array.isArray(r.body)) throw new Error(stravaError(r.status, r.body));
       const runs = r.body.filter((a) => RUN_SPORTS.includes(a.sport_type ?? a.type));
       if (runs.length)
         await db.batch(
@@ -318,7 +335,7 @@ async function syncDetails(): Promise<boolean> {
       await db.execute("UPDATE strava_activities SET has_hr = 0 WHERE id = ?", [id]);
       continue;
     }
-    if (r.status !== 200) throw new Error(`Strava answered ${r.status}`);
+    if (r.status !== 200) throw new Error(stravaError(r.status, r.body));
     const detail: RunDetail = {
       splits: (r.body.splits_metric ?? []).map((s) => ({
         distance: s.distance,
