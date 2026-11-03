@@ -15,10 +15,10 @@ export interface PlanAdjust {
   longExtra: number;
   /** No long run longer than this, km (null = as planned). */
   longMax: number | null;
-  /** Days you run. At least 3. */
-  runDays: DayKey[];
-  /** Where the long run goes. */
-  longDay: DayKey;
+  /** Days you run, at least 3 (null = the days each week of the plan has). */
+  runDays: DayKey[] | null;
+  /** Where the long run goes (null = where the plan has it). */
+  longDay: DayKey | null;
   /** First Monday the settings apply to (earlier weeks stay as they were). */
   from: string;
 }
@@ -27,12 +27,13 @@ export const ADJUST_DEFAULTS: Omit<PlanAdjust, "from"> = {
   volume: 1,
   longExtra: 0,
   longMax: null,
-  runDays: ["tue", "wed", "thu", "sat", "sun"],
-  longDay: "sun",
+  runDays: null,
+  longDay: null,
 };
+const FALLBACK_DAYS: DayKey[] = ["tue", "wed", "thu", "sat", "sun"];
 
-/** The plan's own run days and long-run day, so "as planned" can be shown in the settings. */
-export function planDefaults(plan: Plan, from: string): Omit<PlanAdjust, "from"> {
+/** The plan's usual run days and long-run day, to show what "as planned" means in the settings. */
+export function planDefaults(plan: Plan, from: string): { runDays: DayKey[]; longDay: DayKey } {
   const count = new Map<DayKey, number>();
   const longs = new Map<DayKey, number>();
   for (const w of plan.weeks.filter((x) => x.start >= from).slice(0, 8)) {
@@ -44,11 +45,10 @@ export function planDefaults(plan: Plan, from: string): Omit<PlanAdjust, "from">
   }
   const runDays = WEEK_KEYS.filter((k) => (count.get(k) ?? 0) >= 4);
   const longDay = [...longs.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "sun";
-  return { ...ADJUST_DEFAULTS, runDays: runDays.length >= 3 ? runDays : ADJUST_DEFAULTS.runDays, longDay };
+  return { runDays: runDays.length >= 3 ? runDays : FALLBACK_DAYS, longDay };
 }
 
-export const isAdjusted = (a: PlanAdjust | undefined | null, base: Omit<PlanAdjust, "from">) =>
-  !!a && (a.volume !== 1 || a.longExtra !== 0 || a.longMax != null || a.longDay !== base.longDay || a.runDays.slice().sort().join() !== base.runDays.slice().sort().join());
+export const isAdjusted = (a: PlanAdjust | undefined | null) => !!a && (a.volume !== 1 || a.longExtra !== 0 || a.longMax != null || a.longDay != null || a.runDays != null);
 
 const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x));
 const IDX = (k: DayKey) => WEEK_KEYS.indexOf(k);
@@ -63,11 +63,12 @@ export function adjustWeek(plan: Plan, week: PlanWeek, a: PlanAdjust): PlanWeek 
   if (week.start < a.from) return week;
   const days = forecastWeek(plan, week.start).days;
   if (!days.some((d) => (d.km ?? 0) > 0)) return week;
-  const run = new Set(a.runDays.length >= 3 ? a.runDays : ADJUST_DEFAULTS.runDays);
-  run.add(a.longDay);
-
   const race = days.findIndex((d) => d.race || d.kind === "race");
   const longI = days.findIndex((d) => d.kind === "long");
+  const longDay: DayKey = a.longDay ?? (longI >= 0 ? WEEK_KEYS[longI] : "sun");
+  const own = WEEK_KEYS.filter((_k, i) => (days[i].km ?? 0) > 0 && i !== race);
+  const run = new Set(a.runDays && a.runDays.length >= 3 ? a.runDays : own.length >= 3 ? own : FALLBACK_DAYS);
+  run.add(longDay);
   const keys = days.map((d, i) => ({ d, i })).filter(({ d, i }) => d.kind === "key" && i !== race);
   const easy = days.map((d, i) => ({ d, i })).filter(({ d, i }) => (d.kind === "easy" || d.kind === "optional") && (d.km ?? 0) > 0 && i !== race && i !== longI);
   const total = days.reduce((s, d) => s + (d.km ?? 0), 0);
@@ -85,7 +86,7 @@ export function adjustWeek(plan: Plan, week: PlanWeek, a: PlanAdjust): PlanWeek 
     if (a.longMax != null) longKm = Math.min(longKm, a.longMax);
     longKm = Math.max(10, longKm);
     // Race weeks keep the long run where the plan put it.
-    const at = race >= 0 ? longI : IDX(a.longDay);
+    const at = race >= 0 ? longI : IDX(longDay);
     const slot = out[at] ? longI : at;
     out[slot] = { text: withKm(days[longI].text, longKm, "long run"), km: longKm, kind: "long" };
   }
@@ -111,8 +112,12 @@ export function adjustWeek(plan: Plan, week: PlanWeek, a: PlanAdjust): PlanWeek 
   const order = [...slots].sort((x, y) => gap(y) - gap(x) || Number(nextToKey(x)) - Number(nextToKey(y)) || x - y);
   const sizes = easy.map((x) => x.d.km ?? 0).sort((x, y) => y - x);
   const smallest = sizes.length ? sizes[sizes.length - 1] : 8;
-  const weight = new Map(order.map((i, n) => [i, sizes[n] ?? smallest]));
-  const capFor = (i: number) => (longSlot >= 0 && Math.abs(i - longSlot) === 1 ? 12 : 22);
+  // Same days as the plan: each easy run keeps its own size and place. New days: sizes handed out by distance from the long run.
+  const sameDays = !a.runDays && !a.longDay;
+  const weight = new Map(order.map((i, n) => [i, sameDays && (days[i].km ?? 0) > 0 && i !== longI ? days[i].km! : sizes[n] ?? smallest]));
+  const biggest = sizes[0] ?? 0;
+  const nextToLong = Math.max(0, ...easy.filter((x) => longI >= 0 && Math.abs(x.i - longI) === 1).map((x) => x.d.km ?? 0));
+  const capFor = (i: number) => Math.round(longSlot >= 0 && Math.abs(i - longSlot) === 1 ? Math.max(12, nextToLong * a.volume) : Math.max(22, biggest * a.volume));
   const left = Math.max(0, target - fixed);
   const wsum = slots.reduce((s, i) => s + (weight.get(i) ?? 8), 0) || 1;
   const hadMedium = easy.some((x) => /medium/i.test(x.d.text) || (x.d.km ?? 0) >= 16);
@@ -120,7 +125,7 @@ export function adjustWeek(plan: Plan, week: PlanWeek, a: PlanAdjust): PlanWeek 
   for (const i of order) {
     const k = clamp(Math.round((left * (weight.get(i) ?? 8)) / wsum), 5, capFor(i));
     const recovery = longSlot >= 0 && i === longSlot + 1;
-    const medium = hadMedium && i === order[0] && k >= 16;
+    const medium = hadMedium && (sameDays ? /medium/i.test(days[i].text) : i === order[0]) && k >= 16;
     let text = `${k} km ${recovery ? "recovery" : medium ? "medium-long" : "easy"}`;
     if (strides && !recovery && !medium && gap(i) > 1) {
       text += " + 6 × 20 s strides";
@@ -157,7 +162,8 @@ export function planStats(plan: Plan, from: string, to: string) {
   for (const w of plan.weeks.filter((x) => x.start >= from && x.start <= to)) {
     const f = forecastWeek(plan, w.start);
     const runs = f.days.filter((d: ForecastDay) => (d.km ?? 0) > 0);
-    weeks.push({ monday: w.start, km: f.plannedKm ?? 0, long: Math.max(0, ...runs.map((d) => d.km ?? 0)), runs: runs.length });
+    const training = runs.filter((d) => !d.race && d.kind !== "race");
+    weeks.push({ monday: w.start, km: f.plannedKm ?? 0, long: Math.max(0, ...training.map((d) => d.km ?? 0)), runs: runs.length });
   }
   const peak = Math.max(0, ...weeks.map((w) => w.km));
   const longest = Math.max(0, ...weeks.map((w) => w.long));

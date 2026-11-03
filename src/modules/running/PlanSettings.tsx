@@ -6,7 +6,7 @@ import { marathonShape, useFitness } from "./fitness";
 import { forecastWeek } from "./forecast";
 import { plannedRuns } from "./FitnessPlan";
 import { mondayOf, savePlanAdjust, WEEK_KEYS, type DayKey, type Plan } from "./plan";
-import { applyAdjust, isAdjusted, nextMonday, planDefaults, planStats, type PlanAdjust } from "./planAdjust";
+import { ADJUST_DEFAULTS, applyAdjust, isAdjusted, nextMonday, planDefaults, planStats, type PlanAdjust } from "./planAdjust";
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DAY_LABEL: Record<DayKey, string> = { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" };
@@ -34,7 +34,9 @@ export function PlanSettings({ plan, compact }: { plan: Plan; compact?: boolean 
   const today = useToday();
   const base: Plan = useMemo(() => ({ ...plan, weeks: plan.baseWeeks ?? plan.weeks, baseWeeks: undefined, adjust: null }), [plan]);
   const defaults = useMemo(() => planDefaults(base, mondayOf(today)), [base, today]);
-  const [a, setA] = useState<PlanAdjust>(() => plan.adjust ?? { ...defaults, from: nextMonday(today) });
+  const [a, setA] = useState<PlanAdjust>(() => plan.adjust ?? { ...ADJUST_DEFAULTS, from: nextMonday(today) });
+  const days = a.runDays ?? defaults.runDays;
+  const longDay = a.longDay ?? defaults.longDay;
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -44,7 +46,7 @@ export function PlanSettings({ plan, compact }: { plan: Plan; compact?: boolean 
   };
   const f = useFitness(plan);
 
-  const after = useMemo(() => applyAdjust({ ...base, adjust: a }), [base, a]);
+  const after = useMemo(() => (isAdjusted(a) ? applyAdjust({ ...base, adjust: a }) : base), [base, a]);
   const last = base.weeks[base.weeks.length - 1]?.start ?? today;
   const before = useMemo(() => planStats(base, a.from, last), [base, a.from, last]);
   const now = useMemo(() => planStats(after, a.from, last), [after, a.from, last]);
@@ -62,16 +64,16 @@ export function PlanSettings({ plan, compact }: { plan: Plan; compact?: boolean 
   }, [f, base, after, today]);
 
   const toggleDay = (k: DayKey) => {
-    const has = a.runDays.includes(k);
-    if (has && (a.runDays.length <= 3 || k === a.longDay)) return;
-    set({ runDays: has ? a.runDays.filter((x) => x !== k) : WEEK_KEYS.filter((x) => x === k || a.runDays.includes(x)) });
+    const has = days.includes(k);
+    if (has && (days.length <= 3 || k === longDay)) return;
+    set({ runDays: has ? days.filter((x) => x !== k) : WEEK_KEYS.filter((x) => x === k || days.includes(x)) });
   };
   const save = async (next: PlanAdjust | null) => {
     setBusy(true);
     setErr(null);
     try {
-      await savePlanAdjust(next && isAdjusted(next, defaults) ? next : null);
-      if (!next) setA({ ...defaults, from: nextMonday(today) });
+      await savePlanAdjust(next && isAdjusted(next) ? next : null);
+      if (!next) setA({ ...ADJUST_DEFAULTS, from: nextMonday(today) });
       setSaved(true);
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
@@ -79,7 +81,7 @@ export function PlanSettings({ plan, compact }: { plan: Plan; compact?: boolean 
       setBusy(false);
     }
   };
-  const changed = isAdjusted(a, defaults);
+  const changed = isAdjusted(a);
   const bars = now.weeks.map((w, i) => ({
     label: parseKey(w.monday).getDate() <= 7 ? MON[parseKey(w.monday).getMonth()] : "",
     value: w.km,
@@ -117,17 +119,26 @@ export function PlanSettings({ plan, compact }: { plan: Plan; compact?: boolean 
         <section className="ps-card">
           <h4>Days you run</h4>
           <div className="ps-value num">
-            {a.runDays.length} days<small> a week</small>
+            {days.length} days<small> a week{a.runDays ? "" : " (as planned)"}</small>
           </div>
           <div className="ps-days">
             {WEEK_KEYS.map((k) => (
-              <button key={k} type="button" className={(a.runDays.includes(k) ? "on" : "") + (k === a.longDay ? " long" : "")} onClick={() => toggleDay(k)} aria-pressed={a.runDays.includes(k)}>
+              <button key={k} type="button" className={(days.includes(k) ? "on" : "") + (k === longDay ? " long" : "")} onClick={() => toggleDay(k)} aria-pressed={days.includes(k)}>
                 {DAY_LABEL[k]}
               </button>
             ))}
           </div>
           <div className="ps-sub">Long run on</div>
-          <Choice value={a.longDay} options={(["sat", "sun"] as DayKey[]).map((v) => ({ v, l: v === "sat" ? "Saturday" : "Sunday" }))} onChange={(v) => set({ longDay: v, runDays: a.runDays.includes(v) ? a.runDays : WEEK_KEYS.filter((x) => x === v || a.runDays.includes(x)) })} />
+          <Choice
+            value={a.longDay}
+            options={[{ v: null, l: "As planned" }, ...(["sat", "sun"] as DayKey[]).map((v) => ({ v, l: v === "sat" ? "Saturday" : "Sunday" }))]}
+            onChange={(v) => set({ longDay: v, runDays: !v || days.includes(v) ? a.runDays : WEEK_KEYS.filter((x) => x === v || days.includes(x)) })}
+          />
+          {a.runDays && (
+            <button type="button" className="btn ghost small" onClick={() => set({ runDays: null })}>
+              Run days as planned
+            </button>
+          )}
           <p className="ps-note">Sessions stay on their day if you run then, else move to the nearest run day (not next to the long run). Easy runs fill the rest of the week.</p>
         </section>
       </div>

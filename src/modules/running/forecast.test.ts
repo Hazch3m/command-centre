@@ -113,6 +113,16 @@ describe("plan settings", () => {
     expect(plan.baseWeeks).toBe(BUNDLED_PLAN.weeks);
     expect(adjustWeek(BUNDLED_PLAN, week, { ...a, runDays: [...a.runDays], from: "2099-01-01" })).toBe(week);
   });
+  it("keeps the plan's own run days when only the mileage changes", async () => {
+    const { applyAdjust } = await import("./planAdjust");
+    const plan = applyAdjust({ ...BUNDLED_PLAN, adjust: { volume: 1.1, longExtra: 0, longMax: null, runDays: null, longDay: null, from: "2026-01-01" } });
+    for (const w of BUNDLED_PLAN.weeks.slice(0, 20)) {
+      const before = forecastWeek(BUNDLED_PLAN, w.start).days;
+      if (before.some((d) => d.race)) continue;
+      const after = forecastWeek(plan, w.start).days;
+      expect(after.map((d) => (d.km ?? 0) > 0)).toEqual(before.map((d) => (d.km ?? 0) > 0));
+    }
+  });
   it("caps long runs", async () => {
     const { applyAdjust } = await import("./planAdjust");
     const plan = applyAdjust({ ...BUNDLED_PLAN, adjust: { volume: 1, longExtra: 0, longMax: 24, runDays: ["tue", "wed", "thu", "sat", "sun"], longDay: "sun", from: "2026-01-01" } });
