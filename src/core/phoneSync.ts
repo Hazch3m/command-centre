@@ -67,7 +67,7 @@ async function call(link: PhoneLink, keys: LinkKeys | null, path: string, init: 
 /** First connection to a new sync service: makes the link's secret and claims the service. */
 export async function connectService(url: string): Promise<void> {
   const u = base(url);
-  if (!/^(https:\/\/[^/]+|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)$/.test(u)) throw new Error("Paste the address shown after deploying, like https://command-centre-sync.yourname.workers.dev");
+  if (!/^(https:\/\/[a-z0-9.-]+\.workers\.dev|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)$/i.test(u)) throw new Error("Paste the address shown after deploying, like https://command-centre-sync.yourname.workers.dev");
   const secret = newSecret();
   const keys = await linkKeys(secret);
   const link = { url: u, secret };
