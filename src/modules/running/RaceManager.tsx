@@ -5,7 +5,7 @@ import { raceKm } from "./forecast";
 import { priorityOf, savePlanRaces, type Plan, type PlanRace, type RacePriority } from "./plan";
 import { applyAdjust, applyRaceTapers } from "./planAdjust";
 import { raceReadiness, readinessTone } from "./readiness";
-import { ReadinessView, useReadinessInputs } from "./Readiness";
+import { ReadinessView, useReadinessInputs } from "./ReadinessCard";
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

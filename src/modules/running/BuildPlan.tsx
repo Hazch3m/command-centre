@@ -8,7 +8,7 @@ import { raceKm } from "./forecast";
 import { mondayOf, priorityOf, restorePreviousPlan, savePlan, WEEK_KEYS, type Plan, type PlanRace } from "./plan";
 import { buildPlan, DEFAULT_WEEKS, DIST_LABEL, LEVELS, pacesFor, recommend, summarizeHistory, type BuildOptions, type Level, type RaceDist } from "./planBuilder";
 import { raceReadiness } from "./readiness";
-import { ReadinessView, useReadinessInputs } from "./Readiness";
+import { ReadinessView, useReadinessInputs } from "./ReadinessCard";
 import { useRunningData } from "./useRunning";
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

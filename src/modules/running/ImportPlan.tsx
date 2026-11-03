@@ -6,7 +6,7 @@ import { forecastWeek } from "./forecast";
 import { restorePreviousPlan, savePlan, WEEK_KEYS, type Plan, type PlanRace } from "./plan";
 import { CSV_TEMPLATE_DAYS, CSV_TEMPLATE_WEEKS, csvToWeeks, mergeImported, type CsvPlan } from "./planCsv";
 import { raceReadiness } from "./readiness";
-import { ReadinessView, useReadinessInputs } from "./Readiness";
+import { ReadinessView, useReadinessInputs } from "./ReadinessCard";
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const fmt = (d: string) => `${parseKey(d).getDate()} ${MON[parseKey(d).getMonth()]} ${parseKey(d).getFullYear()}`;
