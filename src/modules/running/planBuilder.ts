@@ -164,7 +164,7 @@ export function recommend(h: History, dist: RaceDist, weeksAvailable: number): R
   let level: Level = "beginner";
   for (const lv of order) {
     const peak = peakFor(h, { dist, level: lv, days, weeks });
-    if (peak >= LEVELS[lv].peak[dist] * 0.85 && h.recent12 >= LEVELS[lv].peak[dist] * 0.45) level = lv;
+    if (peak >= LEVELS[lv].peak[dist] * 0.85 && h.recent12 >= LEVELS[lv].peak[dist] * 0.55) level = lv;
   }
   if (h.vdot != null && h.vdot >= 55 && level === "beginner") level = "intermediate";
   if (h.weeksRun12 < 8 && level !== "beginner") {

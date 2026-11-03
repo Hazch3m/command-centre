@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PlanBuilder } from "../modules/running/PlanBuilder";
+import { PlanBuilder } from "../modules/running/BuildPlan";
 import { AboutPlan, PlanSettings } from "../modules/running/PlanSettings";
 import { useRunningData } from "../modules/running/useRunning";
 

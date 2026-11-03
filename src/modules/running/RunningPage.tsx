@@ -20,7 +20,7 @@ import { RecentBlock } from "./RecentBlock";
 import { PaceOnPointTab } from "./PaceOnPoint";
 import { RunsTab } from "./RunsTab";
 import { AboutPlan, PlanSettings } from "./PlanSettings";
-import { PlanBuilder } from "./PlanBuilder";
+import { PlanBuilder } from "./BuildPlan";
 import { PlanEditor } from "./PlanEditor";
 import { PlanList } from "./PlanList";
 import { PlanWeekView } from "./PlanWeekView";
