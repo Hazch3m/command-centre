@@ -4493,3 +4493,4 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .about-plan h4 { margin: 1rem 0 0.3rem; }
 .plan-settings.compact .ps-grid { grid-template-columns: 1fr; }
 .plan-settings.compact .ps-actions { flex-direction: column; align-items: stretch; }
+.ps-card > .btn.ghost.small { align-self: flex-start; padding: 0.2rem 0; text-decoration: underline; text-underline-offset: 3px; color: var(--muted); }

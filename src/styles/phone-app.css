@@ -1000,3 +1000,5 @@ button.p-row-main {
 .p-adjust { display: flex; flex-direction: column; gap: 0.8rem; padding-bottom: 2rem; }
 .p-adjust .ps-days button { padding: 0.6rem 0; }
 .p-about { margin: 0; }
+.p-adjust .ps-actions .btn { padding: 0.85rem 1rem; font-size: 1rem; border-radius: 12px; }
+.p-adjust .ps-actions .ps-note { text-align: center; }
