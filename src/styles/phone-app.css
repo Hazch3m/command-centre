@@ -1002,3 +1002,8 @@ button.p-row-main {
 .p-about { margin: 0; }
 .p-adjust .ps-actions .btn { padding: 0.85rem 1rem; font-size: 1rem; border-radius: 12px; }
 .p-adjust .ps-actions .ps-note { text-align: center; }
+.p-seg { display: flex; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.p-seg button { flex: 1; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 0.95rem; padding: 0.5rem; border-radius: 8px; }
+.p-seg button.on { background: var(--card-2); color: var(--text); font-weight: 600; }
+.p-adjust .plan-builder .btn { padding: 0.75rem 1rem; font-size: 1rem; border-radius: 12px; }
+.p-adjust .pb-fields input { font-size: 16px; }

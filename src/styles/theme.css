@@ -4494,3 +4494,47 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .plan-settings.compact .ps-grid { grid-template-columns: 1fr; }
 .plan-settings.compact .ps-actions { flex-direction: column; align-items: stretch; }
 .ps-card > .btn.ghost.small { align-self: flex-start; padding: 0.2rem 0; text-decoration: underline; text-underline-offset: 3px; color: var(--muted); }
+
+/* ---- Build a plan ---------------------------------------------------------- */
+.plan-builder { display: flex; flex-direction: column; gap: 0.9rem; }
+.pb-history .ps-stats small { font-size: 0.72rem; }
+.pb-rec { display: flex; gap: 1rem; align-items: flex-start; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 0.6rem; font-size: 0.86rem; }
+.pb-rec ul { margin: 0.3rem 0 0; }
+.pb-rec .btn { flex: none; }
+.pb-fields { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 0.5rem; }
+.pb-fields label { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.pb-fields input { width: 100%; min-width: 0; }
+.pb-levels { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.6rem; }
+.pb-level { text-align: left; border: 1px solid var(--line); background: var(--card); color: inherit; border-radius: 10px; padding: 0.7rem 0.8rem; font: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 0.3rem; }
+.pb-level b { display: flex; gap: 0.4rem; align-items: center; }
+.pb-level span { font-size: 0.8rem; color: var(--text-2); }
+.pb-level small { font-size: 0.72rem; color: var(--muted); }
+.pb-level.on { border-color: var(--accent); background: var(--accent-dim); box-shadow: inset 0 0 0 1px var(--accent); }
+.pb-keep { margin-top: 0.4rem; }
+.pb-phases { display: flex; gap: 3px; border-radius: 8px; overflow: hidden; font-size: 0.72rem; }
+.pb-phase { padding: 0.3rem 0.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; color: var(--text); }
+.pb-phase.base, .pb-tag.base { background: var(--info-dim); }
+.pb-phase.build, .pb-tag.build { background: var(--warn-dim); }
+.pb-phase.specific, .pb-tag.specific { background: var(--danger-dim); }
+.pb-phase.taper, .pb-tag.taper { background: var(--accent-dim); }
+.pb-weeks { display: flex; flex-direction: column; gap: 0.6rem; padding-bottom: 0.8rem; }
+.pb-week { border-top: 1px solid var(--line); padding-top: 0.5rem; }
+.pb-week-head { display: flex; gap: 0.6rem; align-items: baseline; font-size: 0.85rem; }
+.pb-week-head .num { margin-left: auto; }
+.pb-tag { font-size: 0.7rem; padding: 0.05rem 0.45rem; border-radius: 999px; }
+.pb-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.3rem; margin-top: 0.35rem; font-size: 0.74rem; }
+.pb-days span { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 0.3rem 0.4rem; line-height: 1.3; }
+.pb-days span i { display: block; font-style: normal; color: var(--muted); font-size: 0.68rem; }
+.pb-days span.rest { opacity: 0.5; }
+.pb-days span.hard { border-color: var(--warn); }
+.pb-done { border: 1px solid var(--accent); background: var(--accent-dim); border-radius: 10px; padding: 0.6rem 0.8rem; font-size: 0.86rem; }
+.plan-builder.compact .ps-grid { grid-template-columns: 1fr; }
+.plan-builder.compact .pb-fields { grid-template-columns: 1fr 1fr; }
+.plan-builder.compact .pb-fields label:first-child { grid-column: 1 / -1; }
+.plan-builder.compact .pb-rec { flex-direction: column; }
+.plan-builder.compact .pb-rec .btn { width: 100%; }
+.plan-builder.compact .pb-levels { grid-template-columns: 1fr 1fr; }
+.plan-builder.compact .pb-days { grid-template-columns: 1fr; }
+.plan-builder.compact .pb-days span { display: flex; gap: 0.5rem; }
+.plan-builder.compact .pb-days span i { display: inline; width: 1rem; flex: none; }
+.plan-builder.compact .ps-actions { flex-direction: column; align-items: stretch; }

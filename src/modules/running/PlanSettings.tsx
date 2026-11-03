@@ -236,10 +236,18 @@ export function AboutPlan({ plan }: { plan: Plan }) {
   }, [plan, today]);
   return (
     <div className="about-plan">
-      <p>
-        Your plan comes from <b>{plan.source.replace(/^Claude doc: /, "your training doc, ")}</b>. It's built the way most marathon coaches build one (it draws on Jack Daniels' paces and
-        Pete Pfitzinger's marathon blocks):
-      </p>
+      {plan.built ? (
+        <p>
+          This plan was <b>built in the app</b> for <b>{plan.built.raceName || "your race"}</b> on {fmt(plan.built.raceDate)}: {plan.built.weeks} weeks from {fmt(plan.built.start)}, at the{" "}
+          {plan.built.level} level, {plan.built.days} days a week, starting from your fitness then (VDOT {plan.built.vdot.toFixed(1)}). It's built the way most coaches build one,
+          drawing on Jack Daniels' training paces and Pete Pfitzinger's marathon blocks:
+        </p>
+      ) : (
+        <p>
+          Your plan comes from <b>{plan.source.replace(/^Claude doc: /, "your training doc, ")}</b>. It's built the way most marathon coaches build one (it draws on Jack Daniels' paces
+          and Pete Pfitzinger's marathon blocks):
+        </p>
+      )}
       <ul className="bullets">
         <li>
           <b>Mostly easy:</b> about {info.easyPct}% of the planned distance is easy running, long runs included, so the hard days can be hard.

@@ -23,7 +23,7 @@ const PUSHED: Record<Exclude<Pushed, null>, { title: string; module: string | nu
   health: { title: "Health", module: "health" },
   fitness: { title: "Fitness", module: "fitness" },
   plan: { title: "Plan", module: "running" },
-  adjust: { title: "Adjust plan", module: null },
+  adjust: { title: "Your plan", module: null },
 };
 
 function useSync() {

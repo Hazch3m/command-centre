@@ -1,17 +1,31 @@
+import { useState } from "react";
+import { PlanBuilder } from "../modules/running/PlanBuilder";
 import { AboutPlan, PlanSettings } from "../modules/running/PlanSettings";
 import { useRunningData } from "../modules/running/useRunning";
 
-/** Training → More → Adjust plan: the plan settings and how the plan is built. */
+const VIEWS = [
+  { id: "build", label: "Build" },
+  { id: "adjust", label: "Adjust" },
+  { id: "about", label: "About" },
+] as const;
+
+/** Training → More → Your plan: build a new plan, adjust this one, or read how it's put together. */
 export function PlanAdjustPage() {
   const { plan } = useRunningData();
+  const [view, setView] = useState<(typeof VIEWS)[number]["id"]>("build");
   if (!plan) return <p className="p-empty">The plan hasn't arrived from the PC yet.</p>;
   return (
     <div className="p-adjust">
-      <PlanSettings plan={plan} compact />
-      <details className="fold p-about">
-        <summary>About this plan</summary>
-        <AboutPlan plan={plan} />
-      </details>
+      <div className="p-seg" role="tablist">
+        {VIEWS.map((v) => (
+          <button key={v.id} role="tab" aria-selected={view === v.id} className={view === v.id ? "on" : ""} onClick={() => setView(v.id)}>
+            {v.label}
+          </button>
+        ))}
+      </div>
+      {view === "build" && <PlanBuilder plan={plan} compact />}
+      {view === "adjust" && <PlanSettings plan={plan} compact />}
+      {view === "about" && <AboutPlan plan={plan} />}
     </div>
   );
 }

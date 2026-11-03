@@ -133,6 +133,9 @@ function rangeIn(text: string): [number, number] | null {
   return [num(m[1]), m[2] ? num(m[2]) : num(m[1])];
 }
 
+/** "30 km long run", not "18 km medium-long run". */
+const LONG_RUN = /(?<!medium-)\blong run\b/i;
+
 function classify(text: string): DayKind {
   if (/at \d:\d\d|\bT\b|\bMP\b|HMP|fartlek|hill|\d\s*×\s*[\d.,]+\s*(km|m|min)\b/i.test(text)) return "key";
   return "easy";
@@ -210,7 +213,7 @@ export function forecastWeek(plan: Plan, monday: string, runs: Run[] = [], overr
     if (own != null || s?.key) {
       const k = sessionKm(text, threshold);
       const rest = /^(rest|none)\b/i.test(text);
-      const kind: DayKind = rest ? "rest" : DOW[i] === "Sun" && (k == null || k >= 16) ? "long" : classify(text);
+      const kind: DayKind = rest ? "rest" : LONG_RUN.test(text) || (DOW[i] === "Sun" && (k == null || k >= 16)) ? "long" : classify(text);
       days.push({ ...base, text: rest ? "Rest" : text, kind, km: k, flex: k == null ? [8, 12] : undefined });
     } else {
       const optional = /^rest,?\s*or/i.test(structText);

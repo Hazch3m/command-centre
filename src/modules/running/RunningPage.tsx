@@ -20,6 +20,7 @@ import { RecentBlock } from "./RecentBlock";
 import { PaceOnPointTab } from "./PaceOnPoint";
 import { RunsTab } from "./RunsTab";
 import { AboutPlan, PlanSettings } from "./PlanSettings";
+import { PlanBuilder } from "./PlanBuilder";
 import { PlanEditor } from "./PlanEditor";
 import { PlanList } from "./PlanList";
 import { PlanWeekView } from "./PlanWeekView";
@@ -38,6 +39,7 @@ const PLAN_VIEWS = [
   { id: "six", label: "6 weeks" },
 ] as const;
 const EDIT_VIEWS = [
+  { id: "build", label: "Build a plan" },
   { id: "adjust", label: "Adjust" },
   { id: "about", label: "About this plan" },
   { id: "weeks", label: "Edit week by week" },
@@ -72,7 +74,7 @@ export function RunningPage() {
   const { plan, planError, runs = [], connected, sync } = useRunningData();
   const [tab, setTab] = useState<Tab>("plan");
   const [view, setView] = useState<(typeof PLAN_VIEWS)[number]["id"]>("week");
-  const [editView, setEditView] = useState<(typeof EDIT_VIEWS)[number]["id"]>("adjust");
+  const [editView, setEditView] = useState<(typeof EDIT_VIEWS)[number]["id"]>("build");
 
   const data = useMemo(() => {
     if (!plan) return null;
@@ -130,6 +132,7 @@ export function RunningPage() {
               </span>
               {plan.adjust && <span className="pill small">Your settings are on</span>}
             </div>
+            {editView === "build" && <PlanBuilder plan={plan} />}
             {editView === "adjust" && <PlanSettings plan={plan} />}
             {editView === "about" && <AboutPlan plan={plan} />}
             {editView === "weeks" && <PlanEditor plan={plan} />}

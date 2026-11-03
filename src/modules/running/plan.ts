@@ -2,6 +2,7 @@ import { backend } from "@backend";
 import { addDays, diffDays, parseKey } from "../../core/time";
 import defaultPlan from "./default-plan.json";
 import type { PlanAdjust } from "./planAdjust";
+import type { BuildOptions } from "./planBuilder";
 
 export type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 export const WEEK_KEYS: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
@@ -53,6 +54,10 @@ export interface Plan {
   adjust?: PlanAdjust | null;
   /** The weeks as written, before `adjust` (only on a loaded plan; never saved). */
   baseWeeks?: PlanWeek[];
+  /** Set when the plan was built in the app (Plan settings → Build a plan): the choices it was built from. */
+  built?: BuildOptions & { start: string; peak: number; longest: number; vdot: number };
+  /** The plan before the last one was built, so it can be brought back. */
+  previous?: Plan;
   /** Past races to show on the progression page (Strava activity ids). */
   history?: { races: { id: string; name: string; km: number }[]; marathons: { name: string; date: string }[] };
 }
@@ -166,6 +171,14 @@ export async function savePlan(plan: Plan) {
   const { baseWeeks: _b, ...rest } = plan;
   const out: Plan = { ...rest, weeks, editedInApp: new Date().toISOString(), exported: plan.exported > today ? plan.exported : today };
   await backend.writeDataFile(PLAN_FILE, JSON.stringify(out, null, 2));
+  window.dispatchEvent(new Event("cc:plan-changed"));
+}
+
+/** Brings back the plan from before the last "Build a plan". */
+export async function restorePreviousPlan() {
+  const { plan } = await loadPlanFile();
+  if (!plan.previous) return;
+  await backend.writeDataFile(PLAN_FILE, JSON.stringify({ ...plan.previous, editedInApp: new Date().toISOString() }, null, 2));
   window.dispatchEvent(new Event("cc:plan-changed"));
 }
 
