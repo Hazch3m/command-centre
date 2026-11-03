@@ -380,7 +380,9 @@ button.p-row-main {
 .p-tile-note {
   font-size: 0.82rem;
   color: var(--text-2);
-  text-transform: capitalize;
+}
+.p-tile-row .p-tile-note::first-letter {
+  text-transform: uppercase;
 }
 .p-ring-track {
   stroke: var(--line);
