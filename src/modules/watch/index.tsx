@@ -114,7 +114,7 @@ function GarminWeeks({ tick, onChanged, onReplace }: { tick: number; onChanged: 
             <b>{w === 0 ? "This week" : "Next week"}</b> <span className="muted small">{fmt(addDays(mon, 7 * w))} – {fmt(addDays(mon, 7 * w + 6))}</span>
           </div>
           <div className="watch-days">
-            {Array.from({ length: 7 }, (_, i) => addDays(mon, 7 * w + i)).map((d) => {
+            {Array.from({ length: 7 }, (_, i) => addDays(mon, 7 * w + i)).map((d, i) => {
               const items = (data ?? []).filter((s) => s.date === d);
               return (
                 <div key={d} className={"watch-day" + (d === today ? " today" : "") + (d < today ? " past" : "") + (items.length > 1 ? " double" : "")}>

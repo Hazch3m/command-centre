@@ -1,5 +1,5 @@
 import { addDays, dateKey, parseKey } from "../../core/time";
-import { repeat, step, type Item, type Step, type Workout } from "./steps";
+import { repeat, step, type Item, type Workout } from "./steps";
 
 /**
  * Turns a week of sessions pasted from the Monday review email into draft
