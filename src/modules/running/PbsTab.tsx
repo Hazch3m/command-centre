@@ -36,6 +36,8 @@ export function PbsTab() {
   if (!pb.table.length) return <p className="muted">No best efforts yet: they come from Strava once runs have synced.</p>;
   const row = pb.table.find((r) => r.name === pick) ?? pb.table[0];
   const all = pb.efforts.filter((e) => e.name === row.name);
+  // Efforts close to your best (within 15 %): the slow ones inside long runs would bury the chart.
+  const near = all.filter((e) => e.seconds <= row.top[0].seconds * 1.15 || row.progression.includes(e));
   const recentMedals = pb.runs
     .filter((r) => pb.medals.has(r.id))
     .slice(-12)
@@ -49,7 +51,7 @@ export function PbsTab() {
       <div className="pb-grid">
         {pb.table.map((r) => {
           const best = r.top[0];
-          const fresh = r.progression.length > 1 && best.date >= `${+today.slice(0, 4) - 1}${today.slice(4)}`;
+          const fresh = r.progression.length > 1 && best.date >= addDays(today, -60);
           return (
             <button key={r.name} className={"pb-card" + (r.name === row.name ? " on" : "")} onClick={() => setPick(r.name)}>
               <span className="label">{r.label}</span>
@@ -57,7 +59,7 @@ export function PbsTab() {
               <small className="muted num">
                 {paceOf(best.seconds, r.m)}/km · {fmtDate(best.date)}
               </small>
-              {fresh && <span className="pill small">new this year</span>}
+              {fresh && <span className="pill small">new PB</span>}
             </button>
           );
         })}
@@ -76,7 +78,7 @@ export function PbsTab() {
           height={180}
           format={fmtTime}
           series={[
-            { name: "Efforts", kind: "dots", className: "s-est", points: all.map((e) => ({ x: e.date, y: e.seconds, label: e.runName })) },
+            { name: "Efforts", kind: "dots", className: "s-est", points: near.map((e) => ({ x: e.date, y: e.seconds, label: e.runName })) },
             { name: "PB", kind: "line", className: "s-pb", points: steps },
           ]}
         />

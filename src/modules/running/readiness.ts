@@ -115,7 +115,7 @@ export function raceReadiness(
     const a = build[i - 1].km;
     const b = build[i].km;
     // Coming back from an easier week isn't a jump.
-    const ref = Math.max(a, i >= 2 ? build[i - 2].km : 0);
+    const ref = Math.max(a, i >= 2 ? build[i - 2].km : 0, i >= 3 ? build[i - 3].km : 0);
     if (ref >= 20) jump = Math.max(jump, b / ref - 1);
   }
   const ramp = pct(jump <= 0.12 ? 100 : jump <= 0.25 ? 100 - ((jump - 0.12) / 0.13) * 50 : 50 - Math.min(40, (jump - 0.25) * 200));

@@ -142,7 +142,7 @@ export function RaceManager({ plan }: { plan: Plan }) {
                   <span className="label">Priority</span>
                   <div className="ps-choice">
                     {(["A", "B", "C"] as RacePriority[]).map((x) => (
-                      <button key={x} type="button" className={p === x ? "on" : ""} title={PRIORITY[x]} onClick={() => change(i, { priority: x, taper: r.taper ?? defaultTaper(x) })}>
+                      <button key={x} type="button" className={p === x ? "on" : ""} title={PRIORITY[x]} onClick={() => change(i, { priority: x, taper: r.taper && r.taper === defaultTaper(p) ? defaultTaper(x) : r.taper })}>
                         {x} race
                       </button>
                     ))}

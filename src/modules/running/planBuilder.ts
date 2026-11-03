@@ -281,6 +281,9 @@ function tempo(min: number, pace: number) {
   return workout((min * 60) / pace, 0, `${min} min T at ${around(pace)}`);
 }
 
+/** Half-marathon-pace reps say so ("at HMP 3:35–3:39"), so the paces and readiness know what they are. */
+const hmp = (w: { km: number; text: string }) => ({ ...w, text: w.text.replace(" at ", " at HMP ") });
+
 type Phase = "base" | "build" | "specific" | "taper" | "race";
 const PHASE_NAME: Record<Phase, string> = { base: "Base", build: "Build", specific: "Race-specific", taper: "Taper", race: "Race week" };
 
@@ -302,13 +305,13 @@ function sessions(o: BuildOptions, phase: Phase, t: number, alt: boolean, p: Pac
       const mp = r1(lerp(8, 14, t) + big * 2);
       return [workout(mp, 0, `${mp} km at MP ${around(race)}`), alt ? reps(Math.min(4, n(3, 4)), 3, T, "2 min jog", 120) : reps(Math.min(5, n(3, 4)), 2, T, "2 min jog", 120)];
     }
-    if (o.dist === "half") return [reps(n(3, 4), alt ? 4 : 3, race, "2 min jog", 120), reps(n(5, 6), 1, p.interval, "2 min jog", 120)];
+    if (o.dist === "half") return [hmp(reps(n(3, 4), alt ? 4 : 3, race, "2 min jog", 120)), reps(n(5, 6), 1, p.interval, "2 min jog", 120)];
     if (o.dist === "10k") return [reps(n(3, 5), 2, race, "2 min jog", 120), tempo(r1(lerp(20, 25, t) + big * 5), T)];
     return [alt ? reps(n(8, 10), 0.4, race - 4, "200 m jog", 70) : reps(n(4, 6), 1, race, "2 min jog", 120), tempo(r1(lerp(20, 25, t)), T)];
   }
   // Taper: shorter race-pace work, sharp but not tiring.
   if (o.dist === "marathon") return [workout(6, 0, `6 km at MP ${around(race)}`), reps(3, 1, T, "2 min jog", 120)];
-  if (o.dist === "half") return [reps(3, 2, race, "2 min jog", 120), reps(4, 1, p.interval, "2 min jog", 120)];
+  if (o.dist === "half") return [hmp(reps(3, 2, race, "2 min jog", 120)), reps(4, 1, p.interval, "2 min jog", 120)];
   return [reps(5, 1, race, "2 min jog", 120), reps(6, 0.4, p.interval, "200 m jog", 70)];
 }
 
