@@ -68,7 +68,7 @@ export function adjustWeek(plan: Plan, week: PlanWeek, a: PlanAdjust): PlanWeek 
   const longDay: DayKey = a.longDay ?? (longI >= 0 ? WEEK_KEYS[longI] : "sun");
   const own = WEEK_KEYS.filter((_k, i) => (days[i].km ?? 0) > 0 && i !== race);
   const run = new Set(a.runDays && a.runDays.length >= 3 ? a.runDays : own.length >= 3 ? own : FALLBACK_DAYS);
-  run.add(longDay);
+  if (longI >= 0 || a.longDay) run.add(longDay);
   const keys = days.map((d, i) => ({ d, i })).filter(({ d, i }) => d.kind === "key" && i !== race);
   const easy = days.map((d, i) => ({ d, i })).filter(({ d, i }) => (d.kind === "easy" || d.kind === "optional") && (d.km ?? 0) > 0 && i !== race && i !== longI);
   const total = days.reduce((s, d) => s + (d.km ?? 0), 0);
