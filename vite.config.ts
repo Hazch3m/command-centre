@@ -7,6 +7,8 @@ import { resolve } from "node:path";
 // can be developed and tested in a normal browser. That harness never ships.
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
+  // Shown in Settings next to the version, so you can tell which build is installed.
+  define: { __BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC") },
   clearScreen: false,
   resolve: {
     alias: {

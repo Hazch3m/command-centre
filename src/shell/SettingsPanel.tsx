@@ -190,7 +190,7 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
 
         {msg && <div className={msg.error ? "error-note" : "ok-note"}>{msg.text}</div>}
         <footer className="muted small modal-footer">
-          Command Centre {version} · Ctrl+E edit layout · Ctrl+, settings · F11 full-screen
+          Command Centre {version} (built {typeof __BUILD__ === "string" ? __BUILD__ : "dev"}) · Ctrl+E edit layout · Ctrl+, settings · F11 full-screen
         </footer>
       </div>
     </div>
