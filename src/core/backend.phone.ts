@@ -89,6 +89,8 @@ export const phoneState = {
   },
   lastCheck: null as string | null,
   error: null as string | null,
+  /** What a refresh is doing right now, for the start-up screen. */
+  stage: null as string | null,
   onChange(cb: () => void) {
     listeners.addEventListener("change", cb);
     return () => listeners.removeEventListener("change", cb);
@@ -96,8 +98,23 @@ export const phoneState = {
 };
 const changed = () => listeners.dispatchEvent(new Event("change"));
 
-const api = (path: string, init: RequestInit = {}) =>
-  fetch(`/api${path}`, { ...init, headers: { ...(link ? { "x-cc-token": link.keys.token } : {}), ...(init.headers ?? {}) } });
+/** A request to the sync service; gives up after `ms` (a hung connection on a phone otherwise waits forever). */
+const api = async (path: string, init: RequestInit = {}, ms = 30_000) => {
+  const ctl = new AbortController();
+  const timer = window.setTimeout(() => ctl.abort(), ms);
+  try {
+    return await fetch(`/api${path}`, { ...init, signal: ctl.signal, headers: { ...(link ? { "x-cc-token": link.keys.token } : {}), ...(init.headers ?? {}) } });
+  } catch (e) {
+    if (ctl.signal.aborted) throw new Error(`Offline: the cloud didn't answer within ${Math.round(ms / 1000)} s.`);
+    throw e;
+  } finally {
+    window.clearTimeout(timer);
+  }
+};
+const stage = (s: string | null) => {
+  phoneState.stage = s;
+  changed();
+};
 
 async function sql() {
   SQL ??= await initSqlJs({ locateFile: () => wasmUrl });
@@ -175,8 +192,9 @@ async function useSnapshot(bytes: Uint8Array, h: SnapshotHeader, v: number) {
   header = h;
   version = v;
   old?.close();
-  await idbSet("pending", pending);
-  await idbSet("snapshot", { db: d.export(), header: h, version: v } satisfies Saved);
+  // Kept on the phone so it opens straight away next time; if storage is full, it still works now.
+  await idbSet("pending", pending).catch(() => {});
+  await idbSet("snapshot", { db: d.export(), header: h, version: v } satisfies Saved).catch((e) => console.warn("couldn't keep a copy on the phone", e));
 }
 
 /** Loads what's stored on the phone. False when there's nothing yet. */
@@ -195,7 +213,9 @@ export async function loadLocal(): Promise<boolean> {
 export async function refresh(): Promise<boolean> {
   if (!link) return false;
   try {
-    await flush();
+    stage("Sending changes made on this phone…");
+    await flush().catch(() => {});
+    stage("Checking the cloud for a newer copy…");
     const meta = await api("/meta");
     if (meta.status === 401) throw new Error("This phone isn't linked any more. Link it again from Settings → Phone on the PC.");
     if (!meta.ok) throw new Error(`The sync service answered ${meta.status}`);
@@ -203,20 +223,22 @@ export async function refresh(): Promise<boolean> {
     phoneState.lastCheck = new Date().toISOString();
     phoneState.error = null;
     if (!m.version || m.version <= version) {
-      changed();
+      stage(null);
       return false;
     }
-    const r = await api("/snapshot");
+    stage("Downloading your data from the cloud…");
+    const r = await api("/snapshot", {}, 120_000);
     if (!r.ok) throw new Error(r.status === 404 ? "Nothing has been sent from the PC yet." : `The sync service answered ${r.status}`);
     const box = new Uint8Array(await r.arrayBuffer());
+    stage(`Opening your data (${(box.length / 1e6).toFixed(1)} MB)…`);
     const { header: h, db } = unpackSnapshot(await gunzip(await unseal(link.keys.key, box)));
     await useSnapshot(db, h, Number(r.headers.get("x-cc-version") ?? m.version));
-    changed();
+    stage(null);
     return true;
   } catch (e) {
     const msg = String((e as Error)?.message ?? e);
-    phoneState.error = /fetch|network|load failed/i.test(msg) ? "Offline: showing what was last synced." : msg;
-    changed();
+    phoneState.error = /^Offline:/.test(msg) ? msg : /fetch|network|load failed/i.test(msg) ? "Offline: showing what was last synced." : msg;
+    stage(null);
     return false;
   }
 }

@@ -31,14 +31,37 @@ async function start() {
     root.render(<Pair onDone={start} />);
     return;
   }
-  if (!(await loadLocal())) {
-    root.render(<Message text="Fetching your dashboard from the PC…" />);
+  if (!(await loadLocal().catch(() => false))) {
+    // No copy on the phone yet: get the one the PC put in the cloud, showing each step.
+    const t0 = Date.now();
+    const show = () =>
+      root.render(
+        <Message
+          text={`${phoneState.stage ?? "Getting your data from the cloud…"}${Date.now() - t0 > 15_000 ? ` (${Math.round((Date.now() - t0) / 1000)} s)` : ""}`}
+          retry={Date.now() - t0 > 20_000 ? () => location.reload() : undefined}
+        />,
+      );
+    show();
+    const off = phoneState.onChange(show);
+    const tick = window.setInterval(show, 1000);
     await refresh();
+    off();
+    window.clearInterval(tick);
     if (!phoneState.version) {
-      root.render(<Message text="Nothing has arrived from the PC yet. Open Command Centre on the PC (it sends a copy within a minute), then try again." retry={start} />);
+      root.render(
+        <Message
+          text={
+            phoneState.error && !/Nothing has been sent/.test(phoneState.error)
+              ? `Couldn't get your data from the cloud: ${phoneState.error}`
+              : "The cloud has no copy from your PC yet. Open Command Centre on the PC (it sends a copy within a minute), then try again."
+          }
+          retry={start}
+        />,
+      );
       return;
     }
   }
+  root.render(<Message text="Starting…" />);
   await boot({ withInit: false });
   root.render(
     <StrictMode>
