@@ -47,12 +47,17 @@ async function current() {
 
 const base = (url: string) => url.trim().replace(/\/+$/, "");
 
-async function call(link: PhoneLink, keys: LinkKeys | null, path: string, init: RequestInit = {}): Promise<Response> {
+async function call(link: PhoneLink, keys: LinkKeys | null, path: string, init: RequestInit = {}, ms = 60_000): Promise<Response> {
   let r: Response;
+  // A request that hangs (the PC slept mid-upload, a dropped connection) gives up, so it can't hold up every later sync.
+  const ctl = new AbortController();
+  const timer = window.setTimeout(() => ctl.abort(), ms);
   try {
-    r = await fetch(`${base(link.url)}/api${path}`, { ...init, headers: { ...(keys ? { "x-cc-token": keys.token } : {}), ...(init.headers ?? {}) } });
+    r = await fetch(`${base(link.url)}/api${path}`, { ...init, signal: ctl.signal, headers: { ...(keys ? { "x-cc-token": keys.token } : {}), ...(init.headers ?? {}) } });
   } catch (e) {
-    throw new Error(`offline: couldn't reach the sync service (${String((e as Error)?.message ?? e)})`);
+    throw new Error(ctl.signal.aborted ? `offline: the sync service didn't answer within ${ms / 1000} s` : `offline: couldn't reach the sync service (${String((e as Error)?.message ?? e)})`);
+  } finally {
+    window.clearTimeout(timer);
   }
   if (!r.ok) {
     const msg = await r
@@ -136,7 +141,7 @@ async function doPush() {
       await backend.phoneSnapshot(),
     );
     const box = await seal(c.keys.key, await gzip(bytes));
-    await call(c.link, c.keys, `/snapshot?applied=${st.applied}`, { method: "PUT", headers: { "content-type": "application/octet-stream" }, body: box as BodyInit });
+    await call(c.link, c.keys, `/snapshot?applied=${st.applied}`, { method: "PUT", headers: { "content-type": "application/octet-stream" }, body: box as BodyInit }, 180_000);
     await setStatus({ lastPush: new Date().toISOString(), size: box.length, error: null });
   } catch (e) {
     await setStatus({ error: String((e as Error)?.message ?? e) });
@@ -206,6 +211,17 @@ export function usePhoneSync() {
     backend.listen("data-changed", () => schedulePush(60_000)).then((u) => (alive ? (off = u) : u()));
     const onPlan = () => schedulePush(5_000);
     window.addEventListener("cc:plan-changed", onPlan);
+    // Back from sleep or from the background: catch up with the phone straight away.
+    let lastWake = Date.now();
+    const wake = () => {
+      if (document.visibilityState !== "visible" || Date.now() - lastWake < 60_000) return;
+      lastWake = Date.now();
+      pull();
+      schedulePush(3_000);
+    };
+    document.addEventListener("visibilitychange", wake);
+    window.addEventListener("focus", wake);
+    window.addEventListener("online", wake);
     return () => {
       alive = false;
       window.clearInterval(iv);
@@ -213,6 +229,9 @@ export function usePhoneSync() {
       window.clearTimeout(pushTimer);
       off?.();
       window.removeEventListener("cc:plan-changed", onPlan);
+      document.removeEventListener("visibilitychange", wake);
+      window.removeEventListener("focus", wake);
+      window.removeEventListener("online", wake);
     };
   }, []);
 }

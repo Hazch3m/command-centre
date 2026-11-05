@@ -49,9 +49,9 @@ function SyncLine({ onRefresh, busy }: { onRefresh: () => void; busy: boolean })
   const made = phoneState.header?.made ? Date.parse(phoneState.header.made) : 0;
   const waiting = phoneState.pending;
   return (
-    <button className={"p-sync" + (phoneState.error ? " warn" : "")} onClick={onRefresh}>
+    <button className={"p-sync" + (phoneState.error || (made && Date.now() - made > 3 * 3600_000) ? " warn" : "")} onClick={onRefresh}>
       <span className={"sync-dot" + (busy ? " spin" : "")} />
-      {phoneState.error ? phoneState.error.replace(/^Offline: /, "Offline · ") : made ? `Updated ${ago(made)}` : "Not synced yet"}
+      {phoneState.error ? phoneState.error.replace(/^Offline: /, "Offline · ") : made ? `Updated ${ago(made)}${Date.now() - made > 3 * 3600_000 ? " · is the PC on?" : ""}` : "Not synced yet"}
       {waiting ? ` · ${waiting} to send` : ""}
     </button>
   );
@@ -101,8 +101,9 @@ export function PhoneApp() {
     try {
       await kvSet(REFRESH_KEY, stamp);
       await flush();
-      answer = "Your PC didn't answer in time. It needs to be on with Command Centre open; showing what was last synced.";
-      for (const until = Date.now() + 150_000; Date.now() < until; ) {
+      const made = phoneState.header?.made ? Date.parse(phoneState.header.made) : 0;
+      answer = `Your PC didn't answer${made ? ` (it last sent data ${ago(made)})` : ""}. It's probably asleep, off, or Command Centre is closed; open Command Centre on the PC and it catches up within a minute.`;
+      for (const until = Date.now() + 75_000; Date.now() < until; ) {
         await new Promise((r) => window.setTimeout(r, 5000));
         if (await refresh()) await notifyChanged("*");
         if ((await kvGet<string | null>(REFRESHED_KEY, null)) === stamp) {
