@@ -107,6 +107,14 @@ fn open_strava_activity(app: AppHandle, id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn open_garmin_activity(app: AppHandle, id: String) -> Result<(), String> {
+    if id.is_empty() || id.len() > 20 || !id.chars().all(|c| c.is_ascii_digit()) {
+        return Err("Not a Garmin activity id".into());
+    }
+    app.opener().open_url(format!("https://connect.garmin.com/modern/activity/{id}"), None::<&str>).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn get_config(store: tauri::State<ConfigStore>) -> AppConfig {
     store.get()
 }
@@ -216,6 +224,7 @@ pub fn run() {
             app_version,
             read_data_file,
             open_strava_activity,
+            open_garmin_activity,
             write_data_file,
             oauth::oauth_status,
             oauth::oauth_set_client,

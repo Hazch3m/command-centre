@@ -321,6 +321,9 @@ export const backend: Backend = {
   appVersion: async () => "phone",
 
   readDataFile: async (name) => header?.files[name] ?? null,
+  openGarminActivity: async (id) => {
+    window.open(`https://connect.garmin.com/modern/activity/${encodeURIComponent(id)}`, "_blank");
+  },
   openStravaActivity: async (id) => {
     window.open(`https://www.strava.com/activities/${id}`, "_blank");
   },

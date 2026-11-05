@@ -151,7 +151,7 @@ function Connect() {
   return (
     <div className="health-connect">
       <p>
-        Connect Garmin to see VO2 max, HRV, sleep, resting heart rate, Body Battery, training readiness and Garmin's race predictions here. A Garmin sign-in window opens;
+        Connect Garmin for your runs (maps, splits, PBs) and to see VO2 max, HRV, sleep, resting heart rate, Body Battery, training readiness and Garmin's race predictions here. A Garmin sign-in window opens;
         your password and two-step code go straight to Garmin.
       </p>
       <button

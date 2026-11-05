@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { db, kvGet, kvSet } from "../core/db";
+import { kvGet, kvSet } from "../core/db";
 import { notifyChanged } from "../core/events";
 import { REFRESHED_KEY, REFRESH_KEY } from "../core/sync";
 import { flush, phoneState, refresh, unpair } from "../core/backend.phone";
 import { RunViewHost } from "../modules/running/RunView";
+import { loadRuns } from "../modules/running/strava";
 import { ModulePage } from "../shell/Dashboard";
 import { NavContext } from "../shell/nav";
 import { Calendar } from "./Calendar";
@@ -90,7 +91,7 @@ export function PhoneApp() {
     const stamp = new Date().toISOString();
     const count = async () => {
       try {
-        return (await db.select<{ n: number }>("SELECT count(*) AS n FROM strava_activities"))[0]?.n ?? 0;
+        return (await loadRuns("2000-01-01")).length;
       } catch {
         return 0;
       }
@@ -106,7 +107,7 @@ export function PhoneApp() {
         if (await refresh()) await notifyChanged("*");
         if ((await kvGet<string | null>(REFRESHED_KEY, null)) === stamp) {
           const n = (await count()) - before;
-          answer = n > 0 ? `${n} new run${n === 1 ? "" : "s"} from Strava.` : "Up to date: nothing new on Strava yet.";
+          answer = n > 0 ? `${n} new run${n === 1 ? "" : "s"}.` : "Up to date: no new runs yet.";
           break;
         }
         if (phoneState.error) {

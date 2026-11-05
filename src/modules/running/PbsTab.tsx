@@ -33,7 +33,7 @@ export function PbsTab() {
   const today = useToday();
   const [pick, setPick] = useState<PbName>("5K");
   if (!pb) return <p className="muted">Loading your runs…</p>;
-  if (!pb.table.length) return <p className="muted">No best efforts yet: they come from Strava once runs have synced.</p>;
+  if (!pb.table.length) return <p className="muted">No best efforts yet: they appear once runs (and their details) have synced.</p>;
   const row = pb.table.find((r) => r.name === pick) ?? pb.table[0];
   const all = pb.efforts.filter((e) => e.name === row.name);
   // Efforts close to your best (within 15 %): the slow ones inside long runs would bury the chart.

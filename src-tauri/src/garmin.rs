@@ -1,5 +1,5 @@
 //! Garmin Connect, for health metrics (VO2 max, HRV, sleep, resting heart rate,
-//! Body Battery, training readiness, race predictions).
+//! Body Battery, training readiness, race predictions) and runs.
 //!
 //! Garmin has no public API for personal use, so this does what Garmin's own
 //! app does. You sign in on Garmin's real sign-in page, in a separate window
@@ -39,6 +39,9 @@ const ALLOWED: &[&str] = &[
     "/userstats-service/",
     "/usersummary-service/",
     "/userprofile-service/",
+    // Runs: the activity list, and one run's samples and laps.
+    "/activitylist-service/activities/search/activities",
+    "/activity-service/activity/",
 ];
 
 #[derive(Serialize, Deserialize, Clone)]

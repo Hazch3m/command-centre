@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { backend } from "@backend";
 import { useDataVersion } from "../../core/events";
 import { useEvery } from "../../core/time";
 import { useQuery } from "../../core/useQuery";
 import { loadPlan, type Plan } from "./plan";
-import { loadRuns, syncState, syncStrava, type Run, type SyncState } from "./strava";
+import { loadRuns, runsSyncState, syncRuns, type Run, type RunsSync } from "./strava";
 
 /** Plan + cached Strava runs + connection state, refreshed when anything changes. */
 export function useRunningData() {
@@ -24,22 +23,19 @@ export function useRunningData() {
 
   const plan = useQuery(loadPlan, [planTick]);
   const runs = useQuery(() => loadRuns("2024-01-01"), [version]);
-  const status = useQuery(
-    () => Promise.all([backend.oauthStatus("strava").catch(() => null), syncState()]),
-    [version],
-  );
+  const status = useQuery(runsSyncState, [version]);
   return {
     plan: plan.data?.plan as Plan | undefined,
     planError: plan.data?.error ?? plan.error,
     runs: runs.data as Run[] | undefined,
-    connected: !!status.data?.[0]?.connected,
-    sync: status.data?.[1] as SyncState | undefined,
+    connected: !!status.data && status.data.source !== "none",
+    sync: status.data as RunsSync | undefined,
   };
 }
 
 /** Keeps the Strava cache fresh: now, then every 15 minutes. */
 export function useStravaSync() {
   useEvery(15 * 60_000, () => {
-    syncStrava().catch(() => {});
+    syncRuns().catch(() => {});
   });
 }

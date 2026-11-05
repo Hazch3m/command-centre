@@ -1,6 +1,7 @@
 import { backend } from "@backend";
 import { db, kvGet, kvSet } from "../../core/db";
 import { notifyChanged } from "../../core/events";
+import { fetchGarminRun, garminRunState, SHOWN_RUNS, syncGarminRuns } from "./garminRuns";
 
 /** One run as cached locally (Strava's numbers, SI units). */
 export interface Run {
@@ -92,6 +93,7 @@ export async function loadFullRun(id: string): Promise<FullRun> {
       /* fetch again */
     }
   }
+  if (id.startsWith("g")) return fetchGarminRun(id);
   type A = {
     laps?: { name?: string; distance: number; moving_time: number; elapsed_time: number; average_speed: number; average_heartrate?: number; max_heartrate?: number; average_cadence?: number; total_elevation_gain?: number }[];
     splits_metric?: { distance: number; moving_time: number; average_speed: number; average_grade_adjusted_speed?: number; average_heartrate?: number; elevation_difference?: number }[];
@@ -239,9 +241,11 @@ export function syncStrava(): Promise<SyncState> {
 async function doSyncStrava(): Promise<SyncState> {
   const status = await backend.oauthStatus("strava").catch(() => null);
   if (!status?.connected) return syncState();
-  const [{ latest }] = await db.select<{ latest: number | null }>("SELECT MAX(start_epoch) AS latest FROM strava_activities");
+  // Strava switched the app off (it now needs a paid subscription): runs come from Garmin instead, so don't keep asking.
+  if (await kvGet<boolean>("strava.retired", false)) return syncState();
+  const [{ latest }] = await db.select<{ latest: number | null }>("SELECT MAX(start_epoch) AS latest FROM strava_activities WHERE id NOT LIKE 'g%'");
   // Runs synced before maps and shoes were stored: re-read once to fill them in.
-  const [{ old }] = await db.select<{ old: number }>("SELECT count(*) AS old FROM strava_activities WHERE has_hr IS NULL");
+  const [{ old }] = await db.select<{ old: number }>("SELECT count(*) AS old FROM strava_activities WHERE has_hr IS NULL AND id NOT LIKE 'g%'");
   const after = latest && !old ? latest - 3 * 86400 : HISTORY_FROM;
   let state: SyncState;
   try {
@@ -298,18 +302,48 @@ async function doSyncStrava(): Promise<SyncState> {
     const msg = String((e as Error)?.message ?? e);
     const prev = await syncState();
     state = { ...prev, offline: msg.startsWith("offline"), lastError: msg.startsWith("offline") ? null : msg };
+    if (/Inactive/.test(msg)) await kvSet("strava.retired", true);
   }
   await kvSet("strava.sync", state);
   await notifyChanged(TOPIC);
   return state;
 }
 
+/** Runs from Strava and Garmin; a run in both shows once (the Strava copy, with its details). */
 export function loadRuns(fromDate: string) {
   return db.select<Run>(
     `SELECT id, date, start_local, name, sport, distance, moving_time, elapsed_time, elevation, avg_hr, max_hr, workout_type, polyline, gear_id
-     FROM strava_activities WHERE date >= ? ORDER BY start_local`,
+     FROM strava_activities a WHERE date >= ? AND ${SHOWN_RUNS} ORDER BY start_local`,
     [fromDate],
   );
+}
+
+/** Where runs come from now: Garmin (when connected) and Strava (unless Strava has switched the app off). */
+export interface RunsSync {
+  lastSync: string | null;
+  lastError: string | null;
+  offline: boolean;
+  source: "garmin" | "strava" | "both" | "none";
+}
+export async function runsSyncState(): Promise<RunsSync> {
+  const [g, st, gs, ss, retired] = await Promise.all([
+    garminRunState(),
+    syncState(),
+    backend.garminStatus().catch(() => ({ connected: false })),
+    backend.oauthStatus("strava").catch(() => null),
+    kvGet<boolean>("strava.retired", false),
+  ]);
+  const useG = gs.connected;
+  const useS = !!ss?.connected && !retired;
+  const source = useG && useS ? "both" : useG ? "garmin" : useS ? "strava" : "none";
+  const last = [useG ? g.lastSync : null, useS ? st.lastSync : null].filter(Boolean).sort().pop() ?? null;
+  return { lastSync: last, lastError: (useG ? g.lastError : null) ?? (useS ? st.lastError : null), offline: (useG && g.offline) || (useS && st.offline), source };
+}
+
+/** New runs from Garmin and Strava, whichever are connected. */
+export async function syncRuns(): Promise<RunsSync> {
+  await Promise.allSettled([syncGarminRuns(), syncStrava()]);
+  return runsSyncState();
 }
 
 /**
@@ -320,7 +354,7 @@ export function loadRuns(fromDate: string) {
 async function syncDetails(): Promise<boolean> {
   const todo = await db.select<{ id: string }>(
     `SELECT a.id FROM strava_activities a LEFT JOIN strava_details d ON d.id = a.id
-     WHERE a.has_hr = 1 AND a.date >= date('now', '-430 days')
+     WHERE a.id NOT LIKE 'g%' AND a.has_hr = 1 AND a.date >= date('now', '-430 days')
        AND (d.id IS NULL OR (d.fetched_at < a.synced_at AND a.date >= date('now', '-2 days'))
             -- laps (for pace on point) arrived later: fetch recent runs again once
             OR (d.json NOT LIKE '%"laps"%' AND a.date >= date('now', '-60 days')))

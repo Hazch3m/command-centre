@@ -27,6 +27,11 @@ const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const fmtDay = (d: string) => `${DOW[parseKey(d).getDay()]} ${parseKey(d).getDate()} ${MON[parseKey(d).getMonth()]}`;
 const paceOf = (speed: number) => (speed > 0 ? fmtPace(1000 / speed) : "–");
 
+/** Opens the run where it came from: Garmin Connect ("g…" ids) or Strava. */
+export function openSource(id: string) {
+  return id.startsWith("g") ? backend.openGarminActivity(id.slice(1)) : backend.openStravaActivity(id);
+}
+
 export function RunViewHost() {
   const [stack, setStack] = useState<View[]>([]);
   useEffect(() => {
@@ -235,8 +240,8 @@ function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; o
         onBack={onBack}
         onClose={onClose}
         right={
-          <button className="btn" onClick={() => backend.openStravaActivity(run.id)}>
-            Strava ↗
+          <button className="btn" onClick={() => openSource(run.id)}>
+            {run.id.startsWith("g") ? "Garmin Connect ↗" : "Strava ↗"}
           </button>
         }
       />
@@ -273,7 +278,7 @@ function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; o
       )}
       {full?.description && <p className="run-desc">{full.description}</p>}
       <ErrorNote error={err} />
-      {!full && !err && <p className="muted small">Loading laps and charts from Strava…</p>}
+      {!full && !err && <p className="muted small">Loading laps and charts…</p>}
       {charts && (
         <div className="run-charts">
           {charts.pace.length > 1 && <XYChart label="Pace" points={charts.pace} invert format={(v) => fmtPace(v)} marks={lapMarks} />}

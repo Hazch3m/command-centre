@@ -1,4 +1,3 @@
-import { backend } from "@backend";
 import { relativeDayLabel, useToday } from "../../core/time";
 import { BarChart } from "../../shell/charts";
 import { CardHeader, Empty } from "../../shell/ui";
@@ -7,6 +6,7 @@ import { fmtVo2, useFitness } from "./fitness";
 import { RouteMap } from "./route";
 import { openRun } from "./RunView";
 import { duration, km, pace } from "./stats";
+import { openSource } from "./RunView";
 import { useRunningData, useStravaSync } from "./useRunning";
 import { judge } from "./vo2";
 
@@ -23,7 +23,7 @@ function LatestRunCard(_: CardProps) {
     return (
       <>
         <CardHeader title="Latest run" />
-        <Empty>{connected ? "No runs synced yet." : "Connect Strava in Settings to see your latest run here."}</Empty>
+        <Empty>{connected ? "No runs synced yet." : "Connect Garmin in Settings to see your latest run here."}</Empty>
       </>
     );
   const time = r.start_local.slice(11, 16);
@@ -35,8 +35,8 @@ function LatestRunCard(_: CardProps) {
       <CardHeader
         title="Latest run"
         right={
-          <button className="btn ghost" onClick={() => backend.openStravaActivity(r.id)} title="Open on Strava">
-            Strava ↗
+          <button className="btn ghost" onClick={() => openSource(r.id)} title={r.id.startsWith("g") ? "Open in Garmin Connect" : "Open on Strava"}>
+            {r.id.startsWith("g") ? "Garmin ↗" : "Strava ↗"}
           </button>
         }
       />

@@ -28,6 +28,7 @@ export const backend: Backend = {
 
   readDataFile: (name) => invoke("read_data_file", { name }),
   openStravaActivity: (id) => invoke("open_strava_activity", { id }),
+  openGarminActivity: (id) => invoke("open_garmin_activity", { id }),
   writeDataFile: (name, contents) => invoke("write_data_file", { name, contents }),
   oauthStatus: (p) => invoke("oauth_status", { providerId: p }),
   oauthSetClient: (p, clientId, clientSecret) => invoke("oauth_set_client", { providerId: p, clientId, clientSecret }),

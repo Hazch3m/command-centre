@@ -109,7 +109,7 @@ export function RunningPage() {
         <div>
           <h1>{plan.title}</h1>
           <div className="muted small">
-            {plan.editedInApp ? "Edited in the app" : `From your training doc, exported ${plan.exported}`} · {connected ? `Strava synced ${sync?.lastSync ? new Date(sync.lastSync).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}` : "Strava not connected"}
+            {plan.editedInApp ? "Edited in the app" : `From your training doc, exported ${plan.exported}`} · {connected ? `${sync?.source === "garmin" ? "Garmin" : sync?.source === "both" ? "Garmin and Strava" : "Strava"} synced ${sync?.lastSync ? new Date(sync.lastSync).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}` : "Runs: connect Garmin in Settings"}
           </div>
         </div>
       </header>
@@ -202,7 +202,7 @@ export function RunningPage() {
                 })}
               </tbody>
             </table>
-            <p className="muted small">Results are read from Strava: the run marked as a race on that day, or the longest run that day.</p>
+            <p className="muted small">Results are read from your runs: the run marked as a race on that day, or the longest run that day.</p>
           </>
         )}
 
@@ -218,7 +218,7 @@ export function RunningPage() {
                   const m = data.races.filter((r) => r.km > 42).sort((a, b) => a.time - b.time)[0];
                   return m ? duration(m.time) : "–";
                 })()}
-                note="Strava elapsed time"
+                note="elapsed time"
               />
             </div>
             <h3>Kilometres per week since April 2025</h3>
@@ -288,7 +288,7 @@ export function RunningPage() {
                 ))}
               </tbody>
             </table>
-            {!runs.length && <p className="muted">Connect Strava in Settings to fill these in.</p>}
+            {!runs.length && <p className="muted">Connect Garmin in Settings to fill these in.</p>}
           </>
         )}
 
