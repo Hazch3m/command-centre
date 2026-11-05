@@ -1,6 +1,7 @@
 import { addDays, parseKey } from "../../core/time";
 import { blockFor, mondayOf, sessionFor, WEEK_KEYS, type Plan, type PlanRace, type PlanWeek } from "./plan";
 import { km, parseTime } from "./stats";
+import { hrText, widen } from "./targets";
 import type { Run } from "./strava";
 
 /**
@@ -27,6 +28,8 @@ export interface ForecastDay {
   /** You changed this day (the plan's own text is in `planText`). */
   edited?: boolean;
   planText?: string;
+  /** Easy, long and recovery runs aren't judged (your setting). */
+  noEasyCheck?: boolean;
 }
 
 export interface ForecastWeek {
@@ -141,18 +144,39 @@ function classify(text: string): DayKind {
   return "easy";
 }
 
+/**
+ * The target for a day: a pace range, or (in heart-rate mode) a heart-rate
+ * zone. Easy, long and recovery runs follow your setting: the plan's range,
+ * a wider one, or just "by feel".
+ */
 function paceFor(plan: Plan, text: string, kind: DayKind): string | null {
-  const zone = (re: RegExp) => plan.paces.find((p) => re.test(p.zone))?.now ?? null;
-  const explicit = /(\d:\d{2}(?:\s*[–-]\s*\d:\d{2})?)/.exec(text);
   if (kind === "rest") return null;
-  if (/\bHMP\b/.test(text)) return explicit?.[1] ?? zone(/^Half/i);
-  if (/\bMP\b/.test(text)) return explicit?.[1] ?? zone(/^Marathon/i);
-  if (explicit) return explicit[1];
-  if (/\bT\b/.test(text)) return zone(/^Threshold/i);
-  if (/recover/i.test(text)) return zone(/^Recovery/i);
-  if (kind === "long") return zone(/^Long/i);
-  if (/fartlek|hill|sprint/i.test(text)) return "by feel";
-  return zone(/^Easy/i);
+  const zone = (re: RegExp) => plan.paces.find((p) => re.test(p.zone)) ?? null;
+  const explicit = /(\d:\d{2}(?:\s*[–-]\s*\d:\d{2})?)/.exec(text)?.[1] ?? null;
+  let z: Plan["paces"][number] | null = null;
+  let easyish = false;
+  if (/\bHMP\b/.test(text)) z = zone(/^Half/i);
+  else if (/\bMP\b/.test(text)) z = zone(/^Marathon/i);
+  else if (explicit) {
+    // The training zone nearest the pace written in the session.
+    const p = paceIn(explicit)!;
+    z = plan.paces.map((x) => ({ x, r: paceIn(x.now) })).filter((v) => v.r != null).sort((a, b) => Math.abs(a.r! - p) - Math.abs(b.r! - p))[0]?.x ?? null;
+  } else if (/\bT\b/.test(text)) z = zone(/^Threshold/i);
+  else if (/fartlek|hill|sprint/i.test(text)) return "by feel";
+  else if (/recover/i.test(text)) (z = zone(/^Recovery/i)), (easyish = true);
+  else if (kind === "long") (z = zone(/^Long/i)), (easyish = true);
+  else (z = zone(/^Easy/i)), (easyish = true);
+  const pace = explicit ?? z?.now ?? null;
+  const prefs = plan.prefs;
+  if (prefs?.mode === "hr" && z) {
+    const hz = plan.hrZones?.find((h) => h.zone === z!.zone);
+    if (hz) return easyish && prefs.easyTarget === "feel" ? `easy, under ${hz.range[1]} bpm` : hrText(hz.range);
+  }
+  if (easyish && prefs && pace) {
+    if (prefs.easyTarget === "feel") return "easy, by feel";
+    if (prefs.easyTarget === "wide") return widen(pace);
+  }
+  return pace;
 }
 
 export function forecastWeek(plan: Plan, monday: string, runs: Run[] = [], overrides?: Map<string, string>): ForecastWeek {
@@ -286,7 +310,7 @@ export function forecastWeek(plan: Plan, monday: string, runs: Run[] = [], overr
     monday,
     week,
     block,
-    days: days.map(({ flex: _f, optional: _o, ...d }) => d),
+    days: days.map(({ flex: _f, optional: _o, ...d }) => (plan.prefs?.easyChecks === false ? { ...d, noEasyCheck: true } : d)),
     plannedKm,
     actualKm: days.reduce((s, d) => s + d.actualKm, 0),
   };

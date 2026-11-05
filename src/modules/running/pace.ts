@@ -1,4 +1,5 @@
 import { parseTime } from "./stats";
+import { hrRange } from "./targets";
 import type { ForecastDay } from "./forecast";
 import type { Run, RunDetail } from "./strava";
 
@@ -37,6 +38,11 @@ export interface PaceCheck {
   session: boolean;
   /** A run outside the plan: the training zone its work was judged against. */
   autoZone?: string;
+  /**
+   * Judged on heart rate. Values are then stored as negative bpm, so that
+   * "smaller = harder" holds for both and the scoring and charts work unchanged.
+   */
+  unit?: "bpm";
 }
 
 const TOLERANCE = 3; // s/km either side of the range still counts as on point
@@ -77,9 +83,13 @@ const offBy = (actual: number, [lo, hi]: [number, number]) => (actual < lo - TOL
 
 export function checkRun(day: ForecastDay, run: Run, detail: RunDetail | null): PaceCheck | null {
   if (day.kind === "rest" || day.kind === "race") return null;
+  const easy = day.kind === "easy" || day.kind === "optional" || (day.kind === "long" && !/\bat\s+\d:\d\d/.test(day.text));
+  // Your setting: no verdicts on easy, long and recovery runs.
+  if (easy && day.noEasyCheck) return null;
+  const hr = hrRange(day.pace);
+  if (hr) return checkHr(day, run, detail, hr, easy);
   const target = paceRange(day.pace);
   if (!target || run.distance < 1500) return null;
-  const easy = day.kind === "easy" || (day.kind === "long" && !/\bat\s+\d:\d\d/.test(day.text));
   const ranKm = run.distance / 1000;
   const base = { runId: run.id, date: run.date, target, plannedKm: day.km, ranKm, fastest: null as number | null, slowest: null as number | null, session: false };
 
@@ -123,6 +133,66 @@ export function checkRun(day: ForecastDay, run: Run, detail: RunDetail | null): 
   const paces = segs.map((x) => x.time / (x.distance / 1000));
   return { ...base, measured, actual, off, verdict, score, inRange, fastest: Math.min(...paces), slowest: Math.max(...paces), session: true };
 }
+
+/**
+ * Heart-rate mode: the whole run's average heart rate for easy runs; for
+ * sessions, the work laps (or the quickest km) and their heart rate. Short
+ * reps are left out: heart rate lags too much to judge them.
+ */
+function checkHr(day: ForecastDay, run: Run, detail: RunDetail | null, [lo, hi]: [number, number], easy: boolean): PaceCheck | null {
+  if (run.distance < 1500) return null;
+  const target: [number, number] = [-hi, -lo];
+  const base = { runId: run.id, date: run.date, target, plannedKm: day.km, ranKm: run.distance / 1000, unit: "bpm" as const };
+  if (easy) {
+    if (!run.avg_hr) return null;
+    const actual = -run.avg_hr;
+    const off = offBy(actual, target);
+    const verdict = verdictFor(off, true);
+    return { ...base, measured: "whole run", actual, off, verdict, score: verdict === "on-point" ? 100 : Math.max(0, Math.round(100 + off * 5)), inRange: null, fastest: null, slowest: null, session: false };
+  }
+  if (!detail) return null;
+  const work = workKm(day.text, 240);
+  if (work?.rep != null && work.rep < 0.8) return null;
+  let segs: { distance: number; hr: number }[] = [];
+  let measured = "";
+  const laps = (detail.laps ?? []).filter((l) => l.hr);
+  if (work?.rep && laps.length >= 3) {
+    const rep = work.rep * 1000;
+    const like = laps.filter((l) => l.distance > rep * 0.7 && l.distance < rep * 1.3);
+    // The quicker half of the laps that are the right length: the reps, not the jogs.
+    const median = [...like].map((l) => l.moving_time / l.distance).sort((a, b) => a - b)[Math.floor(like.length / 2)] ?? 0;
+    const reps = like.filter((l) => l.moving_time / l.distance <= median * 1.03);
+    if (reps.length >= 2) {
+      segs = reps.map((l) => ({ distance: l.distance, hr: l.hr! }));
+      measured = `${reps.length} work laps`;
+    }
+  }
+  if (!segs.length) {
+    const kms = detail.splits.filter((x) => x.distance > 900 && x.hr);
+    const n = Math.max(1, Math.min(kms.length, Math.round(work?.km ?? Math.min(5, kms.length))));
+    segs = [...kms].sort((a, b) => a.moving_time / a.distance - b.moving_time / b.distance).slice(0, n).map((x) => ({ distance: x.distance, hr: x.hr! }));
+    measured = n === 1 ? "fastest km" : `fastest ${n} km`;
+  }
+  if (!segs.length) return null;
+  const dist = segs.reduce((a, x) => a + x.distance, 0);
+  const actual = -segs.reduce((a, x) => a + x.hr * x.distance, 0) / dist;
+  const vals = segs.map((x) => -x.hr);
+  const inRange = vals.filter((v) => offBy(v, target) === 0).length / vals.length;
+  const off = offBy(actual, target);
+  const verdict = verdictFor(off, false);
+  const score = Math.round(Math.max(0, Math.min(100, 0.5 * inRange * 100 + 0.5 * Math.max(0, 100 - Math.abs(off) * 6))));
+  return { ...base, measured, actual, off, verdict, score, inRange, fastest: Math.min(...vals), slowest: Math.max(...vals), session: true };
+}
+
+/** A check's value as text: "4:05/km" or "152 bpm". */
+export const fmtVal = (c: Pick<PaceCheck, "unit">, v: number, unit = true) => (c.unit === "bpm" ? `${Math.round(-v)}${unit ? " bpm" : ""}` : `${fmtPace(v)}${unit ? "/km" : ""}`);
+/** A check's target as text: "3:46–3:50/km" or "150–160 bpm". */
+export const fmtTarget = (c: Pick<PaceCheck, "unit" | "target">) =>
+  c.unit === "bpm"
+    ? `${Math.round(-c.target[1])}–${Math.round(-c.target[0])} bpm`
+    : `${fmtPace(c.target[0])}${c.target[1] !== c.target[0] ? `–${fmtPace(c.target[1])}` : ""}/km`;
+const HR_LABEL: Record<PaceVerdict, string> = { "on-point": "On point", "slightly-fast": "A bit hard", "too-fast": "Too hard", "slightly-slow": "A bit easy", "too-slow": "Too easy" };
+export const verdictLabel = (c: Pick<PaceCheck, "unit" | "verdict">) => (c.unit === "bpm" ? HR_LABEL : VERDICT_LABEL)[c.verdict];
 
 /** Checks for every run on a planned day (several runs on one day: the longest). */
 export function checkDays(days: ForecastDay[], details: Map<string, RunDetail>): Map<string, PaceCheck> {

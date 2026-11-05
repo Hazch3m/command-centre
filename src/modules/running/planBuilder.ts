@@ -574,7 +574,7 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
   ]
     .filter((r, i, all) => all.findIndex((x) => x.date === r.date && x.name === r.name) === i)
     .sort((a, b) => (a.date ?? "9").localeCompare(b.date ?? "9"));
-  const { previous: _p, baseWeeks: _b, ...prev } = old;
+  const { previous: _p, baseWeeks: _b, prefs: _q, hrZones: _h, ...prev } = old;
   const plan: Plan = {
     ...old,
     title: `${goalRace.name}${o.target ? ` · ${o.target}` : ""}`,

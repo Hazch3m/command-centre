@@ -4,7 +4,7 @@ import { useDataVersion } from "../../core/events";
 import { addDays, parseKey, useToday } from "../../core/time";
 import { useQuery } from "../../core/useQuery";
 import { forecastWeek, type ForecastDay } from "./forecast";
-import { checkDays, checkUnplanned, fmtPace, VERDICT_LABEL, type PaceCheck } from "./pace";
+import { checkDays, checkUnplanned, fmtPace, fmtTarget, fmtVal, verdictLabel, type PaceCheck } from "./pace";
 import { mondayOf, type Plan } from "./plan";
 import { loadDetails, loadOverrides, type Run } from "./strava";
 import { openRun } from "./RunView";
@@ -63,10 +63,10 @@ export function PaceBadge({ c }: { c: PaceCheck }) {
   return (
     <span
       className={"pace-badge " + verdictClass(c)}
-      title={`${c.measured}: ${fmtPace(c.actual)}/km against ${fmtPace(c.target[0])}${c.target[1] !== c.target[0] ? `–${fmtPace(c.target[1])}` : ""}${c.inRange != null ? ` · ${Math.round(c.inRange * 100)}% of the work in range` : ""}`}
+      title={`${c.measured}: ${fmtVal(c, c.actual)} against ${fmtTarget(c)}${c.inRange != null ? ` · ${Math.round(c.inRange * 100)}% of the work in range` : ""}`}
     >
-      {VERDICT_LABEL[c.verdict]}
-      {c.off !== 0 && c.verdict !== "on-point" ? ` ${c.off > 0 ? "+" : "−"}${Math.abs(Math.round(c.off))}s` : ""}
+      {verdictLabel(c)}
+      {c.off !== 0 && c.verdict !== "on-point" ? (c.unit === "bpm" ? ` ${c.off < 0 ? "+" : "−"}${Math.abs(Math.round(c.off))} bpm` : ` ${c.off > 0 ? "+" : "−"}${Math.abs(Math.round(c.off))}s`) : ""}
     </span>
   );
 }
@@ -127,11 +127,8 @@ export function PaceOnPointTab({ plan, runs }: { plan: Plan; runs: Run[] }) {
                 {day.dow} {fmt(c.date)}
               </td>
               <td>{day.text}</td>
-              <td className="num-col nowrap">
-                {fmtPace(c.target[0])}
-                {c.target[1] !== c.target[0] ? `–${fmtPace(c.target[1])}` : ""}
-              </td>
-              <td className="num-col">{fmtPace(c.actual)}</td>
+              <td className="num-col nowrap">{fmtTarget(c)}</td>
+              <td className="num-col">{fmtVal(c, c.actual)}</td>
               <td className="muted">
                 {c.measured}
                 {c.inRange != null ? ` · ${Math.round(c.inRange * 100)}% in range` : ""}
@@ -153,8 +150,8 @@ const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 type Band = "fast" | "on" | "slow";
 const bandOf = (pace: number, [lo, hi]: [number, number]): Band => (pace < lo - 5 ? "fast" : pace > hi + 5 ? "slow" : "on");
 const BAND_LABEL: Record<Band, string> = { fast: "faster than target", on: "on target", slow: "slower than target" };
-const offText = (pace: number, [lo, hi]: [number, number]) =>
-  pace < lo ? `${Math.round(lo - pace)} s fast` : pace > hi ? `${Math.round(pace - hi)} s slow` : "in range";
+const offText = (pace: number, [lo, hi]: [number, number], bpm = false) =>
+  pace < lo ? `${Math.round(lo - pace)} ${bpm ? "bpm high" : "s fast"}` : pace > hi ? `${Math.round(pace - hi)} ${bpm ? "bpm low" : "s slow"}` : "in range";
 
 /**
  * Key sessions over the last weeks, Runna-style: for each one the fastest and
@@ -163,7 +160,10 @@ const offText = (pace: number, [lo, hi]: [number, number]) =>
 function IntervalChart({ rows }: { rows: { day: ForecastDay; check: PaceCheck }[] }) {
   const [ref, box] = useBox(false);
   const [hover, setHover] = useState<number | null>(null);
-  const items = rows.filter((r) => r.check.session && r.check.fastest != null).sort((a, b) => a.check.date.localeCompare(b.check.date));
+  const sessions = rows.filter((r) => r.check.session && r.check.fastest != null).sort((a, b) => a.check.date.localeCompare(b.check.date));
+  // Heart-rate mode: values are stored as negative bpm, so harder is still up. One unit per chart.
+  const bpm = sessions.some((r) => r.check.unit === "bpm");
+  const items = sessions.filter((r) => (r.check.unit === "bpm") === bpm);
   if (!items.length)
     return (
       <div className="interval-chart">
@@ -201,7 +201,7 @@ function IntervalChart({ rows }: { rows: { day: ForecastDay; check: PaceCheck }[
             <g key={t}>
               <line x1={pad.left} x2={W - pad.right} y1={y(t)} y2={y(t)} className="chart-grid" />
               <text x={pad.left - 6} y={y(t) + 4} textAnchor="end" className="chart-label">
-                {fmtPace(t)}
+                {bpm ? Math.round(-t) : fmtPace(t)}
               </text>
             </g>
           ))}
@@ -222,7 +222,7 @@ function IntervalChart({ rows }: { rows: { day: ForecastDay; check: PaceCheck }[
                 <rect x={x - w / 2} y={y(c.actual) - 3} width={w} height={6} rx={3} className={`iv-avg iv-${ab}`} />
                 {bw > 70 && (
                   <text x={x + w / 2 + 4} y={y(c.actual) + 4} className="chart-label iv-avg-label">
-                    {fmtPace(c.actual)}
+                    {fmtVal(c, c.actual, false)}
                   </text>
                 )}
                 {(i % Math.max(1, Math.ceil(46 / bw)) === 0 || hover === i) && (
@@ -240,9 +240,9 @@ function IntervalChart({ rows }: { rows: { day: ForecastDay; check: PaceCheck }[
               <b>
                 {h.day.dow} {fmt(h.check.date)}
               </b>{" "}
-              {h.day.text} · average <b className="num">{fmtPace(h.check.actual)}</b> ({offText(h.check.actual, h.check.target)}) · fastest <b className="num">{fmtPace(h.check.fastest!)}</b> ({offText(h.check.fastest!, h.check.target)}) · slowest{" "}
-              <b className="num">{fmtPace(h.check.slowest!)}</b> ({offText(h.check.slowest!, h.check.target)}) · target {fmtPace(h.check.target[0])}
-              {h.check.target[1] !== h.check.target[0] ? `–${fmtPace(h.check.target[1])}` : ""} · {h.check.measured}
+              {h.day.text} · average <b className="num">{fmtVal(h.check, h.check.actual)}</b> ({offText(h.check.actual, h.check.target, bpm)}) · {bpm ? "hardest" : "fastest"}{" "}
+              <b className="num">{fmtVal(h.check, h.check.fastest!)}</b> ({offText(h.check.fastest!, h.check.target, bpm)}) · {bpm ? "easiest" : "slowest"} <b className="num">{fmtVal(h.check, h.check.slowest!)}</b> (
+              {offText(h.check.slowest!, h.check.target, bpm)}) · target {fmtTarget(h.check)} · {h.check.measured}
             </>
           ) : (
             <span className="iv-legend">

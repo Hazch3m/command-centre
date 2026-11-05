@@ -7,7 +7,7 @@ import { useQuery } from "../../core/useQuery";
 import { XYChart } from "../../shell/charts";
 import { ErrorNote } from "../../shell/ui";
 import { forecastWeek } from "./forecast";
-import { checkRun, fmtPace, VERDICT_LABEL } from "./pace";
+import { checkRun, fmtPace, fmtVal, verdictLabel } from "./pace";
 import { loadPlan } from "./plan";
 import { MedalBadges } from "./Medals";
 import { collectEfforts, medalsByRun } from "./pbs";
@@ -159,7 +159,7 @@ function WeekRuns({ monday, onBack, onClose }: { monday: string; onBack?: () => 
                   <td className="num-col">{r ? duration(r.moving_time) : ""}</td>
                   <td className="num-col">{r ? pace(r.distance, r.moving_time) : ""}</td>
                   <td className="num-col">{r?.avg_hr ? Math.round(r.avg_hr) : ""}</td>
-                  <td>{c ? <span className={c.verdict === "on-point" ? "tone-accent" : c.verdict.startsWith("slightly") ? "tone-warn" : "tone-danger"}>{VERDICT_LABEL[c.verdict]}</span> : ""}</td>
+                  <td>{c ? <span className={c.verdict === "on-point" ? "tone-accent" : c.verdict.startsWith("slightly") ? "tone-warn" : "tone-danger"}>{verdictLabel(c)}</span> : ""}</td>
                 </tr>
               );
             });
@@ -266,12 +266,12 @@ function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; o
       {day && day.text && (
         <div className="run-plan-line small">
           <span className="label">Planned</span> {day.text || "–"}
-          {day.pace && ` · ${day.pace}${/\d:\d\d/.test(day.pace) ? "/km" : ""}`}
+          {day.pace && ` · ${day.pace}${/\d:\d\d$/.test(day.pace) ? "/km" : ""}`}
           {check && (
             <>
               {" · "}
-              <b className={check.verdict === "on-point" ? "tone-accent" : check.verdict.startsWith("slightly") ? "tone-warn" : "tone-danger"}>{VERDICT_LABEL[check.verdict]}</b> — {check.measured}{" "}
-              {fmtPace(check.actual)}/km{check.inRange != null ? `, ${Math.round(check.inRange * 100)}% in range` : ""}
+              <b className={check.verdict === "on-point" ? "tone-accent" : check.verdict.startsWith("slightly") ? "tone-warn" : "tone-danger"}>{verdictLabel(check)}</b> — {check.measured}{" "}
+              {fmtVal(check, check.actual)}{check.inRange != null ? `, ${Math.round(check.inRange * 100)}% in range` : ""}
             </>
           )}
         </div>

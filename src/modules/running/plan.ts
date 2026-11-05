@@ -3,6 +3,7 @@ import { addDays, diffDays, parseKey } from "../../core/time";
 import defaultPlan from "./default-plan.json";
 import type { PlanAdjust } from "./planAdjust";
 import type { BuildOptions } from "./planBuilder";
+import type { HrZones, RunPrefs } from "./targets";
 
 export type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 export const WEEK_KEYS: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
@@ -73,6 +74,10 @@ export interface Plan {
   built?: BuildOptions & { start: string; peak: number; longest: number; vdot: number };
   /** The plan before the last one was built, so it can be brought back. */
   previous?: Plan;
+  /** Your target settings (pace or heart rate, easy-run targets), attached when the plan loads; never saved in the plan. */
+  prefs?: RunPrefs;
+  /** Heart-rate zones by pace name, worked out when the plan loads. */
+  hrZones?: HrZones;
   /** Past races to show on the progression page (Strava activity ids). */
   history?: { races: { id: string; name: string; km: number }[]; marathons: { name: string; date: string }[] };
 }
@@ -85,7 +90,12 @@ export const BUNDLED_PLAN = defaultPlan as unknown as Plan;
  * ships with the app is written there, so it can be replaced by a fresh export.
  */
 export async function loadPlan(): Promise<{ plan: Plan; error: string | null }> {
-  const r = await loadPlanFile();
+  const r0 = await loadPlanFile();
+  // Your target settings and heart-rate zones ride along with the plan, so every view uses them.
+  const { loadRunPrefs, hrZones } = await import("./targets");
+  const { loadFitnessConfig } = await import("./fitness");
+  const [prefs, cfg] = await Promise.all([loadRunPrefs().catch(() => undefined), loadFitnessConfig().catch(() => null)]);
+  const r = { ...r0, plan: { ...r0.plan, prefs, hrZones: cfg ? hrZones(r0.plan.paces, cfg.hrMax, cfg.hrRest) : undefined } };
   if (!r.plan.adjust && !r.plan.races.some((x) => x.taper)) return r;
   // Imported here, not at the top: planAdjust uses the forecast, which uses this file.
   const { applyAdjust, applyRaceTapers } = await import("./planAdjust");
@@ -183,7 +193,7 @@ export async function savePlan(plan: Plan) {
     const [lo, hi] = kmRange(w.km);
     return { ...w, kmMin: lo, kmMax: hi, end: addDays(w.start, 6) };
   });
-  const { baseWeeks: _b, ...rest } = plan;
+  const { baseWeeks: _b, prefs: _p, hrZones: _h, ...rest } = plan;
   const out: Plan = { ...rest, weeks, editedInApp: new Date().toISOString(), exported: plan.exported > today ? plan.exported : today };
   await backend.writeDataFile(PLAN_FILE, JSON.stringify(out, null, 2));
   window.dispatchEvent(new Event("cc:plan-changed"));

@@ -9,6 +9,7 @@ import { plannedKinds, RUN_TYPE_LABEL, typeOfDay, typeOfRun } from "../modules/r
 import { km, pace } from "../modules/running/stats";
 import { loadOverrides } from "../modules/running/strava";
 import { useRunningData } from "../modules/running/useRunning";
+import { TargetPrefs } from "../modules/running/TargetPrefs";
 import { dayName, Section, usePhoneNav } from "./common";
 import { Session } from "./Today";
 
@@ -124,6 +125,10 @@ export function Training() {
             </button>
           );
         })}
+      </Section>
+
+      <Section title="Targets">
+        <TargetPrefs compact />
       </Section>
 
       <Section title="More">

@@ -22,6 +22,7 @@ import { RunsTab } from "./RunsTab";
 import { AboutPlan, PlanSettings } from "./PlanSettings";
 import { PlanBuilder } from "./BuildPlan";
 import { PbsTab } from "./PbsTab";
+import { TargetPrefs } from "./TargetPrefs";
 import { RaceManager } from "./RaceManager";
 import { ImportPlan } from "./ImportPlan";
 import { PlanEditor } from "./PlanEditor";
@@ -159,6 +160,12 @@ export function RunningPage() {
                 ))}
               </span>
             </div>
+            <details className="fold targets-fold">
+              <summary>
+                Targets <span className="muted small">{plan.prefs?.mode === "hr" ? "heart rate" : "pace"} · easy runs {plan.prefs?.easyTarget === "feel" ? "by feel" : plan.prefs?.easyTarget === "wide" ? "wider range" : "plan's range"}{plan.prefs?.easyChecks ? "" : ", not judged"}</span>
+              </summary>
+              <TargetPrefs />
+            </details>
             {view === "week" && <PlanWeekView plan={plan} runs={runs} />}
             {view === "list" && <PlanList plan={plan} runs={runs} />}
             {view === "six" && <WeekCalendar plan={plan} runs={runs} count={6} />}

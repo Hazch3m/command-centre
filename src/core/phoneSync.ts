@@ -161,6 +161,8 @@ export async function pullPhoneChanges(): Promise<number> {
       const op = JSON.parse(new TextDecoder().decode(await unseal(c.keys.key, b64url.decode(row.body.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""))))) as PhoneOp;
       const stmts = (op.stmts ?? []).filter((s) => phoneMayWrite(s.sql, s.params));
       if (stmts.some((s) => s.params[0] === REFRESH_KEY)) refreshAsked = true;
+      // Target settings changed on the phone: the plan views redraw with them.
+      if (stmts.some((s) => s.params[0] === "running.prefs")) planChanged = true;
       if (stmts.length) await db.batch(stmts);
       if (op.file && PHONE_FILES.has(op.file.name) && typeof op.file.contents === "string") {
         JSON.parse(op.file.contents); // only well-formed files

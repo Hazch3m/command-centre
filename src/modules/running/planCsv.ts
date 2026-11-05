@@ -179,7 +179,7 @@ export function mergeImported(old: Plan, imp: CsvPlan, race: PlanRace | null, fi
   const start = imp.weeks[0].start;
   const end = imp.weeks[imp.weeks.length - 1].end;
   const races = [...old.races.filter((r) => !r.date || r.date < start || r.date > end), ...(race ? [race] : [])].sort((a, b) => (a.date ?? "9").localeCompare(b.date ?? "9"));
-  const { previous: _p, baseWeeks: _b, ...prev } = old;
+  const { previous: _p, baseWeeks: _b, prefs: _q, hrZones: _h, ...prev } = old;
   return {
     ...old,
     title: race ? `${race.name}${race.target ? ` · ${race.target}` : ""}` : `Imported plan`,
