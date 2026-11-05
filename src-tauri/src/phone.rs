@@ -42,6 +42,40 @@ pub fn phone_link_set(link: Option<PhoneLink>) -> Result<(), String> {
     }
 }
 
+// ---- Sync in the cloud ----------------------------------------------------------------
+//
+// With cloud sync on, the sync service fetches Garmin and calendar data itself,
+// so the phone stays up to date with the PC off. That needs the sign-ins, so the
+// PC hands them over (only to its own linked service, over HTTPS), and takes the
+// Garmin one back when cloud sync is switched off: Garmin's refresh token
+// rotates, so only one place may use it at a time.
+
+/// The sign-ins the cloud needs: Garmin's token, Google's client and token, the calendar feeds.
+#[tauri::command]
+pub fn cloud_credentials() -> serde_json::Value {
+    let garmin: Option<serde_json::Value> = oauth::load("garmin.token");
+    let client: Option<serde_json::Value> = oauth::load("google.client");
+    let token: Option<serde_json::Value> = oauth::load("google.token");
+    let ics: Option<serde_json::Value> = oauth::load("ics.feeds");
+    serde_json::json!({
+        "garmin": garmin,
+        "google": match (client, token) { (Some(c), Some(t)) => serde_json::json!({ "client": c, "token": t }), _ => serde_json::Value::Null },
+        "ics": ics.unwrap_or(serde_json::json!([])),
+    })
+}
+
+/// Takes the sign-ins back from the cloud (the Garmin one may have been refreshed there).
+#[tauri::command]
+pub fn cloud_restore(garmin: Option<serde_json::Value>, google: Option<serde_json::Value>) -> Result<(), String> {
+    if let Some(g) = garmin.filter(|v| v.get("access").and_then(|a| a.as_str()).is_some()) {
+        oauth::save("garmin.token", &g)?;
+    }
+    if let Some(t) = google.filter(|v| v.get("access_token").and_then(|a| a.as_str()).is_some()) {
+        oauth::save("google.token", &t)?;
+    }
+    Ok(())
+}
+
 /// Tables the phone has no use for (large, or only meaningful on this PC).
 const DROP_ROWS: &[&str] = &["strava_full"];
 

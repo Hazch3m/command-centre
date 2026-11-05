@@ -88,7 +88,35 @@ export interface SnapshotHeader {
   ics: { id: string; name: string; host: string }[];
   /** The last phone change (op id) already in this snapshot. */
   applied: number;
+  /** The last cloud change (cloud sync) already in this snapshot. */
+  cloudApplied?: number;
+  /** When the cloud last added to this copy. */
+  cloudMade?: string;
+  /** Cloud sync is on: the phone can ask the service to sync, and get Garmin data through it. */
+  cloud?: boolean;
 }
+
+/** Changes the cloud made (new runs, health, calendar), for the PC and the phone to replay. */
+export interface CloudOp {
+  at: string;
+  stmts: { sql: string; params: (string | number | null)[] }[];
+}
+
+/** Tables the cloud may write (and the PC and phone accept from it). */
+export const CLOUD_TABLES = new Set(["strava_activities", "strava_details", "strava_full", "health_daily", "calendar_events", "vo2_readings", "kv"]);
+/** kv keys the cloud may write: the sync states and lists its sync code keeps. */
+export const CLOUD_KV = /^(health\.|calendar\.(sync|calendars)$|garmin\.runs\.sync$)/;
+
+/** May a statement from the cloud be applied (on the PC, the phone, or the cloud's own copy)? */
+export function cloudMayWrite(sql: string, params: unknown[]): boolean {
+  const s = sql.trim();
+  if (s.replace(/;\s*$/, "").includes(";") || /\b(ATTACH|DETACH|PRAGMA|DROP|ALTER|CREATE|VACUUM)\b/i.test(s)) return false;
+  const t = /^(?:INSERT(?:\s+OR\s+\w+)?\s+INTO|REPLACE\s+INTO|UPDATE(?:\s+OR\s+\w+)?|DELETE\s+FROM)\s+["`]?(\w+)/i.exec(s)?.[1]?.toLowerCase();
+  if (!t || !CLOUD_TABLES.has(t)) return false;
+  return t !== "kv" || (typeof params[0] === "string" && CLOUD_KV.test(params[0]));
+}
+
+
 
 export function packSnapshot(h: SnapshotHeader, db: Uint8Array): Uint8Array {
   const head = te.encode(JSON.stringify(h));

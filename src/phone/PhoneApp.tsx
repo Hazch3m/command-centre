@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { kvGet, kvSet } from "../core/db";
 import { notifyChanged } from "../core/events";
 import { REFRESHED_KEY, REFRESH_KEY } from "../core/sync";
-import { flush, phoneState, refresh, unpair } from "../core/backend.phone";
+import { cloudOn, cloudRun, flush, phoneState, refresh, unpair } from "../core/backend.phone";
 import { RunViewHost } from "../modules/running/RunView";
 import { loadRuns } from "../modules/running/strava";
 import { ModulePage } from "../shell/Dashboard";
@@ -46,10 +46,12 @@ const ago = (ms: number) => {
 
 function SyncLine({ onRefresh, busy }: { onRefresh: () => void; busy: boolean }) {
   useSync();
-  const made = phoneState.header?.made ? Date.parse(phoneState.header.made) : 0;
+  // The newest of the PC's copy and the cloud's additions to it.
+  const made = Math.max(phoneState.header?.made ? Date.parse(phoneState.header.made) : 0, phoneState.header?.cloudMade ? Date.parse(phoneState.header.cloudMade) : 0);
+  const stale = !phoneState.header?.cloud && made > 0 && Date.now() - made > 3 * 3600_000;
   const waiting = phoneState.pending;
   return (
-    <button className={"p-sync" + (phoneState.error || (made && Date.now() - made > 3 * 3600_000) ? " warn" : "")} onClick={onRefresh}>
+    <button className={"p-sync" + (phoneState.error || stale ? " warn" : "")} onClick={onRefresh}>
       <span className={"sync-dot" + (busy ? " spin" : "")} />
       {phoneState.error ? phoneState.error.replace(/^Offline: /, "Offline · ") : made ? `Updated ${ago(made)}${Date.now() - made > 3 * 3600_000 ? " · is the PC on?" : ""}` : "Not synced yet"}
       {waiting ? ` · ${waiting} to send` : ""}
@@ -97,8 +99,18 @@ export function PhoneApp() {
       }
     };
     const before = await count();
-    let answer: string;
+    let answer = "";
     try {
+      if (cloudOn()) {
+        // Cloud sync on: the service fetches from Garmin and the calendars itself, PC or no PC.
+        setNote("Asking the cloud to check Garmin and your calendars…");
+        const r = await cloudRun();
+        if (await refresh()) await notifyChanged("*");
+        const problems = Object.entries(r?.errors ?? {}).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`);
+        const n = (await count()) - before;
+        answer = (n > 0 ? `${n} new run${n === 1 ? "" : "s"}.` : "Up to date: no new runs yet.") + (problems.length ? ` ${problems.join(" · ")}` : "");
+        throw { done: true };
+      }
       await kvSet(REFRESH_KEY, stamp);
       await flush();
       const made = phoneState.header?.made ? Date.parse(phoneState.header.made) : 0;
@@ -117,7 +129,7 @@ export function PhoneApp() {
         }
       }
     } catch (e) {
-      answer = `Couldn't ask the PC: ${String((e as Error)?.message ?? e)}`;
+      if (!(e as { done?: boolean })?.done) answer = `Couldn't ${cloudOn() ? "ask the cloud" : "ask the PC"}: ${String((e as Error)?.message ?? e)}`;
     }
     setNote(answer);
     setAsking(false);

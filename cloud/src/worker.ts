@@ -5,10 +5,27 @@
  *  - the PC's latest snapshot (the dashboard's database), in chunks
  *  - changes made on the phone, waiting for the PC to apply them
  *  - a short-lived pairing entry while a phone is being linked
+ *  - when you switch on "sync in the cloud": your Garmin and Google sign-ins and
+ *    the link's secret, so it can fetch new runs, health and calendar every
+ *    15 minutes with the PC off (cloudSync.ts). Switching it off deletes them.
  * Access needs the token derived from the link's secret; only its hash is kept.
  * The first PC to "claim" the service sets that hash.
  */
 import { DurableObject } from "cloudflare:workers";
+import { garminGet, type Creds } from "./appBackend";
+import { runCloudSync, type SyncResult } from "./cloudSync";
+import initSqlJs, { type SqlJsStatic } from "sql.js/dist/sql-wasm.js";
+import wasmModule from "sql.js/dist/sql-wasm.wasm";
+
+let SQL: Promise<SqlJsStatic> | null = null;
+/** sql.js with its WebAssembly bundled into the service (Workers can't fetch it at run time). */
+const sqlJs = () =>
+  (SQL ??= initSqlJs({
+    instantiateWasm: (imports: WebAssembly.Imports, done: (i: WebAssembly.Instance) => void) => {
+      WebAssembly.instantiate(wasmModule as WebAssembly.Module, imports).then((inst) => done(inst));
+      return {};
+    },
+  }) as Promise<SqlJsStatic>);
 
 interface Env {
   STORE: DurableObjectNamespace<Store>;
@@ -55,6 +72,7 @@ export class Store extends DurableObject<Env> {
       CREATE TABLE IF NOT EXISTS ops (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, body BLOB NOT NULL);
       CREATE TABLE IF NOT EXISTS pair (h TEXT PRIMARY KEY, blob TEXT NOT NULL, expires INTEGER NOT NULL, uses INTEGER NOT NULL DEFAULT 0);
       CREATE TABLE IF NOT EXISTS fails (at INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS cloudops (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, body BLOB NOT NULL);
     `);
   }
 
@@ -70,6 +88,90 @@ export class Store extends DurableObject<Env> {
     const token = req.headers.get("x-cc-token");
     const want = this.get("tokenHash");
     return !!token && !!want && (await sha256hex(token)) === want;
+  }
+
+  private putSnapshot(body: Uint8Array, applied: number, cloudApplied: number): number {
+    const version = Math.max(Date.now(), Number(this.get("snapVersion") ?? 0) + 1);
+    this.ctx.storage.transactionSync(() => {
+      this.sql.exec("DELETE FROM snap");
+      for (let i = 0, n = 0; i < body.length; i += CHUNK, n++) this.sql.exec("INSERT INTO snap (i, data) VALUES (?, ?)", n, body.slice(i, i + CHUNK).buffer);
+      this.set("snapVersion", String(version));
+      this.set("snapApplied", String(applied));
+      this.set("snapCloud", String(cloudApplied));
+      this.set("snapSize", String(body.length));
+    });
+    return version;
+  }
+
+  private readSnapshot(): Uint8Array | null {
+    const parts = this.sql.exec<{ data: ArrayBuffer }>("SELECT data FROM snap ORDER BY i").toArray();
+    if (!parts.length) return null;
+    const out = new Uint8Array(parts.reduce((a, p) => a + p.data.byteLength, 0));
+    let o = 0;
+    for (const p of parts) {
+      out.set(new Uint8Array(p.data), o);
+      o += p.data.byteLength;
+    }
+    return out;
+  }
+
+  // ---- Sync in the cloud -----------------------------------------------------------
+
+  private creds(): Creds | null {
+    const c = this.get("creds");
+    return c ? (JSON.parse(c) as Creds) : null;
+  }
+
+  private syncing: Promise<SyncResult> | null = null;
+
+  /** One cloud sync (one at a time). Calendars at most hourly: they're rewritten in full each time. */
+  private runSync(force = false): Promise<SyncResult> {
+    this.syncing ??= (async () => {
+      const creds = this.creds();
+      if (!creds) return { ranAt: new Date().toISOString(), wrote: 0, errors: { cloud: "Cloud sync is off." }, newRuns: 0 };
+      const calAt = Number(this.get("cloudCalAt") ?? 0);
+      const withCal = force || Date.now() - calAt > 55 * 60_000;
+      const io = {
+        creds,
+        sqlJs,
+        saveCreds: async (c: Creds) => this.set("creds", JSON.stringify(c)),
+        loadSnapshot: async () => {
+          const box = this.readSnapshot();
+          return box ? { box, version: Number(this.get("snapVersion") ?? 0), applied: Number(this.get("snapApplied") ?? 0) } : null;
+        },
+        saveSnapshot: async (box: Uint8Array, applied: number, cloudApplied: number, ifVersion: number) => {
+          // The PC sent a newer copy while this ran: keep it; the changes are in the cloud log for everyone to replay.
+          if (Number(this.get("snapVersion") ?? 0) !== ifVersion) return false;
+          this.putSnapshot(box, applied, cloudApplied);
+          return true;
+        },
+        cloudOpsAfter: (id: number) => this.sql.exec<{ id: number; body: ArrayBuffer }>("SELECT id, body FROM cloudops WHERE id > ? ORDER BY id", id).toArray().map((r) => ({ id: r.id, body: new Uint8Array(r.body) })),
+        addCloudOp: (body: Uint8Array) => this.sql.exec<{ id: number }>("INSERT INTO cloudops (at, body) VALUES (?, ?) RETURNING id", Date.now(), body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength)).one().id,
+      };
+      let r: SyncResult;
+      try {
+        r = await runCloudSync(io, withCal ? undefined : ["runs", "health"]);
+        if (withCal) this.set("cloudCalAt", String(Date.now()));
+      } catch (e) {
+        r = { ranAt: new Date().toISOString(), wrote: 0, errors: { cloud: String((e as Error)?.message ?? e) }, newRuns: 0 };
+      }
+      this.set("cloudLast", JSON.stringify(r));
+      // Old changes everyone has: the PC applied them and the phone's copy includes them.
+      const pcAck = Number(this.get("cloudAck") ?? 0);
+      const inSnap = Number(this.get("snapCloud") ?? 0);
+      this.sql.exec("DELETE FROM cloudops WHERE id <= ? AND at < ?", Math.min(pcAck, inSnap), Date.now() - 86400_000);
+      return r;
+    })().finally(() => (this.syncing = null));
+    return this.syncing;
+  }
+
+  async alarm() {
+    if (!this.creds()) return;
+    try {
+      await this.runSync();
+    } finally {
+      await this.ctx.storage.setAlarm(Date.now() + 15 * 60_000);
+    }
   }
 
   async fetch(req: Request): Promise<Response> {
@@ -125,30 +227,67 @@ export class Store extends DurableObject<Env> {
       const body = new Uint8Array(await req.arrayBuffer());
       if (!body.length || body.length > MAX_SNAPSHOT) return err(413, "snapshot too large");
       const applied = Number(url.searchParams.get("applied") ?? 0);
-      const version = Date.now();
-      this.ctx.storage.transactionSync(() => {
-        this.sql.exec("DELETE FROM snap");
-        for (let i = 0, n = 0; i < body.length; i += CHUNK, n++) this.sql.exec("INSERT INTO snap (i, data) VALUES (?, ?)", n, body.slice(i, i + CHUNK).buffer);
-        this.set("snapVersion", String(version));
-        this.set("snapApplied", String(applied));
-        this.set("snapSize", String(body.length));
-      });
+      const version = this.putSnapshot(body, applied, Number(url.searchParams.get("cloud") ?? 0));
       return json({ version });
     }
 
     if (path === "/snapshot" && m === "GET") {
-      const parts = this.sql.exec<{ data: ArrayBuffer }>("SELECT data FROM snap ORDER BY i").toArray();
-      if (!parts.length) return err(404, "Nothing synced from the PC yet.");
-      const total = parts.reduce((a, p) => a + p.data.byteLength, 0);
-      const out = new Uint8Array(total);
-      let o = 0;
-      for (const p of parts) {
-        out.set(new Uint8Array(p.data), o);
-        o += p.data.byteLength;
-      }
+      const out = this.readSnapshot();
+      if (!out) return err(404, "Nothing synced from the PC yet.");
       return new Response(out, {
         headers: { "content-type": "application/octet-stream", "x-cc-version": this.get("snapVersion") ?? "0", "x-cc-applied": this.get("snapApplied") ?? "0", "cache-control": "no-store", ...CORS },
       });
+    }
+
+    // ---- Sync in the cloud -------------------------------------------------------------
+    if (path === "/cloud/enable" && m === "POST") {
+      const c = (await req.json()) as Creds;
+      if (!c?.secret || typeof c.secret !== "string") return err(400, "bad credentials");
+      this.set("creds", JSON.stringify({ secret: c.secret, garmin: c.garmin ?? null, google: c.google ?? null, ics: Array.isArray(c.ics) ? c.ics : [] }));
+      this.set("cloudCalAt", "0");
+      await this.ctx.storage.setAlarm(Date.now() + 1000);
+      return json({ ok: true });
+    }
+    if (path === "/cloud/disable" && m === "POST") {
+      // Hand the (possibly refreshed) sign-ins back to the PC, then forget them here.
+      const c = this.creds();
+      this.set("creds", "");
+      await this.ctx.storage.deleteAlarm();
+      return json({ garmin: c?.garmin ?? null, google: c?.google?.token ?? null });
+    }
+    if (path === "/cloud/status" && m === "GET") {
+      const c = this.creds();
+      const last = this.get("cloudLast");
+      return json({ enabled: !!c, garmin: !!c?.garmin, google: !!c?.google, ics: c?.ics.length ?? 0, last: last ? JSON.parse(last) : null, next: await this.ctx.storage.getAlarm() });
+    }
+    if (path === "/cloud/run" && m === "POST") {
+      if (!this.creds()) return err(409, "Cloud sync is off.");
+      // At most once a minute (the phone's refresh button), unless one is running: then wait for it.
+      const last = this.get("cloudLast");
+      const ranAt = last ? Date.parse((JSON.parse(last) as SyncResult).ranAt) : 0;
+      if (!this.syncing && Date.now() - ranAt < 60_000) return json({ ...(JSON.parse(last!) as SyncResult), recent: true });
+      return json(await this.runSync(true));
+    }
+    if (path === "/cloudops" && m === "GET") {
+      const after = Number(url.searchParams.get("after") ?? 0);
+      const rows = this.sql.exec<{ id: number; at: number; body: ArrayBuffer }>("SELECT id, at, body FROM cloudops WHERE id > ? ORDER BY id LIMIT 100", after).toArray();
+      return json(rows.map((r) => ({ id: r.id, at: r.at, body: b64(new Uint8Array(r.body)) })));
+    }
+    if (path === "/cloudops/ack" && m === "POST") {
+      const { upto } = (await req.json()) as { upto?: number };
+      if (typeof upto === "number") this.set("cloudAck", String(upto));
+      return json({ ok: true });
+    }
+    if (path === "/garmin" && m === "GET") {
+      // Garmin for the PC and the phone while the cloud holds the sign-in (one place refreshes it, so it never clashes).
+      const c = this.creds();
+      if (!c?.garmin) return err(409, "Garmin isn't in the cloud.");
+      const io = { creds: c, saveCreds: async (n: Creds) => this.set("creds", JSON.stringify(n)) };
+      try {
+        return json(await garminGet(io, url.searchParams.get("path") ?? ""));
+      } catch (e) {
+        return err(502, String((e as Error)?.message ?? e));
+      }
     }
 
     if (path === "/ops" && m === "POST") {
@@ -188,7 +327,10 @@ export class Store extends DurableObject<Env> {
         this.sql.exec("DELETE FROM snap");
         this.sql.exec("DELETE FROM ops");
         this.sql.exec("DELETE FROM pair");
+        this.sql.exec("DELETE FROM cloudops");
+        this.set("creds", "");
       });
+      await this.ctx.storage.deleteAlarm();
       this.set("tokenHash", await sha256hex(token));
       return json({ ok: true });
     }

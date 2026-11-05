@@ -10,6 +10,8 @@ import initSqlJs, { type Database } from "sql.js";
 import wasmUrl from "sql.js/dist/sql-wasm.wasm?url";
 import type { Backend, ExecResult, SqlParam, Statement } from "./backend.types";
 import {
+  b64url,
+  cloudMayWrite,
   gunzip,
   linkKeys,
   openWithCode,
@@ -20,6 +22,7 @@ import {
   unpackSnapshot,
   unseal,
   withPhoneId,
+  type CloudOp,
   type LinkKeys,
   type PhoneOp,
   type SnapshotHeader,
@@ -67,7 +70,10 @@ interface Saved {
   db: Uint8Array;
   header: SnapshotHeader;
   version: number;
+  /** The last cloud change applied on top of this copy. */
+  cloudSeen?: number;
 }
+let cloudSeen = 0;
 
 let SQL: Awaited<ReturnType<typeof initSqlJs>> | null = null;
 let database: Database | null = null;
@@ -135,7 +141,7 @@ let saveTimer: number | undefined;
 function saveSoon() {
   window.clearTimeout(saveTimer);
   saveTimer = window.setTimeout(() => {
-    if (database && header) idbSet("snapshot", { db: database.export(), header, version } satisfies Saved).catch(() => {});
+    if (database && header) idbSet("snapshot", { db: database.export(), header, version, cloudSeen } satisfies Saved).catch(() => {});
   }, 800);
 }
 
@@ -194,7 +200,8 @@ async function useSnapshot(bytes: Uint8Array, h: SnapshotHeader, v: number) {
   old?.close();
   // Kept on the phone so it opens straight away next time; if storage is full, it still works now.
   await idbSet("pending", pending).catch(() => {});
-  await idbSet("snapshot", { db: d.export(), header: h, version: v } satisfies Saved).catch((e) => console.warn("couldn't keep a copy on the phone", e));
+  cloudSeen = h.cloudApplied ?? 0;
+  await idbSet("snapshot", { db: d.export(), header: h, version: v, cloudSeen } satisfies Saved).catch((e) => console.warn("couldn't keep a copy on the phone", e));
 }
 
 /** Loads what's stored on the phone. False when there's nothing yet. */
@@ -206,6 +213,7 @@ export async function loadLocal(): Promise<boolean> {
   database = new S.Database(saved.db);
   header = saved.header;
   version = saved.version;
+  cloudSeen = saved.cloudSeen ?? 0;
   return true;
 }
 
@@ -223,8 +231,9 @@ export async function refresh(): Promise<boolean> {
     phoneState.lastCheck = new Date().toISOString();
     phoneState.error = null;
     if (!m.version || m.version <= version) {
+      const more = await pullCloud();
       stage(null);
-      return false;
+      return more;
     }
     stage("Downloading your data from the cloud…");
     const r = await api("/snapshot", {}, 120_000);
@@ -233,6 +242,7 @@ export async function refresh(): Promise<boolean> {
     stage(`Opening your data (${(box.length / 1e6).toFixed(1)} MB)…`);
     const { header: h, db } = unpackSnapshot(await gunzip(await unseal(link.keys.key, box)));
     await useSnapshot(db, h, Number(r.headers.get("x-cc-version") ?? m.version));
+    await pullCloud();
     stage(null);
     return true;
   } catch (e) {
@@ -242,6 +252,48 @@ export async function refresh(): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Cloud sync: what the service fetched (new runs, health, calendar) that this
+ * copy doesn't have yet, e.g. when the PC's last copy was made before it.
+ */
+async function pullCloud(): Promise<boolean> {
+  if (!link || !header?.cloud || !database) return false;
+  const after = Math.max(header.cloudApplied ?? 0, cloudSeen);
+  const r = await api(`/cloudops?after=${after}`);
+  if (!r.ok) return false;
+  const rows = (await r.json()) as { id: number; body: string }[];
+  if (!rows.length) return false;
+  for (const row of rows) {
+    try {
+      const op = JSON.parse(new TextDecoder().decode(await unseal(link.keys.key, b64url.decode(row.body.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""))))) as CloudOp;
+      for (const st of op.stmts) {
+        // Second-by-second run data stays on the PC; opening a run fetches it when needed.
+        if (!cloudMayWrite(st.sql, st.params) || /strava_full/.test(st.sql)) continue;
+        try {
+          run(database, st.sql, st.params);
+        } catch {
+          /* already there, or changed since */
+        }
+      }
+    } catch (e) {
+      console.warn("cloud change skipped", row.id, e);
+    }
+    cloudSeen = row.id;
+  }
+  saveSoon();
+  return true;
+}
+
+/** Cloud sync on: asks the service to fetch from Garmin and the calendars now (no PC needed). */
+export async function cloudRun(): Promise<{ newRuns: number; errors: Record<string, string | null> } | null> {
+  if (!link || !header?.cloud) return null;
+  const r = await api("/cloud/run", { method: "POST" }, 120_000);
+  if (!r.ok) throw new Error(((await r.json().catch(() => null)) as { error?: string } | null)?.error ?? `The cloud answered ${r.status}`);
+  return (await r.json()) as { newRuns: number; errors: Record<string, string | null> };
+}
+
+export const cloudOn = () => !!header?.cloud;
 
 // ---- Sending changes -----------------------------------------------------------------
 
@@ -368,7 +420,15 @@ export const backend: Backend = {
   garminStatus: async () => ({ connected: !!header?.connected.garmin }),
   garminConnect: offline("Garmin"),
   garminDisconnect: offline("Garmin"),
-  garminRequest: offline("Garmin data"),
+  // With cloud sync on, run details come from Garmin through the sync service.
+  garminRequest: async <T,>(path: string) => {
+    if (!link || !header?.cloud) throw new Error("offline: Garmin data comes from the PC");
+    const r = await api(`/garmin?path=${encodeURIComponent(path)}`, {}, 45_000);
+    if (!r.ok) throw new Error(`offline: ${((await r.json().catch(() => null)) as { error?: string } | null)?.error ?? `the cloud answered ${r.status}`}`);
+    return (await r.json()) as { status: number; body: T };
+  },
+  cloudCredentials: offline("cloud sync settings"),
+  cloudRestore: offline("cloud sync settings"),
   watchStatus: async () => ({ folder: "", serverFound: false, python: null, tokensFound: false, tokensDir: "", running: false, stderr: [] }),
   watchConnect: offline("The watch"),
   watchCall: offline("The watch"),

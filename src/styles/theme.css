@@ -4680,3 +4680,7 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .target-prefs.compact .segmented { display: flex; }
 .target-prefs.compact .segmented button { flex: 1; }
 .targets-fold summary .muted { margin-left: 0.4rem; }
+.cloud-sync { border: 1px solid var(--line); border-radius: 10px; padding: 0.7rem 0.8rem; margin: 0.6rem 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.cloud-sync-head { display: flex; gap: 0.5rem; align-items: center; }
+.cloud-sync .pill.on { background: var(--accent-dim); color: var(--accent); }
+.cloud-sync p { margin: 0; }

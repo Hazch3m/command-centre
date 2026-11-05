@@ -99,6 +99,10 @@ export interface Backend {
   garminDisconnect(): Promise<void>;
   /** GET a read-only health endpoint. Rejects with "offline: …" when there's no connection. */
   garminRequest<T = unknown>(path: string): Promise<{ status: number; body: T }>;
+  /** Cloud sync: the sign-ins to hand to the sync service (PC only). */
+  cloudCredentials(): Promise<{ garmin: unknown; google: unknown; ics: { id: string; name: string; url: string }[] }>;
+  /** Cloud sync off: keeps the sign-ins the service hands back (Garmin's may have been refreshed there). */
+  cloudRestore(garmin: unknown, google: unknown): Promise<void>;
   // ---- Watch: the user's garmin-coach MCP server, run as a child process ----
   /** Empty folder/python = find them (the folder's .venv). */
   watchStatus(folder: string, python: string): Promise<WatchStatus>;

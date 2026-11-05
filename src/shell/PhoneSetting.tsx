@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { backend } from "@backend";
 import qrcode from "qr-lib";
-import { connectService, disconnectService, getPhoneStatus, makePairCode, pullPhoneChanges, pushSnapshot, unlinkPhones, type PhoneStatus } from "../core/phoneSync";
+import { cloudDisable, cloudEnable, cloudRunNow, cloudStatus, connectService, disconnectService, getPhoneStatus, makePairCode, pullCloudChanges, pullPhoneChanges, pushSnapshot, unlinkPhones, type CloudStatus, type PhoneStatus } from "../core/phoneSync";
 import { showCode } from "../core/sync";
 import { ErrorNote } from "./ui";
 
@@ -123,6 +123,7 @@ export function PhoneSetting() {
           Disconnect
         </button>
       </div>
+      <CloudSync on={!!status?.cloud} busy={busy} run={run} tick={tick} />
       {pair && left > 0 && (
         <div className="phone-pair">
           <Qr text={`${pair.url}/#pair=${pair.code}`} />
@@ -138,6 +139,64 @@ export function PhoneSetting() {
         </div>
       )}
       <ErrorNote error={err} />
+    </div>
+  );
+}
+
+/** Cloud sync: the service fetches Garmin and calendars itself, so the phone stays fresh with the PC off. */
+function CloudSync({ on, busy, run, tick }: { on: boolean; busy: boolean; run: (fn: () => Promise<unknown>) => void; tick: number }) {
+  const [st, setSt] = useState<CloudStatus | null>(null);
+  useEffect(() => {
+    if (on) cloudStatus().then(setSt, () => setSt(null));
+    else setSt(null);
+  }, [on, tick, busy]);
+  const last = st?.last;
+  const problems = Object.entries(last?.errors ?? {}).filter(([, v]) => v);
+  return (
+    <div className="cloud-sync">
+      <div className="cloud-sync-head">
+        <b>Sync in the cloud</b>
+        <span className={"pill small" + (on ? " on" : "")}>{on ? "On" : "Off"}</span>
+      </div>
+      <p className="muted small">
+        {on
+          ? "Your sync service fetches new runs and health from Garmin, and your calendars, every 15 minutes, so the phone stays up to date with this PC off. Garmin requests from here go through it too (Garmin's sign-in can only be used in one place)."
+          : "Let your sync service fetch new runs and health from Garmin, and your calendars, every 15 minutes, so the phone stays up to date with this PC off. Your Garmin and Google sign-ins are handed to your own Cloudflare service (stored there, not end-to-end encrypted); switching this off takes them back and deletes them there."}
+      </p>
+      {on && st && (
+        <div className="small">
+          {last ? (
+            <>
+              Last checked {new Date(last.ranAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+              {last.newRuns ? ` · ${last.newRuns} new run${last.newRuns === 1 ? "" : "s"}` : ""}
+              {st.next ? ` · next ${new Date(st.next).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : ""}
+            </>
+          ) : (
+            "Starting…"
+          )}
+          {problems.map(([k, v]) => (
+            <div key={k} className="error-note small">
+              {k}: {v}
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="inline">
+        {on ? (
+          <>
+            <button className="btn" disabled={busy} onClick={() => run(async () => (await cloudRunNow(), await pullCloudChanges()))}>
+              Check now
+            </button>
+            <button className="btn ghost" disabled={busy} onClick={() => run(cloudDisable)}>
+              Switch off
+            </button>
+          </>
+        ) : (
+          <button className="btn btn-primary" disabled={busy} onClick={() => run(cloudEnable)}>
+            Switch on
+          </button>
+        )}
+      </div>
     </div>
   );
 }

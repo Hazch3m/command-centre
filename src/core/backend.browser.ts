@@ -3,6 +3,7 @@
  * browser with sql.js so the UI can be tested without the desktop shell.
  * Never included in the installed app.
  */
+import { garminVia } from "./garminRoute";
 import initSqlJs, { type Database } from "sql.js";
 import wasmUrl from "sql.js/dist/sql-wasm.wasm?url";
 import type { Backend, BackupStatus, ExecResult, SqlParam } from "./backend.types";
@@ -169,7 +170,11 @@ export const backend: Backend = {
     return { connected: !!(await fixture("garmin")) };
   },
   garminDisconnect: async () => localStorage.setItem("cc-fake-garmin-off", "1"),
+  cloudCredentials: async () => ({ garmin: (await fixture("garmin")) ? { access: "test", refresh: "test", client_id: "TEST", expires_at: 4102444800 } : null, google: null, ics: [] }),
+  cloudRestore: async () => {},
   garminRequest: async <T,>(path: string) => {
+    const routed = garminVia();
+    if (routed) return routed<T>(path);
     const fx = (await fixture("garmin")) as Record<string, unknown> | null;
     if (!fx) throw new Error("offline: no test data for garmin");
     const bare = path.split("?")[0];

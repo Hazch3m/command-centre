@@ -12,13 +12,16 @@ import {
   packSnapshot,
   pairId,
   PHONE_FILES,
+  cloudMayWrite,
   phoneMayWrite, REFRESH_KEY,
   seal,
   sealForCode,
   unseal,
+  type CloudOp,
   type LinkKeys,
   type PhoneOp,
 } from "./sync";
+import { setGarminVia } from "./garminRoute";
 
 /**
  * The PC's half of the phone link: sends the phone an encrypted copy of the
@@ -32,6 +35,10 @@ export interface PhoneStatus {
   lastPull: string | null;
   applied: number;
   error: string | null;
+  /** Cloud sync is on (the service fetches Garmin and calendars itself). */
+  cloud?: boolean;
+  /** The last cloud change applied here. */
+  cloudApplied?: number;
 }
 const STATUS_KEY = "phone.status";
 export const getPhoneStatus = () => kvGet<PhoneStatus>(STATUS_KEY, { lastPush: null, size: 0, lastPull: null, applied: 0, error: null });
@@ -137,11 +144,20 @@ async function doPush() {
       backend.icsList().catch(() => []),
     ]);
     const bytes = packSnapshot(
-      { v: 1, made: new Date().toISOString(), files, connected: { strava: !!strava?.connected, google: !!google?.connected, garmin: !!garmin?.connected }, ics, applied: st.applied },
+      {
+        v: 1,
+        made: new Date().toISOString(),
+        files,
+        connected: { strava: !!strava?.connected, google: !!google?.connected, garmin: !!garmin?.connected },
+        ics,
+        applied: st.applied,
+        cloudApplied: st.cloudApplied ?? 0,
+        cloud: !!st.cloud,
+      },
       await backend.phoneSnapshot(),
     );
     const box = await seal(c.keys.key, await gzip(bytes));
-    await call(c.link, c.keys, `/snapshot?applied=${st.applied}`, { method: "PUT", headers: { "content-type": "application/octet-stream" }, body: box as BodyInit }, 180_000);
+    await call(c.link, c.keys, `/snapshot?applied=${st.applied}&cloud=${st.cloudApplied ?? 0}`, { method: "PUT", headers: { "content-type": "application/octet-stream" }, body: box as BodyInit }, 180_000);
     await setStatus({ lastPush: new Date().toISOString(), size: box.length, error: null });
   } catch (e) {
     await setStatus({ error: String((e as Error)?.message ?? e) });
@@ -190,6 +206,94 @@ export async function pullPhoneChanges(): Promise<number> {
   return rows.length;
 }
 
+// ---- Sync in the cloud ------------------------------------------------------------------
+
+/** Garmin through the sync service (it holds the sign-in while cloud sync is on). */
+function routeGarminViaCloud(on: boolean) {
+  setGarminVia(
+    on
+      ? async <T,>(path: string) => {
+          const c = await current();
+          if (!c) throw new Error("offline: the sync service isn't connected");
+          const r = await call(c.link, c.keys, `/garmin?path=${encodeURIComponent(path)}`, {}, 45_000);
+          return (await r.json()) as { status: number; body: T };
+        }
+      : null,
+  );
+}
+
+/** Hands the Garmin and Google sign-ins to the sync service, so it fetches new data every 15 minutes, PC or no PC. */
+export async function cloudEnable(): Promise<void> {
+  const c = await current();
+  if (!c) throw new Error("Connect the sync service first.");
+  const creds = await backend.cloudCredentials();
+  if (!creds.garmin && !creds.google && !creds.ics.length) throw new Error("Connect Garmin (or a calendar) first: there's nothing for the cloud to sync.");
+  await call(c.link, c.keys, "/cloud/enable", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ secret: c.link.secret, ...creds }) });
+  await setStatus({ cloud: true });
+  routeGarminViaCloud(!!creds.garmin);
+  await pushSnapshot().catch(() => {});
+}
+
+/** Takes the sign-ins back (Garmin's may have been refreshed in the cloud) and stops cloud sync. */
+export async function cloudDisable(): Promise<void> {
+  const c = await current();
+  if (c) {
+    const r = await call(c.link, c.keys, "/cloud/disable", { method: "POST" });
+    const back = (await r.json()) as { garmin: unknown; google: unknown };
+    await backend.cloudRestore(back.garmin ?? null, back.google ?? null);
+  }
+  routeGarminViaCloud(false);
+  await setStatus({ cloud: false });
+  await pushSnapshot().catch(() => {});
+}
+
+export interface CloudStatus {
+  enabled: boolean;
+  garmin: boolean;
+  google: boolean;
+  ics: number;
+  last: { ranAt: string; wrote: number; errors: Record<string, string | null>; newRuns: number } | null;
+  next: number | null;
+}
+export async function cloudStatus(): Promise<CloudStatus | null> {
+  const c = await current();
+  if (!c) return null;
+  return (await (await call(c.link, c.keys, "/cloud/status")).json()) as CloudStatus;
+}
+
+/** Asks the service to sync now; returns what it found. */
+export async function cloudRunNow(): Promise<CloudStatus["last"]> {
+  const c = await current();
+  if (!c) return null;
+  return (await (await call(c.link, c.keys, "/cloud/run", { method: "POST" }, 120_000)).json()) as CloudStatus["last"];
+}
+
+/** Applies what the cloud fetched (new runs, health, calendar). Returns how many changes. */
+export async function pullCloudChanges(): Promise<number> {
+  const c = await current();
+  if (!c) return 0;
+  const st = await getPhoneStatus();
+  if (!st.cloud) return 0;
+  const r = await call(c.link, c.keys, `/cloudops?after=${st.cloudApplied ?? 0}`);
+  const rows = (await r.json()) as { id: number; body: string }[];
+  if (!rows.length) return 0;
+  let upto = st.cloudApplied ?? 0;
+  for (const row of rows) {
+    try {
+      const op = JSON.parse(new TextDecoder().decode(await unseal(c.keys.key, b64url.decode(row.body.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""))))) as CloudOp;
+      const stmts = op.stmts.filter((x) => cloudMayWrite(x.sql, x.params));
+      if (stmts.length) await db.batch(stmts);
+    } catch (e) {
+      console.warn("cloud change skipped", row.id, e);
+    }
+    upto = row.id;
+  }
+  await setStatus({ cloudApplied: upto });
+  await call(c.link, c.keys, "/cloudops/ack", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ upto }) });
+  for (const t of ["running", "health", "calendar"]) await notifyChanged(t);
+  return rows.length;
+}
+
 /**
  * Keeps the phone in step while the dashboard runs: phone changes every 30 s,
  * a new copy a minute after anything changes here, and every 10 minutes anyway.
@@ -202,7 +306,12 @@ export function usePhoneSync() {
       window.clearTimeout(pushTimer);
       pushTimer = window.setTimeout(() => alive && pushSnapshot().catch(() => {}), delay);
     };
-    const pull = () => pullPhoneChanges().catch(() => {});
+    const pull = () => {
+      pullPhoneChanges().catch(() => {});
+      pullCloudChanges().catch(() => {});
+    };
+    // Cloud sync on: Garmin goes through the service from the start.
+    getPhoneStatus().then((st) => alive && st.cloud && routeGarminViaCloud(true));
     pull();
     schedulePush(15_000);
     const iv = window.setInterval(pull, 15_000);

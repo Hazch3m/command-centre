@@ -243,6 +243,8 @@ pub fn run() {
             phone::phone_link_get,
             phone::phone_link_set,
             phone::phone_snapshot,
+            phone::cloud_credentials,
+            phone::cloud_restore,
             watch::watch_status,
             watch::watch_connect,
             watch::watch_call,
