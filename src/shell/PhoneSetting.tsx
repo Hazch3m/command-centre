@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { backend } from "@backend";
 import qrcode from "qr-lib";
-import { cloudDisable, cloudEnable, cloudRunNow, cloudStatus, connectService, disconnectService, getPhoneStatus, makePairCode, pullCloudChanges, pullPhoneChanges, pushSnapshot, unlinkPhones, type CloudStatus, type PhoneStatus } from "../core/phoneSync";
-import { showCode } from "../core/sync";
+import { ACCOUNT_SERVICE, cloudDisable, cloudEnable, cloudRunNow, cloudStatus, connectService, disconnectService, getPhoneStatus, joinAccount, makePairCode, pullCloudChanges, pullPhoneChanges, pushSnapshot, unlinkPhones, type CloudStatus, type PhoneStatus } from "../core/phoneSync";
+import { cleanCode, showCode } from "../core/sync";
 import { ErrorNote } from "./ui";
 
 /** A QR code drawn as SVG squares. */
@@ -35,7 +35,7 @@ const ago = (iso: string | null) => {
 
 /** Settings → Phone: connect the sync service, link phones, see when it last synced. */
 export function PhoneSetting() {
-  const [linked, setLinked] = useState<{ url: string } | null | undefined>(undefined);
+  const [linked, setLinked] = useState<{ url: string; account?: string } | null | undefined>(undefined);
   const [status, setStatus] = useState<PhoneStatus | null>(null);
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
@@ -46,7 +46,7 @@ export function PhoneSetting() {
 
   const refresh = async () => {
     const l = await backend.phoneLinkGet().catch(() => null);
-    setLinked(l ? { url: l.url } : null);
+    setLinked(l ? { url: l.url, account: l.account } : null);
     setStatus(await getPhoneStatus());
   };
   useEffect(() => {
@@ -72,9 +72,34 @@ export function PhoneSetting() {
   };
 
   if (linked === undefined) return null;
+  if (linked?.account)
+    return (
+      <div className="phone-setting">
+        <div className="cloud-sync-head">
+          <b>Your account</b>
+          <span className="pill small on">Signed in on the iPhone app</span>
+        </div>
+        <p className="muted small">
+          This PC is part of the account you signed in to on the Command Centre iPhone app. The account syncs Garmin in the cloud every 15 minutes, PC on or off; changes here and on
+          the phone reach both. Sent {ago(status?.lastPush ?? null)} · phone changes checked {ago(status?.lastPull ?? null)}.
+        </p>
+        {status?.error && <div className="error-note small">{status.error.replace(/^offline: /, "")}</div>}
+        <div className="inline phone-actions">
+          <button className="btn btn-primary" disabled={busy} onClick={() => run(async () => (await cloudRunNow(), await pullCloudChanges(), await pullPhoneChanges(), await pushSnapshot()))}>
+            {busy ? "Syncing…" : "Sync now"}
+          </button>
+          <button className="btn ghost" disabled={busy} onClick={() => run(disconnectService)}>
+            Leave the account on this PC
+          </button>
+        </div>
+        <ErrorNote error={err} />
+      </div>
+    );
+  const join = <JoinAccount busy={busy} run={run} defaultUrl={linked?.url ?? ACCOUNT_SERVICE} replacing={!!linked} />;
   if (!linked)
     return (
       <div className="phone-setting">
+        {join}
         <p className="muted small">
           Puts your dashboard on your iPhone: an encrypted copy goes to your own free Cloudflare sync service, and changes you make on the phone (tasks, habits, plan days)
           come back here. Paste the service's address once it's deployed (see the README, "Phone").
@@ -124,6 +149,7 @@ export function PhoneSetting() {
         </button>
       </div>
       <CloudSync on={!!status?.cloud} busy={busy} run={run} tick={tick} />
+      {join}
       {pair && left > 0 && (
         <div className="phone-pair">
           <Qr text={`${pair.url}/#pair=${pair.code}`} />
@@ -196,6 +222,28 @@ function CloudSync({ on, busy, run, tick }: { on: boolean; busy: boolean; run: (
             Switch on
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** Join the account signed in on the iPhone app, with the code it shows. */
+function JoinAccount({ busy, run, defaultUrl, replacing }: { busy: boolean; run: (fn: () => Promise<unknown>) => void; defaultUrl: string; replacing: boolean }) {
+  const [code, setCode] = useState("");
+  return (
+    <div className="cloud-sync join-account">
+      <div className="cloud-sync-head">
+        <b>Join your account from the iPhone app</b>
+      </div>
+      <p className="muted small">
+        In the app: More → Account → Link a PC, then enter the code here. This PC's data (plan, runs, tasks, habits) goes into the account
+        {replacing ? " and this PC switches from its own sync link to the account; the old phone link stops updating" : ""}. Garmin is then synced by the account in the cloud.
+      </p>
+      <div className="inline">
+        <input className="join-code num" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="ABCD-EF23" spellCheck={false} />
+        <button className="btn btn-primary" disabled={busy || cleanCode(code).length !== 8} onClick={() => run(() => joinAccount(defaultUrl, code))}>
+          {busy ? "Joining…" : "Join"}
+        </button>
       </div>
     </div>
   );

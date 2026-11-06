@@ -5,17 +5,27 @@
  * habits, plan days, a few view settings) are applied here at once and queued
  * for the PC, which replays them on its copy and sends back a fresh snapshot.
  * Nothing on the phone talks to Strava, Google or Garmin: the PC does that.
+ *
+ * Signed in with an account (the iPhone app), there needn't be a PC at all:
+ * the sync service keeps the data, fetches from Garmin and applies the phone's
+ * changes itself; this phone makes the account's first (empty) copy.
  */
 import initSqlJs, { type Database } from "sql.js";
 import wasmUrl from "sql.js/dist/sql-wasm.wasm?url";
 import type { Backend, ExecResult, SqlParam, Statement } from "./backend.types";
+import { accountHeader, buildAccountDb } from "./account";
+import { GARMIN_SIGN_IN, native } from "./native";
 import {
   b64url,
   cloudMayWrite,
   gunzip,
+  gzip,
   linkKeys,
+  newPairCode,
   openWithCode,
+  packSnapshot,
   pairId,
+  sealForCode,
   PHONE_FILES,
   phoneMayWrite,
   seal,
@@ -80,7 +90,7 @@ let database: Database | null = null;
 let header: SnapshotHeader | null = null;
 let version = 0;
 let pending: Pending[] = [];
-let link: { secret: string; keys: LinkKeys } | null = null;
+let link: { secret: string; keys: LinkKeys; account?: string } | null = null;
 const listeners = new EventTarget();
 
 export const phoneState = {
@@ -109,7 +119,7 @@ const api = async (path: string, init: RequestInit = {}, ms = 30_000) => {
   const ctl = new AbortController();
   const timer = window.setTimeout(() => ctl.abort(), ms);
   try {
-    return await fetch(`/api${path}`, { ...init, signal: ctl.signal, headers: { ...(link ? { "x-cc-token": link.keys.token } : {}), ...(init.headers ?? {}) } });
+    return await fetch(`/api${path}`, { ...init, signal: ctl.signal, headers: { ...(link ? { "x-cc-token": link.keys.token } : {}), ...(link?.account ? { "x-cc-account": link.account } : {}), ...(init.headers ?? {}) } });
   } catch (e) {
     if (ctl.signal.aborted) throw new Error(`Offline: the cloud didn't answer within ${Math.round(ms / 1000)} s.`);
     throw e;
@@ -150,7 +160,95 @@ function saveSoon() {
 export async function isLinked(): Promise<boolean> {
   const secret = await idbGet<string>("secret");
   if (!secret) return false;
-  link = { secret, keys: await linkKeys(secret) };
+  link = { secret, keys: await linkKeys(secret), account: (await idbGet<string>("account")) ?? undefined };
+  return true;
+}
+
+/** Signed in to an account (rather than paired with a PC)? */
+export const hasAccount = () => !!link?.account;
+
+const errorOf = async (r: Response) => ((await r.json().catch(() => null)) as { error?: string } | null)?.error ?? `The sync service answered ${r.status}`;
+
+/** Sign in with Apple (the iPhone app): opens your account, making it the first time. */
+export async function signInWithApple(): Promise<{ isNew: boolean }> {
+  const nonce = b64url.encode(crypto.getRandomValues(new Uint8Array(24)));
+  const { identityToken } = await native().signInWithApple({ nonce });
+  const r = await fetch("/api/auth/apple", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ identityToken, nonce }) });
+  if (!r.ok) throw new Error(await errorOf(r));
+  const j = (await r.json()) as { account: string; secret: string; isNew: boolean };
+  await idbSet("secret", j.secret);
+  await idbSet("account", j.account);
+  // A different account than before on this phone: start from its data, not the old copy.
+  await idbSet("snapshot", null);
+  await idbSet("pending", []);
+  pending = [];
+  database = null;
+  header = null;
+  version = 0;
+  link = { secret: j.secret, keys: await linkKeys(j.secret), account: j.account };
+  return { isNew: j.isNew };
+}
+
+export interface AccountInfo {
+  account: string;
+  created: string | null;
+  garmin: boolean;
+  google: boolean;
+  pc: boolean;
+  last: { ranAt: string; errors: Record<string, string | null>; newRuns: number } | null;
+}
+export async function accountInfo(): Promise<AccountInfo | null> {
+  if (!link?.account) return null;
+  const r = await api("/account");
+  if (!r.ok) throw new Error(await errorOf(r));
+  return (await r.json()) as AccountInfo;
+}
+
+/** Garmin's sign-in page in the app; the ticket it ends with goes to the service, which keeps the sign-in. */
+export async function connectGarmin(): Promise<void> {
+  if (!link?.account) throw new Error("Sign in first.");
+  const { ticket } = await native().garminLogin({ url: GARMIN_SIGN_IN });
+  const r = await api("/garmin/connect", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ticket }) }, 60_000);
+  if (!r.ok) throw new Error(await errorOf(r));
+}
+export async function disconnectGarmin(): Promise<void> {
+  const r = await api("/garmin/disconnect", { method: "POST" });
+  if (!r.ok) throw new Error(await errorOf(r));
+}
+
+/** A code for a PC to join this account (Settings → Phone & cloud on the PC), valid 15 minutes. */
+export async function makeComputerCode(): Promise<{ code: string; expires: number }> {
+  if (!link?.account) throw new Error("Sign in first.");
+  const code = newPairCode();
+  const r = await api("/pair", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ h: await pairId(code), blob: await sealForCode(code, link.secret) }) });
+  if (!r.ok) throw new Error(await errorOf(r));
+  return { code, expires: ((await r.json()) as { expires: number }).expires };
+}
+
+/** Deletes the account and everything in it from the sync service, then signs out here. */
+export async function deleteAccount(): Promise<void> {
+  const r = await api("/account/delete", { method: "POST" });
+  if (!r.ok) throw new Error(await errorOf(r));
+  await unpair();
+}
+
+/** A new account's first copy: the same empty tables a PC starts with, made here and sent up. */
+let making: Promise<boolean> | null = null;
+function makeAccountCopy(): Promise<boolean> {
+  making ??= doMakeAccountCopy().finally(() => (making = null));
+  return making;
+}
+async function doMakeAccountCopy(): Promise<boolean> {
+  if (!link?.account) return false;
+  stage("Setting up your account…");
+  const S = await sql();
+  const bytes = buildAccountDb(new S.Database());
+  const today = new Date().toLocaleDateString("en-CA");
+  const h = accountHeader(today);
+  const box = await seal(link.keys.key, await gzip(packSnapshot(h, bytes)));
+  const r = await api("/snapshot?applied=0&cloud=0", { method: "PUT", headers: { "content-type": "application/octet-stream" }, body: box as BodyInit }, 60_000);
+  if (!r.ok) throw new Error(await errorOf(r));
+  await useSnapshot(bytes, h, ((await r.json()) as { version: number }).version);
   return true;
 }
 
@@ -170,6 +268,7 @@ export async function pairWithCode(code: string): Promise<void> {
 }
 
 export async function unpair() {
+  await idbSet("account", null);
   await idbSet("secret", null);
   await idbSet("snapshot", null);
   await idbSet("pending", []);
@@ -225,11 +324,17 @@ export async function refresh(): Promise<boolean> {
     await flush().catch(() => {});
     stage("Checking the cloud for a newer copy…");
     const meta = await api("/meta");
-    if (meta.status === 401) throw new Error("This phone isn't linked any more. Link it again from Settings → Phone on the PC.");
+    if (meta.status === 401) throw new Error(link.account ? "Signed out: this account was deleted or reset. Sign in again." : "This phone isn't linked any more. Link it again from Settings → Phone on the PC.");
     if (!meta.ok) throw new Error(`The sync service answered ${meta.status}`);
     const m = (await meta.json()) as { version: number };
     phoneState.lastCheck = new Date().toISOString();
     phoneState.error = null;
+    // A brand-new account has no copy yet: this phone makes it.
+    if (!m.version && link.account) {
+      const made = await makeAccountCopy();
+      stage(null);
+      return made;
+    }
     if (!m.version || m.version <= version) {
       const more = await pullCloud();
       stage(null);
@@ -418,8 +523,11 @@ export const backend: Backend = {
   icsRemove: offline("Calendar"),
   icsFetch: offline("Your calendar"),
   garminStatus: async () => ({ connected: !!header?.connected.garmin }),
-  garminConnect: offline("Garmin"),
-  garminDisconnect: offline("Garmin"),
+  garminConnect: async () => {
+    await connectGarmin();
+    return { connected: true };
+  },
+  garminDisconnect: async () => disconnectGarmin(),
   // With cloud sync on, run details come from Garmin through the sync service.
   garminRequest: async <T,>(path: string) => {
     if (!link || !header?.cloud) throw new Error("offline: Garmin data comes from the PC");

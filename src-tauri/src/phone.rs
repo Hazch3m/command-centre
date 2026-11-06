@@ -19,6 +19,9 @@ pub struct PhoneLink {
     pub url: String,
     /// 32 random bytes (base64url). Encryption key and access token are derived from it.
     pub secret: String,
+    /// The account this link belongs to (signed in on the iPhone app), when it isn't the service's own link.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub account: Option<String>,
 }
 
 #[tauri::command]

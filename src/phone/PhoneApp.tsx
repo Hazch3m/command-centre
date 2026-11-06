@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } fr
 import { kvGet, kvSet } from "../core/db";
 import { notifyChanged } from "../core/events";
 import { REFRESHED_KEY, REFRESH_KEY } from "../core/sync";
-import { cloudOn, cloudRun, flush, phoneState, refresh, unpair } from "../core/backend.phone";
+import { cloudOn, cloudRun, flush, hasAccount, phoneState, refresh, unpair } from "../core/backend.phone";
 import { RunViewHost } from "../modules/running/RunView";
 import { loadRuns } from "../modules/running/strava";
 import { ModulePage } from "../shell/Dashboard";
@@ -13,6 +13,7 @@ import { Habits } from "./Habits";
 import { PbsTab } from "../modules/running/PbsTab";
 import { Runs } from "./Runs";
 import { Stats } from "./Stats";
+import { AccountSection } from "./Account";
 import { PlanAdjustPage } from "./PlanAdjust";
 import { Tasks } from "./Tasks";
 import { Today } from "./Today";
@@ -67,7 +68,7 @@ function SyncLine({ onRefresh, busy }: { onRefresh: () => void; busy: boolean })
   return (
     <button className={"p-sync" + (phoneState.error || stale ? " warn" : "")} onClick={onRefresh}>
       <span className={"sync-dot" + (busy ? " spin" : "")} />
-      {phoneState.error ? phoneState.error.replace(/^Offline: /, "Offline · ") : made ? `Updated ${ago(made)}${Date.now() - made > 3 * 3600_000 ? " · is the PC on?" : ""}` : "Not synced yet"}
+      {phoneState.error ? phoneState.error.replace(/^Offline: /, "Offline · ") : made ? `Updated ${ago(made)}${!phoneState.header?.cloud && Date.now() - made > 3 * 3600_000 ? " · is the PC on?" : ""}` : "Not synced yet"}
       {waiting ? ` · ${waiting} to send` : ""}
     </button>
   );
@@ -267,7 +268,8 @@ function More({ push }: { push: (p: Pushed) => void }) {
           ))}
         </div>
       </section>
-      <PhoneFooter />
+      <AccountSection />
+      {!hasAccount() && <PhoneFooter />}
     </div>
   );
 }

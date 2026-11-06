@@ -351,3 +351,25 @@ body.phone #root {
   aspect-ratio: 1;
   height: auto;
 }
+
+/* Sign in */
+.pair.signin p {
+  max-width: 22rem;
+}
+.apple-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: min(100%, 20rem);
+  height: 3rem;
+  margin: 0.6rem 0;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+  color: #000;
+  font: 600 1.05rem -apple-system, system-ui, sans-serif;
+}
+.apple-btn:disabled {
+  opacity: 0.6;
+}

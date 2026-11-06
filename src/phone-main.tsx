@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { boot, showFatal } from "./boot";
-import { isLinked, loadLocal, phoneState, refresh } from "./core/backend.phone";
+import { hasAccount, isLinked, loadLocal, phoneState, refresh } from "./core/backend.phone";
 import { Pair } from "./phone/Pair";
 import { PhoneApp } from "./phone/PhoneApp";
 import "./styles/phone.css";
@@ -32,7 +32,7 @@ async function start() {
     return;
   }
   if (!(await loadLocal().catch(() => false))) {
-    // No copy on the phone yet: get the one the PC put in the cloud, showing each step.
+    // No copy on the phone yet: get the one in the cloud (or, for a new account, make it), showing each step.
     const t0 = Date.now();
     const show = () =>
       root.render(
@@ -51,7 +51,7 @@ async function start() {
       root.render(
         <Message
           text={
-            phoneState.error && !/Nothing has been sent/.test(phoneState.error)
+            phoneState.error && (hasAccount() || !/Nothing has been sent/.test(phoneState.error))
               ? `Couldn't get your data from the cloud: ${phoneState.error}`
               : "The cloud has no copy from your PC yet. Open Command Centre on the PC (it sends a copy within a minute), then try again."
           }

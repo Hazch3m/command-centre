@@ -36,12 +36,18 @@ def call(method, path, body=None):
         sys.exit(f"::error::App Store Connect answered {e.code}: {detail}")
 
 
-ids = call("GET", f"/bundleIds?filter[identifier]={BUNDLE}&limit=5")["data"]
-if not any(b["attributes"]["identifier"] == BUNDLE for b in ids):
-    call("POST", "/bundleIds", {"data": {"type": "bundleIds", "attributes": {"identifier": BUNDLE, "name": "Command Centre", "platform": "IOS"}}})
+ids = [b for b in call("GET", f"/bundleIds?filter[identifier]={BUNDLE}&limit=5")["data"] if b["attributes"]["identifier"] == BUNDLE]
+if not ids:
+    ids = [call("POST", "/bundleIds", {"data": {"type": "bundleIds", "attributes": {"identifier": BUNDLE, "name": "Command Centre", "platform": "IOS"}}})["data"]]
     print(f"Registered the bundle ID {BUNDLE}")
 else:
     print(f"Bundle ID {BUNDLE} is registered")
+
+# Sign in with Apple on the app's ID (the signing profile then includes it).
+caps = call("GET", f"/bundleIds/{ids[0]['id']}/bundleIdCapabilities")["data"]
+if not any(c["attributes"].get("capabilityType") == "APPLE_ID_AUTH" for c in caps):
+    call("POST", "/bundleIdCapabilities", {"data": {"type": "bundleIdCapabilities", "attributes": {"capabilityType": "APPLE_ID_AUTH", "settings": [{"key": "APPLE_ID_AUTH_APP_CONSENT", "options": [{"key": "PRIMARY_APP_CONSENT"}]}]}, "relationships": {"bundleId": {"data": {"type": "bundleIds", "id": ids[0]["id"]}}}}})
+    print("Switched on Sign in with Apple for the app")
 
 apps = call("GET", f"/apps?filter[bundleId]={BUNDLE}&limit=5")["data"]
 if not apps:

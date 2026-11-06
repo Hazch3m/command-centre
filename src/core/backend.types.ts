@@ -128,6 +128,8 @@ export interface Backend {
 export interface PhoneLink {
   url: string;
   secret: string;
+  /** The account (Sign in with Apple on the iPhone app) this link belongs to; unset for the service's own link. */
+  account?: string;
 }
 
 export interface WatchStatus {

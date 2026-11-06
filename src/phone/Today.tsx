@@ -14,6 +14,7 @@ import { loadOverrides } from "../modules/running/strava";
 import { useRunningData } from "../modules/running/useRunning";
 import { addTaskFromText, focusGroup, loadTasks, setDone } from "../modules/tasks/data";
 import { HabitButton } from "./Habits";
+import { GettingStarted } from "./Account";
 import { Ring, Section, toneFor, usePhoneNav, useReadiness } from "./common";
 
 export function Session({ d, label }: { d: ForecastDay; label: string }) {
@@ -87,6 +88,7 @@ export function Today() {
 
   return (
     <div className="p-screen">
+      <GettingStarted />
       {todayRun && <Session d={todayRun} label="Today's run" />}
 
       <div className="p-tiles">

@@ -58,6 +58,12 @@ jobs:
           for f in $A/Assets.xcassets/AppIcon.appiconset/*.png; do cp assets/icon-1024.png "$f"; done
           for f in $A/Assets.xcassets/Splash.imageset/*.png; do cp assets/splash-2732.png "$f"; done
           # iPhone only (no iPad screenshots needed), on the app itself rather than its frameworks.
+          # Command Centre's native plugin (Sign in with Apple, Garmin sign-in) and its entitlements.
+          cp ios-plugin/CCNativePlugin.swift ios-plugin/MainViewController.swift ios-plugin/App.entitlements $A/
+          sed -i '' 's/customClass="CAPBridgeViewController" customModule="Capacitor"/customClass="MainViewController" customModule="App" customModuleProvider="target"/' $A/Base.lproj/Main.storyboard
+          grep -q MainViewController $A/Base.lproj/Main.storyboard || { echo "::error::Couldn't hook the native plugin into Main.storyboard"; exit 1; }
+          ruby -e "require 'xcodeproj'" 2>/dev/null || gem install --user-install xcodeproj
+          ruby ios-plugin/add_to_project.rb
           # iOS 15 at least (Apple requires it from April 2027).
           sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 1[0-4]\.0;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/' ios/App/App.xcodeproj/project.pbxproj
           sed -i '' "s/platform :ios, '1[0-4]\.0'/platform :ios, '15.0'/" ios/App/Podfile

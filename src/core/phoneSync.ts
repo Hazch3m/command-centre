@@ -9,6 +9,7 @@ import {
   linkKeys,
   newPairCode,
   newSecret,
+  openWithCode,
   packSnapshot,
   pairId,
   PHONE_FILES,
@@ -60,7 +61,7 @@ async function call(link: PhoneLink, keys: LinkKeys | null, path: string, init: 
   const ctl = new AbortController();
   const timer = window.setTimeout(() => ctl.abort(), ms);
   try {
-    r = await fetch(`${base(link.url)}/api${path}`, { ...init, signal: ctl.signal, headers: { ...(keys ? { "x-cc-token": keys.token } : {}), ...(init.headers ?? {}) } });
+    r = await fetch(`${base(link.url)}/api${path}`, { ...init, signal: ctl.signal, headers: { ...(keys ? { "x-cc-token": keys.token } : {}), ...(link.account ? { "x-cc-account": link.account } : {}), ...(init.headers ?? {}) } });
   } catch (e) {
     throw new Error(ctl.signal.aborted ? `offline: the sync service didn't answer within ${ms / 1000} s` : `offline: couldn't reach the sync service (${String((e as Error)?.message ?? e)})`);
   } finally {
@@ -92,6 +93,44 @@ export async function connectService(url: string): Promise<void> {
   await pushSnapshot();
 }
 
+/** The sync service the iPhone app uses (where accounts live). */
+export const ACCOUNT_SERVICE = "https://command-centre-sync.harryknoblauch12.workers.dev";
+
+/**
+ * Joins the account signed in on the iPhone app, with the code it shows (More →
+ * Account → Link a PC). This PC's data then goes to the account (what the
+ * account fetched from Garmin is merged back in), and it stays in step from
+ * then on: changes here, on the phone and from Garmin reach both.
+ */
+export async function joinAccount(url: string, code: string): Promise<void> {
+  const u = base(url || ACCOUNT_SERVICE);
+  const r = await call({ url: u, secret: "" }, null, "/link/redeem", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ h: await pairId(code) }) });
+  const { blob, account } = (await r.json()) as { blob: string; account: string };
+  let secret: string;
+  try {
+    secret = await openWithCode(code, blob);
+  } catch {
+    throw new Error("That code didn't unlock the account. Check it, or make a new one on the phone.");
+  }
+  await backend.phoneLinkSet({ url: u, secret, account });
+  cached = null;
+  // Nothing from the account applied here yet: its phone changes and Garmin data come in on the next pulls.
+  await kvSet(STATUS_KEY, { lastPush: null, size: 0, lastPull: null, applied: 0, error: null, cloud: true, cloudApplied: 0 });
+  await pushSnapshot();
+  // Hand over this PC's sign-ins too (the account keeps a Garmin sign-in made on the phone).
+  const c = await current();
+  const creds = await backend.cloudCredentials().catch(() => ({ garmin: null, google: null, ics: [] }));
+  await call(c!.link, c!.keys, "/cloud/enable", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ secret, ...creds }) });
+  routeGarminViaCloud(true);
+  await pullPhoneChanges().catch(() => {});
+  await pullCloudChanges().catch(() => {});
+}
+
+/** Linked to an account (the iPhone app's), rather than this PC's own service? */
+export async function linkedAccount(): Promise<string | null> {
+  return (await backend.phoneLinkGet().catch(() => null))?.account ?? null;
+}
+
 /** New secret: every paired phone has to be linked again. */
 export async function unlinkPhones(): Promise<void> {
   const c = await current();
@@ -99,7 +138,7 @@ export async function unlinkPhones(): Promise<void> {
   const secret = newSecret();
   const keys = await linkKeys(secret);
   await call(c.link, c.keys, "/rotate", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: keys.token }) });
-  await backend.phoneLinkSet({ url: c.link.url, secret });
+  await backend.phoneLinkSet({ url: c.link.url, secret, ...(c.link.account ? { account: c.link.account } : {}) });
   cached = null;
   // Rotating also ends cloud sync there (it held the old secret).
   routeGarminViaCloud(false);

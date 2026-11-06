@@ -1150,3 +1150,64 @@ button.p-row-main {
   -webkit-user-select: none;
   user-select: none;
 }
+
+/* Account and first steps */
+.p-pill {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.4rem 0.95rem;
+  background: var(--accent);
+  color: var(--bg);
+  font: inherit;
+  font-weight: 650;
+}
+.p-row-note {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.p-row-btn.danger .p-row-title {
+  color: var(--bad, #e5484d);
+}
+.p-start {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.9rem;
+  border-radius: var(--p-radius);
+  background: color-mix(in srgb, var(--accent) 12%, var(--p-surface));
+}
+.p-start h2 {
+  margin: 0 0 0.2rem;
+  font-size: 1.1rem;
+}
+.p-start-step {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.7rem;
+  border: 0;
+  border-radius: 12px;
+  background: var(--p-surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.p-start-step.done {
+  opacity: 0.55;
+}
+.p-start-n {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 750;
+}
+.p-start-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}

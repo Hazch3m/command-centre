@@ -102,13 +102,13 @@ const nowS = () => Math.floor(Date.now() / 1000);
 
 async function garminRefresh(c: { creds: Creds; saveCreds: Ctx["saveCreds"] }): Promise<GarminToken> {
   const t = c.creds.garmin;
-  if (!t?.refresh) throw new Error("Garmin sign-in expired. Connect Garmin again on the PC, then switch cloud sync off and on.");
+  if (!t?.refresh) throw new Error("Garmin sign-in expired. Connect Garmin again (in the app: More → Account).");
   const r = await fetch(DI_TOKEN_URL, {
     method: "POST",
     headers: { ...NATIVE, Authorization: `Basic ${btoa(`${t.client_id}:`)}`, Accept: "application/json", "Cache-Control": "no-cache", "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ grant_type: "refresh_token", client_id: t.client_id, refresh_token: t.refresh }),
   });
-  if (!r.ok) throw new Error(r.status === 400 || r.status === 401 ? "Garmin sign-in expired. Connect Garmin again on the PC, then switch cloud sync off and on." : `Garmin token refresh failed (HTTP ${r.status})`);
+  if (!r.ok) throw new Error(r.status === 400 || r.status === 401 ? "Garmin sign-in expired. Connect Garmin again (in the app: More → Account)." : `Garmin token refresh failed (HTTP ${r.status})`);
   const v = (await r.json()) as { access_token?: string; refresh_token?: string; expires_in?: number };
   if (!v.access_token) throw new Error("Garmin didn't return an access token");
   // The refresh token rotates: keep the new one straight away.
@@ -116,6 +116,32 @@ async function garminRefresh(c: { creds: Creds; saveCreds: Ctx["saveCreds"] }): 
   c.creds = { ...c.creds, garmin: nt };
   await c.saveCreds(c.creds);
   return nt;
+}
+
+// Signing in to Garmin from the iPhone app: the app opens Garmin's own sign-in page and
+// hands over the one-time ticket Garmin gives at the end; it's swapped here for tokens.
+const DI_GRANT_TYPE = "https://connectapi.garmin.com/di-oauth2-service/oauth/grant/service_ticket";
+export const GARMIN_SERVICE_URL = "https://connect.garmin.com/app";
+const DI_CLIENT_IDS = ["GARMIN_CONNECT_MOBILE_ANDROID_DI_2025Q2", "GARMIN_CONNECT_MOBILE_ANDROID_DI_2024Q4", "GARMIN_CONNECT_MOBILE_ANDROID_DI", "GARMIN_CONNECT_MOBILE_IOS_DI"];
+
+export async function garminExchangeTicket(ticket: string): Promise<GarminToken> {
+  if (!/^ST-[A-Za-z0-9._-]{8,200}$/.test(ticket)) throw new Error("That isn't a Garmin sign-in ticket.");
+  let last = "";
+  for (const id of DI_CLIENT_IDS) {
+    const r = await fetch(DI_TOKEN_URL, {
+      method: "POST",
+      headers: { ...NATIVE, Authorization: `Basic ${btoa(`${id}:`)}`, Accept: "application/json,text/html;q=0.9,*/*;q=0.8", "Cache-Control": "no-cache", "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ client_id: id, service_ticket: ticket, grant_type: DI_GRANT_TYPE, service_url: GARMIN_SERVICE_URL }),
+    });
+    if (r.status === 429) throw new Error("Garmin is limiting sign-ins right now. Try again in an hour.");
+    if (!r.ok) {
+      last = `HTTP ${r.status}`;
+      continue;
+    }
+    const v = (await r.json().catch(() => ({}))) as { access_token?: string; refresh_token?: string; expires_in?: number };
+    if (v.access_token) return { access: v.access_token, refresh: v.refresh_token ?? null, client_id: id, expires_at: nowS() + (v.expires_in ?? 3600) };
+  }
+  throw new Error(`Garmin didn't accept the sign-in (${last}). Try again; if it keeps failing, Garmin may have changed its sign-in.`);
 }
 
 /** Where writes may go: creating, changing, scheduling and removing workouts. */
