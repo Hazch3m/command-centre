@@ -605,8 +605,12 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
   let longMax = Math.max(8, Math.min(L.longCap[o.dist] * 0.8, h.longest8 > 0 ? Math.min(h.longest8 * 0.75, startKm * 0.42) : startKm * frac) - 2);
   let peakLong = 0;
   // Race-specific weeks (not the easier ones), so long runs can alternate: big, shorter, big, …
+  // (Weeks with a tune-up race don't count: their long run makes way for the race.)
+  const raceWeeks = new Set(
+    [...(o.keepRaces ? old.races : []), ...(o.extraRaces ?? [])].filter((r) => r.date && !r.approx && r.date >= start && r.date < o.raceDate).map((r) => mondayOf(r.date!)),
+  );
   const specWeeks: number[] = [];
-  for (let i = 0; i < N; i++) if (i >= buildN - specN && i < buildN && !(i > 0 && (i + 1) % L.cutEvery === 0 && i < buildN - 1)) specWeeks.push(i);
+  for (let i = 0; i < N; i++) if (i >= buildN - specN && i < buildN && !(i > 0 && (i + 1) % L.cutEvery === 0 && i < buildN - 1) && !raceWeeks.has(addDays(start, i * 7))) specWeeks.push(i);
   /** Share of the longest run for a race-specific week: the biggest last (counting back), every other week a clearly shorter one. */
   const specShare = (i: number) => {
     const back = specWeeks.length - 1 - specWeeks.indexOf(i);
