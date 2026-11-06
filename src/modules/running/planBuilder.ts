@@ -468,7 +468,8 @@ function session(kind: SessionKind, v: number, o: BuildOptions, phase: Phase, t:
         [n(15, 20), 0.5, p.interval - 8, "30 s jog"],
       ] as [number, number, number, string][]);
       const reps_ = short ? Math.min(k, 6) : k;
-      const offSec = +(/(\d+)\s*s\b/.exec(off)?.[1] ?? (/(\d+)\s*min/.exec(off)?.[1] ?? 1) * 60);
+      const secM = /(\d+)\s*s\b/.exec(off);
+      const offSec = secM ? +secM[1] : +(/(\d+)\s*min/.exec(off)?.[1] ?? 1) * 60;
       const len = mins >= 1 ? `${mins} min` : `${Math.round(mins * 60)} s`;
       return q(workout((reps_ * mins * 60) / at, (reps_ - 1) * offSec, `${reps_} × ${len} fartlek at ${around(at)}, ${off}`));
     }
@@ -506,7 +507,7 @@ function pickSessions(count: number, phase: Phase, week: number, kinds: Set<Sess
   let prefs = PREFS[phase].filter((k) => kinds.has(k));
   // A hilly race: hill reps come round more often in the build and race-specific weeks.
   const el = courseElevation(o.terrain, DIST_M[o.dist] / 1000);
-  if (el.gain / (DIST_M[o.dist] / 1000) >= 8 && (phase === "build" || phase === "specific") && prefs.includes("hills")) prefs = ["hills", ...prefs.filter((k) => k !== "hills")].slice(0, 4);
+  if (el.gain / (DIST_M[o.dist] / 1000) >= 8 && (phase === "build" || phase === "specific") && prefs.includes("hills")) prefs = (["hills", ...prefs.filter((k) => k !== "hills")] as SessionKind[]).slice(0, 4);
   const out: Q[] = [];
   const used = new Set<SessionKind>();
   for (let j = 0; j < count && prefs.length; j++) {
