@@ -1,8 +1,14 @@
-import { practiceOf } from "./planBuilder";
+import { practiceOf, sessionKindOf } from "./planBuilder";
 
-/** A small badge on sessions that rehearse the race (race pace, race-practice long runs, time trials) or finish fast. */
+/** Small badges: what the session trains (when its text doesn't say), and race practice / fast finish. */
 export function PracticeTag({ text }: { text: string }) {
   const p = practiceOf(text);
-  if (!p) return null;
-  return <span className={"practice-tag" + (p === "Fast finish" ? " ff" : "")}>{p}</span>;
+  const k = sessionKindOf(text);
+  if (!p && !k) return null;
+  return (
+    <>
+      {k && <span className="practice-tag kind">{k}</span>}
+      {p && <span className={"practice-tag" + (p === "Fast finish" ? " ff" : "")}>{p}</span>}
+    </>
+  );
 }

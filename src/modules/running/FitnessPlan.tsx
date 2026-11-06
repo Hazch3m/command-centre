@@ -83,7 +83,8 @@ export function GoalPath({ f }: { f: Fitness }) {
     return { base, path, required, vo2At, actual, startDate, now };
   }, [f, health, today, final?.date]);
 
-  if (!model || !final) return <p className="muted">Needs a marathon prediction first (connect Garmin, or race at two distances).</p>;
+  if (!final) return <p className="muted">Set a goal time for your goal race (Plan → Your plan → Races, or when you build a plan) to see the path to it here.</p>;
+  if (!model) return <p className="muted">Needs a marathon prediction first: a race result (any distance), Garmin's race predictions, or one you enter under Race fitness.</p>;
   const { required, startDate, now } = model;
   const key = DISTS.find((x) => x.name === dist)!.key;
   const series = health.filter((h) => h[key] != null).map((h) => ({ date: h.date, m: h[key] as number }));

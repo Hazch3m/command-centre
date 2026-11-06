@@ -141,3 +141,23 @@ describe("following the plan: changes and advice", () => {
     expect(shiftPaces("Race 1:18:30", 5)).toBe("Race 1:18:30");
   });
 });
+
+describe("plan builder: long runs and labels", () => {
+  const h = { recent4: 70, recent12: 68, peak12: 80, runsPerWeek: 6, longest8: 30, weeksRun12: 12, vdot: 53.6 };
+  const o = { raceName: "Test Marathon", raceDate: "2027-10-24", dist: "marathon" as const, target: "", weeks: 30, level: "elite" as const, days: 6, longDay: "sun" as const, keepRaces: false };
+  it("reaches the longest long run only a few times, with shorter ones between", () => {
+    const r = buildPlan(BUNDLED_PLAN, o, h, "2026-11-06");
+    const longest = Math.max(...r.weeks.map((w) => w.long));
+    expect(r.weeks.filter((w) => w.long >= longest - 1).length).toBeLessThanOrEqual(4);
+    const spec = r.weeks.filter((w) => w.phase === "specific" && !w.cut).map((w) => w.long);
+    expect(Math.min(...spec)).toBeLessThan(longest * 0.85);
+  });
+  it("says what each session trains", () => {
+    const r = buildPlan(BUNDLED_PLAN, o, h, "2026-11-06");
+    const from = r.weeks[0].monday;
+    const s = r.plan.weeks.filter((w) => w.start >= from).flatMap((w) => Object.values(w.sessions) as string[]);
+    expect(s.some((x) => /with VO2 max: /.test(x))).toBe(true);
+    expect(s.some((x) => /with Threshold(?: tempo)?: /.test(x))).toBe(true);
+    expect(s.filter((x) => / with /.test(x)).every((x) => /with (VO2 max|Threshold|Threshold tempo|Hill strength|Race pace): |fartlek|time trial/.test(x))).toBe(true);
+  });
+});

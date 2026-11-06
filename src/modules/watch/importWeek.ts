@@ -97,7 +97,7 @@ export function sessionToWorkout(text: string, zones: Zones = {}): Omit<Draft, "
     const reps = repeat(+rep[1], [work, step("recovery", recDur, "open", hills ? "Walk back down" : "Easy jog")]);
     const warm = total ? step("warmup", "3km", "hr zone 2", "Easy") : step("warmup", "15:00", "hr zone 2", "Easy, build to steady");
     const cool = total ? step("cooldown", "lap", "hr zone 2", `Easy to finish the ${total[1]} km, then lap`) : step("cooldown", "10:00", "hr zone 2", "Easy");
-    const kind = hills ? "Hill sprints" : /fartlek/i.test(s) ? "Fartlek" : /\bT\b|threshold/i.test(s) ? "Threshold" : /\bHMP\b/.test(s) ? "HMP" : /\bMP\b/.test(s) ? "MP" : "Intervals";
+    const kind = hills ? (/hill reps|hill strength/i.test(s) ? "Hill reps" : "Hill sprints") : /fartlek/i.test(s) ? "Fartlek" : /vo2/i.test(s) ? "VO2 max" : /\bT\b|threshold/i.test(s) ? "Threshold" : /\bHMP\b/.test(s) ? "HMP" : /\bMP\b/.test(s) ? "MP" : "Intervals";
     const name = `${kind} ${rep[1]}×${durLabel(rep[2], rep[3])}${p ? ` @ ${paceText(p)}` : ""}`;
     return {
       name,

@@ -4880,3 +4880,7 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .p-coach .plan-coach {
   margin: 0;
 }
+.practice-tag.kind {
+  background: color-mix(in srgb, var(--c-fitness, #a78bfa) 22%, transparent);
+  color: var(--c-fitness, #a78bfa);
+}

@@ -38,6 +38,24 @@ export interface FitnessConfig extends Vo2Config {
 }
 
 /**
+ * No goals of your own set (a new account): your plan's A races with a goal time are the goals,
+ * so the goal path, projection and "Path to …" follow the plan.
+ */
+export function withPlanGoals(config: FitnessConfig, plan: Plan | undefined, today: string): FitnessConfig {
+  if (config.projection.milestones.length || !plan) return config;
+  const ms = plan.races
+    .filter((r) => r.date && r.date > today && r.target && (r.priority === "A" || /goal|main|attempt/i.test(r.role)))
+    .map((r) => {
+      const meters = (r.km ?? (/half/i.test(r.name) ? 21.0975 : /marathon/i.test(r.name) ? 42.195 : /10\s?k/i.test(r.name) ? 10 : /5\s?k/i.test(r.name) ? 5 : 42.195)) * 1000;
+      const secs = targetTime(r.target, meters);
+      return secs ? { date: r.date!, vo2: Math.round(vdot(meters, secs) * 10) / 10, label: `${r.target.replace(/^sub-?/i, "Sub-")} · ${r.name}` } : null;
+    })
+    .filter((m): m is { date: string; vo2: number; label: string } => !!m)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  return ms.length ? { ...config, projection: { ...config.projection, milestones: ms } } : config;
+}
+
+/**
  * New accounts start with generic heart-rate numbers; until you set your own, the max is taken from your
  * runs (the second-highest max of the last 18 months, so one strap glitch doesn't count).
  */
@@ -305,6 +323,7 @@ export function computeFitness(
   garminPredictions: { values: Record<string, number>; date: string; monthAgo?: Record<string, number> | null } | null = null,
 ): Fitness {
   config = withAutoHeartRate(config, runs, today);
+  config = withPlanGoals(config, plan, today);
   // Raw estimates first, then calibrate to Garmin if there are readings.
   const raw: RunEstimate[] = [];
   for (const r of runs) {

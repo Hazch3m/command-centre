@@ -497,6 +497,9 @@ function session(kind: SessionKind, v: number, o: BuildOptions, phase: Phase, t:
   }
 }
 
+/** What a session is for, written in front of it ("VO2 max: 5 × 1 km at …"). */
+const KIND_LABEL: Partial<Record<SessionKind, string>> = { intervals: "VO2 max", threshold: "Threshold", tempo: "Threshold tempo", hills: "Hill strength", racepace: "Race pace" };
+
 /** "5 × 3 min at 3:30–3:34, 2 min jog" (timed reps; `tag` "T " marks threshold). */
 function timed(n: number, min: number, pace: number, tag: string, jog: string, jogSec: number) {
   return workout((n * min * 60) / pace, (n - 1) * jogSec, `${n} × ${min} min ${tag}at ${around(pace)}, ${jog}`);
@@ -522,7 +525,8 @@ function pickSessions(count: number, phase: Phase, week: number, kinds: Set<Sess
     // Each kind steps through its variations in turn, so the same session doesn't come round again for weeks.
     const v = seen.get(k) ?? 0;
     seen.set(k, v + 1);
-    out.push(session(k, v, o, phase, t, p, race));
+    const q = session(k, v, o, phase, t, p, race);
+    out.push(KIND_LABEL[k] && !q.whole ? { ...q, text: `${KIND_LABEL[k]}: ${q.text}` } : q);
   }
   return out;
 }
@@ -600,6 +604,14 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
   // Where the long run starts: a bit below your recent longest, but not a huge share of the first week.
   let longMax = Math.max(8, Math.min(L.longCap[o.dist] * 0.8, h.longest8 > 0 ? Math.min(h.longest8 * 0.75, startKm * 0.42) : startKm * frac) - 2);
   let peakLong = 0;
+  // Race-specific weeks (not the easier ones), so long runs can alternate: big, shorter, big, …
+  const specWeeks: number[] = [];
+  for (let i = 0; i < N; i++) if (i >= buildN - specN && i < buildN && !(i > 0 && (i + 1) % L.cutEvery === 0 && i < buildN - 1)) specWeeks.push(i);
+  /** Share of the longest run for a race-specific week: the biggest last (counting back), every other week a clearly shorter one. */
+  const specShare = (i: number) => {
+    const back = specWeeks.length - 1 - specWeeks.indexOf(i);
+    return back % 2 === 0 ? 1 - 0.04 * (back / 2) : 0.8 - 0.015 * ((back - 1) / 2);
+  };
   for (let i = 0; i < N; i++) {
     const monday = addDays(start, i * 7);
     let phase: Phase = i < baseN ? "base" : i < buildN - specN ? "build" : i < buildN ? "specific" : i === N - 1 ? "race" : "taper";
@@ -614,7 +626,9 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
       if (i > 0 && !cut) cur = Math.min(peak, cur * (1 + growth));
       km = cut ? cur * L.cut : cur;
       // Race-specific weeks push the long run on towards its cap; before that it follows the week's volume.
-      const want = Math.min(L.longCap[o.dist], phase === "specific" && isRace ? Math.max(km * frac, L.longCap[o.dist]) : phase === "recover" ? km * 0.28 : km * frac);
+      // Race-specific weeks: long runs towards the cap, but only every other one at full length (like Pfitzinger's or Runna's
+      // plans): the longest comes a few weeks before the taper, with shorter long runs (and medium-long runs) between.
+      const want = Math.min(L.longCap[o.dist], phase === "specific" && isRace ? Math.max(km * frac * 0.85, L.longCap[o.dist] * Math.max(0.68, specShare(i))) : phase === "recover" ? km * 0.28 : km * frac);
       long = cut ? Math.min(want, longMax * 0.8) : Math.min(want, longMax + 2);
       long = Math.max(o.dist === "5k" ? 8 : 10, Math.round(long));
       if (!cut) longMax = Math.max(longMax, long);
@@ -875,6 +889,25 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
 
 /** VDOT points a build of n weeks can be expected to add (diminishing: a year adds less than twice a half-year). */
 /** Sessions that rehearse the race (race pace, race-practice long runs, time trials), for highlighting. */
+/**
+ * What a session trains, for plans written without labels: threshold (T, tempo, longer reps), VO2 max
+ * (short reps at speed), fartlek, hills. Null for easy and long runs, and when the text already says.
+ */
+export function sessionKindOf(text: string): string | null {
+  if (/^(?:\d+ km with )?(VO2 max|Threshold|Hill strength|Race pace)\b/i.test(text) || /fartlek/i.test(text)) return null;
+  if (/hill (?:reps|repeats)/i.test(text)) return "Hill strength";
+  if (/\bT\b|threshold|tempo|cruise/i.test(text)) return "Threshold";
+  const rep = /(\d+)\s*×\s*(\d+(?:\.\d+)?)\s*(km|m|min|s)\b[^,]*\bat\s+(?!MP|HMP)/i.exec(text);
+  if (rep) {
+    const [, , size, unit] = rep;
+    const metres = unit === "km" ? +size * 1000 : unit === "m" ? +size : null;
+    const secs = unit === "min" ? +size * 60 : unit === "s" ? +size : null;
+    if ((metres != null && metres <= 1200) || (secs != null && secs <= 240)) return "VO2 max";
+    return "Threshold";
+  }
+  return null;
+}
+
 export function practiceOf(text: string): "Race practice" | "Fast finish" | null {
   if (/race practice|time trial|\b(?:MP|HMP)\b/i.test(text)) return "Race practice";
   if (/fast finish|progression run|long run, last \d+ at/i.test(text)) return "Fast finish";
