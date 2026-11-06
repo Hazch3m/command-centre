@@ -14,11 +14,13 @@ import { RunViewHost } from "../modules/running/RunView";
 import { usePlanCalendarSync } from "../modules/running/planCalendar";
 import { usePhoneSync } from "../core/phoneSync";
 import { useAutoRefresh, useRefresh } from "./refresh";
+import { useWatchAutoSync } from "../modules/watch/AutoSyncSetting";
 
 function BackgroundJobs() {
   usePlanCalendarSync();
   usePhoneSync();
   useAutoRefresh();
+  useWatchAutoSync();
   return null;
 }
 

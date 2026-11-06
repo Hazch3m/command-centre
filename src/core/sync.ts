@@ -105,7 +105,7 @@ export interface CloudOp {
 /** Tables the cloud may write (and the PC and phone accept from it). */
 export const CLOUD_TABLES = new Set(["strava_activities", "strava_details", "strava_full", "health_daily", "calendar_events", "vo2_readings", "kv"]);
 /** kv keys the cloud may write: the sync states and lists its sync code keeps. */
-export const CLOUD_KV = /^(health\.|calendar\.(sync|calendars)$|garmin\.runs\.sync$)/;
+export const CLOUD_KV = /^(health\.|calendar\.(sync|calendars)$|garmin\.runs\.sync$|watch\.autosync$)/;
 
 /** May a statement from the cloud be applied (on the PC, the phone, or the cloud's own copy)? */
 export function cloudMayWrite(sql: string, params: unknown[]): boolean {
@@ -143,7 +143,7 @@ export interface PhoneOp {
 /** Tables the phone may change. Everything else (synced data, caches) comes only from the PC. */
 export const PHONE_TABLES = new Set(["tasks", "projects", "checklist_items", "checklist_log", "plan_overrides", "vo2_readings", "kv"]);
 /** kv keys the phone may change: view choices and settings, never sync state. */
-const KV_ALLOWED = [/^calendar\.view\./, /^shape\.settings$/, /^checklist\./, /^tasks\.(view|filter|sort)/, /^phone\.refresh$/, /^running\.prefs$/];
+const KV_ALLOWED = [/^calendar\.view\./, /^shape\.settings$/, /^checklist\./, /^tasks\.(view|filter|sort)/, /^phone\.refresh$/, /^running\.prefs$/, /^watch\.autosync\.settings$/];
 /** The phone's "refresh" button: asks the PC to sync Strava, Garmin and the calendar now and send a fresh copy. */
 export const REFRESH_KEY = "phone.refresh";
 /** Set by the PC (never the phone) to the request it has just answered. */

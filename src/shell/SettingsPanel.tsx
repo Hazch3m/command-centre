@@ -5,6 +5,7 @@ import { getSettings, subscribeSettings, TEXT_SIZES, updateSettings } from "../c
 import { Connections } from "./Connections";
 import { PhoneSetting } from "./PhoneSetting";
 import { TargetPrefs } from "../modules/running/TargetPrefs";
+import { AutoSyncSetting } from "../modules/watch/AutoSyncSetting";
 import { CalendarFeeds } from "../modules/calendar/Connect";
 import { GarminSetting } from "../modules/health";
 import { WatchSetting } from "../modules/watch";
@@ -140,6 +141,7 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
                 <p className="muted small">How runs are targeted and judged. Also on Training → Plan.</p>
                 <TargetPrefs />
                 <h3>Workouts on your watch</h3>
+                <AutoSyncSetting />
                 <WatchSetting />
               </>
             )}

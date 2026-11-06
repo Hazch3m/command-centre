@@ -160,7 +160,7 @@ export class Store extends DurableObject<Env> {
       };
       let r: SyncResult;
       try {
-        r = await runCloudSync(io, withCal ? undefined : ["runs", "health"]);
+        r = await runCloudSync(io, withCal ? undefined : ["runs", "health", "watch"]);
         if (withCal) this.set("cloudCalAt", String(Date.now()));
       } catch (e) {
         r = { ranAt: new Date().toISOString(), wrote: 0, errors: { cloud: String((e as Error)?.message ?? e) }, newRuns: 0 };

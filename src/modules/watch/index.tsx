@@ -6,6 +6,7 @@ import { CardHeader, ErrorNote } from "../../shell/ui";
 import type { CardProps, DashboardModule } from "../types";
 import { loadPlan, mondayOf } from "../running/plan";
 import * as coach from "./coach";
+import { AutoSyncSetting } from "./AutoSyncSetting";
 import { defaultWeekStart, parseWeek, type Draft, type Zones } from "./importWeek";
 import {
   fmtDuration,
@@ -744,6 +745,9 @@ function WatchPage() {
         </span>
       </header>
       <LoginBanner />
+      <section className="watch-autosync">
+        <AutoSyncSetting />
+      </section>
 
       <h3>Your Garmin calendar</h3>
       <GarminWeeks tick={tick} onChanged={refresh} onReplace={replace} />

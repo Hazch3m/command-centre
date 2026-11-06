@@ -32,6 +32,8 @@ export interface Creds {
 type Param = string | number | null;
 interface Ctx {
   db: Database;
+  /** The plan and fitness files from the PC's copy. */
+  files?: Record<string, string>;
   writes: { sql: string; params: Param[] }[];
   creds: Creds;
   /** Called when a token is refreshed (Garmin's rotate), so the new one is kept. */
@@ -229,7 +231,7 @@ export const backend = {
     if (!r.ok) throw new Error(`The calendar feed answered ${r.status}`);
     return r.text();
   },
-  readDataFile: async () => null,
+  readDataFile: async (name: string) => ctx?.files?.[name] ?? null,
   writeDataFile: notHere("writing files"),
   weatherFetch: notHere("weather"),
 };

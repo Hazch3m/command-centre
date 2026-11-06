@@ -4708,3 +4708,8 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
   .settings-body { grid-template-columns: 1fr; }
   .settings-nav { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line); padding: 0 0 0.6rem; }
 }
+.autosync { display: flex; flex-direction: column; gap: 0.5rem; border: 1px solid var(--line); border-radius: 12px; padding: 0.75rem 0.9rem; background: var(--card-2); }
+.autosync-head { display: flex; gap: 1rem; align-items: flex-start; justify-content: space-between; }
+.autosync-row { display: flex; gap: 0.7rem; align-items: center; flex-wrap: wrap; }
+.autosync-off { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 0.5rem; }
+.watch-autosync { margin: 0.6rem 0 1rem; }

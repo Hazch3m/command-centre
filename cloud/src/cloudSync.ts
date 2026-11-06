@@ -9,6 +9,7 @@ import { setContext, type Creds } from "./appBackend";
 import { syncGarminRuns } from "../../src/modules/running/garminRuns";
 import { syncHealth } from "../../src/modules/health/data";
 import { syncCalendar } from "../../src/modules/calendar/data";
+import { runAutoSync } from "../../src/modules/watch/autoSync";
 
 export interface CloudIO {
   /** The latest sealed snapshot and its version, or null. */
@@ -32,7 +33,7 @@ export interface SyncResult {
   newRuns: number;
 }
 
-export async function runCloudSync(io: CloudIO, only?: ("runs" | "health" | "calendar")[]): Promise<SyncResult> {
+export async function runCloudSync(io: CloudIO, only?: ("runs" | "health" | "calendar" | "watch")[]): Promise<SyncResult> {
   const ranAt = new Date().toISOString();
   const snap = await io.loadSnapshot();
   if (!snap) return { ranAt, wrote: 0, errors: { data: "No copy from the PC yet: open Command Centre on the PC once." }, newRuns: 0 };
@@ -59,10 +60,10 @@ export async function runCloudSync(io: CloudIO, only?: ("runs" | "health" | "cal
     const runCount = () => Number(db.exec("SELECT count(*) FROM strava_activities")[0]?.values[0][0] ?? 0);
     const before = runCount();
     const writes: CloudOp["stmts"] = [];
-    const ctx = { db, writes, creds: io.creds, saveCreds: async (c: Creds) => ((io.creds = c), await io.saveCreds(c)) };
+    const ctx = { db, writes, files: header.files, creds: io.creds, saveCreds: async (c: Creds) => ((io.creds = c), await io.saveCreds(c)) };
     setContext(ctx);
     const errors: SyncResult["errors"] = {};
-    const want = (k: "runs" | "health" | "calendar") => !only || only.includes(k);
+    const want = (k: "runs" | "health" | "calendar" | "watch") => !only || only.includes(k);
     try {
       if (io.creds.garmin && want("runs")) {
         const s = await syncGarminRuns().catch((e) => ({ lastError: String((e as Error)?.message ?? e) }));
@@ -75,6 +76,14 @@ export async function runCloudSync(io: CloudIO, only?: ("runs" | "health" | "cal
       if ((io.creds.google || io.creds.ics.length) && want("calendar")) {
         const s = await syncCalendar().catch((e) => ({ error: String((e as Error)?.message ?? e) }));
         errors.calendar = s.error ?? null;
+      }
+      // Watch sync: keep the plan's next days on the Garmin calendar (the cloud does it while cloud sync is on).
+      if (io.creds.garmin && want("watch")) {
+        const on = (db.exec("SELECT value FROM kv WHERE key = 'watch.autosync.settings'")[0]?.values[0][0] as string | undefined) ?? "";
+        if (/"on":\s*true/.test(on)) {
+          const s = await runAutoSync().catch((e) => ({ lastError: String((e as Error)?.message ?? e) }));
+          errors.watch = s.lastError ?? null;
+        }
       }
     } finally {
       setContext(null);

@@ -10,6 +10,7 @@ import { km, pace } from "../modules/running/stats";
 import { loadOverrides } from "../modules/running/strava";
 import { useRunningData } from "../modules/running/useRunning";
 import { TargetPrefs } from "../modules/running/TargetPrefs";
+import { AutoSyncSetting } from "../modules/watch/AutoSyncSetting";
 import { dayName, Section, usePhoneNav } from "./common";
 import { Session } from "./Today";
 
@@ -129,6 +130,10 @@ export function Training() {
 
       <Section title="Targets">
         <TargetPrefs compact />
+      </Section>
+
+      <Section title="Watch">
+        <AutoSyncSetting />
       </Section>
 
       <Section title="More">
