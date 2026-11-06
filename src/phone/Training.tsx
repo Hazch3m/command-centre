@@ -41,7 +41,7 @@ export function Training() {
   };
   const day = fw.days.find((d) => d.date === sel) ?? fw.days[0];
   const pct = fw.plannedKm ? Math.min(1, fw.actualKm / fw.plannedKm) : 0;
-  const recent = [...runs].filter((r) => r.date <= today).slice(-10).reverse();
+  const recent = [...runs].filter((r) => r.date <= today).slice(-3).reverse();
   const off = Math.round((parseKey(monday).getTime() - parseKey(thisMonday).getTime()) / (7 * 86400000));
   return (
     <div className="p-screen">
@@ -106,7 +106,14 @@ export function Training() {
         })}
       </Section>
 
-      <Section title="Recent runs">
+      <Section
+        title="Recent runs"
+        action={
+          <button className="p-link" onClick={() => nav.setTab("runs")}>
+            All runs
+          </button>
+        }
+      >
         {recent.map((r) => {
           const t = typeOfRun(r, kinds.get(r.date));
           return (
@@ -147,18 +154,6 @@ export function Training() {
         <button className="p-row p-row-btn" onClick={() => nav.push("plan")}>
           <span className="p-row-main">
             <span className="p-row-title">Full plan, pace on point and progress</span>
-          </span>
-          <span className="p-chev">›</span>
-        </button>
-        <button className="p-row p-row-btn" onClick={() => nav.push("fitness")}>
-          <span className="p-row-main">
-            <span className="p-row-title">Fitness, race predictions and marathon shape</span>
-          </span>
-          <span className="p-chev">›</span>
-        </button>
-        <button className="p-row p-row-btn" onClick={() => nav.push("health")}>
-          <span className="p-row-main">
-            <span className="p-row-title">Health: readiness, HRV, sleep</span>
           </span>
           <span className="p-chev">›</span>
         </button>

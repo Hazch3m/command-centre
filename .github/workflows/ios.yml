@@ -58,6 +58,10 @@ jobs:
           for f in $A/Assets.xcassets/AppIcon.appiconset/*.png; do cp assets/icon-1024.png "$f"; done
           for f in $A/Assets.xcassets/Splash.imageset/*.png; do cp assets/splash-2732.png "$f"; done
           # iPhone only (no iPad screenshots needed), on the app itself rather than its frameworks.
+          # iOS 15 at least (Apple requires it from April 2027).
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 1[0-4]\.0;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/' ios/App/App.xcodeproj/project.pbxproj
+          sed -i '' "s/platform :ios, '1[0-4]\.0'/platform :ios, '15.0'/" ios/App/Podfile
+          (cd ios/App && pod install)
           sed -i '' 's/TARGETED_DEVICE_FAMILY = "1,2";/TARGETED_DEVICE_FAMILY = 1;/' ios/App/App.xcodeproj/project.pbxproj
           grep -m1 PRODUCT_BUNDLE_IDENTIFIER ios/App/App.xcodeproj/project.pbxproj
           P=$A/Info.plist
@@ -80,7 +84,7 @@ jobs:
           AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$KEY_ID" -authenticationKeyIssuerID "$ISSUER_ID")
           if [ -d ios/App/App.xcworkspace ]; then SRC=(-workspace ios/App/App.xcworkspace); else SRC=(-project ios/App/App.xcodeproj); fi
           xcodebuild "${SRC[@]}" -scheme App -configuration Release \
-            -destination generic/platform=iOS -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            IPHONEOS_DEPLOYMENT_TARGET=15.0 -destination generic/platform=iOS -archivePath "$RUNNER_TEMP/App.xcarchive" \
             "${AUTH[@]}" DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Automatic \
             MARKETING_VERSION=1.0 CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
             archive | tail -n 60

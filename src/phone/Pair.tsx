@@ -2,7 +2,12 @@ import { useState } from "react";
 import { cleanCode } from "../core/sync";
 import { pairWithCode } from "../core/backend.phone";
 
-const standalone = () => (navigator as Navigator & { standalone?: boolean }).standalone === true || window.matchMedia?.("(display-mode: standalone)").matches;
+/** Opened from the home screen, or inside the Command Centre iPhone app (which needs no "add to home screen"). */
+const standalone = () =>
+  (navigator as Navigator & { standalone?: boolean }).standalone === true ||
+  window.matchMedia?.("(display-mode: standalone)").matches ||
+  /CommandCentreApp/.test(navigator.userAgent) ||
+  !!(window as Window & { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();
 const isIos = () => /iPhone|iPad|iPod/.test(navigator.userAgent);
 
 /** First run: link this phone to the PC with the code shown in Settings → Phone. */

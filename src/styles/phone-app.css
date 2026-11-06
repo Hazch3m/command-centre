@@ -1018,3 +1018,135 @@ button.p-row-main {
 .p-refresh.spin svg { animation: p-spin 0.9s linear infinite; }
 @keyframes p-spin { to { transform: rotate(360deg); } }
 .p-note { margin: 0.2rem 1rem 0; padding: 0.55rem 0.8rem; border-radius: 12px; background: var(--card); border: 1px solid var(--line); font-size: 0.88rem; display: flex; gap: 0.5rem; align-items: center; }
+
+/* Runs and Stats tabs */
+.p-tab.tab-runs { --mod: var(--c-running); }
+.p-tab.tab-stats { --mod: var(--c-fitness, var(--accent)); }
+.p-tab.tab-more svg { stroke-width: 3.2; }
+.p-totals {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+.p-total {
+  display: flex;
+  flex-direction: column;
+  padding: 0.7rem 0.75rem;
+  border-radius: var(--p-radius);
+  background: var(--p-surface);
+}
+.p-total-label,
+.p-total-sub,
+.p-pb-label,
+.p-pb-date {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+.p-total b {
+  font-size: 1.45rem;
+  font-weight: 750;
+  line-height: 1.2;
+}
+.p-weekbars {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 4px;
+  align-items: end;
+  height: 56px;
+  padding: 0 0.2rem;
+}
+.p-weekbar {
+  display: flex;
+  align-items: end;
+  height: 100%;
+}
+.p-weekbar i {
+  width: 100%;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--c-running) 45%, transparent);
+}
+.p-weekbar.now i {
+  background: var(--c-running);
+}
+.p-pbs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+}
+.p-pb {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  padding: 0.7rem 0.9rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+}
+.p-pb b {
+  font-size: 1.2rem;
+}
+.p-runcard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.85rem 0.9rem;
+  border: 0;
+  border-radius: var(--p-radius);
+  background: var(--p-surface);
+  color: inherit;
+  text-align: left;
+  font: inherit;
+}
+.p-runcard:active,
+.p-row-btn:active,
+.p-pb:active {
+  opacity: 0.7;
+}
+.p-runcard-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.p-runcard-stats {
+  display: flex;
+  gap: 1.2rem;
+  flex-wrap: wrap;
+}
+.p-runcard-stats span {
+  display: flex;
+  flex-direction: column;
+}
+.p-runcard-stats small {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+.p-runcard-stats b {
+  font-size: 1.05rem;
+}
+.p-runcard-map {
+  border-radius: 12px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.p-more {
+  padding: 0.8rem;
+  border: 0;
+  border-radius: var(--p-radius);
+  background: var(--p-surface);
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+}
+.p-embed {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+/* Feels like an app: no tap flashes, no text selection on controls */
+.p-app button {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}

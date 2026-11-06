@@ -11,5 +11,6 @@
     "backgroundColor": "#252a31",
     "contentInset": "never",
     "limitsNavigationsToAppBoundDomains": true
-  }
+  },
+  "appendUserAgent": "CommandCentreApp"
 }

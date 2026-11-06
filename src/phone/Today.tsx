@@ -122,7 +122,7 @@ export function Today() {
         <Section
           title="Habits"
           action={
-            <button className="p-link" onClick={() => nav.setTab("habits")}>
+            <button className="p-link" onClick={() => nav.push("habits")}>
               {habits.items.filter((i) => (habits.today.get(i.id) ?? 0) >= i.target).length}/{habits.items.length} ›
             </button>
           }
@@ -139,7 +139,7 @@ export function Today() {
       <Section
         title="To do"
         action={
-          <button className="p-link" onClick={() => nav.setTab("tasks")}>
+          <button className="p-link" onClick={() => nav.push("tasks")}>
             All tasks ›
           </button>
         }
@@ -177,7 +177,7 @@ export function Today() {
       <Section
         title="Coming up"
         action={
-          <button className="p-link" onClick={() => nav.setTab("calendar")}>
+          <button className="p-link" onClick={() => nav.push("calendar")}>
             Calendar ›
           </button>
         }

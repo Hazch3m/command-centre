@@ -10,6 +10,9 @@ import { NavContext } from "../shell/nav";
 import { Calendar } from "./Calendar";
 import { PhoneNav, type Pushed, type Tab } from "./common";
 import { Habits } from "./Habits";
+import { PbsTab } from "../modules/running/PbsTab";
+import { Runs } from "./Runs";
+import { Stats } from "./Stats";
 import { PlanAdjustPage } from "./PlanAdjust";
 import { Tasks } from "./Tasks";
 import { Today } from "./Today";
@@ -17,16 +20,27 @@ import { Training } from "./Training";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "today", label: "Today", icon: "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" },
-  { id: "training", label: "Training", icon: "M13 4a2 2 0 1 0 4 0 2 2 0 0 0-4 0M6 20l3-6 3 2v5M9 14l2-5 4 2 3 3M11 9l-3 1-2 3" },
-  { id: "calendar", label: "Calendar", icon: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4" },
-  { id: "tasks", label: "Tasks", icon: "M4 6l2 2 4-4M4 13l2 2 4-4M13 7h7M13 14h7M4 20h16" },
-  { id: "habits", label: "Habits", icon: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8 12l3 3 5-6" },
+  { id: "training", label: "Plan", icon: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M8 14h3M8 17h6" },
+  { id: "runs", label: "Runs", icon: "M13 4a2 2 0 1 0 4 0 2 2 0 0 0-4 0M6 20l3-6 3 2v5M9 14l2-5 4 2 3 3M11 9l-3 1-2 3" },
+  { id: "stats", label: "Stats", icon: "M4 20V10M10 20V4M16 20v-7M22 20H2" },
+  { id: "more", label: "More", icon: "M5 12h.01M12 12h.01M19 12h.01" },
 ];
 const PUSHED: Record<Exclude<Pushed, null>, { title: string; module: string | null }> = {
   health: { title: "Health", module: "health" },
   fitness: { title: "Fitness", module: "fitness" },
   plan: { title: "Plan", module: "running" },
   adjust: { title: "Your plan", module: null },
+  pbs: { title: "Personal bests", module: null },
+  calendar: { title: "Calendar", module: null },
+  tasks: { title: "Tasks", module: null },
+  habits: { title: "Habits", module: null },
+};
+const PUSHED_PAGE: Partial<Record<Exclude<Pushed, null>, () => JSX.Element>> = {
+  adjust: () => <PlanAdjustPage />,
+  pbs: () => <div className="p-embed"><PbsTab /></div>,
+  calendar: () => <Calendar />,
+  tasks: () => <Tasks />,
+  habits: () => <Habits />,
 };
 
 function useSync() {
@@ -60,7 +74,10 @@ function SyncLine({ onRefresh, busy }: { onRefresh: () => void; busy: boolean })
 }
 
 export function PhoneApp() {
-  const [tab, setTabState] = useState<Tab>(() => (sessionStorage.getItem("cc-phone-tab") as Tab) || "today");
+  const [tab, setTabState] = useState<Tab>(() => {
+    const t = sessionStorage.getItem("cc-phone-tab") as Tab | null;
+    return t && TABS.some((x) => x.id === t) ? t : "today";
+  });
   const [pushed, setPushed] = useState<Pushed>(null);
   const [busy, setBusy] = useState(false);
   const setTab = (t: Tab) => {
@@ -78,7 +95,7 @@ export function PhoneApp() {
   const cardNav = useMemo(
     () => ({
       tab,
-      go: (t: string) => (t === "health" || t === "fitness" ? push(t) : t === "running" ? setTab("training") : t === "checklist" ? setTab("habits") : t === "tasks" || t === "calendar" ? setTab(t) : setTab("today")),
+      go: (t: string) => (t === "health" || t === "fitness" ? push(t) : t === "running" ? setTab("training") : t === "checklist" ? push("habits") : t === "tasks" || t === "calendar" ? push(t) : setTab("today")),
     }),
     [tab],
   );
@@ -197,21 +214,18 @@ export function PhoneApp() {
           <main className="p-main" key={pushed ?? tab}>
             {pushed ? (
               <div className="p-pushed">
-                {PUSHED[pushed].module ? <ModulePage id={PUSHED[pushed].module!} /> : <PlanAdjustPage />}
+                {PUSHED[pushed].module ? <ModulePage id={PUSHED[pushed].module!} /> : PUSHED_PAGE[pushed]!()}
               </div>
             ) : tab === "today" ? (
-              <>
-                <Today />
-                <PhoneFooter />
-              </>
+              <Today />
             ) : tab === "training" ? (
               <Training />
-            ) : tab === "calendar" ? (
-              <Calendar />
-            ) : tab === "tasks" ? (
-              <Tasks />
+            ) : tab === "runs" ? (
+              <Runs />
+            ) : tab === "stats" ? (
+              <Stats />
             ) : (
-              <Habits />
+              <More push={push} />
             )}
           </main>
           <nav className="p-tabs" role="tablist">
@@ -228,6 +242,33 @@ export function PhoneApp() {
         </div>
       </NavContext.Provider>
     </PhoneNav.Provider>
+  );
+}
+
+function More({ push }: { push: (p: Pushed) => void }) {
+  const rows: [Exclude<Pushed, null>, string, string][] = [
+    ["calendar", "Calendar", "Your events and the plan's sessions"],
+    ["tasks", "Tasks", "To-dos, synced with the PC"],
+    ["habits", "Habits", "Daily checklist and streaks"],
+    ["adjust", "Your plan and races", "Build a plan, races and tapers, import a CSV"],
+  ];
+  return (
+    <div className="p-screen">
+      <section className="p-section">
+        <div className="p-group">
+          {rows.map(([id, title, sub]) => (
+            <button key={id} className="p-row p-row-btn" onClick={() => push(id)}>
+              <span className="p-row-main">
+                <span className="p-row-title">{title}</span>
+                <span className="p-row-sub">{sub}</span>
+              </span>
+              <span className="p-chev">›</span>
+            </button>
+          ))}
+        </div>
+      </section>
+      <PhoneFooter />
+    </div>
   );
 }
 
