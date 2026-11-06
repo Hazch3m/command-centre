@@ -7,7 +7,12 @@ interface CCNative {
   signInWithApple(o: { nonce: string }): Promise<{ identityToken: string; email?: string | null; name?: string | null }>;
   garminLogin(o: { url: string }): Promise<{ ticket: string }>;
 }
-type Cap = { isNativePlatform?: () => boolean; registerPlugin?: <T>(name: string) => T };
+type Cap = {
+  isNativePlatform?: () => boolean;
+  registerPlugin?: <T>(name: string) => T;
+  /** Injected by the iPhone app's bridge itself (no Capacitor library needed in the page). */
+  nativePromise?: <T>(plugin: string, method: string, options: unknown) => Promise<T>;
+};
 
 const cap = () => (globalThis as unknown as { Capacitor?: Cap }).Capacitor;
 
@@ -15,10 +20,15 @@ const cap = () => (globalThis as unknown as { Capacitor?: Cap }).Capacitor;
 export const isNativeApp = () => !!cap()?.isNativePlatform?.() || /CommandCentreApp/.test(globalThis.navigator?.userAgent ?? "");
 
 let plugin: CCNative | null = null;
+/** The app's native plugin, called through the bridge the app injects into the page. */
 export function native(): CCNative {
+  if (plugin) return plugin;
   const c = cap();
-  if (!c?.registerPlugin) throw new Error("This needs the Command Centre iPhone app.");
-  plugin ??= c.registerPlugin<CCNative>("CCNative");
+  if (c?.nativePromise) {
+    const call = <T,>(method: string) => (o: unknown) => c.nativePromise!<T>("CCNative", method, o);
+    plugin = { signInWithApple: call("signInWithApple"), garminLogin: call("garminLogin") };
+  } else if (c?.registerPlugin) plugin = c.registerPlugin<CCNative>("CCNative");
+  else throw new Error(isNativeApp() ? "This version of the app can't do this yet: update Command Centre in TestFlight." : "This needs the Command Centre iPhone app.");
   return plugin;
 }
 
