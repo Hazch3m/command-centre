@@ -42,7 +42,13 @@ const ALLOWED: &[&str] = &[
     // Runs: the activity list, and one run's samples and laps.
     "/activitylist-service/activities/search/activities",
     "/activity-service/activity/",
+    // Workouts on your watch: what's scheduled, and one workout's steps.
+    "/calendar-service/year/",
+    "/workout-service/workout/",
 ];
+
+/// Where the app may write: creating, changing, scheduling and removing workouts (nothing else).
+const WRITE_ALLOWED: &[&str] = &["/workout-service/workout", "/workout-service/schedule/"];
 
 #[derive(Serialize, Deserialize, Clone)]
 struct GToken {
@@ -240,6 +246,45 @@ pub async fn garmin_request(http: tauri::State<'_, reqwest::Client>, path: Strin
         }
         let text = resp.text().await.map_err(|e| e.to_string())?;
         let body = if text.is_empty() { Value::Null } else { serde_json::from_str(&text).unwrap_or(Value::Null) };
+        return Ok(GarminResponse { status, body });
+    }
+}
+
+/// POST, PUT or DELETE on Garmin's workout service: puts plan sessions on your watch.
+#[tauri::command]
+pub async fn garmin_write(http: tauri::State<'_, reqwest::Client>, method: String, path: String, body: Option<Value>) -> Result<GarminResponse, String> {
+    let m = match method.as_str() {
+        "POST" => reqwest::Method::POST,
+        "PUT" => reqwest::Method::PUT,
+        "DELETE" => reqwest::Method::DELETE,
+        _ => return Err("Only POST, PUT and DELETE".into()),
+    };
+    if !path.starts_with('/') || path.contains("..") || path.contains("://") || path.contains('?') || !WRITE_ALLOWED.iter().any(|p| path.starts_with(p)) {
+        return Err(format!("{path} is not an allowed Garmin address"));
+    }
+    let mut token: GToken = load(KEY).ok_or("Garmin isn't connected")?;
+    if token.expires_at <= now() + 600 {
+        token = refresh(&http, &token).await?;
+    }
+    let mut retried = false;
+    loop {
+        let mut req = native(http.request(m.clone(), format!("{API}{path}")))
+            .bearer_auth(&token.access)
+            .header("Accept", "application/json")
+            .header("NK", "NT")
+            .timeout(Duration::from_secs(30));
+        if let Some(b) = &body {
+            req = req.json(b);
+        }
+        let resp = req.send().await.map_err(|e| format!("offline: {e}"))?;
+        let status = resp.status().as_u16();
+        if status == 401 && !retried {
+            retried = true;
+            token = refresh(&http, &token).await?;
+            continue;
+        }
+        let text = resp.text().await.map_err(|e| e.to_string())?;
+        let body = if text.is_empty() { Value::Null } else { serde_json::from_str(&text).unwrap_or(Value::String(text)) };
         return Ok(GarminResponse { status, body });
     }
 }

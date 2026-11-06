@@ -4,6 +4,7 @@ import type { AppConfig, BackupStatus, MonitorInfo } from "../core/backend.types
 import { getSettings, subscribeSettings, TEXT_SIZES, updateSettings } from "../core/settings";
 import { Connections } from "./Connections";
 import { PhoneSetting } from "./PhoneSetting";
+import { TargetPrefs } from "../modules/running/TargetPrefs";
 import { CalendarFeeds } from "../modules/calendar/Connect";
 import { GarminSetting } from "../modules/health";
 import { WatchSetting } from "../modules/watch";
@@ -29,6 +30,17 @@ function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
   );
 }
 
+const SECTIONS = [
+  { id: "accounts", label: "Accounts", icon: "🔗" },
+  { id: "training", label: "Training & watch", icon: "🏃" },
+  { id: "phone", label: "Phone & cloud", icon: "📱" },
+  { id: "calendar", label: "Calendars", icon: "📅" },
+  { id: "display", label: "Display & behaviour", icon: "🖥" },
+  { id: "data", label: "Data & backups", icon: "💾" },
+] as const;
+type Section = (typeof SECTIONS)[number]["id"];
+let lastSection: Section = "accounts";
+
 export function SettingsPanel({ onClose }: { onClose: () => void }) {
   const settings = useSyncExternalStore(subscribeSettings, getSettings);
   const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
@@ -38,6 +50,11 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
   const [folder, setFolder] = useState("");
   const [version, setVersion] = useState("");
   const [shortcut, setShortcut] = useState("");
+  const [section, setSectionState] = useState<Section>(lastSection);
+  const setSection = (x: Section) => {
+    lastSection = x;
+    setSectionState(x);
+  };
   const [msg, setMsg] = useState<{ text: string; error?: boolean } | null>(null);
   const [taskSync, setTaskSync] = useState<boolean | null>(null);
   useEffect(() => {
@@ -78,7 +95,7 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal" role="dialog" aria-label="Settings">
+      <div className="modal settings-modal" role="dialog" aria-label="Settings">
         <header className="modal-header">
           <h2>Settings</h2>
           <button className="btn icon ghost" onClick={onClose} aria-label="Close settings">
@@ -86,7 +103,55 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
           </button>
         </header>
 
-        <h3>Display</h3>
+        <div className="settings-body">
+          <nav className="settings-nav" aria-label="Settings sections">
+            {SECTIONS.map((x) => (
+              <button key={x.id} className={section === x.id ? "on" : ""} onClick={() => setSection(x.id)}>
+                <span aria-hidden="true">{x.icon}</span> {x.label}
+              </button>
+            ))}
+          </nav>
+          <div className="settings-pane">
+            {section === "accounts" && (
+              <>
+                <h3>Garmin</h3>
+                <p className="muted small">Runs, health (sleep, HRV, Body Battery, readiness) and sending workouts to your watch.</p>
+        <GarminSetting />
+                <h3>Google, Strava and others</h3>
+                <Connections />
+        <Row label="Sync tasks with Google Tasks" hint="Projects become lists on your phone. Title, notes, due date, done and subtasks sync both ways.">
+          {taskSync != null && (
+            <Toggle on={taskSync} label="Sync tasks with Google Tasks" onChange={(v) => setTaskSyncEnabled(v).then(() => setTaskSync(v))} />
+          )}
+        </Row>
+
+              </>
+            )}
+            {section === "calendar" && (
+              <>
+                <h3>Calendars</h3>
+        <p className="muted small">The quick way: paste your calendar's secret iCal address.</p>
+        <CalendarFeeds />
+              </>
+            )}
+            {section === "training" && (
+              <>
+                <h3>Targets</h3>
+                <p className="muted small">How runs are targeted and judged. Also on Training → Plan.</p>
+                <TargetPrefs />
+                <h3>Workouts on your watch</h3>
+                <WatchSetting />
+              </>
+            )}
+            {section === "phone" && (
+              <>
+                <h3>Phone and cloud sync</h3>
+                <PhoneSetting />
+              </>
+            )}
+            {section === "display" && (
+              <>
+                <h3>Display</h3>
         <Row label="Show the dashboard on" hint="Remembered. If that screen sleeps or is unplugged, the dashboard minimises and comes back with it.">
           <div className="monitor-list">
             {monitors.map((m, i) => (
@@ -129,7 +194,7 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
           <Toggle on={settings.hideCursor} label="Hide pointer" onChange={(v) => updateSettings({ hideCursor: v })} />
         </Row>
 
-        <h3>Behaviour</h3>
+                <h3>Behaviour</h3>
         <Row label="Launch at login">
           {autostart != null && <Toggle on={autostart} label="Launch at login" onChange={(v) => act(() => backend.setAutostart(v))} />}
         </Row>
@@ -155,25 +220,11 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
           </select>
         </Row>
 
-        <h3>Calendar</h3>
-        <p className="muted small">The quick way: paste your calendar's secret iCal address.</p>
-        <CalendarFeeds />
-        <h3>Connections</h3>
-        <GarminSetting />
-        <Row label="Watch (garmin-coach)" hint="The Watch tab starts your garmin-coach server from this folder to put workouts on your Garmin calendar.">
-          <WatchSetting />
-        </Row>
-        <Connections />
-        <Row label="Sync tasks with Google Tasks" hint="Projects become lists on your phone. Title, notes, due date, done and subtasks sync both ways.">
-          {taskSync != null && (
-            <Toggle on={taskSync} label="Sync tasks with Google Tasks" onChange={(v) => setTaskSyncEnabled(v).then(() => setTaskSync(v))} />
-          )}
-        </Row>
-
-        <h3>Phone</h3>
-        <PhoneSetting />
-
-        <h3>Data</h3>
+              </>
+            )}
+            {section === "data" && (
+              <>
+                <h3>Data and backups</h3>
         <Row label="Data folder" hint={folder} path>
           <button className="btn" onClick={() => act(() => backend.openDataFolder())}>
             Open
@@ -187,6 +238,11 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
             Back up now
           </button>
         </Row>
+
+              </>
+            )}
+          </div>
+        </div>
 
         {msg && <div className={msg.error ? "error-note" : "ok-note"}>{msg.text}</div>}
         <footer className="muted small modal-footer">

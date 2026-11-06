@@ -10,3 +10,11 @@ export const setGarminVia = (f: GarminVia | null) => {
   via = f;
 };
 export const garminVia = () => via;
+
+/** Creating and scheduling workouts (POST/PUT/DELETE on Garmin's workout service), routed the same way. */
+export type GarminWriteVia = <T = unknown>(method: "POST" | "PUT" | "DELETE", path: string, body?: unknown) => Promise<{ status: number; body: T }>;
+let writeVia: GarminWriteVia | null = null;
+export const setGarminWriteVia = (f: GarminWriteVia | null) => {
+  writeVia = f;
+};
+export const garminWriteVia = () => writeVia;

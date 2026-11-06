@@ -239,6 +239,7 @@ pub fn run() {
             garmin::garmin_disconnect,
             garmin::garmin_connect,
             garmin::garmin_request,
+            garmin::garmin_write,
             weather::weather_fetch,
             phone::phone_link_get,
             phone::phone_link_set,

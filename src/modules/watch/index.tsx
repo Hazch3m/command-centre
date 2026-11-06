@@ -50,7 +50,7 @@ export function StatusLight() {
         : link.state === "connecting"
           ? "Connecting…"
           : st && !st.tokensFound
-            ? "Garmin not connected (no login saved)"
+            ? "Garmin not connected"
             : link.state === "down"
               ? "Garmin not connected"
               : "Garmin: not checked yet";
@@ -67,8 +67,8 @@ function LoginBanner() {
   if (link.state !== "login") return null;
   return (
     <div className="watch-banner" role="alert">
-      <b>Garmin login expired, run python login.py in garmin-coach-mcp</b>
-      <span className="small">Open a terminal in the garmin-coach-mcp folder, activate its .venv and run it; then press Retry.</span>
+      <b>Garmin sign-in expired</b>
+      <span className="small">Connect Garmin again in Settings → Connections, then press Retry.</span>
     </div>
   );
 }
@@ -475,11 +475,11 @@ function ConfirmDialog({ p, onClose, onDone }: { p: Pending; onClose: () => void
         // A workout changed from the calendar can also move day.
         const sched = p.target.scheduled ?? same;
         if (updating && date && sched && sched.date !== date) {
-          const s = await coach.call("schedule_workout", { workout_id: willUpdate, date });
+          const s = await coach.scheduleOutcome(willUpdate, date);
           if (!s.ok) throw new Error(s.message);
           await coach.unschedule(sched.scheduleId);
         } else if (updating && date && !sched) {
-          const s = await coach.call("schedule_workout", { workout_id: willUpdate, date });
+          const s = await coach.scheduleOutcome(willUpdate, date);
           if (!s.ok) throw new Error(s.message);
         }
         onDone(`Updated “${p.w.name}”${date ? ` (${fmt(date)})` : ""}. It reaches the watch on its next sync.`);
@@ -652,70 +652,17 @@ function summarise(items: Item[]): string {
 }
 
 // ---------------------------------------------------------------------------
-// Settings: where garmin-coach is
+// Settings: how workouts reach the watch
 
 export function WatchSetting() {
-  const { data: saved, reload } = useQuery(coach.getWatchSettings, []);
-  const [folder, setFolder] = useState("");
-  const [python, setPython] = useState("");
-  useEffect(() => {
-    if (saved) {
-      setFolder(saved.folder);
-      setPython(saved.python);
-    }
-  }, [saved]);
-  const { data: st, reload: recheck } = useQuery(coach.status, [saved?.folder, saved?.python]);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const save = async () => {
-    await coach.saveWatchSettings({ folder: folder.trim(), python: python.trim() });
-    reload();
-    recheck();
-  };
-  const test = async () => {
-    setBusy(true);
-    setMsg(null);
-    await save();
-    try {
-      const tools = await coach.listTools();
-      const today = new Date().toISOString().slice(0, 10);
-      const r = await coach.getScheduled(today, today);
-      setMsg(r.ok ? `Connected: ${tools.length} tools (${tools.map((t) => t.name).join(", ")}).` : r.message);
-    } catch (e) {
-      setMsg(String((e as Error)?.message ?? e));
-    } finally {
-      setBusy(false);
-      recheck();
-    }
-  };
+  const { data: st } = useQuery(coach.status, []);
   return (
-    <div className="watch-setting">
-      <div className="watch-setting-row">
-        <label>
-          <span className="label">garmin-coach folder (with server.py)</span>
-          <input value={folder} onChange={(e) => setFolder(e.target.value)} placeholder={st?.folder || "%USERPROFILE%\\Downloads\\garmin-coach-mcp\\garmin-coach-mcp"} />
-        </label>
-        <label>
-          <span className="label">Python (optional)</span>
-          <input value={python} onChange={(e) => setPython(e.target.value)} placeholder={st?.python ?? "the folder's .venv\\Scripts\\python.exe"} />
-        </label>
-        <button className="btn" onClick={save}>
-          Save
-        </button>
-        <button className="btn btn-primary" disabled={busy} onClick={test}>
-          {busy ? "Connecting…" : "Test connection"}
-        </button>
-      </div>
-      {st && (
-        <ul className="watch-checks small">
-          <li className={st.serverFound ? "ok" : "bad"}>{st.serverFound ? `server.py found in ${st.folder}` : `No server.py in ${st.folder || "the usual places"}`}</li>
-          <li className={st.python ? "ok" : "bad"}>{st.python ? `Python: ${st.python}` : "No Python with garmin-coach's packages (its .venv). See its README: python -m venv .venv, then pip install -r requirements.txt"}</li>
-          <li className={st.tokensFound ? "ok" : "bad"}>{st.tokensFound ? `Garmin login saved in ${st.tokensDir}` : `No Garmin login in ${st.tokensDir}: run python login.py in the garmin-coach folder`}</li>
-          {st.stderr.length > 0 && <li className="muted">Server said: {st.stderr.slice(-2).join(" · ")}</li>}
-        </ul>
-      )}
-      <ErrorNote error={msg && !/^Connected/.test(msg) ? msg : null} />
-      {msg && /^Connected/.test(msg) && <div className="tone-accent small">{msg}</div>}
+    <div className="watch-setting small">
+      <p className="muted">
+        Workouts go straight to your Garmin Connect calendar with the Garmin sign-in above, and reach the watch on its next sync. With cloud sync on (Phone), you can send them
+        from the phone too.
+      </p>
+      <div className={st?.tokensFound ? "tone-accent" : "error-note"}>{st ? (st.tokensFound ? "Garmin connected: ready to send workouts." : "Connect Garmin above to send workouts.") : "Checking…"}</div>
     </div>
   );
 }
@@ -785,7 +732,7 @@ function WatchPage() {
       <header className="page-head">
         <div>
           <h1>Watch</h1>
-          <div className="muted small">Build workouts and put them on your Garmin calendar through your garmin-coach server. They reach the watch on its next sync.</div>
+          <div className="muted small">Build workouts or send your plan's sessions to your Garmin calendar. They reach the watch on its next sync.</div>
         </div>
         <span className="inline">
           <StatusLight />
@@ -827,14 +774,6 @@ function WatchPage() {
           document.querySelector(".watch-builder")?.scrollIntoView({ behavior: "smooth", block: "start" });
         }}
       />
-
-      <details className="fold">
-        <summary>
-          <h3>garmin-coach server</h3>
-          <span className="muted small">where it is and which Python runs it</span>
-        </summary>
-        <WatchSetting />
-      </details>
 
       {pending && (
         <ConfirmDialog

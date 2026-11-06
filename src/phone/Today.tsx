@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { useDataVersion } from "../core/events";
-import { addDays, useNow, useToday } from "../core/time";
+import { addDays, todayKey, useNow, useToday } from "../core/time";
 import { useQuery } from "../core/useQuery";
 import { hhmm, loadEvents } from "../modules/calendar/data";
 import { loadChecklist } from "../modules/checklist/data";
 import { forecastWeek, type ForecastDay } from "../modules/running/forecast";
 import { mondayOf, upcomingRaces } from "../modules/running/plan";
 import { openRun } from "../modules/running/RunView";
+import { SendToWatch } from "../modules/watch/SendToWatch";
 import { RUN_TYPE_LABEL, typeOfDay } from "../modules/running/runType";
 import { km, pace } from "../modules/running/stats";
 import { loadOverrides } from "../modules/running/strava";
@@ -37,6 +38,7 @@ export function Session({ d, label }: { d: ForecastDay; label: string }) {
         {d.pace && !rest && <span className="p-chip num">{/\d:\d\d/.test(d.pace) ? `${d.pace}/km` : d.pace}</span>}
         {d.strength && <span className="p-chip">Strength {d.strength}</span>}
       </div>
+      {!rest && !d.race && !d.runs.length && d.date >= todayKey() && <SendToWatch date={d.date} text={d.text} compact />}
       {d.runs.map((r) => (
         <button key={r.id} className="p-done" onClick={() => openRun(r.id)}>
           <span className="p-done-tick">✓</span>

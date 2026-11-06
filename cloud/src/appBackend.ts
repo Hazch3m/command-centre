@@ -82,6 +82,8 @@ export const GARMIN_ALLOWED = [
   "/userprofile-service/",
   "/activitylist-service/activities/search/activities",
   "/activity-service/activity/",
+  "/calendar-service/year/",
+  "/workout-service/workout/",
 ];
 /** The headers Garmin's Android app sends; the token service and API expect them. */
 const NATIVE: Record<string, string> = {
@@ -114,14 +116,23 @@ async function garminRefresh(c: { creds: Creds; saveCreds: Ctx["saveCreds"] }): 
   return nt;
 }
 
+/** Where writes may go: creating, changing, scheduling and removing workouts. */
+export const GARMIN_WRITE_ALLOWED = ["/workout-service/workout", "/workout-service/schedule/"];
+
 /** GET a Garmin Connect address with the handed-over sign-in. Also used directly by the /garmin pass-through. */
-export async function garminGet(c: { creds: Creds; saveCreds: Ctx["saveCreds"] }, path: string): Promise<{ status: number; body: unknown }> {
-  if (!path.startsWith("/") || path.includes("..") || path.includes("://") || !GARMIN_ALLOWED.some((p) => path.startsWith(p))) throw new Error(`${path} is not an allowed Garmin address`);
+export async function garminGet(c: { creds: Creds; saveCreds: Ctx["saveCreds"] }, path: string, method: "GET" | "POST" | "PUT" | "DELETE" = "GET", payload?: unknown): Promise<{ status: number; body: unknown }> {
+  const allowed = method === "GET" ? GARMIN_ALLOWED : GARMIN_WRITE_ALLOWED;
+  if (!path.startsWith("/") || path.includes("..") || path.includes("://") || (method !== "GET" && path.includes("?")) || !allowed.some((p) => path.startsWith(p)))
+    throw new Error(`${path} is not an allowed Garmin address`);
   let t = c.creds.garmin;
   if (!t) throw new Error("Garmin isn't connected");
   if (t.expires_at <= nowS() + 600) t = await garminRefresh(c);
   for (let tries = 0; tries < 2; tries++) {
-    const r = await fetch(GARMIN_API + path, { headers: { ...NATIVE, Authorization: `Bearer ${t.access}`, Accept: "application/json", NK: "NT" } });
+    const r = await fetch(GARMIN_API + path, {
+      method,
+      headers: { ...NATIVE, Authorization: `Bearer ${t.access}`, Accept: "application/json", NK: "NT", ...(payload !== undefined ? { "content-type": "application/json" } : {}) },
+      body: payload !== undefined ? JSON.stringify(payload) : undefined,
+    });
     if (r.status === 401 && tries === 0) {
       t = await garminRefresh(c);
       continue;
@@ -183,6 +194,7 @@ export const backend = {
   listen: async () => () => {},
   garminStatus: async () => ({ connected: !!ctx?.creds.garmin }),
   garminRequest: async <T,>(path: string) => (await garminGet(need(), path)) as { status: number; body: T },
+  garminWrite: async <T,>(method: "POST" | "PUT" | "DELETE", path: string, body?: unknown) => (await garminGet(need(), path, method, body)) as { status: number; body: T },
   oauthStatus: async (p: string) => {
     const ok = p === "google" && !!ctx?.creds.google;
     return { configured: ok, connected: ok, account: ok ? ctx?.creds.google?.token.account ?? null : null };

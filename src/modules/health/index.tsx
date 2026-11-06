@@ -108,10 +108,13 @@ function Spark({ values, invert }: { values: (number | null)[]; invert?: boolean
   );
 }
 
-function Metric({ label, value, unit, note, tone, spark, when, onOpen }: { label: string; value: string; unit?: string; note?: string; tone?: string; spark?: (number | null)[]; when?: string; onOpen?: () => void }) {
+function Metric({ label, value, unit, note, tone, spark, when, onOpen, stale }: { label: string; value: string; unit?: string; note?: string; tone?: string; spark?: (number | null)[]; when?: string; onOpen?: () => void; stale?: string | null }) {
   return (
-    <div className={"hm" + (onOpen ? " clickable" : "")} title={when} onClick={onOpen} role={onOpen ? "button" : undefined} tabIndex={onOpen ? 0 : undefined} onKeyDown={onOpen ? (e) => e.key === "Enter" && onOpen() : undefined}>
-      <div className="label">{label}</div>
+    <div className={"hm" + (onOpen ? " clickable" : "") + (stale ? " stale" : "")} title={when} onClick={onOpen} role={onOpen ? "button" : undefined} tabIndex={onOpen ? 0 : undefined} onKeyDown={onOpen ? (e) => e.key === "Enter" && onOpen() : undefined}>
+      <div className="label">
+        {label}
+        {stale && <span className="hm-stale">{stale}</span>}
+      </div>
       <div className="hm-value">
         <span className={"num " + (tone ?? "")}>{value}</span>
         {unit && <span className="muted small"> {unit}</span>}
@@ -195,8 +198,21 @@ function Metrics({ rows, today, detail }: { rows: HealthDay[]; today: string; de
   const rhrPrev = avg(series("rhr").slice(0, 7));
   const ownSeries = last14.map((d) => ownFor(d)?.score ?? null);
   const when = (f: keyof HealthDay) => (L.dates[f as Exclude<keyof HealthDay, "date">] ? relativeDayLabel(L.dates[f as Exclude<keyof HealthDay, "date">]!, today) : undefined);
+  // Data that isn't from last night says so plainly ("from Tue"), so an old number isn't read as today's.
+  const staleOf = (f: Exclude<keyof HealthDay, "date">, okYesterday = false) => {
+    const d = L.dates[f];
+    if (!d || d === today || (okYesterday && d === addDays(today, -1))) return null;
+    return `from ${relativeDayLabel(d, today).toLowerCase()}`;
+  };
+  const nightMissing = rows.length > 0 && L.dates.sleep_secs !== today && L.dates.hrv !== today;
+  const lastNight = L.dates.sleep_secs ?? L.dates.hrv;
   return (
     <>
+    {nightMissing && (
+      <div className="hm-stale-note small">
+        Last night's sleep and HRV haven't reached Garmin yet{lastNight ? `; showing ${relativeDayLabel(lastNight, today).toLowerCase()}'s` : ""}. Sync your watch in the Garmin Connect app, then press ↻.
+      </div>
+    )}
     <div className="hm-grid">
       {L.readiness != null && L.dates.readiness === today ? (
         <Metric
@@ -213,7 +229,8 @@ function Metrics({ rows, today, detail }: { rows: HealthDay[]; today: string; de
           label="Readiness"
           value={own ? String(own.score) : "–"}
           tone={READY_TONE(own?.score)}
-          note={own ? `${own.level} · ${own.advice}${own.limiter ? ` · held back by ${own.limiter.name.toLowerCase()}` : ""}` : "Needs last night's HRV or sleep"}
+          note={own ? `${own.level} · ${own.advice}${own.limiter ? ` · held back by ${own.limiter.name.toLowerCase()}` : ""}` : "Waiting for last night's HRV or sleep"}
+          stale={own ? null : "no data yet"}
           spark={ownSeries}
           onOpen={() => setOpen("readiness")}
           when={own ? own.parts.map((p) => `${p.name} ${Math.round(p.score)}: ${p.note}`).join("\n") + "\n(Worked out from HRV, sleep, resting HR and training load)" : undefined}
@@ -228,6 +245,7 @@ function Metrics({ rows, today, detail }: { rows: HealthDay[]; today: string; de
         spark={series("hrv")}
         onOpen={() => setOpen("hrv")}
         when={when("hrv")}
+        stale={staleOf("hrv")}
       />
       <Metric
         label="Resting HR"
@@ -238,6 +256,7 @@ function Metrics({ rows, today, detail }: { rows: HealthDay[]; today: string; de
         spark={series("rhr")}
         onOpen={() => setOpen("rhr")}
         when={when("rhr")}
+        stale={staleOf("rhr")}
       />
       <Metric
         label={L.dates.sleep_secs === today ? "Sleep last night" : "Sleep"}
@@ -247,6 +266,7 @@ function Metrics({ rows, today, detail }: { rows: HealthDay[]; today: string; de
         spark={series("sleep_secs")}
         onOpen={() => setOpen("sleep")}
         when={when("sleep_secs")}
+        stale={staleOf("sleep_secs")}
       />
       <Metric
         label="Body Battery"
@@ -256,6 +276,7 @@ function Metrics({ rows, today, detail }: { rows: HealthDay[]; today: string; de
         spark={series("bb_high")}
         onOpen={() => setOpen("bb")}
         when={when("bb_high")}
+        stale={staleOf("bb_high")}
       />
       <Metric label="VO2 max (Garmin)" value={L.vo2 != null ? L.vo2.toFixed(1) : "–"} spark={series("vo2")} when={when("vo2")} onOpen={() => setOpen("vo2")} />
     </div>

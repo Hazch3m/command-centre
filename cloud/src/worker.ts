@@ -302,6 +302,19 @@ export class Store extends DurableObject<Env> {
       if (typeof upto === "number") this.set("cloudAck", String(upto));
       return json({ ok: true });
     }
+    if (path === "/garmin" && m === "POST") {
+      // Workouts to the watch, from the phone or the PC, with the cloud's Garmin sign-in.
+      const c = this.creds();
+      if (!c?.garmin) return err(409, "Garmin isn't in the cloud.");
+      const { method, path: p, body } = (await req.json()) as { method?: string; path?: string; body?: unknown };
+      if (method !== "POST" && method !== "PUT" && method !== "DELETE") return err(400, "bad method");
+      const io = { creds: c, saveCreds: async (n: Creds) => this.set("creds", JSON.stringify(n)) };
+      try {
+        return json(await garminGet(io, p ?? "", method, body));
+      } catch (e) {
+        return err(502, String((e as Error)?.message ?? e));
+      }
+    }
     if (path === "/garmin" && m === "GET") {
       // Garmin for the PC and the phone while the cloud holds the sign-in (one place refreshes it, so it never clashes).
       const c = this.creds();

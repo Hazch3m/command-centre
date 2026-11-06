@@ -427,6 +427,12 @@ export const backend: Backend = {
     if (!r.ok) throw new Error(`offline: ${((await r.json().catch(() => null)) as { error?: string } | null)?.error ?? `the cloud answered ${r.status}`}`);
     return (await r.json()) as { status: number; body: T };
   },
+  garminWrite: async <T,>(method: string, path: string, body?: unknown) => {
+    if (!link || !header?.cloud) throw new Error("offline: sending workouts from the phone needs cloud sync (switch it on in Settings → Phone on the PC)");
+    const r = await api("/garmin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ method, path, body }) }, 45_000);
+    if (!r.ok) throw new Error(((await r.json().catch(() => null)) as { error?: string } | null)?.error ?? `The cloud answered ${r.status}`);
+    return (await r.json()) as { status: number; body: T };
+  },
   cloudCredentials: offline("cloud sync settings"),
   cloudRestore: offline("cloud sync settings"),
   watchStatus: async () => ({ folder: "", serverFound: false, python: null, tokensFound: false, tokensDir: "", running: false, stderr: [] }),

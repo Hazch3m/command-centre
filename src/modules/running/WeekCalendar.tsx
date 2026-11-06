@@ -1,6 +1,7 @@
+import { SendToWatch } from "../watch/SendToWatch";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type WheelEvent } from "react";
 import { createPortal } from "react-dom";
-import { addDays, parseKey, useToday } from "../../core/time";
+import { addDays, parseKey, todayKey, useToday } from "../../core/time";
 import { CardHeader } from "../../shell/ui";
 import type { CardProps, DashboardModule } from "../types";
 import { forecastRange, forecastWeek, isKeyDay, type ForecastDay, type ForecastWeek } from "./forecast";
@@ -112,6 +113,12 @@ export function DayEditor({ d, week, plan, onClose }: { d: ForecastDay; week: Fo
               </button>
             ))}
         </div>
+        {d.date >= todayKey() && (d.km ?? 0) > 0 && !d.race && (
+          <div className="day-editor-watch">
+            <span className="label">Garmin watch</span>
+            <SendToWatch date={d.date} text={text} />
+          </div>
+        )}
         <footer className="modal-footer">
           {d.edited && (
             <button className="btn" disabled={busy} onClick={() => run(setOverride(d.date, null))}>

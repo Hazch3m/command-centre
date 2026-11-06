@@ -99,6 +99,8 @@ export interface Backend {
   garminDisconnect(): Promise<void>;
   /** GET a read-only health endpoint. Rejects with "offline: …" when there's no connection. */
   garminRequest<T = unknown>(path: string): Promise<{ status: number; body: T }>;
+  /** Creates, changes, schedules or removes a workout on Garmin Connect (it reaches the watch on its next sync). */
+  garminWrite<T = unknown>(method: "POST" | "PUT" | "DELETE", path: string, body?: unknown): Promise<{ status: number; body: T }>;
   /** Cloud sync: the sign-ins to hand to the sync service (PC only). */
   cloudCredentials(): Promise<{ garmin: unknown; google: unknown; ics: { id: string; name: string; url: string }[] }>;
   /** Cloud sync off: keeps the sign-ins the service hands back (Garmin's may have been refreshed there). */

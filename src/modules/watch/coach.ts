@@ -1,28 +1,14 @@
 import { backend } from "@backend";
-import type { McpCallResult, McpTool, WatchStatus } from "../../core/backend.types";
 import { kvGet, kvSet } from "../../core/db";
-import { toToolSteps, type Item, type Workout } from "./steps";
+import { describeGarmin, toGarmin, WorkoutError } from "./garminWorkouts";
+import type { Workout } from "./steps";
 
 /**
- * Talking to garmin-coach. The app starts the user's own garmin-coach MCP
- * server and calls its tools; argument names come from each tool's schema as
- * the server reports it, so nothing about the tools is hard-coded beyond their
- * names and meaning.
+ * Putting workouts on your Garmin calendar, straight through Garmin Connect
+ * with the app's Garmin sign-in (no separate server). Scheduled workouts reach
+ * the watch on its next sync. With cloud sync on, this goes through your sync
+ * service, so it works from the phone too.
  */
-
-export interface WatchSettings {
-  /** Folder with server.py; empty = look in the usual places. */
-  folder: string;
-  /** Python to run it with; empty = the folder's .venv. */
-  python: string;
-}
-export const getWatchSettings = () => kvGet<WatchSettings>("watch.settings", { folder: "", python: "" });
-export async function saveWatchSettings(s: WatchSettings) {
-  await kvSet("watch.settings", s);
-  tools = null;
-  await backend.watchDisconnect().catch(() => {});
-  setLink({ state: "unknown", message: null });
-}
 
 // ---- connection state (the status light) ----
 
@@ -43,118 +29,42 @@ export const subscribeLink = (f: () => void) => {
   return () => listeners.delete(f);
 };
 
-export const LOGIN_MESSAGE = "Garmin login expired, run python login.py in garmin-coach-mcp";
-const LOGIN_RE = /login\.py|no saved garmin login|no garmin login|\b401\b|\b403\b|unauthori[sz]ed|authenticat|oauth|token|login/i;
+export const LOGIN_MESSAGE = "Garmin sign-in expired: connect Garmin again in Settings → Connections.";
+const LOGIN_RE = /sign-?in expired|isn't connected|\b401\b|\b403\b|unauthori[sz]ed|connect garmin again/i;
 
-// ---- tools ----
-
-let tools: Map<string, McpTool> | null = null;
-let connecting: Promise<Map<string, McpTool>> | null = null;
-
-export async function status(): Promise<WatchStatus> {
-  const s = await getWatchSettings();
-  return backend.watchStatus(s.folder, s.python);
-}
-
-async function connect(): Promise<Map<string, McpTool>> {
-  if (tools) return tools;
-  connecting ??= (async () => {
-    setLink({ state: "connecting", message: null });
-    try {
-      const s = await getWatchSettings();
-      const list = await backend.watchConnect(s.folder, s.python);
-      tools = new Map(list.map((t) => [t.name, t]));
-      return tools;
-    } catch (e) {
-      setLink({ state: "down", message: String((e as Error)?.message ?? e) });
-      throw e;
-    } finally {
-      connecting = null;
-    }
-  })();
-  return connecting;
-}
-
-export async function listTools(): Promise<McpTool[]> {
-  return [...(await connect()).values()];
+/** Whether Garmin is connected (the light shows "not connected" otherwise). */
+export async function status(): Promise<{ tokensFound: boolean }> {
+  const st = await backend.garminStatus().catch(() => ({ connected: false }));
+  if (!st.connected) setLink({ state: "down", message: "Connect Garmin in Settings → Connections." });
+  else if (link.state === "unknown" || link.state === "down") setLink({ state: "ok", message: null });
+  return { tokensFound: st.connected };
 }
 
 export type Outcome<T = unknown> =
   | { ok: true; data: T; text: string }
   | { ok: false; kind: "login" | "invalid" | "error"; message: string };
 
-/** Fits arguments to the tool's input schema: unknown keys dropped, required ones checked. */
-export function fitArgs(tool: McpTool, args: Record<string, unknown>): Record<string, unknown> {
-  const props = tool.inputSchema.properties ?? {};
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(args)) if (k in props && v !== undefined && v !== null && v !== "") out[k] = v;
-  const missing = (tool.inputSchema.required ?? []).filter((k) => out[k] === undefined);
-  if (missing.length) throw new Error(`${tool.name} needs ${missing.join(", ")}`);
-  return out;
-}
-
-/** What a tool returned: structured content if there is any, else the text parsed as JSON where possible. */
-export function readResult(r: McpCallResult): { data: unknown; text: string } {
-  const texts = (r.content ?? []).filter((c) => c.type === "text" && c.text != null).map((c) => c.text!);
-  const text = texts.join("\n");
-  const sc = r.structuredContent as Record<string, unknown> | undefined;
-  if (sc && typeof sc === "object") return { data: "result" in sc && Object.keys(sc).length === 1 ? sc.result : sc, text };
-  const parsed = texts.map((t) => {
-    try {
-      return JSON.parse(t);
-    } catch {
-      return t;
-    }
-  });
-  return { data: parsed.length === 1 ? parsed[0] : parsed, text };
-}
-
-/** Calls a garmin-coach tool by name; arguments are checked against its schema first. */
-export async function call<T = unknown>(name: string, args: Record<string, unknown> = {}): Promise<Outcome<T>> {
-  let t: Map<string, McpTool>;
-  try {
-    t = await connect();
-  } catch (e) {
-    return { ok: false, kind: "error", message: String((e as Error)?.message ?? e) };
+const fail = (e: unknown): Outcome<never> => {
+  const message = String((e as Error)?.message ?? e).replace(/^offline: /, "");
+  if (e instanceof WorkoutError) return { ok: false, kind: "invalid", message: `Invalid workout: ${message}` };
+  if (LOGIN_RE.test(message)) {
+    setLink({ state: "login", message: LOGIN_MESSAGE });
+    return { ok: false, kind: "login", message: LOGIN_MESSAGE };
   }
-  const tool = t.get(name);
-  if (!tool) return { ok: false, kind: "error", message: `garmin-coach has no ${name} tool (it has: ${[...t.keys()].join(", ")})` };
-  let res: McpCallResult;
-  try {
-    const a = fitArgs(tool, args);
-    try {
-      res = await backend.watchCall(name, a);
-    } catch (e) {
-      // The server may have stopped (sleep, crash): start it again once.
-      if (!/isn't running|closed|transport|broken pipe/i.test(String(e))) throw e;
-      tools = null;
-      await connect();
-      res = await backend.watchCall(name, a);
-    }
-  } catch (e) {
-    const message = String((e as Error)?.message ?? e);
-    const login = LOGIN_RE.test(message);
-    setLink(login ? { state: "login", message: LOGIN_MESSAGE } : { state: "down", message });
-    return { ok: false, kind: login ? "login" : "error", message: login ? LOGIN_MESSAGE : message };
-  }
-  const { data, text } = readResult(res);
-  if (res.isError) {
-    const login = LOGIN_RE.test(text);
-    if (login) setLink({ state: "login", message: LOGIN_MESSAGE });
-    else setLink({ state: "ok", message: null });
-    return { ok: false, kind: login ? "login" : /invalid workout/i.test(text) ? "invalid" : "error", message: login ? LOGIN_MESSAGE : text };
-  }
-  // Workout problems come back as a normal answer: "Invalid workout: …" or { ok: false, error }.
-  if (typeof data === "string" && /^invalid workout/i.test(data)) return { ok: false, kind: "invalid", message: data };
-  if (data && typeof data === "object" && (data as { ok?: boolean }).ok === false) {
-    const err = String((data as { error?: string }).error ?? text);
-    return { ok: false, kind: "invalid", message: `Invalid workout: ${err}` };
+  setLink({ state: "down", message });
+  return { ok: false, kind: "error", message };
+};
+const answer = (r: { status: number; body: unknown }, what: string) => {
+  if (r.status === 401 || r.status === 403) throw new Error(`${r.status}: connect Garmin again`);
+  if (r.status >= 400) {
+    const msg = typeof r.body === "string" ? r.body : (r.body as { message?: string; errorMessage?: string } | null)?.message ?? (r.body as { errorMessage?: string } | null)?.errorMessage;
+    throw new Error(`Garmin couldn't ${what} (HTTP ${r.status})${msg ? `: ${String(msg).slice(0, 200)}` : ""}`);
   }
   setLink({ state: "ok", message: null });
-  return { ok: true, data: data as T, text };
-}
+  return r.body;
+};
 
-// ---- the tools, with the rules applied ----
+// ---- the workout service ----
 
 export interface Scheduled {
   date: string;
@@ -163,44 +73,113 @@ export interface Scheduled {
   scheduleId: number;
 }
 
+/** Workouts on your Garmin calendar between two dates. */
 export async function getScheduled(from: string, to: string): Promise<Outcome<Scheduled[]>> {
-  const r = await call<unknown>("get_scheduled", { start_date: from, end_date: to });
-  if (!r.ok) return r;
-  const list = Array.isArray(r.data) ? r.data : r.data ? [r.data] : [];
-  return { ok: true, text: r.text, data: list.filter((x): x is Scheduled => !!x && typeof x === "object" && "date" in x) };
+  try {
+    const out: Scheduled[] = [];
+    let y = +from.slice(0, 4);
+    let m = +from.slice(5, 7);
+    const ey = +to.slice(0, 4);
+    const em = +to.slice(5, 7);
+    for (let n = 0; n < 14 && (y < ey || (y === ey && m <= em)); n++) {
+      const body = answer(await backend.garminRequest(`/calendar-service/year/${y}/month/${m - 1}`), "read your calendar") as { calendarItems?: Record<string, unknown>[] } | null;
+      for (const it of body?.calendarItems ?? [])
+        if (it.itemType === "workout" && typeof it.date === "string" && it.date >= from && it.date <= to)
+          out.push({ date: it.date, name: String(it.title ?? "Workout"), workoutId: Number(it.workoutId), scheduleId: Number(it.id) });
+      if (++m > 12) (m = 1), y++;
+    }
+    out.sort((a, b) => a.date.localeCompare(b.date));
+    return { ok: true, data: out, text: "" };
+  } catch (e) {
+    return fail(e);
+  }
 }
 
-const workoutArgs = (w: Workout) => ({ name: w.name.trim(), steps: toToolSteps(w.steps), sport: w.sport || "running", description: w.description.trim() || undefined });
+/** Checks the workout converts cleanly, and describes it the way Garmin will see it. */
+export async function preview(w: Workout): Promise<Outcome<string>> {
+  try {
+    const text = describeGarmin(toGarmin(w));
+    return { ok: true, data: text, text };
+  } catch (e) {
+    return fail(e);
+  }
+}
 
-export const preview = (w: Workout) => call<string>("preview_workout", workoutArgs(w));
-export const create = (w: Workout, date?: string) => call<{ workoutId: number; scheduleId?: number }>("create_workout", { ...workoutArgs(w), date });
-export const update = (workoutId: number, w: Workout) => call<{ workoutId: number }>("update_workout", { workout_id: workoutId, ...workoutArgs(w) });
-export const unschedule = (scheduleId: number) => call("unschedule_workout", { schedule_id: scheduleId });
-export const removeWorkout = (workoutId: number) => call("delete_workout", { workout_id: workoutId });
-export const getWorkout = (workoutId: number) => call<string>("get_workout", { workout_id: workoutId });
+/** Saves the workout in Garmin Connect, and puts it on the calendar if a date is given. */
+export async function create(w: Workout, date?: string): Promise<Outcome<{ workoutId: number; scheduleId?: number }>> {
+  try {
+    const body = answer(await backend.garminWrite("POST", "/workout-service/workout", toGarmin(w)), "save the workout") as { workoutId?: number };
+    if (!body?.workoutId) throw new Error("Garmin didn't return the new workout");
+    let scheduleId: number | undefined;
+    if (date) scheduleId = (await schedule(body.workoutId, date)).scheduleId;
+    return { ok: true, data: { workoutId: body.workoutId, scheduleId }, text: "" };
+  } catch (e) {
+    return fail(e);
+  }
+}
 
-/**
- * When preview says "Invalid workout", find which step: preview each step on
- * its own (and each step inside a repeat) until one fails. Returns the step's
- * id and garmin-coach's message for it.
- */
+/** Puts a saved workout on a day of your Garmin calendar. */
+export async function schedule(workoutId: number, date: string): Promise<{ scheduleId: number }> {
+  const body = answer(await backend.garminWrite("POST", `/workout-service/schedule/${workoutId}`, { date }), "put the workout on your calendar") as { workoutScheduleId?: number; id?: number };
+  return { scheduleId: Number(body?.workoutScheduleId ?? body?.id ?? 0) };
+}
+export async function scheduleOutcome(workoutId: number, date: string): Promise<Outcome<{ scheduleId: number }>> {
+  try {
+    return { ok: true, data: await schedule(workoutId, date), text: "" };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function update(workoutId: number, w: Workout): Promise<Outcome<{ workoutId: number }>> {
+  try {
+    answer(await backend.garminWrite("PUT", `/workout-service/workout/${workoutId}`, toGarmin(w, workoutId)), "update the workout");
+    return { ok: true, data: { workoutId }, text: "" };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function unschedule(scheduleId: number): Promise<Outcome<null>> {
+  try {
+    answer(await backend.garminWrite("DELETE", `/workout-service/schedule/${scheduleId}`), "take the workout off your calendar");
+    return { ok: true, data: null, text: "" };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function removeWorkout(workoutId: number): Promise<Outcome<null>> {
+  try {
+    answer(await backend.garminWrite("DELETE", `/workout-service/workout/${workoutId}`), "delete the workout");
+    return { ok: true, data: null, text: "" };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** A workout made elsewhere (Garmin Connect, another app), in words. */
+export async function getWorkout(workoutId: number): Promise<Outcome<string>> {
+  try {
+    const body = answer(await backend.garminRequest(`/workout-service/workout/${workoutId}`), "read the workout") as Parameters<typeof describeGarmin>[0];
+    const text = describeGarmin(body ?? {});
+    return { ok: true, data: text, text };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Which step is wrong, for the builder to highlight. */
 export async function findBadStep(w: Workout): Promise<{ id: string; message: string } | null> {
-  const one = async (items: Item[]) => {
-    const r = await preview({ ...w, steps: items });
-    return r.ok ? null : r.message;
-  };
   for (const it of w.steps) {
-    if (it.kind === "repeat") {
-      if (!Number.isInteger(it.times) || it.times < 1) return { id: it.id, message: "A repeat needs a whole number of times (1 or more)." };
-      if (!it.steps.length) return { id: it.id, message: "This repeat has no steps." };
-      for (const s of it.steps) {
-        const m = await one([s]);
-        if (m) return { id: s.id, message: m.replace(/^Invalid workout:\s*Step 1:?\s*/i, "") };
+    const items = it.kind === "repeat" ? (it.times >= 1 && it.steps.length ? it.steps : [it]) : [it];
+    for (const s of items) {
+      try {
+        toGarmin({ ...w, name: w.name || "x", steps: s.kind === "repeat" ? [s] : [s] });
+      } catch (e) {
+        return { id: s.id, message: String((e as Error).message).replace(/^Step \d+(?: › \d+)?:\s*/, "") };
       }
-      continue;
     }
-    const m = await one([it]);
-    if (m) return { id: it.id, message: m.replace(/^Invalid workout:\s*Step 1:?\s*/i, "") };
   }
   return null;
 }

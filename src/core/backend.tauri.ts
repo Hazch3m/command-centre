@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { garminVia } from "./garminRoute";
+import { garminVia, garminWriteVia } from "./garminRoute";
 import { emit, listen } from "@tauri-apps/api/event";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import type { Backend } from "./backend.types";
@@ -44,6 +44,7 @@ export const backend: Backend = {
   garminConnect: () => invoke("garmin_connect"),
   garminDisconnect: () => invoke("garmin_disconnect"),
   garminRequest: (path) => garminVia()?.(path) ?? invoke("garmin_request", { path }),
+  garminWrite: (method, path, body) => garminWriteVia()?.(method, path, body) ?? invoke("garmin_write", { method, path, body: body ?? null }),
   cloudCredentials: () => invoke("cloud_credentials"),
   cloudRestore: (garmin, google) => invoke("cloud_restore", { garmin, google }),
   watchStatus: (folder, python) => invoke("watch_status", { folder, python }),

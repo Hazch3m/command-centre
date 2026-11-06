@@ -21,7 +21,7 @@ import {
   type LinkKeys,
   type PhoneOp,
 } from "./sync";
-import { setGarminVia } from "./garminRoute";
+import { setGarminVia, setGarminWriteVia } from "./garminRoute";
 
 /**
  * The PC's half of the phone link: sends the phone an encrypted copy of the
@@ -86,6 +86,9 @@ export async function connectService(url: string): Promise<void> {
   await call(link, null, "/claim", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: keys.token }) });
   await backend.phoneLinkSet(link);
   cached = null;
+  // A fresh service: nothing applied from it yet, and cloud sync starts off.
+  await kvSet(STATUS_KEY, { lastPush: null, size: 0, lastPull: null, applied: 0, error: null, cloud: false, cloudApplied: 0 });
+  routeGarminViaCloud(false);
   await pushSnapshot();
 }
 
@@ -98,7 +101,9 @@ export async function unlinkPhones(): Promise<void> {
   await call(c.link, c.keys, "/rotate", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: keys.token }) });
   await backend.phoneLinkSet({ url: c.link.url, secret });
   cached = null;
-  await setStatus({ applied: 0 });
+  // Rotating also ends cloud sync there (it held the old secret).
+  routeGarminViaCloud(false);
+  await setStatus({ applied: 0, cloud: false, cloudApplied: 0 });
   await pushSnapshot();
 }
 
@@ -213,14 +218,43 @@ export async function pullPhoneChanges(): Promise<number> {
 // ---- Sync in the cloud ------------------------------------------------------------------
 
 /** Garmin through the sync service (it holds the sign-in while cloud sync is on). */
+/** The cloud doesn't hold Garmin (cloud sync was switched off or the service reset): go back to calling Garmin from here. */
+const notInCloud = (e: unknown) => /isn't in the cloud|Cloud sync is off/i.test(String((e as Error)?.message ?? e));
+async function fallBackToPc() {
+  routeGarminViaCloud(false);
+  await setStatus({ cloud: false });
+}
+
 function routeGarminViaCloud(on: boolean) {
+  setGarminWriteVia(
+    on
+      ? async <T,>(method: string, path: string, body?: unknown) => {
+          const c = await current();
+          if (!c) throw new Error("offline: the sync service isn't connected");
+          try {
+            const r = await call(c.link, c.keys, "/garmin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ method, path, body }) }, 45_000);
+            return (await r.json()) as { status: number; body: T };
+          } catch (e) {
+            if (!notInCloud(e)) throw e;
+            await fallBackToPc();
+            return backend.garminWrite<T>(method as "POST", path, body);
+          }
+        }
+      : null,
+  );
   setGarminVia(
     on
       ? async <T,>(path: string) => {
           const c = await current();
           if (!c) throw new Error("offline: the sync service isn't connected");
-          const r = await call(c.link, c.keys, `/garmin?path=${encodeURIComponent(path)}`, {}, 45_000);
-          return (await r.json()) as { status: number; body: T };
+          try {
+            const r = await call(c.link, c.keys, `/garmin?path=${encodeURIComponent(path)}`, {}, 45_000);
+            return (await r.json()) as { status: number; body: T };
+          } catch (e) {
+            if (!notInCloud(e)) throw e;
+            await fallBackToPc();
+            return backend.garminRequest<T>(path);
+          }
         }
       : null,
   );
@@ -262,7 +296,10 @@ export interface CloudStatus {
 export async function cloudStatus(): Promise<CloudStatus | null> {
   const c = await current();
   if (!c) return null;
-  return (await (await call(c.link, c.keys, "/cloud/status")).json()) as CloudStatus;
+  const st = (await (await call(c.link, c.keys, "/cloud/status")).json()) as CloudStatus;
+  // This PC thinks cloud sync is on but the service doesn't (it was reset): put things back.
+  if (!st.enabled && (await getPhoneStatus()).cloud) await fallBackToPc();
+  return st;
 }
 
 /** Asks the service to sync now; returns what it found. */

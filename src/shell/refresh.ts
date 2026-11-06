@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { kvGet, kvSet } from "../core/db";
 import { notifyChanged } from "../core/events";
-import { pushSnapshot } from "../core/phoneSync";
+import { cloudRunNow, getPhoneStatus, pullCloudChanges, pushSnapshot } from "../core/phoneSync";
 import { REFRESHED_KEY, REFRESH_KEY } from "../core/sync";
 import { syncCalendar } from "../modules/calendar/data";
 import { syncHealth } from "../modules/health/data";
@@ -36,6 +36,8 @@ export function refreshAll(beforePush?: () => Promise<void>): Promise<RefreshRes
       ["Garmin", syncHealth()],
       ["Calendar", syncCalendar().then((s) => (s.error ? Promise.reject(new Error(s.error)) : s))],
       ["Weather", refreshWeather()],
+      // Cloud sync on: the cloud checks now too (not just every 15 minutes), and its finds come straight here.
+      ["Cloud", getPhoneStatus().then((st) => (st.cloud ? cloudRunNow().then(() => pullCloudChanges()) : null))],
     ];
     const done = await Promise.allSettled(jobs.map(([, p]) => p));
     const problems = done.flatMap((r, i) => (r.status === "rejected" && !/offline|not connected/i.test(String(r.reason)) ? [`${jobs[i][0]}: ${String((r.reason as Error)?.message ?? r.reason)}`] : []));

@@ -3,7 +3,7 @@
  * browser with sql.js so the UI can be tested without the desktop shell.
  * Never included in the installed app.
  */
-import { garminVia } from "./garminRoute";
+import { garminVia, garminWriteVia } from "./garminRoute";
 import initSqlJs, { type Database } from "sql.js";
 import wasmUrl from "sql.js/dist/sql-wasm.wasm?url";
 import type { Backend, BackupStatus, ExecResult, SqlParam } from "./backend.types";
@@ -172,9 +172,37 @@ export const backend: Backend = {
   garminDisconnect: async () => localStorage.setItem("cc-fake-garmin-off", "1"),
   cloudCredentials: async () => ({ garmin: (await fixture("garmin")) ? { access: "test", refresh: "test", client_id: "TEST", expires_at: 4102444800 } : null, google: null, ics: [] }),
   cloudRestore: async () => {},
+  // Preview only: pretends to be Garmin's workout service, so the Watch tab can be tried.
+  garminWrite: async <T,>(method: string, path: string, body?: unknown) => {
+    const routed = garminWriteVia();
+    if (routed) return routed<T>(method as "POST", path, body);
+    const store = ((globalThis as { __garminWorkouts?: { n: number; w: Record<string, unknown>; s: Record<string, { date: string; workoutId: number; title: string }> } }).__garminWorkouts ??= { n: 1000, w: {}, s: {} });
+    const id = Number(/\/(\d+)$/.exec(path)?.[1] ?? 0);
+    if (method === "POST" && path === "/workout-service/workout") {
+      const wid = ++store.n;
+      store.w[wid] = { ...(body as object), workoutId: wid };
+      return { status: 200, body: { workoutId: wid } as T };
+    }
+    if (method === "POST" && path.startsWith("/workout-service/schedule/")) {
+      const sid = ++store.n;
+      store.s[sid] = { date: (body as { date: string }).date, workoutId: id, title: String((store.w[id] as { workoutName?: string })?.workoutName ?? "Workout") };
+      return { status: 200, body: { workoutScheduleId: sid } as T };
+    }
+    if (method === "PUT") return (store.w[id] = { ...(body as object) }), { status: 204, body: null as T };
+    if (method === "DELETE" && path.startsWith("/workout-service/schedule/")) return delete store.s[id], { status: 204, body: null as T };
+    if (method === "DELETE") return delete store.w[id], { status: 204, body: null as T };
+    return { status: 404, body: null as T };
+  },
   garminRequest: async <T,>(path: string) => {
     const routed = garminVia();
     if (routed) return routed<T>(path);
+    const store = (globalThis as { __garminWorkouts?: { w: Record<string, unknown>; s: Record<string, { date: string; workoutId: number; title: string }> } }).__garminWorkouts;
+    if (path.startsWith("/calendar-service/year/"))
+      return { status: 200, body: { calendarItems: Object.entries(store?.s ?? {}).map(([id, x]) => ({ id: Number(id), itemType: "workout", date: x.date, title: x.title, workoutId: x.workoutId })) } as T };
+    if (path.startsWith("/workout-service/workout/")) {
+      const w = store?.w[/\/(\d+)$/.exec(path)?.[1] ?? ""];
+      return { status: w ? 200 : 404, body: (w ?? null) as T };
+    }
     const fx = (await fixture("garmin")) as Record<string, unknown> | null;
     if (!fx) throw new Error("offline: no test data for garmin");
     const bare = path.split("?")[0];
