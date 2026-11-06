@@ -6,7 +6,7 @@ import { marathonShape, useFitness } from "./fitness";
 import { plannedRuns } from "./FitnessPlan";
 import { raceKm } from "./forecast";
 import { mondayOf, priorityOf, restorePreviousPlan, savePlan, WEEK_KEYS, type Plan, type PlanRace } from "./plan";
-import { buildPlan, DEFAULT_WEEKS, DIST_LABEL, LEVELS, pacesFor, recommend, summarizeHistory, type BuildOptions, type Level, type RaceDist } from "./planBuilder";
+import { buildPlan, DEFAULT_WEEKS, DIST_LABEL, LEVELS, MAX_WEEKS, pacesFor, recommend, summarizeHistory, tuneDefaults, type BuildOptions, type History, type Level, type RaceDist, type Tune } from "./planBuilder";
 import { raceReadiness } from "./readiness";
 import { ReadinessView, useReadinessInputs } from "./ReadinessCard";
 import { useRunningData } from "./useRunning";
@@ -51,7 +51,9 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
   const f = useFitness(plan);
   const base: Plan = useMemo(() => ({ ...plan, weeks: plan.baseWeeks ?? plan.weeks, baseWeeks: undefined, adjust: null }), [plan]);
   const firstMonday = mondayOf(today) < today ? addDays(mondayOf(today), 7) : mondayOf(today);
-  const history = useMemo(() => summarizeHistory(runs, today, f?.current ?? null), [runs, today, f?.current]);
+  // Paces start from your fitness now: current form, or your best race of the last year if that's higher.
+  const fitNow = f ? Math.max(f.current ?? 0, f.predictionBasis?.vdot ?? 0) || null : null;
+  const history = useMemo(() => summarizeHistory(runs, today, fitNow), [runs, today, fitNow]);
   // A plan that starts later builds on the weeks of your current plan before it: your training as it will be then.
   const atStartFor = useMemo(() => {
     const cache = new Map<string, ReturnType<typeof summarizeHistory>>();
@@ -62,11 +64,11 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
       if (!cache.has(start)) {
         const done = runs.filter((r) => r.date <= today);
         const planned = plannedRuns(base, today, addDays(start, -1));
-        cache.set(start, summarizeHistory([...done, ...planned], start, f?.current ?? null));
+        cache.set(start, summarizeHistory([...done, ...planned], start, fitNow));
       }
       return cache.get(start)!;
     };
-  }, [history, runs, base, today, firstMonday, f?.current]);
+  }, [history, runs, base, today, firstMonday, fitNow]);
   const races = useMemo(() => base.races.filter((r) => r.date && r.date > addDays(today, 21)), [base, today]);
 
   const [o, setO] = useState<BuildOptions | null>(null);
@@ -360,15 +362,17 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
                 Length <span className="muted small">· starts {fmt(start)}</span>
               </h4>
               <div className="pb-weeks-pick">
-                <input type="range" min={Math.min(4, available)} max={Math.min(30, available)} value={Math.min(o.weeks, available)} onChange={(e) => set({ weeks: +e.target.value })} aria-label="Weeks" />
+                <input type="range" min={Math.min(4, available)} max={Math.min(MAX_WEEKS, available)} value={Math.min(o.weeks, available)} onChange={(e) => set({ weeks: +e.target.value })} aria-label="Weeks" />
                 <b className="num">{Math.min(o.weeks, available)} weeks</b>
               </div>
               <p className="ps-note">
-                {DEFAULT_WEEKS[o.dist]}–{DEFAULT_WEEKS[o.dist] + 6} weeks suits a {DIST_LABEL[o.dist].toLowerCase()}.{" "}
+                {DEFAULT_WEEKS[o.dist]}–{DEFAULT_WEEKS[o.dist] + 6} weeks suits a {DIST_LABEL[o.dist].toLowerCase()}; a longer build spends the extra weeks on base mileage and ramps up more gently.{" "}
+                {available > Math.min(MAX_WEEKS, available) ? "" : available > o.weeks ? <button type="button" className="link-btn" onClick={() => set({ weeks: Math.min(MAX_WEEKS, available) })}>Start now ({Math.min(MAX_WEEKS, available)} weeks)</button> : null}{" "}
                 {available > o.weeks ? `Your current plan carries on until ${fmt(start)}.` : "It starts next Monday."}
               </p>
             </div>
           </div>
+          <FineTune o={o} h={atStartFor(o.raceDate)(o.weeks)} onChange={(tune) => set({ tune })} />
           {tuneUps.length > 0 && (
             <div className="pb-block">
               <h4>Other races in this time</h4>
@@ -524,4 +528,92 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
       </>
     );
   }
+}
+
+/** Your own numbers on top of the level: peak and first week, longest run, sessions, easier weeks, taper, long-run style. */
+function FineTune({ o, h, onChange }: { o: BuildOptions; h: History; onChange: (t: Tune | undefined) => void }) {
+  const d = tuneDefaults(h, o);
+  const t = o.tune ?? {};
+  const put = (patch: Partial<Tune>) => {
+    const next = { ...t, ...patch };
+    for (const k of Object.keys(next) as (keyof Tune)[]) if (next[k] === undefined) delete next[k];
+    onChange(Object.keys(next).length ? next : undefined);
+  };
+  const changed = Object.keys(t).length;
+  const slider = (key: "peakKm" | "startKm" | "longest", label: string, min: number, max: number, unit = "km") => {
+    const v = t[key] ?? d[key];
+    return (
+      <label className="ft-row">
+        <span className="ft-label">
+          {label}
+          {t[key] != null && (
+            <button type="button" className="link-btn small" onClick={() => put({ [key]: undefined })}>
+              reset
+            </button>
+          )}
+        </span>
+        <input type="range" min={min} max={max} value={v} onChange={(e) => put({ [key]: +e.target.value })} />
+        <b className={"num" + (t[key] != null ? " tone-accent" : "")}>
+          {v} {unit}
+        </b>
+      </label>
+    );
+  };
+  return (
+    <details className="pb-block fine-tune" open={changed > 0}>
+      <summary>
+        <h4>
+          Fine-tune {changed > 0 && <span className="pill small">{changed} change{changed === 1 ? "" : "s"}</span>}
+        </h4>
+        <span className="ps-note">Your own peak, long runs, sessions, easier weeks and taper. Anything you leave follows the level.</span>
+      </summary>
+      {slider("peakKm", "Peak week", 20, 200)}
+      {slider("startKm", "First week", 10, Math.max(30, t.peakKm ?? d.peakKm))}
+      {slider("longest", "Longest run", 10, o.dist === "marathon" ? 42 : 32)}
+      <div className="ft-row">
+        <span className="ft-label">Quality sessions a week</span>
+        <Chips value={t.quality ?? d.quality} options={[{ v: 1 as const, l: "1" }, { v: 2 as const, l: "2" }]} onChange={(v) => put({ quality: v === d.quality ? undefined : v })} />
+      </div>
+      <div className="ft-row">
+        <span className="ft-label">Easier week</span>
+        <Chips
+          value={t.cutEvery ?? d.cutEvery}
+          options={[
+            { v: 3 as const, l: "Every 3rd" },
+            { v: 4 as const, l: "Every 4th" },
+            { v: 5 as const, l: "Every 5th" },
+            { v: 0 as const, l: "None" },
+          ]}
+          onChange={(v) => put({ cutEvery: v === d.cutEvery ? undefined : v })}
+        />
+      </div>
+      <div className="ft-row">
+        <span className="ft-label">Taper</span>
+        <Chips
+          value={t.taperWeeks ?? d.taperWeeks}
+          options={[
+            { v: 1 as const, l: "1 week" },
+            { v: 2 as const, l: "2 weeks" },
+            { v: 3 as const, l: "3 weeks" },
+          ]}
+          onChange={(v) => put({ taperWeeks: v === d.taperWeeks ? undefined : v })}
+        />
+      </div>
+      <div className="ft-row">
+        <span className="ft-label">Medium-long run mid-week</span>
+        <Chips value={(t.mediumLong ?? d.mediumLong) ? "on" : "off"} options={[{ v: "on", l: "Yes" }, { v: "off", l: "No" }]} onChange={(v) => put({ mediumLong: (v === "on") === d.mediumLong ? undefined : v === "on" })} />
+      </div>
+      {o.dist === "marathon" && (
+        <div className="ft-row">
+          <span className="ft-label">Marathon pace in long runs</span>
+          <Chips value={(t.mpLong ?? d.mpLong) ? "on" : "off"} options={[{ v: "on", l: "Yes" }, { v: "off", l: "No" }]} onChange={(v) => put({ mpLong: v === "on" ? (d.mpLong ? undefined : true) : false })} />
+        </div>
+      )}
+      {changed > 0 && (
+        <button type="button" className="btn ghost small" onClick={() => onChange(undefined)}>
+          Reset all to the level's
+        </button>
+      )}
+    </details>
+  );
 }

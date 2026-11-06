@@ -31,6 +31,21 @@ export interface FitnessConfig extends Vo2Config {
   calibrate: boolean;
   /** Show VO2 max numbers on Garmin's scale (needs a Garmin reading) or the race scale. Display only. */
   displayScale?: "race" | "garmin";
+  /** Max heart rate from your runs until you set your own (new accounts). */
+  auto?: boolean;
+}
+
+/**
+ * New accounts start with generic heart-rate numbers; until you set your own, the max is taken from your
+ * runs (the second-highest max of the last 18 months, so one strap glitch doesn't count).
+ */
+export function withAutoHeartRate(config: FitnessConfig, runs: Run[], today: string): FitnessConfig {
+  const generic = config.auto || (config.hrMax === 190 && config.hrRest === 55 && !config.projection.milestones.length);
+  if (!generic) return config;
+  const since = addDays(today, -548);
+  const maxes = runs.filter((r) => r.date >= since && r.max_hr && r.max_hr > 120 && r.max_hr < 230).map((r) => r.max_hr!).sort((a, b) => b - a);
+  const seen = maxes.length >= 2 ? maxes[1] : maxes[0];
+  return seen && seen >= 160 ? { ...config, hrMax: Math.round(seen) } : config;
 }
 
 /** Defaults from the coach's log: max HR 199, threshold ~186–189; goals sub-2:50 then sub-2:45. */
@@ -287,6 +302,7 @@ export function computeFitness(
   today: string,
   garminPredictions: { values: Record<string, number>; date: string; monthAgo?: Record<string, number> | null } | null = null,
 ): Fitness {
+  config = withAutoHeartRate(config, runs, today);
   // Raw estimates first, then calibrate to Garmin if there are readings.
   const raw: RunEstimate[] = [];
   for (const r of runs) {

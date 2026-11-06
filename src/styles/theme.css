@@ -4713,3 +4713,68 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .autosync-row { display: flex; gap: 0.7rem; align-items: center; flex-wrap: wrap; }
 .autosync-off { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 0.5rem; }
 .watch-autosync { margin: 0.6rem 0 1rem; }
+
+/* Plan builder: fine-tune */
+.fine-tune > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.fine-tune > summary::-webkit-details-marker {
+  display: none;
+}
+.fine-tune > summary h4::after {
+  content: " ›";
+  color: var(--muted);
+}
+.fine-tune[open] > summary h4::after {
+  content: " ⌄";
+}
+.ft-row {
+  display: grid;
+  grid-template-columns: minmax(9rem, 13rem) 1fr auto;
+  align-items: center;
+  gap: 0.4rem 0.8rem;
+  padding: 0.45rem 0;
+  border-top: 1px solid var(--line);
+}
+.ft-row:has(.ps-choice) {
+  grid-template-columns: minmax(9rem, 13rem) 1fr;
+}
+.ft-row input[type="range"] {
+  width: 100%;
+}
+.ft-label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+.link-btn {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.plan-builder.compact .ft-row,
+.plan-builder.compact .ft-row:has(.ps-choice) {
+  grid-template-columns: 1fr auto;
+}
+.plan-builder.compact .ft-row .ps-choice,
+.plan-builder.compact .ft-row input[type="range"] {
+  grid-column: 1 / -1;
+}
+.plan-builder.compact .ft-row .ft-label {
+  grid-row: 1;
+  grid-column: 1;
+}
+.plan-builder.compact .ft-row > b {
+  grid-row: 1;
+  grid-column: 2;
+}
+.plan-builder.compact .ft-row input[type="range"],
+.plan-builder.compact .ft-row .ps-choice {
+  grid-row: 2;
+}

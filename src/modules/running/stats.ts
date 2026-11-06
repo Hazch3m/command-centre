@@ -92,6 +92,8 @@ export interface RaceRow {
 }
 
 const STANDARD = [5, 10, 21.0975, 42.195];
+/** Names races usually have (in a few languages); training runs at "marathon pace" aren't race distance, so don't count. */
+const RACE_NAME = /\b(race|marathon|half|semi|10 ?k|5 ?k|parkrun|course|lauf|maratona|maratón|carrera|PB)\b/i;
 
 /**
  * Past races: the curated list from the plan, plus any later run Strava marks
@@ -107,9 +109,12 @@ export function raceHistory(runs: Run[], plan: Plan): RaceRow[] {
   }
   const lastCurated = rows.reduce((d, r) => (r.date > d ? r.date : d), "");
   for (const r of runs) {
-    if (r.workout_type !== 1 || r.date <= lastCurated || curated.some((c) => c.id === r.id)) continue;
+    if (r.date <= lastCurated || curated.some((c) => c.id === r.id)) continue;
     const raw = km(r.distance);
-    const std = STANDARD.find((s) => Math.abs(raw - s) / s < 0.03) ?? Math.round(raw * 10) / 10;
+    const near = STANDARD.find((s) => Math.abs(raw - s) / s < 0.03);
+    // Marked as a race (Strava, or Garmin's event type), or a whole run at a race distance named like one.
+    if (r.workout_type !== 1 && !(near && RACE_NAME.test(r.name))) continue;
+    const std = near ?? Math.round(raw * 10) / 10;
     rows.push({ id: r.id, name: r.name, date: r.date, km: std, time: r.elapsed_time, equiv: marathonEquivalent(r.elapsed_time, std) });
   }
   return rows.sort((a, b) => a.date.localeCompare(b.date));

@@ -33,7 +33,33 @@ export interface BuildOptions {
   longDay: "sat" | "sun";
   /** Keep the other races in your plan that fall inside the new one, as tune-ups. */
   keepRaces: boolean;
+  /** Your own tweaks on top of the level (unset: the level's own). */
+  tune?: Tune;
 }
+
+export interface Tune {
+  /** Biggest week, km. */
+  peakKm?: number;
+  /** First week, km. */
+  startKm?: number;
+  /** Longest long run, km. */
+  longest?: number;
+  /** Quality sessions a week. */
+  quality?: 1 | 2;
+  /** An easier week every n weeks (0: none). */
+  cutEvery?: 0 | 3 | 4 | 5;
+  /** Taper length, weeks (race week included). */
+  taperWeeks?: 1 | 2 | 3;
+  /** A mid-week medium-long run. */
+  mediumLong?: boolean;
+  /** Marathon-pace finishes in the long runs (marathon). */
+  mpLong?: boolean;
+}
+
+/** The longest build the builder makes. */
+export const MAX_WEEKS = 60;
+/** Taper by length (fractions of peak; the last is race week). */
+const TAPERS: Record<1 | 2 | 3, number[]> = { 1: [0.5], 2: [0.72, 0.45], 3: [0.8, 0.62, 0.42] };
 
 interface LevelSpec {
   label: string;
@@ -134,6 +160,21 @@ export function summarizeHistory(runs: Run[], today: string, vdot: number | null
 
 const startKmFor = (h: History) => Math.max(15, Math.round(Math.max(h.recent4, h.recent12 * 0.8)));
 const capForDays = (days: number, d: RaceDist, lv: Level) => days * 15 + LEVELS[lv].longCap[d] * 0.5;
+
+/** What a plan would use if you don't change it (for the fine-tune controls). */
+export function tuneDefaults(h: History, o: BuildOptions): Required<Omit<Tune, "mpLong" | "mediumLong">> & { mpLong: boolean; mediumLong: boolean } {
+  const L = LEVELS[o.level];
+  return {
+    peakKm: peakFor(h, o),
+    startKm: startKmFor(h),
+    longest: L.longCap[o.dist],
+    quality: (L.quality >= 2 ? 2 : 1) as 1 | 2,
+    cutEvery: L.cutEvery as 3 | 4 | 5,
+    taperWeeks: Math.min(3, TAPER[o.dist].length) as 1 | 2 | 3,
+    mediumLong: (o.dist === "marathon" || o.dist === "half") && o.days >= 5 && o.level !== "beginner",
+    mpLong: o.dist === "marathon",
+  };
+}
 
 /** The peak a level aims for, given where you start, the days you run and the weeks you have. */
 export function peakFor(h: History, o: Pick<BuildOptions, "dist" | "level" | "days" | "weeks">): number {
@@ -338,18 +379,31 @@ export interface BuiltWeek {
 
 /** The plan built from the options, merged into the current one: weeks before it and after the race are kept. */
 export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string): { plan: Plan; weeks: BuiltWeek[] } {
-  const L = LEVELS[o.level];
+  const T = o.tune ?? {};
+  const L0 = LEVELS[o.level];
+  const L: LevelSpec = {
+    ...L0,
+    quality: T.quality ?? L0.quality,
+    cutEvery: T.cutEvery === 0 ? 999 : (T.cutEvery ?? L0.cutEvery),
+    longCap: { ...L0.longCap, [o.dist]: T.longest ?? L0.longCap[o.dist] },
+  };
   const raceMonday = mondayOf(o.raceDate);
   const firstAllowed = mondayOf(today) < today ? addDays(mondayOf(today), 7) : mondayOf(today);
   let start = addDays(raceMonday, -(o.weeks - 1) * 7);
   if (start < firstAllowed) start = firstAllowed;
   const N = Math.max(1, diffDays(start, raceMonday) / 7 + 1);
-  const taper = TAPER[o.dist].slice(-Math.max(1, Math.min(TAPER[o.dist].length, N - 2)));
+  const taperAll = T.taperWeeks ? TAPERS[T.taperWeeks] : TAPER[o.dist];
+  const taper = taperAll.slice(-Math.max(1, Math.min(taperAll.length, N - 2)));
   const buildN = Math.max(0, N - taper.length);
-  const baseN = buildN >= 6 ? Math.round(buildN * 0.3) : buildN >= 3 ? 1 : 0;
-  const specN = buildN >= 4 ? Math.max(2, Math.round(buildN * 0.3)) : buildN;
-  const peak = peakFor(h, { ...o, weeks: N });
-  const startKm = Math.min(startKmFor(h), peak);
+  // A long build spends the extra weeks on base (aerobic volume); race-specific work stays at most ~12 weeks.
+  const specN = buildN >= 4 ? Math.min(12, Math.max(2, Math.round(buildN * 0.3))) : buildN;
+  const baseN = buildN >= 6 ? Math.max(Math.round(buildN * 0.3), buildN - specN - 12) : buildN >= 3 ? 1 : 0;
+  const peak = Math.round(T.peakKm ?? peakFor(h, { ...o, weeks: N }));
+  const startKm = Math.min(T.startKm ?? startKmFor(h), peak);
+  // Weekly growth: the level's at most, but spread over the whole build so a long one doesn't peak months early.
+  const cutsN = Array.from({ length: buildN }, (_, i) => i > 0 && (i + 1) % L.cutEvery === 0 && i < buildN - 1).filter(Boolean).length;
+  const rampWeeks = Math.max(1, buildN - cutsN - Math.min(4, Math.round(buildN * 0.15)));
+  const growth = Math.max(0.015, Math.min(L.growth, Math.pow(peak / Math.max(1, startKm), 1 / rampWeeks) - 1));
 
   // Paces: fitness now, rising a little through the plan; race-pace work at the goal pace.
   const v0 = h.vdot ?? 42;
@@ -376,7 +430,7 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
     let cut = false;
     if (i < buildN) {
       cut = i > 0 && (i + 1) % L.cutEvery === 0 && i < buildN - 1;
-      if (i > 0 && !cut) cur = Math.min(peak, cur * (1 + L.growth));
+      if (i > 0 && !cut) cur = Math.min(peak, cur * (1 + growth));
       km = cut ? cur * L.cut : cur;
       // Race-specific weeks push the long run on towards its cap; before that it follows the week's volume.
       const want = Math.min(L.longCap[o.dist], phase === "specific" ? Math.max(km * frac, L.longCap[o.dist]) : km * frac);
@@ -440,7 +494,8 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
     let longAt: DayKey | null = null;
     if (b.long > 0 && !raceDays.has(longDay) && !near(longDay)) {
       longAt = longDay;
-      const withMp = o.dist === "marathon" && b.phase === "specific" && !b.cut && L.quality >= 2 && o.level !== "intermediate" ? r1(lerp(8, 16, t)) : o.dist === "marathon" && b.phase === "specific" && !b.cut && alt ? 8 : 0;
+      const mpAuto = o.dist === "marathon" && b.phase === "specific" && !b.cut && L.quality >= 2 && o.level !== "intermediate" ? r1(lerp(8, 16, t)) : o.dist === "marathon" && b.phase === "specific" && !b.cut && alt ? 8 : 0;
+      const withMp = T.mpLong === false ? 0 : T.mpLong && o.dist === "marathon" && b.phase === "specific" && !b.cut ? r1(lerp(8, 16, t)) : mpAuto;
       // Marathon pace in the long run makes it a hard day: then the week's other sessions are threshold work and hill sprints.
       if (withMp && b.long >= 20) {
         qa = qb0;
@@ -467,7 +522,8 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
     }
     // Medium-long run mid-week (marathon and half, five days or more, not beginners).
     const freeDays = run.filter((k) => !s[k]);
-    const mlOk = (o.dist === "marathon" || o.dist === "half") && o.days >= 5 && o.level !== "beginner" && (b.phase === "build" || b.phase === "specific") && !b.cut;
+    const mlAuto = (o.dist === "marathon" || o.dist === "half") && o.days >= 5 && o.level !== "beginner";
+    const mlOk = (T.mediumLong ?? mlAuto) && o.days >= 4 && (b.phase === "build" || b.phase === "specific") && !b.cut;
     if (mlOk && longAt && b.long >= 18) {
       const gap = (k: DayKey) => Math.min(Math.abs(IDX(k) - IDX(longAt!)), 7 - Math.abs(IDX(k) - IDX(longAt!)));
       const at = freeDays.filter((k) => gap(k) >= 3 && !near(k)).sort((a, b) => gap(b) - gap(a))[0];
@@ -558,7 +614,7 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
   const longest = Math.max(...built.map((b) => b.long));
   const rules = [
     `Most running is easy, at ${range(...pNow.easy)}/km: conversational. The hard days are the sessions and the long run.`,
-    `Mileage rises by no more than ${Math.round(L.growth * 100)}% a week, from ${built[0]?.km ?? startKm} to ${peakWeek} km, with an easier week every ${L.cutEvery === 3 ? "third" : "fourth"} week.`,
+    `Mileage rises by about ${Math.max(2, Math.round(growth * 100))}% a week, from ${built[0]?.km ?? startKm} to ${peakWeek} km${L.cutEvery >= 999 ? ", with no planned easier weeks" : `, with an easier week every ${({ 3: "third", 4: "fourth", 5: "fifth" } as Record<number, string>)[L.cutEvery] ?? `${L.cutEvery}th`} week`}.`,
     `The long run grows by about 2 km at a time, to ${longest} km, and is never next to a hard session.`,
     `${nQText(o)} Paces come from your current fitness (VDOT ${v0.toFixed(1)})${vEnd > v0 + 0.2 ? ` and rise gently to VDOT ${vEnd.toFixed(1)} by race day` : ""}${goalPace ? `; race-pace work is at your goal pace, ${fmtPace(goalPace)}/km` : ""}.`,
     `${taper.length === 1 ? "A one-week" : `A ${taper.length}-week`} taper: volume drops, intensity stays.`,
@@ -597,6 +653,6 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
 }
 
 const nQText = (o: BuildOptions) =>
-  LEVELS[o.level].quality >= 2 && o.days >= 4
+  (o.tune?.quality ?? LEVELS[o.level].quality) >= 2 && o.days >= 4
     ? "Two quality sessions a week (one in easier, tune-up and taper weeks): threshold and VO2 max work early, race-pace work late."
     : "One quality session a week, alternating threshold, VO2 max and race-pace work.";

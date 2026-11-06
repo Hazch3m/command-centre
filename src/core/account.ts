@@ -64,7 +64,7 @@ export const EMPTY_PLAN = {
 
 /** Fitness settings until you set your own (or Garmin's heart-rate numbers arrive). */
 export function starterFitness(today: string) {
-  return { hrMax: 190, hrRest: 55, calibrate: true, projection: { start: { date: today, vo2: null }, milestones: [] } };
+  return { hrMax: 190, hrRest: 55, calibrate: true, auto: true, projection: { start: { date: today, vo2: null }, milestones: [] } };
 }
 
 export function accountHeader(today: string): SnapshotHeader {

@@ -13,7 +13,13 @@ export function useReadinessInputs(plan: Plan | undefined) {
   return useMemo(() => {
     const actual = new Map<string, number>();
     for (const r of runs) actual.set(r.date, (actual.get(r.date) ?? 0) + r.distance / 1000);
-    const vdotAt = (d: string) => (f ? f.project(d) ?? f.current : null);
+    // Fitness on the day: the projection (or current form), never below your best race of the last year
+    // (form estimates dip after a marathon or in an easy block; a race you've run is proof of what you can do).
+    const floor = f?.predictionBasis?.source === "race" ? f.predictionBasis.vdot : null;
+    const vdotAt = (d: string) => {
+      const v = f ? (f.project(d) ?? f.current) : null;
+      return v == null ? floor : floor == null ? v : Math.max(v, floor);
+    };
     return { actual, vdotAt, ready: !!f };
   }, [f, runs]);
 }
