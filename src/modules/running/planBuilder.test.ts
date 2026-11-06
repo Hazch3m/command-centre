@@ -72,7 +72,12 @@ describe("plan builder: goals, speed work and tweaks", () => {
   const bp = buildPlan;
   const h = { recent4: 60, recent12: 58, peak12: 70, runsPerWeek: 5, longest8: 26, weeksRun12: 12, vdot: 53.6 };
   const base = { raceName: "Test Marathon", raceDate: "2027-10-24", dist: "marathon" as const, target: "", weeks: 20, level: "advanced" as const, days: 6, longDay: "sun" as const, keepRaces: false };
-  const all = (o: Parameters<typeof bp>[1]) => bp(BUNDLED_PLAN, o, h, "2026-11-06").plan.weeks.filter((w) => w.start >= "2026-11-09" && w.start <= "2027-10-24").flatMap((w) => Object.values(w.sessions) as string[]);
+  // Only the weeks the builder made (your plan's earlier weeks are kept as they were).
+  const all = (o: Parameters<typeof bp>[1]) => {
+    const r = bp(BUNDLED_PLAN, o, h, "2026-11-06");
+    const from = r.weeks[0].monday;
+    return r.plan.weeks.filter((w) => w.start >= from && w.start <= "2027-10-24").flatMap((w) => Object.values(w.sessions) as string[]);
+  };
 
   it("never puts in hill sprints unless asked, and varies the speed work", () => {
     const s = all(base);
