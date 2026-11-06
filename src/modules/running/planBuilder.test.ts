@@ -95,8 +95,8 @@ describe("plan builder: goals, speed work and tweaks", () => {
   it("ramps faster when you ask for it", () => {
     const slow = bp(BUNDLED_PLAN, { ...base, weeks: 30, tune: { growth: 0.03 } }, h, "2026-11-06").weeks;
     const fast = bp(BUNDLED_PLAN, { ...base, weeks: 30, tune: { growth: 0.1 } }, h, "2026-11-06").weeks;
-    const peakAt = (ws: { km: number }[]) => ws.findIndex((w) => w.km >= Math.max(...ws.map((x) => x.km)) * 0.97);
-    expect(peakAt(fast)).toBeLessThan(peakAt(slow));
+    // Ten weeks in, the quicker ramp is well ahead.
+    expect(fast[9].km).toBeGreaterThan(slow[9].km * 1.15);
   });
 
   it("builds blocks without a race", () => {
@@ -117,5 +117,27 @@ describe("plan builder: goals, speed work and tweaks", () => {
       expect(w, x).not.toBeNull();
       if (/fartlek|× .* at|progression run|last \d+ at/.test(x)) expect(w!.steps.length, x).toBeGreaterThan(1);
     }
+  });
+});
+
+describe("following the plan: changes and advice", () => {
+  it("makes a week easier or a rest week, and recovery mode replaces runs", async () => {
+    const { applyChanges } = await import("./planChanges");
+    const w = BUNDLED_PLAN.weeks.find((x) => x.start >= "2026-12-07")!;
+    const total = (p: typeof BUNDLED_PLAN) => forecastWeek(p, w.start).days.reduce((a, d) => a + (d.km ?? 0), 0);
+    const easier = applyChanges({ ...BUNDLED_PLAN, changes: { weeks: { [w.start]: "easier" } } });
+    expect(total(easier)).toBeLessThan(total(BUNDLED_PLAN) * 0.8);
+    expect(Object.values(easier.weeks.find((x) => x.start === w.start)!.sessions).some((x) => /\bat\b/.test(x ?? ""))).toBe(false);
+    const rest = applyChanges({ ...BUNDLED_PLAN, changes: { weeks: { [w.start]: "rest" } } });
+    expect(total(rest)).toBe(0);
+    const rec = applyChanges({ ...BUNDLED_PLAN, changes: { recovery: { from: w.start, weeks: 2, mode: "cross" } } });
+    expect(Object.values(rec.weeks.find((x) => x.start === w.start)!.sessions).some((x) => /Cross-train/.test(x ?? ""))).toBe(true);
+    const after = rec.weeks.find((x) => x.start > w.start && x.start >= "2026-12-21")!;
+    expect(after).toEqual(BUNDLED_PLAN.weeks.find((x) => x.start === after.start));
+  });
+  it("moves pace targets, never clock times", async () => {
+    const { shiftPaces } = await import("./planChanges");
+    expect(shiftPaces("12 km with 3 × 3 km at 3:42–3:46, 2 min jog", 5)).toBe("12 km with 3 × 3 km at 3:47–3:51, 2 min jog");
+    expect(shiftPaces("Race 1:18:30", 5)).toBe("Race 1:18:30");
   });
 });
