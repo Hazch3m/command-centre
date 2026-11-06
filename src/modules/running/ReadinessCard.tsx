@@ -27,7 +27,7 @@ export function useReadinessInputs(plan: Plan | undefined) {
   }, [f, runs]);
 }
 
-export function useReadiness(plan: Plan | undefined, race: Pick<PlanRace, "date" | "name" | "km" | "target"> | null): Readiness | null {
+export function useReadiness(plan: Plan | undefined, race: Pick<PlanRace, "date" | "name" | "km" | "target" | "elevation"> | null): Readiness | null {
   const today = useToday();
   const { actual, vdotAt, ready } = useReadinessInputs(plan);
   return useMemo(() => (plan && race && ready ? raceReadiness(plan, race, today, vdotAt, actual) : null), [plan, race?.date, race?.name, race?.km, race?.target, today, vdotAt, actual, ready]);

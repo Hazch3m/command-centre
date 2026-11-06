@@ -33,6 +33,8 @@ export interface PlanRace {
   taper?: "full" | "mini" | "none";
   /** Distance in km, when the name doesn't say. */
   km?: number;
+  /** The course's climb and descent (m); slows the predicted time on a hilly course. */
+  elevation?: { gain: number; loss: number; kind?: string };
 }
 
 export type RacePriority = NonNullable<PlanRace["priority"]>;
@@ -66,6 +68,8 @@ export interface Plan {
   benchmarks: Benchmark[];
   /** Set once the plan has been edited in the app; it's then the master copy. */
   editedInApp?: string;
+  /** Changes while following it: easier/rest weeks, recovery mode, pace targets moved. Applied when loaded. */
+  changes?: import("./planChanges").PlanChanges;
   /** Your settings on top of the plan (mileage, long runs, run days). Applied when loaded. */
   adjust?: PlanAdjust | null;
   /** The weeks as written, before `adjust` (only on a loaded plan; never saved). */
@@ -96,11 +100,12 @@ export async function loadPlan(): Promise<{ plan: Plan; error: string | null }> 
   const { loadFitnessConfig } = await import("./fitness");
   const [prefs, cfg] = await Promise.all([loadRunPrefs().catch(() => undefined), loadFitnessConfig().catch(() => null)]);
   const r = { ...r0, plan: { ...r0.plan, prefs, hrZones: cfg ? hrZones(r0.plan.paces, cfg.hrMax, cfg.hrRest) : undefined } };
-  if (!r.plan.adjust && !r.plan.races.some((x) => x.taper)) return r;
+  if (!r.plan.adjust && !r.plan.races.some((x) => x.taper) && !r.plan.changes) return r;
   // Imported here, not at the top: planAdjust uses the forecast, which uses this file.
   const { applyAdjust, applyRaceTapers } = await import("./planAdjust");
+  const { applyChanges } = await import("./planChanges");
   try {
-    return { ...r, plan: applyRaceTapers(applyAdjust(r.plan)) };
+    return { ...r, plan: applyChanges(applyRaceTapers(applyAdjust(r.plan))) };
   } catch (e) {
     return { ...r, error: `Your plan settings couldn't be applied (${(e as Error).message}); showing the plan as written.` };
   }
@@ -222,6 +227,16 @@ export async function resetPlan() {
 }
 
 /** Saves your plan settings (null = back to the plan as written). Keeps the plan itself as it is. */
+/** Saves your changes (easier/rest weeks, recovery mode, pace targets); null fields are removed. */
+export async function savePlanChanges(patch: Partial<import("./planChanges").PlanChanges>) {
+  const { plan } = await loadPlanFile();
+  const changes = { ...(plan.changes ?? {}), ...patch };
+  for (const k of Object.keys(changes) as (keyof typeof changes)[]) if (changes[k] == null) delete changes[k];
+  if (changes.weeks) for (const [w, v] of Object.entries(changes.weeks)) if (!v) delete changes.weeks[w];
+  await backend.writeDataFile(PLAN_FILE, JSON.stringify({ ...plan, changes }, null, 2));
+  window.dispatchEvent(new Event("cc:plan-changed"));
+}
+
 export async function savePlanAdjust(adjust: PlanAdjust | null) {
   const { plan } = await loadPlanFile();
   const out: Plan = { ...plan, adjust };

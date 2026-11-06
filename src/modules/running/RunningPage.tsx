@@ -1,3 +1,4 @@
+import { PlanCoach } from "./PlanCoach";
 import { useMemo, useState, type ReactNode } from "react";
 import { parseKey, useToday } from "../../core/time";
 import { BarChart } from "../../shell/charts";
@@ -151,6 +152,7 @@ export function RunningPage() {
 
         {tab === "plan" && (
           <>
+            <PlanCoach plan={plan} />
             <div className="plan-view-switch">
               <span className="segmented small-seg">
                 {PLAN_VIEWS.map((v) => (

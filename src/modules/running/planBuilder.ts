@@ -37,6 +37,29 @@ export interface BuildOptions {
   tune?: Tune;
   /** What the block is for: a race (the default), or getting faster, more mileage, base, or recovering. */
   goal?: Goal;
+  /** B and C races you add in the builder (as well as the ones already in your plan). */
+  extraRaces?: PlanRace[];
+  /** The goal race's course: a kind, or exact climb and descent in metres. */
+  terrain?: Terrain;
+}
+
+export interface Terrain {
+  kind: "flat" | "rolling" | "hilly" | "mountain" | "custom";
+  /** Metres of climb and descent (custom; otherwise worked out from the kind and distance). */
+  gain?: number;
+  loss?: number;
+}
+const TERRAIN_M_PER_KM: Record<Exclude<Terrain["kind"], "custom">, number> = { flat: 1, rolling: 5, hilly: 12, mountain: 25 };
+/** The course's climb and descent in metres. */
+export function courseElevation(t: Terrain | undefined, km: number): { gain: number; loss: number } {
+  if (!t) return { gain: 0, loss: 0 };
+  if (t.kind === "custom") return { gain: Math.max(0, t.gain ?? 0), loss: Math.max(0, t.loss ?? t.gain ?? 0) };
+  const g = Math.round(TERRAIN_M_PER_KM[t.kind] * km);
+  return { gain: g, loss: g };
+}
+/** Seconds a course's hills add (climb costs, descent gives some back; a net-downhill course gains only a little). */
+export function elevationCost(gain: number, loss: number): number {
+  return Math.max(-0.08 * loss, 0.75 * gain - 0.35 * loss);
 }
 
 export type Goal = "race" | "faster" | "mileage" | "base" | "recover";
@@ -415,6 +438,10 @@ function session(kind: SessionKind, v: number, o: BuildOptions, phase: Phase, t:
           () => reps(n(5, 8), 0.8, p.interval, "90 s jog", 90),
           () => reps(n(3, 5), 1.2, p.interval, "2 min jog", 120),
           () => reps(n(10, 14), 0.4, p.interval - 6, "60 s jog", 60),
+          () => timed(n(4, 6), 3, p.interval, "", "2 min jog", 120),
+          () => reps(n(6, 8), 0.6, p.interval - 3, "90 s jog", 90),
+          () => timed(n(3, 5), 4, p.interval + 2, "", "2 min jog", 120),
+          () => reps(n(12, 16), 0.2, p.interval - 10, "200 m jog", 70),
         ])(),
       );
     case "threshold":
@@ -424,6 +451,9 @@ function session(kind: SessionKind, v: number, o: BuildOptions, phase: Phase, t:
           () => reps(n(3, 4), 2, T, "2 min jog", 120),
           () => reps(Math.min(4, n(2, 3)), 3, T, "2 min jog", 120),
           () => reps(n(4, 5), 1.5, T, "60 s jog", 60),
+          () => timed(n(4, 6), 6, T, "T ", "1 min jog", 60),
+          () => timed(3, n(8, 10), T, "T ", "2 min jog", 120),
+          () => timed(2, n(12, 16), T, "T ", "3 min jog", 180),
         ])(),
       );
     case "tempo":
@@ -433,20 +463,26 @@ function session(kind: SessionKind, v: number, o: BuildOptions, phase: Phase, t:
         [n(8, 12), 2, p.tenk, "1 min jog"],
         [n(5, 7), 3, T, "90 s jog"],
         [n(10, 15), 1, p.fivek, "1 min jog"],
+        [n(5, 6), 4, T + 3, "2 min jog"],
+        [n(12, 16), 0.75, p.fivek, "75 s jog"],
+        [n(15, 20), 0.5, p.interval - 8, "30 s jog"],
       ] as [number, number, number, string][]);
       const reps_ = short ? Math.min(k, 6) : k;
-      const offSec = /90/.test(off) ? 90 : 60;
-      return q(workout((reps_ * mins * 60) / at, (reps_ - 1) * offSec, `${reps_} × ${mins} min fartlek at ${around(at)}, ${off}`));
+      const offSec = +(/(\d+)\s*s\b/.exec(off)?.[1] ?? (/(\d+)\s*min/.exec(off)?.[1] ?? 1) * 60);
+      const len = mins >= 1 ? `${mins} min` : `${Math.round(mins * 60)} s`;
+      return q(workout((reps_ * mins * 60) / at, (reps_ - 1) * offSec, `${reps_} × ${len} fartlek at ${around(at)}, ${off}`));
     }
     case "progression": {
       const total = r1(lerp(10, 16, t) + big * 2);
       const fast = Math.max(2, r1(lerp(3, 6, t)));
-      const at = phase === "base" || phase === "recover" ? p.mp : pick([p.mp, T]);
+      // Finishing at steady (a little slower than marathon pace), marathon pace or threshold, in turn.
+      const at = phase === "base" || phase === "recover" ? pick([p.mp + 10, p.mp]) : pick([p.mp + 10, T, p.mp]);
       return q({ km: total, text: `${total} km progression run, last ${fast} at ${around(at, 3)}` }, true);
     }
     case "hills": {
-      const k = short ? 6 : n(6, 10);
-      return q(workout(k * 0.3, k * 90, `${k} × 60 s hill reps, jog back down`));
+      const [k, sec] = short ? [6, 60] : pick([[n(6, 10), 60], [n(8, 12), 45], [n(5, 7), 90], [n(5, 6), 120]] as [number, number][]);
+      const len = sec >= 120 ? `${sec / 60} min` : `${sec} s`;
+      return q(workout(k * (sec / 240), k * sec * 1.4, `${k} × ${len} hill reps, jog back down`));
     }
     case "racepace": {
       if (o.dist === "marathon") {
@@ -460,9 +496,17 @@ function session(kind: SessionKind, v: number, o: BuildOptions, phase: Phase, t:
   }
 }
 
+/** "5 × 3 min at 3:30–3:34, 2 min jog" (timed reps; `tag` "T " marks threshold). */
+function timed(n: number, min: number, pace: number, tag: string, jog: string, jogSec: number) {
+  return workout((n * min * 60) / pace, (n - 1) * jogSec, `${n} × ${min} min ${tag}at ${around(pace)}, ${jog}`);
+}
+
 /** The week's quality sessions: race pace first late in the plan, otherwise the phase's kinds in turn (no repeats in a week). */
-function pickSessions(count: number, phase: Phase, week: number, kinds: Set<SessionKind>, o: BuildOptions, t: number, p: Paces, race: number): Q[] {
-  const prefs = PREFS[phase].filter((k) => kinds.has(k));
+function pickSessions(count: number, phase: Phase, week: number, kinds: Set<SessionKind>, o: BuildOptions, t: number, p: Paces, race: number, seen: Map<SessionKind, number> = new Map()): Q[] {
+  let prefs = PREFS[phase].filter((k) => kinds.has(k));
+  // A hilly race: hill reps come round more often in the build and race-specific weeks.
+  const el = courseElevation(o.terrain, DIST_M[o.dist] / 1000);
+  if (el.gain / (DIST_M[o.dist] / 1000) >= 8 && (phase === "build" || phase === "specific") && prefs.includes("hills")) prefs = ["hills", ...prefs.filter((k) => k !== "hills")].slice(0, 4);
   const out: Q[] = [];
   const used = new Set<SessionKind>();
   for (let j = 0; j < count && prefs.length; j++) {
@@ -474,7 +518,10 @@ function pickSessions(count: number, phase: Phase, week: number, kinds: Set<Sess
       k = pool[(week + j * 2) % pool.length];
     }
     used.add(k);
-    out.push(session(k, Math.floor(week / Math.max(1, prefs.length)) + j, o, phase, t, p, race));
+    // Each kind steps through its variations in turn, so the same session doesn't come round again for weeks.
+    const v = seen.get(k) ?? 0;
+    seen.set(k, v + 1);
+    out.push(session(k, v, o, phase, t, p, race));
   }
   return out;
 }
@@ -588,10 +635,12 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
     name: o.raceName || DIST_LABEL[o.dist],
     target: o.target,
     role: "Goal race",
+    ...(o.terrain ? { elevation: { ...courseElevation(o.terrain, DIST_M[o.dist] / 1000), kind: o.terrain.kind } } : {}),
   };
   const inside = old.races.filter((r) => r.date && !r.approx && r.date >= start && r.date <= end && r.date !== o.raceDate);
   // Tune-ups get the taper you chose for them (Races), else one that fits how much they matter; applied when the plan loads.
-  const tuneUps = o.keepRaces ? inside.map((r) => ({ ...r, taper: r.taper ?? (priorityOf(r) === "A" || priorityOf(r) === "B" ? ("mini" as const) : ("none" as const)) })) : [];
+  const added = (o.extraRaces ?? []).filter((r) => r.date && r.date >= start && r.date < o.raceDate && !inside.some((x) => x.date === r.date && x.name === r.name));
+  const tuneUps = [...(o.keepRaces ? inside : []), ...added].map((r) => ({ ...r, taper: r.taper ?? (priorityOf(r) === "A" || priorityOf(r) === "B" ? ("mini" as const) : ("none" as const)) }));
 
   // Write each week day by day.
   const longDay: DayKey = o.longDay;
@@ -599,6 +648,9 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
   const run = (PATTERN[o.days] ?? PATTERN[5]).map((k) => shift(k, by));
   const q1 = shift("tue", by);
   const q2 = o.days >= 4 ? shift("thu", by) : null;
+  const seen = new Map<SessionKind, number>();
+  // Race-specific weeks, numbered (marathon pace goes in every other long run, not all of them).
+  const specIdx = (i: number) => built.slice(0, i).filter((x) => x.phase === "specific" && !x.cut).length;
   const weeks: PlanWeek[] = built.map((b, i) => {
     const p = paceAt(i);
     const rp = goalPace && Math.abs(goalPace - racePaceOf(p)) < 25 ? goalPace : racePaceOf(p);
@@ -630,7 +682,8 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
       longAt = longDay;
       const mpAuto = isRace && o.dist === "marathon" && b.phase === "specific" && !b.cut && L.quality >= 2 && o.level !== "intermediate" ? r1(lerp(8, 16, t)) : isRace && o.dist === "marathon" && b.phase === "specific" && !b.cut && alt ? 8 : 0;
       const withMp = T.mpLong === false ? 0 : T.mpLong && o.dist === "marathon" && b.phase === "specific" && !b.cut ? r1(lerp(8, 16, t)) : mpAuto;
-      longHard = withMp > 0 && b.long >= 20;
+      // Marathon pace in the long run every other race-specific week; the weeks between keep MP for one session.
+      longHard = withMp > 0 && b.long >= 20 && (T.mpLong === true || specIdx(i) % 2 === 0);
       if (lastFaster) {
         // The block ends with a time trial: see what you've gained.
         s[longDay] = `${WARM + 5} km with 5 km time trial: 5 km at ${around(p.fivek)}`;
@@ -647,6 +700,10 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
           // Build weeks: every other long run finishes a little quicker, to practise running strong when tired.
           text = `${b.long} km long run, last ${r1(lerp(3, 5, t))} at ${around(o.dist === "marathon" ? rp + 8 : p.mp, 3)}`;
         }
+        // Long runs late in the plan on ground like the race's.
+        const el = courseElevation(o.terrain, DIST_M[o.dist] / 1000);
+        const perKm = el.gain / (DIST_M[o.dist] / 1000);
+        if (isRace && (b.phase === "specific" || b.phase === "build") && perKm >= 4) text += perKm >= 8 ? " on a hilly route" : " on rolling roads";
         s[longDay] = text;
         sized[longDay] = b.long;
       }
@@ -656,7 +713,7 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
       nQ = Math.max(0, nQ - 1);
       kinds.delete("racepace");
     }
-    let picks = pickSessions(nQ, qPhase, i, kinds, o, t, p, rp);
+    let picks = pickSessions(nQ, qPhase, i, kinds, o, t, p, rp, seen);
     // Before the race-specific weeks, a tune-up week keeps a short threshold session rather than race-pace work.
     if (tune && (b.phase === "base" || b.phase === "build") && picks.length) picks = [{ ...reps(4, 1, p.threshold, "90 s jog", 90), kind: "threshold" }];
     // Quality days: Tuesday and Thursday (shifted for a Saturday long run); a third on the day before the long run.
@@ -719,7 +776,12 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
           ? "Easier week: less volume, same sessions, to absorb the last few weeks."
           : raceHere.length
             ? `Tune-up race: ${raceHere.map((r) => r.name).join(", ")}. Lighter week around it.`
-            : "";
+            : isRace && b.phase === "specific" && (() => {
+                  const el = courseElevation(o.terrain, DIST_M[o.dist] / 1000);
+                  return el.loss - el.gain > 150;
+                })()
+              ? "The race drops a lot: run some easy runs and the long run downhill to get your quads used to it."
+              : "";
     return {
       week: String(i + 1),
       start: b.monday,

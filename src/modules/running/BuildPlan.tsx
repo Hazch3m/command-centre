@@ -6,7 +6,7 @@ import { fitnessConfigChanged, loadFitnessConfig, marathonShape, saveFitnessConf
 import { plannedRuns } from "./FitnessPlan";
 import { raceKm } from "./forecast";
 import { mondayOf, priorityOf, restorePreviousPlan, savePlan, WEEK_KEYS, type Plan, type PlanRace } from "./plan";
-import { buildPlan, DEFAULT_WEEKS, DIST_LABEL, GOALS, LEVELS, MAX_WEEKS, pacesFor, recommend, SESSION_KINDS, summarizeHistory, tuneDefaults, type BuildOptions, type Goal, type History, type Level, type RaceDist, type SessionKind, type Tune } from "./planBuilder";
+import { buildPlan, courseElevation, elevationCost, DEFAULT_WEEKS, DIST_LABEL, GOALS, LEVELS, MAX_WEEKS, pacesFor, recommend, SESSION_KINDS, summarizeHistory, tuneDefaults, type BuildOptions, type Goal, type History, type Level, type RaceDist, type SessionKind, type Tune } from "./planBuilder";
 import { raceReadiness } from "./readiness";
 import { ReadinessView, useReadinessInputs } from "./ReadinessCard";
 import { useRunningData } from "./useRunning";
@@ -119,7 +119,7 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
   }, [base, o, atStartFor, today, step]);
 
   const { actual, vdotAt, ready } = useReadinessInputs(plan);
-  const goalRace = o ? { date: o.raceDate, name: o.raceName || DIST_LABEL[o.dist], km: DIST_KM[o.dist], target: o.target } : null;
+  const goalRace = o ? { date: o.raceDate, name: o.raceName || DIST_LABEL[o.dist], km: DIST_KM[o.dist], target: o.target, elevation: o.terrain ? courseElevation(o.terrain, DIST_KM[o.dist]) : undefined } : null;
   const readiness = useMemo(() => {
     if (!built || "error" in built || !goalRace || !ready) return null;
     return { next: raceReadiness(built.plan, goalRace, today, vdotAt, actual), now: raceReadiness(plan, goalRace, today, vdotAt, actual) };
@@ -296,6 +296,7 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
               <input value={o.target} onChange={(e) => set({ target: e.target.value }, false)} />
             </label>
           )}
+          {isRace && <TerrainPick o={o} onChange={(terrain) => set({ terrain }, false)} />}
           {!raceOk && <p className="ps-note tone-warn">Pick a race at least three weeks away.</p>}
           <div className="pb-nav">
             <span />
@@ -419,23 +420,33 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
             </div>
           </div>
           <FineTune o={o} h={atStartFor(o.raceDate)(o.weeks)} onChange={(tune) => set({ tune })} />
-          {tuneUps.length > 0 && (
+          {isRace && (
             <div className="pb-block">
               <h4>Other races in this time</h4>
-              <label className="inline small">
-                <input type="checkbox" checked={o.keepRaces} onChange={(e) => set({ keepRaces: e.target.checked })} /> Keep them as tune-ups
-              </label>
-              {o.keepRaces && (
-                <div className="pb-tuneups">
-                  {tuneUps.map((r) => (
+              {tuneUps.length > 0 && (
+                <label className="inline small">
+                  <input type="checkbox" checked={o.keepRaces} onChange={(e) => set({ keepRaces: e.target.checked })} /> Keep the ones already in your plan as tune-ups
+                </label>
+              )}
+              <div className="pb-tuneups">
+                {o.keepRaces &&
+                  tuneUps.map((r) => (
                     <span key={r.date + r.name} className="pb-tuneup">
                       <span className={"rm-pri pr-" + priorityOf(r)}>{priorityOf(r)}</span>
                       {r.name} <span className="muted small">{fmt(r.date!)} · {TAPER_LABEL[r.taper ?? defaultTaperFor(r)]}</span>
                     </span>
                   ))}
-                  <span className="ps-note">Change priorities and tapers under Races.</span>
-                </div>
-              )}
+                {(o.extraRaces ?? []).map((r, i) => (
+                  <span key={"x" + i} className="pb-tuneup">
+                    <span className={"rm-pri pr-" + priorityOf(r)}>{priorityOf(r)}</span>
+                    {r.name} <span className="muted small">{fmt(r.date!)} · {r.km} km · {TAPER_LABEL[r.taper ?? defaultTaperFor(r)]}</span>
+                    <button type="button" className="link-btn small" onClick={() => set({ extraRaces: (o.extraRaces ?? []).filter((_x, j) => j !== i) })}>
+                      remove
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <AddRace from={start} to={addDays(o.raceDate, -7)} onAdd={(r) => set({ extraRaces: [...(o.extraRaces ?? []), r].sort((a, b) => a.date!.localeCompare(b.date!)) })} />
             </div>
           )}
           <div className="pb-nav">
@@ -792,6 +803,99 @@ export function FitnessFrom() {
           <ErrorNote error={err} />
         </div>
       )}
+    </div>
+  );
+}
+
+/** The race course: flat, rolling, hilly, mountainous, or the exact climb and descent. */
+function TerrainPick({ o, onChange }: { o: BuildOptions; onChange: (t: BuildOptions["terrain"]) => void }) {
+  const kind = o.terrain?.kind ?? "flat";
+  const km = DIST_KM[o.dist];
+  const el = courseElevation(o.terrain ?? { kind: "flat" }, km);
+  const cost = elevationCost(el.gain, el.loss);
+  return (
+    <div className="pb-block pb-terrain">
+      <span className="label">Course</span>
+      <Chips
+        value={kind}
+        options={[
+          { v: "flat" as const, l: "Flat" },
+          { v: "rolling" as const, l: "Rolling" },
+          { v: "hilly" as const, l: "Hilly" },
+          { v: "mountain" as const, l: "Mountainous" },
+          { v: "custom" as const, l: "Exact climb" },
+        ]}
+        onChange={(k) => onChange(k === "flat" ? undefined : k === "custom" ? { kind: "custom", gain: el.gain, loss: el.loss } : { kind: k })}
+      />
+      {kind === "custom" && (
+        <div className="pb-fields">
+          <label>
+            <span className="label">Climb (m)</span>
+            <input type="number" min={0} value={o.terrain?.gain ?? 0} onChange={(e) => onChange({ kind: "custom", gain: +e.target.value, loss: o.terrain?.loss ?? +e.target.value })} />
+          </label>
+          <label>
+            <span className="label">Descent (m)</span>
+            <input type="number" min={0} value={o.terrain?.loss ?? 0} onChange={(e) => onChange({ kind: "custom", gain: o.terrain?.gain ?? 0, loss: +e.target.value })} />
+          </label>
+        </div>
+      )}
+      <p className="ps-note">
+        {kind === "flat"
+          ? "A flat course: no time added."
+          : `About ${el.gain} m up and ${el.loss} m down: ${cost >= 0 ? `adds about ${Math.round(cost / 60)} min` : `about ${Math.round(-cost / 60)} min quicker`} to the predicted time${el.gain / km >= 8 ? "; the plan brings in more hill reps and hilly long runs" : el.gain / km >= 4 ? "; long runs late in the plan go on rolling roads" : ""}.`}
+      </p>
+    </div>
+  );
+}
+
+/** Add a B or C race inside the plan: it gets the taper you choose and a lighter week around it. */
+function AddRace({ from, to, onAdd }: { from: string; to: string; onAdd: (r: PlanRace) => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [date, setDate] = useState(from);
+  const [km, setKm] = useState(10);
+  const [pri, setPri] = useState<"B" | "C">("B");
+  const [taper, setTaper] = useState<"mini" | "full" | "none">("mini");
+  if (!open)
+    return (
+      <button type="button" className="btn small" onClick={() => setOpen(true)}>
+        + Add a race
+      </button>
+    );
+  const ok = name.trim() && date >= from && date <= to;
+  return (
+    <div className="pb-other">
+      <div className="pb-fields">
+        <label>
+          <span className="label">Name</span>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Geneva 10k" />
+        </label>
+        <label>
+          <span className="label">Date</span>
+          <input type="date" value={date} min={from} max={to} onChange={(e) => e.target.value && setDate(e.target.value)} />
+        </label>
+      </div>
+      <Chips value={km} options={[{ v: 5, l: "5k" }, { v: 10, l: "10k" }, { v: 21.1, l: "Half" }, { v: 42.2, l: "Marathon" }]} onChange={setKm} />
+      <Chips value={pri} options={[{ v: "B" as const, l: "B: run it well" }, { v: "C" as const, l: "C: training run" }]} onChange={(v) => (setPri(v), setTaper(v === "C" ? "none" : "mini"))} />
+      <Chips value={taper} options={[{ v: "mini" as const, l: "Mini taper" }, { v: "full" as const, l: "Full taper" }, { v: "none" as const, l: "No taper" }]} onChange={setTaper} />
+      <div className="inline">
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={!ok}
+          onClick={() => {
+            const d = new Date(date + "T12:00");
+            onAdd({ name: name.trim(), date, approx: false, when: `${d.getDate()} ${MON[d.getMonth()]}`, target: "", role: pri === "B" ? "Tune-up race" : "Training race", priority: pri, taper, km });
+            setName("");
+            setOpen(false);
+          }}
+        >
+          Add
+        </button>
+        <button type="button" className="btn ghost" onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }

@@ -4829,3 +4829,54 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .pb-days span:has(.practice-tag) {
   box-shadow: inset 3px 0 0 var(--accent);
 }
+
+/* Plan check (adaptive suggestions, week tools, recovery) */
+.plan-coach {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+.pc-advice {
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  background: var(--card-2);
+  border-left: 3px solid var(--muted);
+}
+.pc-advice p {
+  margin: 0.3rem 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.pc-good { border-left-color: var(--accent); }
+.pc-warn { border-left-color: var(--warn); }
+.pc-info { border-left-color: var(--c-calendar, var(--accent)); }
+.pc-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  align-items: baseline;
+}
+.pc-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.8rem;
+  align-items: center;
+}
+.pc-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.pc-injured {
+  align-self: flex-start;
+}
+.pc-advice .ps-choice {
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+.p-coach {
+  padding: 0.75rem;
+}
+.p-coach .plan-coach {
+  margin: 0;
+}

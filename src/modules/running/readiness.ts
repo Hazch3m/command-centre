@@ -2,7 +2,7 @@ import { addDays } from "../../core/time";
 import { shapeFactor } from "./fitness";
 import { forecastWeek, raceKm, type ForecastDay } from "./forecast";
 import { mondayOf, type Plan, type PlanRace } from "./plan";
-import { expectedGain } from "./planBuilder";
+import { elevationCost, expectedGain } from "./planBuilder";
 import { predictTime } from "./vo2";
 
 /**
@@ -69,7 +69,7 @@ interface WeekLook {
 
 export function raceReadiness(
   plan: Plan,
-  race: Pick<PlanRace, "date" | "name" | "km" | "target">,
+  race: Pick<PlanRace, "date" | "name" | "km" | "target" | "elevation">,
   today: string,
   vdotAt: (date: string) => number | null,
   actual: Map<string, number> = new Map(),
@@ -160,8 +160,10 @@ export function raceReadiness(
   const base = Math.max(v, vNow);
   const likely = base + gain * Math.min(1, score / 100);
   const scale = (sh: number) => (km >= 40 ? sh : km >= 20 ? sh * 0.43 : km >= 9 ? sh * 0.17 : sh * 0.07);
-  const predicted = predictTime(meters, likely) * shapeFactor(meters, scaled);
-  const range: [number, number] | null = gain > 0 ? [predictTime(meters, base + gain * 1.15) * shapeFactor(meters, scale(Math.max(1, shape))), predictTime(meters, base + gain * 0.4) * shapeFactor(meters, scaled)] : null;
+  // A hilly course costs time; a flat one nothing.
+  const hills = race.elevation ? elevationCost(race.elevation.gain, race.elevation.loss) : 0;
+  const predicted = predictTime(meters, likely) * shapeFactor(meters, scaled) + hills;
+  const range: [number, number] | null = gain > 0 ? [predictTime(meters, base + gain * 1.15) * shapeFactor(meters, scale(Math.max(1, shape))) + hills, predictTime(meters, base + gain * 0.4) * shapeFactor(meters, scaled) + hills] : null;
   // Today: your actual last 8 weeks against what the race needs.
   // Your best 8-week stretch of the last 16: a taper and recovery after a race don't make you unfit overnight.
   const wkKm: number[] = [];
@@ -186,7 +188,7 @@ export function raceReadiness(
   }
   const needNow = needsFor(km, vNow);
   const shapeNow = (2 / 3) * Math.min(1.5, nowKm / needNow.km) + (1 / 3) * Math.min(1, nowLong / needNow.long);
-  const now = actual.size ? predictTime(meters, vNow) * shapeFactor(meters, scale(shapeNow)) : null;
+  const now = actual.size ? predictTime(meters, vNow) * shapeFactor(meters, scale(shapeNow)) + hills : null;
   const goal = race.target ? targetSeconds(race.target, meters) : null;
   return { score, parts, predicted, range, now, goal, distanceKm: km };
 }

@@ -14,6 +14,7 @@ import { AutoSyncSetting } from "../modules/watch/AutoSyncSetting";
 import { dayName, Section, usePhoneNav } from "./common";
 import { Session } from "./Today";
 import { PracticeTag } from "../modules/running/PracticeTag";
+import { PlanCoach } from "../modules/running/PlanCoach";
 import { isEmptyPlan } from "../core/account";
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -106,6 +107,12 @@ export function Training() {
         })}
       </div>
       {fw.week ? <Session d={day} label={dayName(day.date, today)} /> : <div className="p-hint center">{fw.block ? `${fw.block.key}. No day-by-day sessions this far out yet.` : "No plan this week."}</div>}
+
+      <Section title="Plan check">
+        <div className="p-coach">
+          <PlanCoach plan={plan} monday={monday} compact />
+        </div>
+      </Section>
 
       <Section title="The week">
         {fw.days.map((d) => {
