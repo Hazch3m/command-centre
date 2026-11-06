@@ -658,7 +658,8 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
     });
     // Hill sprints (if you want them): short and fast on an easy day in base and build weeks.
     if (T.hillSprints && (b.phase === "base" || b.phase === "build") && !b.cut) {
-      const d = [q2, q1].find((x) => x && !s[x] && !raceDays.has(x) && !near(x) && run.includes(x));
+      const afterLong = longAt ? WEEK_KEYS[(IDX(longAt) + 1) % 7] : null;
+      const d = [q2, q1, ...run].find((x) => x && !s[x] && x !== afterLong && !raceDays.has(x) && !near(x) && run.includes(x));
       if (d) {
         const k = r1(Math.max(8, Math.min(14, km * 0.14)));
         s[d] = `${k} km easy + 8 × 10 s hill sprints`;
