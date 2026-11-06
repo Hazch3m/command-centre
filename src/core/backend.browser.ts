@@ -131,6 +131,9 @@ export const backend: Backend = {
   appVersion: async () => "dev",
 
   readDataFile: async (name) => localStorage.getItem("cc-file:" + name),
+  openAccountSignIn: async (service, session) => {
+    window.open(`${service}/api/auth/apple/web/start?session=${session}`, "_blank");
+  },
   openGarminActivity: async (id) => {
     window.open(`https://connect.garmin.com/modern/activity/${encodeURIComponent(id)}`, "_blank");
   },

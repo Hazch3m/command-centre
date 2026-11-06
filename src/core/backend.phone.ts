@@ -211,6 +211,21 @@ export async function connectGarmin(): Promise<void> {
   const r = await api("/garmin/connect", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ticket }) }, 60_000);
   if (!r.ok) throw new Error(await errorOf(r));
 }
+/** Google (Calendar) for this account: Google's page in Apple's sign-in sheet; the service keeps the sign-in. */
+export async function connectGoogle(): Promise<string> {
+  if (!link?.account) throw new Error("Sign in first.");
+  const r = await api("/google/begin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ from: "app" }) });
+  if (!r.ok) throw new Error(await errorOf(r));
+  const { url } = (await r.json()) as { url: string };
+  const done = new URL((await native().openAuth({ url, scheme: "commandcentre" })).url);
+  if (done.searchParams.get("ok") !== "1") throw new Error(done.searchParams.get("msg") ?? "Google sign-in didn't finish.");
+  return done.searchParams.get("msg") ?? "Google connected";
+}
+export async function disconnectGoogle(): Promise<void> {
+  const r = await api("/google/disconnect", { method: "POST" });
+  if (!r.ok) throw new Error(await errorOf(r));
+}
+
 export async function disconnectGarmin(): Promise<void> {
   const r = await api("/garmin/disconnect", { method: "POST" });
   if (!r.ok) throw new Error(await errorOf(r));
@@ -500,6 +515,9 @@ export const backend: Backend = {
   appVersion: async () => "phone",
 
   readDataFile: async (name) => header?.files[name] ?? null,
+  openAccountSignIn: async (service, session) => {
+    window.open(`${service}/api/auth/apple/web/start?session=${session}`, "_blank");
+  },
   openGarminActivity: async (id) => {
     window.open(`https://connect.garmin.com/modern/activity/${encodeURIComponent(id)}`, "_blank");
   },

@@ -57,10 +57,18 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         run: |
           npm install --no-audit --no-fund
           set -o pipefail
           npx wrangler deploy 2>&1 | tee deploy.log
+          # Google sign-in for accounts (a "Web application" OAuth client), when its secrets are set.
+          if [ -n "$GOOGLE_CLIENT_ID" ] && [ -n "$GOOGLE_CLIENT_SECRET" ]; then
+            printf '%s' "$GOOGLE_CLIENT_ID" | npx wrangler secret put GOOGLE_CLIENT_ID >/dev/null
+            printf '%s' "$GOOGLE_CLIENT_SECRET" | npx wrangler secret put GOOGLE_CLIENT_SECRET >/dev/null
+            echo "Google sign-in configured"
+          fi
           url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' deploy.log | head -1)
           echo "::notice title=Sync service address::${url:-see the deploy log}"
           # A whole account sync, run on Cloudflare itself (SQLite, tables, encryption, a phone change).

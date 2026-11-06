@@ -114,6 +114,16 @@ fn open_garmin_activity(app: AppHandle, id: String) -> Result<(), String> {
     app.opener().open_url(format!("https://connect.garmin.com/modern/activity/{id}"), None::<&str>).map_err(|e| e.to_string())
 }
 
+/// Opens Sign in with Apple for the account in the browser: only the sync service's own start page.
+#[tauri::command]
+fn open_account_sign_in(app: AppHandle, service: String, session: String) -> Result<(), String> {
+    let ok_service = service.starts_with("https://") && service.ends_with(".workers.dev") && service[8..].chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-');
+    if !ok_service || session.len() != 64 || !session.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err("Not a sign-in address".into());
+    }
+    app.opener().open_url(format!("{service}/api/auth/apple/web/start?session={session}"), None::<&str>).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn get_config(store: tauri::State<ConfigStore>) -> AppConfig {
     store.get()
@@ -225,6 +235,7 @@ pub fn run() {
             read_data_file,
             open_strava_activity,
             open_garmin_activity,
+            open_account_sign_in,
             write_data_file,
             oauth::oauth_status,
             oauth::oauth_set_client,

@@ -1,3 +1,4 @@
+import { shareSignInsWithAccount } from "../core/phoneSync";
 import { useEffect, useState } from "react";
 import { backend } from "@backend";
 import type { OAuthStatus, Provider } from "../core/backend.types";
@@ -63,7 +64,7 @@ function Connection({ p }: { p: Provider }) {
               </button>
             </>
           ) : status?.configured ? (
-            <button className="btn btn-primary" disabled={!!busy} onClick={() => run("connect", () => backend.oauthConnect(p), `${info.name} connected.`)}>
+            <button className="btn btn-primary" disabled={!!busy} onClick={() => run("connect", async () => (await backend.oauthConnect(p), await shareSignInsWithAccount().catch(() => {})), `${info.name} connected.`)}>
               {busy === "connect" ? "Waiting for your browser…" : "Connect"}
             </button>
           ) : null}

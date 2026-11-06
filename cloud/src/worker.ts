@@ -45,7 +45,19 @@ interface Env {
   ASSETS: Fetcher;
   /** Set only for a moment by the "Reset sync service" workflow (Actions), to wipe a service nobody can reach any more. */
   RESET_KEY?: string;
+  /** Google sign-in for accounts (a "Web application" OAuth client), set from GitHub secrets on deploy. */
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
 }
+
+/** Sign in with Apple on the web (the PC): the Services ID set up for it in the Apple developer account. */
+const APPLE_WEB_ID = "com.hazch3m.commandcentre.web";
+const GOOGLE_SCOPES = "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/tasks";
+const page = (title: string, text: string, status = 200) =>
+  new Response(
+    `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><body style="font:17px -apple-system,system-ui,sans-serif;background:#252a31;color:#e8eaed;display:grid;place-items:center;min-height:90vh;text-align:center;padding:1rem"><div><h2>${title}</h2><p>${text}</p></div></body>`,
+    { status, headers: { "content-type": "text/html; charset=utf-8" } },
+  );
 
 const CHUNK = 1_500_000; // under the 2 MB per-value limit
 const MAX_SNAPSHOT = 60_000_000;
@@ -261,6 +273,46 @@ export class Store extends DurableObject<Env> {
         this.sql.exec("INSERT OR REPLACE INTO dir (h, account, expires) VALUES (?, ?, ?)", String(body.h), String(body.account), Date.now() + PAIR_TTL);
         return json({ ok: true });
       }
+      if (path === "/internal/session/put") {
+        // Sign in with Apple on the PC: the result waits here (5 minutes) for the PC to collect it once.
+        this.sql.exec("DELETE FROM dir WHERE expires < ?", Date.now());
+        this.sql.exec("INSERT OR REPLACE INTO dir (h, account, expires) VALUES (?, ?, ?)", "s:" + String(body.session), JSON.stringify(body.result), Date.now() + 5 * 60_000);
+        return json({ ok: true });
+      }
+      if (path === "/internal/session/take") {
+        const key = "s:" + String(body.session);
+        const row = this.sql.exec<{ account: string; expires: number }>("SELECT account, expires FROM dir WHERE h = ?", key).toArray()[0];
+        if (!row || row.expires < Date.now()) return err(404, "not yet");
+        this.sql.exec("DELETE FROM dir WHERE h = ?", key);
+        return new Response(row.account, { headers: { "content-type": "application/json", ...CORS } });
+      }
+      if (path === "/internal/google/finish") {
+        // Google's sign-in came back for this account: swap the code for tokens and keep them for calendar sync.
+        const want = this.get("googleState") ?? "";
+        this.set("googleState", "");
+        if (!want || want !== body.state || Number(this.get("googleStateAt") ?? 0) < Date.now() - 15 * 60_000) return err(400, "This sign-in has expired. Start it again in the app.");
+        const env = this.env as Env;
+        const r = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ code: String(body.code), client_id: env.GOOGLE_CLIENT_ID!, client_secret: env.GOOGLE_CLIENT_SECRET!, redirect_uri: String(body.redirect), grant_type: "authorization_code" }),
+        });
+        const t = (await r.json().catch(() => ({}))) as { access_token?: string; refresh_token?: string; expires_in?: number; id_token?: string; error_description?: string };
+        if (!t.access_token) return err(502, `Google didn't finish the sign-in: ${t.error_description ?? r.status}`);
+        let email: string | null = null;
+        try {
+          email = JSON.parse(atob(String(t.id_token).split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).email ?? null;
+        } catch {
+          /* no email: fine */
+        }
+        const c = this.creds();
+        if (!c) return err(409, "Account not found.");
+        const google = { client: { id: env.GOOGLE_CLIENT_ID!, secret: env.GOOGLE_CLIENT_SECRET! }, token: { access_token: t.access_token, refresh_token: t.refresh_token ?? c.google?.token.refresh_token ?? null, expires_at: Math.floor(Date.now() / 1000) + (t.expires_in ?? 3600), account: email } };
+        this.set("creds", JSON.stringify({ ...c, google } satisfies Creds));
+        this.set("cloudCalAt", "0");
+        await this.ctx.storage.setAlarm(Date.now() + 1000);
+        return json({ ok: true, email });
+      }
       if (path === "/internal/dir/get") {
         const now = Date.now();
         this.sql.exec("DELETE FROM fails WHERE at < ?", now - PAIR_TTL);
@@ -369,6 +421,27 @@ export class Store extends DurableObject<Env> {
       await this.ctx.storage.setAlarm(Date.now() + 1000);
       return json({ ok: true });
     }
+    if (path === "/google/begin" && m === "POST") {
+      // Starts Google sign-in for this account (Calendar): returns the address of Google's page.
+      const env = this.env as Env;
+      if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) return err(501, "Google sign-in isn't set up on the sync service yet (add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to the GitHub secrets).");
+      const account = this.get("account");
+      if (!account) return err(409, "Only for accounts.");
+      const { from } = (await req.json().catch(() => ({}))) as { from?: string };
+      const state = [...crypto.getRandomValues(new Uint8Array(24))].map((x) => x.toString(16).padStart(2, "0")).join("");
+      this.set("googleState", state);
+      this.set("googleStateAt", String(Date.now()));
+      const redirect = `${url.origin}/api/oauth/google/callback`;
+      const u = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+      for (const [k, v] of Object.entries({ client_id: env.GOOGLE_CLIENT_ID, redirect_uri: redirect, response_type: "code", scope: `openid email ${GOOGLE_SCOPES}`, access_type: "offline", prompt: "consent", include_granted_scopes: "true", state: `${account}.${state}.${from === "app" ? "app" : "web"}` })) u.searchParams.set(k, v);
+      return json({ url: u.toString() });
+    }
+    if (path === "/google/disconnect" && m === "POST") {
+      const c = this.creds();
+      if (c) this.set("creds", JSON.stringify({ ...c, google: null } satisfies Creds));
+      return json({ ok: true });
+    }
+
     if (path === "/garmin/disconnect" && m === "POST") {
       const c = this.creds();
       if (c) this.set("creds", JSON.stringify({ ...c, garmin: null } satisfies Creds));
@@ -387,13 +460,17 @@ export class Store extends DurableObject<Env> {
     }
 
     if (path === "/cloud/enable" && m === "POST") {
-      const c = (await req.json()) as Creds;
+      const c = (await req.json()) as Creds & { fresh?: boolean };
       if (!c?.secret || typeof c.secret !== "string") return err(400, "bad credentials");
       if (this.isAccount()) {
         // A PC joining an account: its sign-ins are added to the account's (a Garmin one signed in on the phone stays).
         const have = this.creds();
         if (have && c.secret !== have.secret) return err(403, "That isn't this account's link.");
-        this.set("creds", JSON.stringify({ secret: have?.secret ?? c.secret, garmin: have?.garmin ?? c.garmin ?? null, google: c.google ?? have?.google ?? null, ics: Array.isArray(c.ics) && c.ics.length ? c.ics : (have?.ics ?? []) } satisfies Creds));
+        // A sign-in just made on the PC ("fresh") replaces the account's; when joining, the account's (maybe
+        // newer, signed in on the phone) is kept and the PC's only fills a gap. Garmin's tokens rotate, so an
+        // older copy may no longer work.
+        const pick = <T,>(mine: T | null | undefined, theirs: T | null | undefined) => (c.fresh ? (theirs ?? mine) : (mine ?? theirs)) ?? null;
+        this.set("creds", JSON.stringify({ secret: have?.secret ?? c.secret, garmin: pick(have?.garmin, c.garmin), google: pick(have?.google, c.google), ics: Array.isArray(c.ics) && c.ics.length ? c.ics : (have?.ics ?? []) } satisfies Creds));
         this.set("pcLinked", "1");
         this.set("cloudCalAt", "0");
         await this.ctx.storage.setAlarm(Date.now() + 1000);
@@ -577,6 +654,48 @@ export default {
         }
         const account = await sha256hex("cc-apple:" + who.sub);
         return store("acct:" + account).fetch("https://cc/internal/login", { method: "POST", body: JSON.stringify({ account, sub: who.sub }) });
+      }
+
+      if (url.pathname === "/api/oauth/google/callback" && req.method === "GET") {
+        // Google's sign-in comes back here, then on to the app (or a page saying you can close the browser).
+        const [account, state, from] = (url.searchParams.get("state") ?? "").split(".");
+        const done = (ok: boolean, msg: string) =>
+          from === "app" ? Response.redirect(`commandcentre://auth-done?ok=${ok ? 1 : 0}&msg=${encodeURIComponent(msg)}`, 302) : page(ok ? "Google connected" : "Google sign-in didn't finish", ok ? "Your calendar now syncs to Command Centre. You can close this tab." : msg, ok ? 200 : 400);
+        if (url.searchParams.get("error")) return done(false, `Google said: ${url.searchParams.get("error")}`);
+        if (!/^[0-9a-f]{64}$/.test(account ?? "") || !state) return done(false, "This sign-in link is broken. Start it again.");
+        const r = await store("acct:" + account).fetch("https://cc/internal/google/finish", { method: "POST", body: JSON.stringify({ state, code: url.searchParams.get("code"), redirect: `${url.origin}/api/oauth/google/callback` }) });
+        const j = (await r.json().catch(() => ({}))) as { error?: string; email?: string };
+        return done(r.ok, r.ok ? `Connected${j.email ? ` as ${j.email}` : ""}` : (j.error ?? "Google sign-in failed"));
+      }
+
+      if (url.pathname === "/api/auth/apple/web/start" && req.method === "GET") {
+        // Sign in with Apple on the PC: the PC opens this in the browser with a one-time session id, then collects the result.
+        const session = url.searchParams.get("session") ?? "";
+        if (!/^[0-9a-f]{64}$/.test(session)) return page("Sign-in link is broken", "Start again from Command Centre on your PC.", 400);
+        const u = new URL("https://appleid.apple.com/auth/authorize");
+        for (const [k, v] of Object.entries({ client_id: APPLE_WEB_ID, redirect_uri: `${url.origin}/api/auth/apple/web`, response_type: "code id_token", response_mode: "form_post", scope: "email", state: session, nonce: await sha256hex(session) })) u.searchParams.set(k, v);
+        return Response.redirect(u.toString(), 302);
+      }
+      if (url.pathname === "/api/auth/apple/web" && req.method === "POST") {
+        const f = await req.formData().catch(() => null);
+        const session = String(f?.get("state") ?? "");
+        if (!/^[0-9a-f]{64}$/.test(session)) return page("Sign-in didn't finish", "Start again from Command Centre on your PC.", 400);
+        if (f?.get("error")) return page("Sign-in cancelled", "You can close this tab.", 400);
+        let who: Awaited<ReturnType<typeof verifyAppleToken>>;
+        try {
+          who = await verifyAppleToken(String(f?.get("id_token") ?? ""), session, APPLE_WEB_ID);
+        } catch (e) {
+          return page("Sign in with Apple didn't work", (e as Error).message, 401);
+        }
+        const account = await sha256hex("cc-apple:" + who.sub);
+        const result = await (await store("acct:" + account).fetch("https://cc/internal/login", { method: "POST", body: JSON.stringify({ account, sub: who.sub }) })).json();
+        await store("directory").fetch("https://cc/internal/session/put", { method: "POST", body: JSON.stringify({ session, result }) });
+        return page("Signed in", "Go back to Command Centre on your PC: it finishes setting up by itself. You can close this tab.");
+      }
+      if (url.pathname === "/api/auth/session" && req.method === "GET") {
+        const session = url.searchParams.get("id") ?? "";
+        if (!/^[0-9a-f]{64}$/.test(session)) return err(400, "bad session");
+        return store("directory").fetch("https://cc/internal/session/take", { method: "POST", body: JSON.stringify({ session }) });
       }
 
       if (url.pathname === "/api/link/redeem" && req.method === "POST") {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { notifyChanged } from "../core/events";
-import { accountInfo, cloudRun, connectGarmin, deleteAccount, disconnectGarmin, hasAccount, makeComputerCode, phoneState, refresh, unpair, type AccountInfo } from "../core/backend.phone";
+import { accountInfo, cloudRun, connectGarmin, connectGoogle, disconnectGoogle, deleteAccount, disconnectGarmin, hasAccount, makeComputerCode, phoneState, refresh, unpair, type AccountInfo } from "../core/backend.phone";
 import { isEmptyPlan } from "../core/account";
 import { cancelled } from "../core/native";
 import { showCode } from "../core/sync";
@@ -66,8 +66,34 @@ export function AccountSection() {
       </div>
       <div className="p-row">
         <span className="p-row-main">
+          <span className="p-row-title">Google Calendar</span>
+          <span className="p-row-sub">{info?.google ? "Connected · your events and tasks sync every hour" : "Your events in the Planner and on Today"}</span>
+        </span>
+        {info?.google ? (
+          <button className="p-link" disabled={!!busy} onClick={() => act("google", async () => (await disconnectGoogle(), "Google disconnected."))}>
+            Disconnect
+          </button>
+        ) : (
+          <button
+            className="p-pill"
+            disabled={!!busy}
+            onClick={() =>
+              act("google", async () => {
+                const m = await connectGoogle();
+                await cloudRun().catch(() => null);
+                if (await refresh()) await notifyChanged("*");
+                return `${m}. Your calendar is syncing.`;
+              })
+            }
+          >
+            {busy === "google" ? "Connecting…" : "Connect"}
+          </button>
+        )}
+      </div>
+      <div className="p-row">
+        <span className="p-row-main">
           <span className="p-row-title">Command Centre on a PC</span>
-          <span className="p-row-sub">{code ? `Enter ${showCode(code.code)} on the PC (Settings → Phone & cloud → Join your account). Valid 15 minutes.` : info?.pc ? "A PC is linked and stays in step" : "Optional: the desktop dashboard, synced with this account"}</span>
+          <span className="p-row-sub">{code ? `On the PC: Settings → Phone & cloud → Sign in with Apple, or enter ${showCode(code.code)} there (valid 15 minutes).` : info?.pc ? "A PC is linked and stays in step" : "Optional: the desktop dashboard, synced with this account"}</span>
         </span>
         <button className="p-link" disabled={!!busy} onClick={() => act("code", async () => setCode(await makeComputerCode()))}>
           {code ? "New code" : "Link a PC"}

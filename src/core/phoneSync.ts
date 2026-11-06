@@ -112,6 +112,50 @@ export async function joinAccount(url: string, code: string): Promise<void> {
   } catch {
     throw new Error("That code didn't unlock the account. Check it, or make a new one on the phone.");
   }
+  await finishJoin(u, secret, account);
+}
+
+/**
+ * Sign in with Apple on the PC: opens Apple's page in the browser, then collects the
+ * result from the sync service (it holds it a few minutes for this session only).
+ */
+export async function signInWithAppleOnPc(url?: string, onWait?: (s: string) => void): Promise<void> {
+  const u = base(url || ACCOUNT_SERVICE);
+  const session = [...crypto.getRandomValues(new Uint8Array(32))].map((x) => x.toString(16).padStart(2, "0")).join("");
+  await backend.openAccountSignIn(u, session);
+  onWait?.("Finish signing in with Apple in your browser…");
+  for (const until = Date.now() + 5 * 60_000; Date.now() < until; ) {
+    await new Promise((r) => window.setTimeout(r, 2500));
+    const r = await fetch(`${u}/api/auth/session?id=${session}`).catch(() => null);
+    if (!r || r.status === 404) continue;
+    const j = (await r.json().catch(() => ({}))) as { account?: string; secret?: string; error?: string };
+    if (!r.ok || !j.account || !j.secret) throw new Error(j.error ?? `The sync service answered ${r.status}`);
+    onWait?.("Signed in: sending this PC's data to your account…");
+    return finishJoin(u, j.secret, j.account);
+  }
+  throw new Error("Sign-in timed out. Try again.");
+}
+
+/** Hands this PC's current Garmin and Google sign-ins to the account (after connecting one here). */
+export async function shareSignInsWithAccount(): Promise<void> {
+  const c = await current();
+  if (!c?.link.account) return;
+  const creds = await backend.cloudCredentials().catch(() => ({ garmin: null, google: null, ics: [] }));
+  await call(c.link, c.keys, "/cloud/enable", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ secret: c.link.secret, ...creds, fresh: true }) });
+}
+
+export interface AccountStatus {
+  garmin: boolean;
+  google: boolean;
+  last: { ranAt: string; errors: Record<string, string | null> } | null;
+}
+export async function accountStatus(): Promise<AccountStatus | null> {
+  const c = await current();
+  if (!c?.link.account) return null;
+  return (await (await call(c.link, c.keys, "/account")).json()) as AccountStatus;
+}
+
+async function finishJoin(u: string, secret: string, account: string): Promise<void> {
   await backend.phoneLinkSet({ url: u, secret, account });
   cached = null;
   // Nothing from the account applied here yet: its phone changes and Garmin data come in on the next pulls.

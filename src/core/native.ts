@@ -6,6 +6,8 @@
 interface CCNative {
   signInWithApple(o: { nonce: string }): Promise<{ identityToken: string; email?: string | null; name?: string | null }>;
   garminLogin(o: { url: string }): Promise<{ ticket: string }>;
+  /** Apple's secure sign-in sheet (Google won't sign in inside an app's own web view); resolves with the commandcentre:// address it ends on. */
+  openAuth(o: { url: string; scheme?: string }): Promise<{ url: string }>;
 }
 type Cap = {
   isNativePlatform?: () => boolean;
@@ -26,7 +28,7 @@ export function native(): CCNative {
   const c = cap();
   if (c?.nativePromise) {
     const call = <T,>(method: string) => (o: unknown) => c.nativePromise!<T>("CCNative", method, o);
-    plugin = { signInWithApple: call("signInWithApple"), garminLogin: call("garminLogin") } as CCNative;
+    plugin = { signInWithApple: call("signInWithApple"), garminLogin: call("garminLogin"), openAuth: call("openAuth") } as CCNative;
   } else if (c?.registerPlugin) plugin = c.registerPlugin<CCNative>("CCNative");
   else throw new Error(isNativeApp() ? "This version of the app can't do this yet: update Command Centre in TestFlight." : "This needs the Command Centre iPhone app.");
   return plugin;

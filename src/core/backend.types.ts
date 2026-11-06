@@ -76,6 +76,8 @@ export interface Backend {
   openStravaActivity(id: string): Promise<void>;
   /** Opens a run in Garmin Connect (numeric activity id). */
   openGarminActivity(id: string): Promise<void>;
+  /** Opens Sign in with Apple (for the account) in the browser: the sync service's start page with a one-time session. */
+  openAccountSignIn(service: string, session: string): Promise<void>;
   writeDataFile(name: string, contents: string): Promise<void>;
 
   // Sign-in and authenticated API calls (tokens stay in the OS keychain).

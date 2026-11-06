@@ -1,3 +1,4 @@
+import { shareSignInsWithAccount } from "../../core/phoneSync";
 import { onPhone } from "../../core/platform";
 import { useEffect, useState } from "react";
 import { backend } from "@backend";
@@ -165,6 +166,7 @@ function Connect() {
           setErr(null);
           try {
             await backend.garminConnect();
+            await shareSignInsWithAccount().catch(() => {});
             await syncHealth();
           } catch (e) {
             setErr(String((e as Error)?.message ?? e));
@@ -454,6 +456,7 @@ export function GarminSetting() {
               setErr(null);
               try {
                 await backend.garminConnect();
+            await shareSignInsWithAccount().catch(() => {});
                 setTick((t) => t + 1);
                 await syncHealth();
               } catch (e) {

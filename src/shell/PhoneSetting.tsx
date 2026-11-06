@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { backend } from "@backend";
 import qrcode from "qr-lib";
-import { ACCOUNT_SERVICE, cloudDisable, cloudEnable, cloudRunNow, cloudStatus, connectService, disconnectService, getPhoneStatus, joinAccount, makePairCode, pullCloudChanges, pullPhoneChanges, pushSnapshot, unlinkPhones, type CloudStatus, type PhoneStatus } from "../core/phoneSync";
+import { accountStatus, signInWithAppleOnPc, type AccountStatus, ACCOUNT_SERVICE, cloudDisable, cloudEnable, cloudRunNow, cloudStatus, connectService, disconnectService, getPhoneStatus, joinAccount, makePairCode, pullCloudChanges, pullPhoneChanges, pushSnapshot, unlinkPhones, type CloudStatus, type PhoneStatus } from "../core/phoneSync";
 import { cleanCode, showCode } from "../core/sync";
 import { ErrorNote } from "./ui";
 
@@ -79,6 +79,7 @@ export function PhoneSetting() {
           <b>Your account</b>
           <span className="pill small on">Signed in on the iPhone app</span>
         </div>
+        <AccountLine tick={tick} busy={busy} />
         <p className="muted small">
           This PC is part of the account you signed in to on the Command Centre iPhone app. The account syncs Garmin in the cloud every 15 minutes, PC on or off; changes here and on
           the phone reach both. Sent {ago(status?.lastPush ?? null)} · phone changes checked {ago(status?.lastPull ?? null)}.
@@ -228,13 +229,41 @@ function CloudSync({ on, busy, run, tick }: { on: boolean; busy: boolean; run: (
 }
 
 /** Join the account signed in on the iPhone app, with the code it shows. */
+function AccountLine({ tick, busy }: { tick: number; busy: boolean }) {
+  const [st, setSt] = useState<AccountStatus | null>(null);
+  useEffect(() => {
+    accountStatus().then(setSt, () => setSt(null));
+  }, [tick, busy]);
+  if (!st) return null;
+  const problems = Object.entries(st.last?.errors ?? {}).filter(([, v]) => v);
+  return (
+    <div className="small">
+      In the account: Garmin {st.garmin ? "connected" : "not connected"} · Google Calendar {st.google ? "connected" : "not connected"}
+      {st.last ? ` · last synced ${new Date(st.last.ranAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : ""}. Connecting either here (Settings → Accounts) also updates the account.
+      {problems.map(([k, v]) => (
+        <div key={k} className="error-note small">
+          {k}: {v}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function JoinAccount({ busy, run, defaultUrl, replacing }: { busy: boolean; run: (fn: () => Promise<unknown>) => void; defaultUrl: string; replacing: boolean }) {
   const [code, setCode] = useState("");
+  const [wait, setWait] = useState<string | null>(null);
   return (
     <div className="cloud-sync join-account">
       <div className="cloud-sync-head">
-        <b>Join your account from the iPhone app</b>
+        <b>Your Command Centre account</b>
       </div>
+      <div className="inline">
+        <button className="btn btn-primary" disabled={busy} onClick={() => run(async () => (await signInWithAppleOnPc(defaultUrl, setWait), setWait(null)))}>
+          {busy && wait ? "Signing in…" : "Sign in with Apple"}
+        </button>
+        {wait && <span className="muted small">{wait}</span>}
+      </div>
+      <p className="muted small">Or join with a code from the iPhone app:</p>
       <p className="muted small">
         In the app: More → Account → Link a PC, then enter the code here. This PC's data (plan, runs, tasks, habits) goes into the account
         {replacing ? " and this PC switches from its own sync link to the account; the old phone link stops updating" : ""}. Garmin is then synced by the account in the cloud.

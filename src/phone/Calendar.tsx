@@ -82,7 +82,7 @@ export function Calendar() {
       ))}
       <p className="p-hint center">
         {hasAccount() && !phoneState.header?.connected.google
-          ? "Your Google calendar shows here once a PC linked to your account has it connected (Settings → Accounts on the PC); your plan's sessions are on the Plan tab."
+          ? "Connect Google Calendar in Settings (the gear, top left) to see your events here; your plan's sessions are on the Plan tab."
           : "Add or change events on the PC (Calendar tab); they show here after the next sync."}
       </p>
     </div>

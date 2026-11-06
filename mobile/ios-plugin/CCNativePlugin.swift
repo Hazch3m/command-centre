@@ -10,12 +10,13 @@ import WebKit
 /// - garminLogin: Garmin's real sign-in page in its own window; returns the one-time ticket Garmin gives
 ///   at the end (the password never touches the app).
 @objc(CCNativePlugin)
-public class CCNativePlugin: CAPPlugin, CAPBridgedPlugin, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+public class CCNativePlugin: CAPPlugin, CAPBridgedPlugin, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding, ASWebAuthenticationPresentationContextProviding {
     public let identifier = "CCNativePlugin"
     public let jsName = "CCNative"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "signInWithApple", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "garminLogin", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "openAuth", returnType: CAPPluginReturnPromise),
     ]
     private var appleCall: CAPPluginCall?
     private var appleController: ASAuthorizationController?
@@ -65,6 +66,37 @@ public class CCNativePlugin: CAPPlugin, CAPBridgedPlugin, ASAuthorizationControl
             appleCall?.reject(error.localizedDescription)
         }
         appleCall = nil
+    }
+
+    // MARK: Other sign-ins (Google): Apple's secure sign-in sheet, which Google allows (embedded web views it blocks)
+
+    private var authSession: ASWebAuthenticationSession?
+
+    @objc func openAuth(_ call: CAPPluginCall) {
+        guard let s = call.getString("url"), let url = URL(string: s), url.scheme == "https" else {
+            call.reject("bad url")
+            return
+        }
+        let scheme = call.getString("scheme") ?? "commandcentre"
+        DispatchQueue.main.async {
+            let session = ASWebAuthenticationSession(url: url, callbackURLScheme: scheme) { callback, error in
+                self.authSession = nil
+                if let callback = callback {
+                    call.resolve(["url": callback.absoluteString])
+                } else if let e = error as? ASWebAuthenticationSessionError, e.code == .canceledLogin {
+                    call.reject("cancelled", "CANCELLED")
+                } else {
+                    call.reject(error?.localizedDescription ?? "Sign-in didn't finish")
+                }
+            }
+            session.presentationContextProvider = self
+            self.authSession = session
+            session.start()
+        }
+    }
+
+    public func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        return bridge?.viewController?.view.window ?? ASPresentationAnchor()
     }
 
     // MARK: Garmin sign-in
