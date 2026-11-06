@@ -4808,3 +4808,24 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
+
+/* Race-practice and fast-finish sessions */
+.practice-tag {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--accent);
+  font-size: 0.72em;
+  font-weight: 650;
+  white-space: nowrap;
+  vertical-align: 0.1em;
+}
+.practice-tag.ff {
+  background: color-mix(in srgb, var(--warn) 20%, transparent);
+  color: var(--warn);
+}
+.pb-days span:has(.practice-tag) {
+  box-shadow: inset 3px 0 0 var(--accent);
+}

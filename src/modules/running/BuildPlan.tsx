@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { addDays, diffDays, parseKey, useToday } from "../../core/time";
 import { BarChart } from "../../shell/charts";
 import { ErrorNote } from "../../shell/ui";
-import { marathonShape, useFitness } from "./fitness";
+import { fitnessConfigChanged, loadFitnessConfig, marathonShape, saveFitnessConfig, useFitness } from "./fitness";
 import { plannedRuns } from "./FitnessPlan";
 import { raceKm } from "./forecast";
 import { mondayOf, priorityOf, restorePreviousPlan, savePlan, WEEK_KEYS, type Plan, type PlanRace } from "./plan";
@@ -10,6 +10,8 @@ import { buildPlan, DEFAULT_WEEKS, DIST_LABEL, GOALS, LEVELS, MAX_WEEKS, pacesFo
 import { raceReadiness } from "./readiness";
 import { ReadinessView, useReadinessInputs } from "./ReadinessCard";
 import { useRunningData } from "./useRunning";
+import { predictTime } from "./vo2";
+import { PracticeTag } from "./PracticeTag";
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const fmt = (d: string) => `${parseKey(d).getDate()} ${MON[parseKey(d).getMonth()]}`;
@@ -52,7 +54,7 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
   const base: Plan = useMemo(() => ({ ...plan, weeks: plan.baseWeeks ?? plan.weeks, baseWeeks: undefined, adjust: null }), [plan]);
   const firstMonday = mondayOf(today) < today ? addDays(mondayOf(today), 7) : mondayOf(today);
   // Paces start from your fitness now: current form, or your best race of the last year if that's higher.
-  const fitNow = f ? Math.max(f.current ?? 0, f.predictionBasis?.vdot ?? 0) || null : null;
+  const fitNow = f ? (f.predictionBasis?.source === "manual" ? f.predictionBasis.vdot : Math.max(f.current ?? 0, f.predictionBasis?.vdot ?? 0) || null) : null;
   const history = useMemo(() => summarizeHistory(runs, today, fitNow), [runs, today, fitNow]);
   // A plan that starts later builds on the weeks of your current plan before it: your training as it will be then.
   const atStartFor = useMemo(() => {
@@ -329,9 +331,15 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
             <div>
               <span className="label">Fitness</span>
               <b className="num">{history.vdot != null ? `VDOT ${history.vdot.toFixed(1)}` : "–"}</b>
-              {history.vdot != null && <small className="muted">marathon pace ≈ {pace(pacesFor(history.vdot).mp)}/km</small>}
+              {history.vdot != null && (
+                <small className="muted">
+                  marathon ≈ {fmtHms(predictTime(42195, history.vdot))} ({pace(pacesFor(history.vdot).mp)}/km)
+                  {f?.predictionBasis?.race ? ` · from ${f.predictionBasis.source === "manual" ? "your entry" : f.predictionBasis.race.name}, ${fmt(f.predictionBasis.race.date)}` : " · from your training"}
+                </small>
+              )}
             </div>
           </div>
+          <FitnessFrom />
           <div className="pb-rec">
             <div>
               <b>
@@ -538,6 +546,7 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
                       <span key={k} className={/rest/i.test(w.sessions[k] ?? "Rest") ? "rest" : /\bwith\b|sprints|long run|MP/.test(w.sessions[k] ?? "") ? "hard" : ""}>
                         <i>{DAY_SHORT[i]}</i>
                         {w.sessions[k]}
+                        <PracticeTag text={w.sessions[k] ?? ""} />
                       </span>
                     ))}
                   </div>
@@ -707,5 +716,82 @@ function FineTune({ o, h, onChange }: { o: BuildOptions; h: History; onChange: (
         </button>
       )}
     </details>
+  );
+}
+
+const fmtHms = (sec: number) => {
+  const t = Math.round(sec);
+  return `${Math.floor(t / 3600)}:${String(Math.floor((t % 3600) / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+};
+
+/** "That's not my fitness": set it from a race result (or clear one you set). Paces, predictions and the plan use it. */
+export function FitnessFrom() {
+  const today = useToday();
+  const [open, setOpen] = useState(false);
+  const [km, setKm] = useState(42.195);
+  const [time, setTime] = useState("");
+  const [date, setDate] = useState(today);
+  const [have, setHave] = useState<{ km: number; seconds: number; date: string } | null | undefined>(undefined);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    loadFitnessConfig().then((c) => setHave(c.manual ?? null));
+  }, [open]);
+  const secs = (() => {
+    const m = /^(?:(\d+):)?(\d{1,2}):(\d{2})$/.exec(time.trim());
+    return m ? (+(m[1] ?? 0) * 3600 + +m[2] * 60 + +m[3]) : null;
+  })();
+  const save = async (manual: { km: number; seconds: number; date: string; name?: string } | null) => {
+    setErr(null);
+    try {
+      const c = await loadFitnessConfig();
+      await saveFitnessConfig({ ...c, manual });
+      fitnessConfigChanged();
+      setHave(manual);
+      setOpen(false);
+    } catch (e) {
+      setErr(String((e as Error)?.message ?? e));
+    }
+  };
+  if (have === undefined) return null;
+  return (
+    <div className="fit-from">
+      {have ? (
+        <p className="ps-note">
+          Using your {have.km === 42.195 ? "marathon" : have.km === 21.0975 ? "half marathon" : `${have.km} km`} of {fmtHms(have.seconds)} ({fmt(have.date)}).{" "}
+          <button type="button" className="link-btn" onClick={() => save(null)}>
+            Work it out from my runs instead
+          </button>
+        </p>
+      ) : !open ? (
+        <button type="button" className="link-btn small" onClick={() => setOpen(true)}>
+          Not right? Set it from a race result
+        </button>
+      ) : null}
+      {open && (
+        <div className="pb-other">
+          <Chips value={km} options={[{ v: 5, l: "5k" }, { v: 10, l: "10k" }, { v: 21.0975, l: "Half" }, { v: 42.195, l: "Marathon" }]} onChange={setKm} />
+          <div className="pb-fields">
+            <label>
+              <span className="label">Time</span>
+              <input value={time} onChange={(e) => setTime(e.target.value)} placeholder={km > 40 ? "3:00:00" : km > 20 ? "1:25:00" : km > 9 ? "38:30" : "18:30"} inputMode="numeric" />
+            </label>
+            <label>
+              <span className="label">When</span>
+              <input type="date" value={date} max={today} onChange={(e) => e.target.value && setDate(e.target.value)} />
+            </label>
+          </div>
+          <div className="inline">
+            <button type="button" className="btn btn-primary" disabled={!secs} onClick={() => secs && save({ km, seconds: secs, date })}>
+              Use this result
+            </button>
+            <button type="button" className="btn ghost" onClick={() => setOpen(false)}>
+              Cancel
+            </button>
+          </div>
+          <p className="ps-note">Your paces, the plan and race predictions then come from this result for six months, or until you clear it.</p>
+          <ErrorNote error={err} />
+        </div>
+      )}
+    </div>
   );
 }

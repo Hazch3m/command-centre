@@ -13,6 +13,7 @@ import { TargetPrefs } from "../modules/running/TargetPrefs";
 import { AutoSyncSetting } from "../modules/watch/AutoSyncSetting";
 import { dayName, Section, usePhoneNav } from "./common";
 import { Session } from "./Today";
+import { PracticeTag } from "../modules/running/PracticeTag";
 import { isEmptyPlan } from "../core/account";
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -113,7 +114,10 @@ export function Training() {
             <button key={d.date} className={`p-row p-row-btn p-dayrow rt-${t}` + (d.date === sel ? " on" : "")} onClick={() => setSel(d.date)}>
               <span className="p-dayrow-dow">{dayName(d.date, today).replace(/ \d+ \w+$/, "")}</span>
               <span className="p-row-main">
-                <span className="p-row-title">{t === "rest" || !d.km ? "Rest" : d.text}</span>
+                <span className="p-row-title">
+                  {t === "rest" || !d.km ? "Rest" : d.text}
+                  {t !== "rest" && !!d.km && <PracticeTag text={d.text} />}
+                </span>
                 {d.runs.length > 0 && <span className="p-row-sub tone-accent">✓ {d.runs.map((r) => `${km(r.distance).toFixed(1)} km`).join(" + ")}</span>}
               </span>
               <span className="p-dayrow-km num">{d.km ? `${d.km}` : ""}</span>

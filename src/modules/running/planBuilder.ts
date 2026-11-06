@@ -636,7 +636,18 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
         s[longDay] = `${WARM + 5} km with 5 km time trial: 5 km at ${around(p.fivek)}`;
         sized[longDay] = WARM + 5;
       } else {
-        s[longDay] = longHard ? `${b.long} km long run, last ${withMp} at MP ${around(rp, 3)}` : `${b.long} km long run`;
+        let text = `${b.long} km long run`;
+        if (longHard) {
+          // Race practice: marathon pace inside the long run, as a finish or in blocks (they alternate).
+          const blocks = Math.max(2, Math.min(4, Math.round(withMp / 5)));
+          text = i % 4 === 1 && b.long >= 26 ? `${b.long} km long run with ${blocks} × 5 km at MP ${around(rp, 3)}, 4 min easy (race practice)` : `${b.long} km long run, last ${withMp} at MP ${around(rp, 3)} (race practice)`;
+        } else if (isRace && o.dist === "half" && b.phase === "specific" && !b.cut && alt && T.mpLong !== false) {
+          text = `${b.long} km long run, last ${r1(lerp(4, 8, t))} at HMP ${around(rp, 3)} (race practice)`;
+        } else if (isRace && b.phase === "build" && !b.cut && i % 2 === 0 && b.long >= 16 && T.mpLong !== false) {
+          // Build weeks: every other long run finishes a little quicker, to practise running strong when tired.
+          text = `${b.long} km long run, last ${r1(lerp(3, 5, t))} at ${around(o.dist === "marathon" ? rp + 8 : p.mp, 3)} (fast finish)`;
+        }
+        s[longDay] = text;
         sized[longDay] = b.long;
       }
     }
@@ -800,6 +811,13 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
 }
 
 /** VDOT points a build of n weeks can be expected to add (diminishing: a year adds less than twice a half-year). */
+/** Sessions that rehearse the race (race pace, race-practice long runs, time trials), for highlighting. */
+export function practiceOf(text: string): "Race practice" | "Fast finish" | null {
+  if (/race practice|time trial|\b(?:MP|HMP)\b/i.test(text)) return "Race practice";
+  if (/fast finish|progression run/i.test(text)) return "Fast finish";
+  return null;
+}
+
 export function expectedGain(weeks: number, level: Level): number {
   const cap = level === "beginner" ? 6 : level === "intermediate" ? 5 : 4.5;
   return cap * (1 - Math.exp(-weeks / 30));

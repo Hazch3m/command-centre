@@ -33,6 +33,8 @@ export interface FitnessConfig extends Vo2Config {
   displayScale?: "race" | "garmin";
   /** Max heart rate from your runs until you set your own (new accounts). */
   auto?: boolean;
+  /** A race result you entered: your fitness comes from it (for six months) instead of being worked out. */
+  manual?: { km: number; seconds: number; date: string; name?: string } | null;
 }
 
 /**
@@ -147,7 +149,7 @@ export interface Fitness {
   /** Runalyze-style marathon shape: is the training volume there for long races? */
   shape: MarathonShape | null;
   /** VDOT the predictions use: the better of current form and the best race in the last year. */
-  predictionBasis: { vdot: number; source: "form" | "race"; race?: { name: string; date: string; vdot: number } } | null;
+  predictionBasis: { vdot: number; source: "form" | "race" | "manual"; race?: { name: string; date: string; vdot: number } } | null;
   load: ReturnType<typeof loadRatio>;
   loadSeries: { date: string; acute: number; chronic: number }[];
   efficiency: { week: string; value: number | null }[];
@@ -369,9 +371,19 @@ export function computeFitness(
   ];
   // Race predictions: what you can run when rested and sharp. Training-run estimates dip
   // after a marathon or in a recovery block, so the best race in the last year sets a floor.
-  const bestRace = races.filter((r) => r.date >= addDays(today, -365)).sort((a, b) => b.vdot - a.vdot)[0];
-  const predictionBasis: Fitness["predictionBasis"] =
-    bestRace && (current == null || bestRace.vdot > current)
+  // Races, and any whole run at a race distance (a race named "Morning Run" still counts; a slow one can't raise the floor).
+  const STD = [5, 10, 21.0975, 42.195];
+  const asRaces = runs
+    .filter((r) => r.date >= addDays(today, -365) && r.elapsed_time > 0 && STD.some((d) => Math.abs(r.distance / 1000 - d) / d < 0.025))
+    .map((r) => {
+      const d = STD.find((x) => Math.abs(r.distance / 1000 - x) / x < 0.025)!;
+      return { date: r.date, name: r.name, vdot: vdot(d * 1000, r.elapsed_time) };
+    });
+  const bestRace = [...races.filter((r) => r.date >= addDays(today, -365)), ...asRaces].sort((a, b) => b.vdot - a.vdot)[0];
+  const man = config.manual && config.manual.date >= addDays(today, -183) && config.manual.km > 0 && config.manual.seconds > 0 ? config.manual : null;
+  const predictionBasis: Fitness["predictionBasis"] = man
+    ? { vdot: vdot(man.km * 1000, man.seconds), source: "manual", race: { name: man.name ?? `${man.km} km`, date: man.date, vdot: vdot(man.km * 1000, man.seconds) } }
+    : bestRace && (current == null || bestRace.vdot > current)
       ? { vdot: bestRace.vdot, source: "race", race: bestRace }
       : current != null
         ? { vdot: current, source: "form" }

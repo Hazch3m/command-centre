@@ -1,3 +1,4 @@
+import { PracticeTag } from "./PracticeTag";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { useDataVersion } from "../../core/events";
@@ -132,7 +133,10 @@ export function PlanWeekView({ plan, runs }: { plan: Plan; runs: Run[] }) {
               </span>
               {fw.week && t !== "rest" && <span className={`rt-pill rt-${t}`}>{RUN_TYPE_LABEL[t]}</span>}
               {d.km ? <span className="pwv-km-big num">{d.km}<small> km</small></span> : <span className="pwv-km-big muted">{t === "rest" ? "Rest" : ""}</span>}
-              <span className="pwv-text">{d.race ? `${d.race.name}${d.race.target ? ` · ${d.race.target}` : ""}` : t === "rest" ? "" : d.text}</span>
+              <span className="pwv-text">
+                {d.race ? `${d.race.name}${d.race.target ? ` · ${d.race.target}` : ""}` : t === "rest" ? "" : d.text}
+                {!d.race && t !== "rest" && <PracticeTag text={d.text} />}
+              </span>
               {d.pace && t !== "rest" && <span className="pwv-pace num">{/\d:\d\d/.test(d.pace) ? `${d.pace}/km` : d.pace}</span>}
               <span className="pwv-tags">
                 {d.strength && <span className="wk-tag">Strength {d.strength}</span>}

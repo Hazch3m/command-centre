@@ -163,17 +163,26 @@ export function raceReadiness(
   const predicted = predictTime(meters, likely) * shapeFactor(meters, scaled);
   const range: [number, number] | null = gain > 0 ? [predictTime(meters, base + gain * 1.15) * shapeFactor(meters, scale(Math.max(1, shape))), predictTime(meters, base + gain * 0.4) * shapeFactor(meters, scaled)] : null;
   // Today: your actual last 8 weeks against what the race needs.
-  let nowKm = 0;
-  let nowLong = 0;
-  for (let i = 1; i <= 8; i++) {
+  // Your best 8-week stretch of the last 16: a taper and recovery after a race don't make you unfit overnight.
+  const wkKm: number[] = [];
+  const wkLong: number[] = [];
+  for (let i = 16; i >= 1; i--) {
     const mon = addDays(mondayOf(today), -7 * i);
     let wk = 0;
+    let lg = 0;
     for (let d = 0; d < 7; d++) {
       const k = actual.get(addDays(mon, d)) ?? 0;
       wk += k;
-      nowLong = Math.max(nowLong, k);
+      lg = Math.max(lg, k);
     }
-    nowKm += wk / 8;
+    wkKm.push(wk);
+    wkLong.push(lg);
+  }
+  let nowKm = 0;
+  let nowLong = 0;
+  for (let s = 0; s + 8 <= wkKm.length; s++) {
+    const avg = wkKm.slice(s, s + 8).reduce((a, x) => a + x, 0) / 8;
+    if (avg > nowKm) [nowKm, nowLong] = [avg, Math.max(...wkLong.slice(s, s + 8))];
   }
   const needNow = needsFor(km, vNow);
   const shapeNow = (2 / 3) * Math.min(1.5, nowKm / needNow.km) + (1 / 3) * Math.min(1, nowLong / needNow.long);

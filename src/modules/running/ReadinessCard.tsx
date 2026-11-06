@@ -15,8 +15,11 @@ export function useReadinessInputs(plan: Plan | undefined) {
     for (const r of runs) actual.set(r.date, (actual.get(r.date) ?? 0) + r.distance / 1000);
     // Fitness on the day: the projection (or current form), never below your best race of the last year
     // (form estimates dip after a marathon or in an easy block; a race you've run is proof of what you can do).
-    const floor = f?.predictionBasis?.source === "race" ? f.predictionBasis.vdot : null;
+    const basis = f?.predictionBasis;
+    const floor = basis?.source === "race" ? basis.vdot : null;
     const vdotAt = (d: string) => {
+      // A result you entered is your fitness, as you said.
+      if (basis?.source === "manual") return basis.vdot;
       const v = f ? (f.project(d) ?? f.current) : null;
       return v == null ? floor : floor == null ? v : Math.max(v, floor);
     };

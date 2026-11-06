@@ -15,6 +15,7 @@ import { useRunningData } from "../modules/running/useRunning";
 import { addTaskFromText, focusGroup, loadTasks, setDone } from "../modules/tasks/data";
 import { HabitButton } from "./Habits";
 import { GettingStarted } from "./Account";
+import { PracticeTag } from "../modules/running/PracticeTag";
 import { plannerView } from "./Planner";
 import { weatherModule } from "../modules/weather";
 import { isEmptyPlan } from "../core/account";
@@ -37,7 +38,12 @@ export function Session({ d, label }: { d: ForecastDay; label: string }) {
           <small> km</small>
         </div>
       )}
-      {!rest && <div className="p-session-text">{d.race ? `${d.race.name}${d.race.target ? ` · ${d.race.target}` : ""}` : d.text}</div>}
+      {!rest && (
+        <div className="p-session-text">
+          {d.race ? `${d.race.name}${d.race.target ? ` · ${d.race.target}` : ""}` : d.text}
+          {!d.race && <PracticeTag text={d.text} />}
+        </div>
+      )}
       <div className="p-session-meta">
         {d.pace && !rest && <span className="p-chip num">{/\d:\d\d/.test(d.pace) ? `${d.pace}/km` : d.pace}</span>}
         {d.strength && <span className="p-chip">Strength {d.strength}</span>}
