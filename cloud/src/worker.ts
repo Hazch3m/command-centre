@@ -30,6 +30,8 @@ const sqlJs = () =>
 interface Env {
   STORE: DurableObjectNamespace<Store>;
   ASSETS: Fetcher;
+  /** Set only for a moment by the "Reset sync service" workflow (Actions), to wipe a service nobody can reach any more. */
+  RESET_KEY?: string;
 }
 
 const CHUNK = 1_500_000; // under the 2 MB per-value limit
@@ -88,6 +90,14 @@ export class Store extends DurableObject<Env> {
     const token = req.headers.get("x-cc-token");
     const want = this.get("tokenHash");
     return !!token && !!want && (await sha256hex(token)) === want;
+  }
+
+  /** Forgets everything: the claim, the copy, phone links and changes, cloud sync and its sign-ins. */
+  private async wipe() {
+    this.ctx.storage.transactionSync(() => {
+      for (const t of ["snap", "ops", "pair", "fails", "cloudops", "meta"]) this.sql.exec(`DELETE FROM ${t}`);
+    });
+    await this.ctx.storage.deleteAlarm();
   }
 
   private putSnapshot(body: Uint8Array, applied: number, cloudApplied: number): number {
@@ -193,6 +203,14 @@ export class Store extends DurableObject<Env> {
       return json({ ok: true });
     }
 
+    if (path === "/admin-reset" && m === "POST") {
+      const key = (this.env as Env).RESET_KEY ?? "";
+      const given = req.headers.get("x-cc-reset") ?? "";
+      if (key.length < 32 || given.length !== key.length || (await sha256hex(given)) !== (await sha256hex(key))) return err(403, "no");
+      await this.wipe();
+      return json({ ok: true, reset: true });
+    }
+
     if (path === "/pair/redeem" && m === "POST") {
       const now = Date.now();
       this.sql.exec("DELETE FROM fails WHERE at < ?", now - PAIR_TTL);
@@ -240,6 +258,12 @@ export class Store extends DurableObject<Env> {
     }
 
     // ---- Sync in the cloud -------------------------------------------------------------
+    if (path === "/release" && m === "POST") {
+      // "Disconnect" on the PC: free the service so a PC can connect afresh.
+      await this.wipe();
+      return json({ ok: true });
+    }
+
     if (path === "/cloud/enable" && m === "POST") {
       const c = (await req.json()) as Creds;
       if (!c?.secret || typeof c.secret !== "string") return err(400, "bad credentials");

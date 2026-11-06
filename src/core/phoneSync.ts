@@ -103,6 +103,10 @@ export async function unlinkPhones(): Promise<void> {
 }
 
 export async function disconnectService(): Promise<void> {
+  // Release the service first (it forgets this PC, its copy and the phones), so a PC can connect to it again.
+  const c = await current();
+  if (c) await call(c.link, c.keys, "/release", { method: "POST" });
+  routeGarminViaCloud(false);
   await backend.phoneLinkSet(null);
   cached = null;
   await kvSet(STATUS_KEY, { lastPush: null, size: 0, lastPull: null, applied: 0, error: null });

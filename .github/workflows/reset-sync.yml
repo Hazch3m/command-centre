@@ -1,0 +1,43 @@
+# Wipes the sync service (the PC's encrypted copy, phone links, cloud sync and its
+# sign-ins), so a PC can connect to it again. Needed when the PC that set it up
+# no longer has its link (for example after "Disconnect" in older versions).
+# Run it from the Actions tab; nothing else changes.
+name: Reset sync service
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: The sync service's address
+        required: true
+        default: https://command-centre-sync.harryknoblauch12.workers.dev
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Wipe the service
+        working-directory: cloud
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          URL: ${{ inputs.url }}
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          # A one-off key: set on the service, used once, deleted. It never leaves this run.
+          KEY=$(openssl rand -hex 32)
+          echo "::add-mask::$KEY"
+          printf %s "$KEY" | npx wrangler secret put RESET_KEY
+          ok=""
+          for i in 1 2 3 4 5 6; do
+            sleep 10
+            if curl -fsS -X POST "$URL/api/admin-reset" -H "x-cc-reset: $KEY" | grep -q '"reset":true'; then ok=1; break; fi
+          done
+          echo y | npx wrangler secret delete RESET_KEY || true
+          if [ -z "$ok" ]; then echo "::error::The service didn't accept the reset"; exit 1; fi
+          echo "::notice title=Sync service reset::Connect it again from Settings → Phone on the PC."
