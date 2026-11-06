@@ -1,0 +1,10 @@
+{
+  "name": "command-centre-ios",
+  "private": true,
+  "description": "The iPhone app: a native shell around the phone app the sync service serves. Built and sent to TestFlight by .github/workflows/ios.yml.",
+  "dependencies": {
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/ios": "^7.0.0"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "appId": "com.hazch3m.commandcentre",
+  "appName": "Command Centre",
+  "webDir": "www",
+  "server": {
+    "url": "https://command-centre-sync.harryknoblauch12.workers.dev",
+    "cleartext": false,
+    "errorPath": "index.html"
+  },
+  "ios": {
+    "backgroundColor": "#252a31",
+    "contentInset": "never",
+    "limitsNavigationsToAppBoundDomains": true
+  }
+}
