@@ -169,7 +169,7 @@ export function planAdvice(plan: Plan, runs: Run[], checks: { day: ForecastDay; 
       ],
     });
   }
-  if (ratio != null && ratio < 0.75 && planned >= 40) {
+  if (ratio != null && ratio < 0.75 && planned >= 15) {
     out.push({
       id: `volume-low-${tag}`,
       tone: "warn",
@@ -198,7 +198,7 @@ export function planAdvice(plan: Plan, runs: Run[], checks: { day: ForecastDay; 
       actions: [{ label: "Make this week easier", change: { weeks: { ...(plan.changes?.weeks ?? {}), [thisMon]: "easier" } } }],
     });
   }
-  if (!out.length && ratio != null) {
+  if (!out.length && ratio != null && ratio >= 0.85) {
     out.push({
       id: `ok-${tag}`,
       tone: "good",

@@ -154,7 +154,8 @@ export function raceReadiness(
   // Training adds fitness by race day: what the plan was built to gain (or what a build that long usually gains).
   const b = plan.built;
   const isThisPlan = !!b && b.raceDate === race.date;
-  const gain = isThisPlan ? Math.max(0, b!.vdotEnd != null ? b!.vdotEnd - b!.vdot : expectedGain(b!.weeks, b!.level)) : 0;
+  // (The plan's own paces may stop at your goal; the prediction uses what training that long can add.)
+  const gain = isThisPlan ? expectedGain(b!.weeks, b!.level) : 0;
   const vNow = vdotAt(today) ?? v;
   // From today's fitness: the plan's gain, scaled by how well it prepares you.
   const base = Math.max(v, vNow);
