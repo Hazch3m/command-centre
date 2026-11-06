@@ -423,7 +423,7 @@ function session(kind: SessionKind, v: number, o: BuildOptions, phase: Phase, t:
         pick([
           () => reps(n(3, 4), 2, T, "2 min jog", 120),
           () => reps(Math.min(4, n(2, 3)), 3, T, "2 min jog", 120),
-          () => reps(n(5, 7), 1, T, "60 s jog", 60),
+          () => reps(n(4, 5), 1.5, T, "60 s jog", 60),
         ])(),
       );
     case "tempo":
@@ -454,7 +454,7 @@ function session(kind: SessionKind, v: number, o: BuildOptions, phase: Phase, t:
         return q(workout(mp, 0, `${mp} km at MP ${around(race)}`));
       }
       if (o.dist === "half") return q(hmp(short ? reps(3, 2, race, "2 min jog", 120) : reps(n(3, 4), pick([3, 4, 5]), race, "2 min jog", 120)));
-      if (o.dist === "10k") return q(short ? reps(5, 1, race, "2 min jog", 120) : pick([() => reps(n(3, 5), 2, race, "2 min jog", 120), () => reps(n(6, 8), 1, race, "60 s jog", 60)])());
+      if (o.dist === "10k") return q(short ? reps(5, 1, race, "2 min jog", 120) : pick([() => reps(n(3, 5), 2, race, "2 min jog", 120), () => reps(n(4, 6), 1.5, race, "90 s jog", 90)])());
       return q(short ? reps(5, 0.4, race, "200 m jog", 70) : pick([() => reps(n(4, 6), 1, race, "2 min jog", 120), () => reps(n(8, 12), 0.4, race - 3, "200 m jog", 70)])());
     }
   }
