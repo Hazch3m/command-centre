@@ -26,7 +26,7 @@ export function native(): CCNative {
   const c = cap();
   if (c?.nativePromise) {
     const call = <T,>(method: string) => (o: unknown) => c.nativePromise!<T>("CCNative", method, o);
-    plugin = { signInWithApple: call("signInWithApple"), garminLogin: call("garminLogin") };
+    plugin = { signInWithApple: call("signInWithApple"), garminLogin: call("garminLogin") } as CCNative;
   } else if (c?.registerPlugin) plugin = c.registerPlugin<CCNative>("CCNative");
   else throw new Error(isNativeApp() ? "This version of the app can't do this yet: update Command Centre in TestFlight." : "This needs the Command Centre iPhone app.");
   return plugin;
