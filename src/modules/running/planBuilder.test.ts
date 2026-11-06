@@ -158,6 +158,6 @@ describe("plan builder: long runs and labels", () => {
     const s = r.plan.weeks.filter((w) => w.start >= from).flatMap((w) => Object.values(w.sessions) as string[]);
     expect(s.some((x) => /with VO2 max: /.test(x))).toBe(true);
     expect(s.some((x) => /with Threshold(?: tempo)?: /.test(x))).toBe(true);
-    expect(s.filter((x) => / with /.test(x) && !/long run/.test(x)).every((x) => /with (VO2 max|Threshold|Threshold tempo|Hill strength|Race pace): |fartlek|time trial/.test(x))).toBe(true);
+    expect(s.filter((x) => / with /.test(x) && !/long run/.test(x) && !/with (VO2 max|Threshold|Threshold tempo|Hill strength|Race pace): |fartlek|time trial/.test(x))).toEqual([]);
   });
 });
