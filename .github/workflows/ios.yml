@@ -13,7 +13,7 @@ concurrency: { group: ios, cancel-in-progress: false }
 
 jobs:
   testflight:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 40
     env:
       BUNDLE_ID: com.hazch3m.commandcentre
@@ -24,6 +24,12 @@ jobs:
     defaults: { run: { working-directory: mobile } }
     steps:
       - uses: actions/checkout@v5
+
+      - name: Use Xcode 26 (Apple requires it for uploads)
+        run: |
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$X" ] && sudo xcode-select -s "$X"
+          xcodebuild -version
 
       - name: Check the Apple secrets are set
         run: |
@@ -51,6 +57,9 @@ jobs:
           A=ios/App/App
           for f in $A/Assets.xcassets/AppIcon.appiconset/*.png; do cp assets/icon-1024.png "$f"; done
           for f in $A/Assets.xcassets/Splash.imageset/*.png; do cp assets/splash-2732.png "$f"; done
+          # iPhone only (no iPad screenshots needed), on the app itself rather than its frameworks.
+          sed -i '' 's/TARGETED_DEVICE_FAMILY = "1,2";/TARGETED_DEVICE_FAMILY = 1;/' ios/App/App.xcodeproj/project.pbxproj
+          grep -m1 PRODUCT_BUNDLE_IDENTIFIER ios/App/App.xcodeproj/project.pbxproj
           P=$A/Info.plist
           pb() { /usr/libexec/PlistBuddy -c "$1" "$P"; }
           pb "Add :ITSAppUsesNonExemptEncryption bool false"
@@ -73,7 +82,6 @@ jobs:
           xcodebuild "${SRC[@]}" -scheme App -configuration Release \
             -destination generic/platform=iOS -archivePath "$RUNNER_TEMP/App.xcarchive" \
             "${AUTH[@]}" DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Automatic \
-            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" TARGETED_DEVICE_FAMILY=1 \
             MARKETING_VERSION=1.0 CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
             archive | tail -n 60
           test -d "$RUNNER_TEMP/App.xcarchive" || { echo "::error::The build failed (see the log above)"; exit 1; }
