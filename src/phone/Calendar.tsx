@@ -1,3 +1,4 @@
+import { hasAccount, phoneState } from "../core/backend.phone";
 import { useEffect, useRef, useState } from "react";
 import { useDataVersion } from "../core/events";
 import { addDays, parseKey, useNow, useToday } from "../core/time";
@@ -79,7 +80,11 @@ export function Calendar() {
           ))}
         </Section>
       ))}
-      <p className="p-hint center">Add or change events on the PC (Calendar tab); they show here after the next sync.</p>
+      <p className="p-hint center">
+        {hasAccount() && !phoneState.header?.connected.google
+          ? "Your Google calendar shows here once a PC linked to your account has it connected (Settings → Accounts on the PC); your plan's sessions are on the Plan tab."
+          : "Add or change events on the PC (Calendar tab); they show here after the next sync."}
+      </p>
     </div>
   );
 }
