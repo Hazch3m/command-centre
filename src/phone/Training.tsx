@@ -13,6 +13,7 @@ import { TargetPrefs } from "../modules/running/TargetPrefs";
 import { AutoSyncSetting } from "../modules/watch/AutoSyncSetting";
 import { dayName, Section, usePhoneNav } from "./common";
 import { Session } from "./Today";
+import { isEmptyPlan } from "../core/account";
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DOW1 = ["M", "T", "W", "T", "F", "S", "S"];
@@ -35,6 +36,21 @@ export function Training() {
   }, [monday]);
   const kinds = useMemo(() => (plan ? plannedKinds(plan, addDays(today, -70), today, overrides) : new Map()), [plan, today, overrides]);
   if (!plan || !fw || !range) return <div className="p-screen" />;
+  if (isEmptyPlan(plan))
+    return (
+      <div className="p-screen">
+        <section className="p-start">
+          <h2>No training plan yet</h2>
+          <p className="p-start-note">Pick your race, how many days a week you can run and your level: the plan is built from your recent running, with paces, long runs and a taper, and goes to your watch.</p>
+          <button className="p-pill" onClick={() => nav.push("adjust")}>
+            Build your plan
+          </button>
+        </section>
+        <Section title="Targets">
+          <TargetPrefs compact />
+        </Section>
+      </div>
+    );
   const go = (n: number) => {
     const m = addDays(monday, 7 * n);
     if (m >= range.first && m <= range.last) setMonday(m);

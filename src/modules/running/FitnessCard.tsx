@@ -148,6 +148,12 @@ function FitnessCard({ editing }: CardProps) {
   );
 }
 
+/** "Path to 2:45" from your last goal ("Sub-2:45 · Valencia"), or a plain label before you've set one. */
+const goalTabLabel = (ms: { label: string }[] | undefined) => {
+  const g = ms?.at(-1)?.label.split(" · ")[0].replace(/^sub-?/i, "");
+  return g ? `Path to ${g}` : "Your goal";
+};
+
 /** The Fitness tab: overview, the path to the goals, and marathon shape. */
 function FitnessPage() {
   useStravaSync();
@@ -168,7 +174,7 @@ function FitnessPage() {
         {(
           [
             ["overview", "Overview"],
-            ["goal", "Path to 2:45"],
+            ["goal", goalTabLabel(f?.config.projection.milestones)],
             ["shape", "Marathon shape"],
           ] as const
         ).map(([id, label]) => (

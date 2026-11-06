@@ -201,8 +201,13 @@ export class Store extends DurableObject<Env> {
       const pcAck = Number(this.get("cloudAck") ?? 0);
       const inSnap = Number(this.get("snapCloud") ?? 0);
       this.sql.exec("DELETE FROM cloudops WHERE id <= ? AND at < ?", Math.min(pcAck, inSnap), Date.now() - 86400_000);
-      // An account with no PC: phone changes in the saved copy are done with.
-      if (this.isAccount() && this.get("pcLinked") !== "1") this.sql.exec("DELETE FROM ops WHERE id <= ?", Number(this.get("snapApplied") ?? 0));
+      // An account with no PC: changes already in the saved copy are kept 60 days (so a PC joining later still
+      // gets them), then dropped.
+      if (this.isAccount() && this.get("pcLinked") !== "1") {
+        const old = Date.now() - 60 * 86400_000;
+        this.sql.exec("DELETE FROM ops WHERE id <= ? AND at < ?", Number(this.get("snapApplied") ?? 0), old);
+        this.sql.exec("DELETE FROM cloudops WHERE id <= ? AND at < ?", Number(this.get("snapCloud") ?? 0), old);
+      }
       return r;
     })().finally(() => {
       this.syncing = null;

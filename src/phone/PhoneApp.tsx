@@ -249,7 +249,7 @@ export function PhoneApp() {
 function More({ push }: { push: (p: Pushed) => void }) {
   const rows: [Exclude<Pushed, null>, string, string][] = [
     ["calendar", "Calendar", "Your events and the plan's sessions"],
-    ["tasks", "Tasks", "To-dos, synced with the PC"],
+    ["tasks", "Tasks", "To-dos and projects"],
     ["habits", "Habits", "Daily checklist and streaks"],
     ["adjust", "Your plan and races", "Build a plan, races and tapers, import a CSV"],
   ];
