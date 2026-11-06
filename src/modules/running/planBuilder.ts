@@ -55,8 +55,8 @@ export interface Tune {
   startKm?: number;
   /** Longest long run, km. */
   longest?: number;
-  /** Quality sessions a week. */
-  quality?: 1 | 2;
+  /** Quality sessions a week (3 needs six days or more). */
+  quality?: 1 | 2 | 3;
   /** An easier week every n weeks (0: none). */
   cutEvery?: 0 | 3 | 4 | 5;
   /** Taper length, weeks (race week included). */
