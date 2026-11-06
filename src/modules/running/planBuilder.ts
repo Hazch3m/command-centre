@@ -730,7 +730,7 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
     }
     let picks = pickSessions(nQ, qPhase, i, kinds, o, t, p, rp, seen);
     // Before the race-specific weeks, a tune-up week keeps a short threshold session rather than race-pace work.
-    if (tune && (b.phase === "base" || b.phase === "build") && picks.length) picks = [{ ...reps(4, 1, p.threshold, "90 s jog", 90), kind: "threshold" }];
+    if (tune && (b.phase === "base" || b.phase === "build") && picks.length) picks = [{ ...reps(4, 1, p.threshold, "90 s jog", 90), kind: "threshold" }].map((q) => ({ ...q, text: `Threshold: ${q.text}` }));
     // Quality days: Tuesday and Thursday (shifted for a Saturday long run); a third on the day before the long run.
     const qDays = [q1, q2, o.days >= 6 ? shift(longDay, -1) : null];
     picks.forEach((q, j) => {
