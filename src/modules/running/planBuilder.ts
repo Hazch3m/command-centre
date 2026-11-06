@@ -640,12 +640,12 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
         if (longHard) {
           // Race practice: marathon pace inside the long run, as a finish or in blocks (they alternate).
           const blocks = Math.max(2, Math.min(4, Math.round(withMp / 5)));
-          text = i % 4 === 1 && b.long >= 26 ? `${b.long} km long run with ${blocks} × 5 km at MP ${around(rp, 3)}, 4 min easy (race practice)` : `${b.long} km long run, last ${withMp} at MP ${around(rp, 3)} (race practice)`;
+          text = i % 4 === 1 && b.long >= 26 ? `${b.long} km long run with ${blocks} × 5 km at MP ${around(rp, 3)}, 4 min easy` : `${b.long} km long run, last ${withMp} at MP ${around(rp, 3)}`;
         } else if (isRace && o.dist === "half" && b.phase === "specific" && !b.cut && alt && T.mpLong !== false) {
-          text = `${b.long} km long run, last ${r1(lerp(4, 8, t))} at HMP ${around(rp, 3)} (race practice)`;
+          text = `${b.long} km long run, last ${r1(lerp(4, 8, t))} at HMP ${around(rp, 3)}`;
         } else if (isRace && b.phase === "build" && !b.cut && i % 2 === 0 && b.long >= 16 && T.mpLong !== false) {
           // Build weeks: every other long run finishes a little quicker, to practise running strong when tired.
-          text = `${b.long} km long run, last ${r1(lerp(3, 5, t))} at ${around(o.dist === "marathon" ? rp + 8 : p.mp, 3)} (fast finish)`;
+          text = `${b.long} km long run, last ${r1(lerp(3, 5, t))} at ${around(o.dist === "marathon" ? rp + 8 : p.mp, 3)}`;
         }
         s[longDay] = text;
         sized[longDay] = b.long;
@@ -814,7 +814,7 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
 /** Sessions that rehearse the race (race pace, race-practice long runs, time trials), for highlighting. */
 export function practiceOf(text: string): "Race practice" | "Fast finish" | null {
   if (/race practice|time trial|\b(?:MP|HMP)\b/i.test(text)) return "Race practice";
-  if (/fast finish|progression run/i.test(text)) return "Fast finish";
+  if (/fast finish|progression run|long run, last \d+ at/i.test(text)) return "Fast finish";
   return null;
 }
 
