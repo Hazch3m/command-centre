@@ -71,7 +71,7 @@ export interface Plan {
   /** The weeks as written, before `adjust` (only on a loaded plan; never saved). */
   baseWeeks?: PlanWeek[];
   /** Set when the plan was built in the app (Plan settings → Build a plan): the choices it was built from. */
-  built?: BuildOptions & { start: string; peak: number; longest: number; vdot: number };
+  built?: BuildOptions & { start: string; peak: number; longest: number; vdot: number; vdotEnd?: number };
   /** The plan before the last one was built, so it can be brought back. */
   previous?: Plan;
   /** Your target settings (pace or heart rate, easy-run targets), attached when the plan loads; never saved in the plan. */

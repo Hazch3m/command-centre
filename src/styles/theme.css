@@ -4778,3 +4778,33 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .plan-builder.compact .ft-row .ps-choice {
   grid-row: 2;
 }
+.ft-row.ft-kinds .ps-choice {
+  flex-wrap: wrap;
+}
+.pb-goals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.pb-goal-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card-2);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pb-goal-pick span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.pb-goal-pick.on {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}

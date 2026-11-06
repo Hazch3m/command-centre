@@ -108,7 +108,7 @@ export function sessionToWorkout(text: string, zones: Zones = {}): Omit<Draft, "
   }
 
   // Long run with a faster finish or block: "28 km, last 6 at 4:05", "35 km, 22 at 3:58-4:02", "26 km, 14 at MP".
-  const lng = /^(\d+(?:\.\d+)?)\s*km\s*,?\s*(last\s+)?(\d+(?:\.\d+)?)\s*(?:km\s*)?at\b/i.exec(s);
+  const lng = /^(\d+(?:\.\d+)?)\s*km(?:\s+(?:long|progression|medium-long)(?:\s+run)?)?\s*,?\s*(last\s+)?(\d+(?:\.\d+)?)\s*(?:km\s*)?at\b/i.exec(s);
   if (lng) {
     const tot = +lng[1];
     const fast = +lng[3];
@@ -118,7 +118,7 @@ export function sessionToWorkout(text: string, zones: Zones = {}): Omit<Draft, "
       ? [step("interval", `${tot - fast}km`, "hr zone 2", "Easy"), step("interval", `${fast}km`, t, p ? `${paceText(p)}/km: smooth, not a race` : "Marathon effort")]
       : [step("warmup", "4km", "hr zone 2", "Easy"), step("interval", `${fast}km`, t, p ? `${paceText(p)}/km` : "Marathon effort"), step("cooldown", `${Math.max(1, tot - fast - 4)}km`, "hr zone 2", "Easy")];
     return {
-      name: `Long ${tot} km, ${lng[2] ? "last " : ""}${fast} km${p ? ` @ ${paceText(p)}` : " MP"}`,
+      name: `${/progression/i.test(s) ? "Progression" : "Long"} ${tot} km, ${lng[2] ? "last " : ""}${fast} km${p ? ` @ ${paceText(p)}` : " MP"}`,
       sport: "running",
       steps,
       description: `${raw}. Fuel every 30–40 min; keep the easy part truly easy.${extra}`,

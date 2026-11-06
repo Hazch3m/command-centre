@@ -6,7 +6,7 @@ import { marathonShape, useFitness } from "./fitness";
 import { plannedRuns } from "./FitnessPlan";
 import { raceKm } from "./forecast";
 import { mondayOf, priorityOf, restorePreviousPlan, savePlan, WEEK_KEYS, type Plan, type PlanRace } from "./plan";
-import { buildPlan, DEFAULT_WEEKS, DIST_LABEL, LEVELS, MAX_WEEKS, pacesFor, recommend, summarizeHistory, tuneDefaults, type BuildOptions, type History, type Level, type RaceDist, type Tune } from "./planBuilder";
+import { buildPlan, DEFAULT_WEEKS, DIST_LABEL, GOALS, LEVELS, MAX_WEEKS, pacesFor, recommend, SESSION_KINDS, summarizeHistory, tuneDefaults, type BuildOptions, type Goal, type History, type Level, type RaceDist, type SessionKind, type Tune } from "./planBuilder";
 import { raceReadiness } from "./readiness";
 import { ReadinessView, useReadinessInputs } from "./ReadinessCard";
 import { useRunningData } from "./useRunning";
@@ -72,7 +72,8 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
   const races = useMemo(() => base.races.filter((r) => r.date && r.date > addDays(today, 21)), [base, today]);
 
   const [o, setO] = useState<BuildOptions | null>(null);
-  const available = o ? Math.max(1, diffDays(firstMonday, mondayOf(o.raceDate)) / 7 + 1) : 0;
+  const isRace = (o?.goal ?? "race") === "race";
+  const available = o ? (isRace ? Math.max(1, diffDays(firstMonday, mondayOf(o.raceDate)) / 7 + 1) : 26) : 0;
   // What a marathon at your fitness needs each week (marathon shape's target), so the suggestion can aim for it.
   const needKm = useMemo(() => {
     if (!f || !o || o.dist !== "marathon") return null;
@@ -125,7 +126,13 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
   if (!o || !rec) return <p className="muted">Looking at your training…</p>;
 
   const set = (patch: Partial<BuildOptions>, own = true) => {
-    setO((x) => (x ? { ...x, ...patch } : x));
+    // A block that isn't for a race simply ends after its weeks.
+    setO((x) => {
+      if (!x) return x;
+      const n = { ...x, ...patch };
+      if ((n.goal ?? "race") !== "race" && ("weeks" in patch || "goal" in patch)) n.raceDate = addDays(firstMonday, n.weeks * 7 - 1);
+      return n;
+    });
     if (own && ("level" in patch || "days" in patch || "weeks" in patch)) setTouched(true);
     setArmed(false);
     setDone(null);
@@ -136,10 +143,19 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
   const start = startFor(o.weeks);
   const tuneUps = base.races.filter((r) => r.date && !r.approx && r.date >= start && r.date < o.raceDate);
   const chosen = races.find((r) => r.date === o.raceDate && r.name === o.raceName);
-  const raceOk = !!o.raceDate && o.raceDate > addDays(today, 21);
+  const raceOk = !isRace || (!!o.raceDate && o.raceDate > addDays(today, 21));
+  const pickGoal = (g: Goal) => {
+    if (g === "race") {
+      const r0 = races.find((r) => /marathon/i.test(r.name) && !/half/i.test(r.name)) ?? races[0];
+      set({ goal: "race", raceName: r0?.name ?? "", raceDate: r0?.date ?? addDays(today, 16 * 7), dist: r0 ? distOf(r0.name, r0.km) : "marathon", target: r0?.target ?? "", tune: undefined }, false);
+    } else {
+      const spec = GOALS.find((x) => x.id === g)!;
+      set({ goal: g, raceName: spec.label, target: "", weeks: spec.weeks, dist: g === "faster" ? (o.dist === "marathon" || o.dist === "half" ? "10k" : o.dist) : g === "recover" ? "10k" : "half", tune: undefined }, false);
+    }
+  };
   const next = (to: number) => {
     // Leaving the race step: the length, level and days follow the suggestion for that race unless you've set them.
-    if (step === 0 && to > 0 && !touched) set({ level: rec.level, days: rec.days, weeks: recWeeks }, false);
+    if (step === 0 && to > 0 && !touched) set(isRace ? { level: rec.level, days: rec.days, weeks: recWeeks } : { level: rec.level, days: rec.days }, false);
     setStep(to);
   };
   const STEPS = ["Race", "Your training", "Plan", "Review"];
@@ -190,8 +206,30 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
 
       {step === 0 && (
         <section className="ps-card pb-step">
-          <h3>Which race are you training for?</h3>
-          <div className="pb-race-list">
+          <h3>What's this block for?</h3>
+          <div className="pb-goals">
+            {GOALS.map((g) => (
+              <button key={g.id} type="button" className={"pb-goal-pick" + ((o.goal ?? "race") === g.id ? " on" : "")} onClick={() => pickGoal(g.id)}>
+                <b>{g.label}</b>
+                <span>{g.blurb}</span>
+              </button>
+            ))}
+          </div>
+          {!isRace && (
+            <div className="pb-other">
+              {o.goal === "faster" && (
+                <>
+                  <span className="label">Faster at</span>
+                  <Chips value={o.dist} options={(["5k", "10k", "half"] as RaceDist[]).map((d) => ({ v: d, l: DIST_LABEL[d] }))} onChange={(d) => set({ dist: d }, false)} />
+                </>
+              )}
+              <p className="ps-note">
+                {GOALS.find((g) => g.id === o.goal)!.weeks} weeks suits this; set the length on the Plan step. It starts {fmt(firstMonday)}.
+              </p>
+            </div>
+          )}
+          {isRace && <h3>Which race?</h3>}
+          {isRace && <div className="pb-race-list">
             {races.map((r) => {
               const on = !other && r.date === o.raceDate && r.name === o.raceName;
               const k = r.km ?? raceKm(r.name);
@@ -230,8 +268,8 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
                 {other ? "●" : "○"}
               </span>
             </button>
-          </div>
-          {(other || (!chosen && !races.length)) && (
+          </div>}
+          {isRace && (other || (!chosen && !races.length)) && (
             <div className="pb-other">
               <div className="pb-fields">
                 <label>
@@ -250,7 +288,7 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
               <Chips value={o.dist} options={(["5k", "10k", "half", "marathon"] as RaceDist[]).map((d) => ({ v: d, l: DIST_LABEL[d] }))} onChange={(d) => set({ dist: d }, false)} />
             </div>
           )}
-          {!other && chosen && (
+          {isRace && !other && chosen && (
             <label className="pb-goal">
               <span className="label">Goal time (optional)</span>
               <input value={o.target} onChange={(e) => set({ target: e.target.value }, false)} />
@@ -362,13 +400,13 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
                 Length <span className="muted small">· starts {fmt(start)}</span>
               </h4>
               <div className="pb-weeks-pick">
-                <input type="range" min={Math.min(4, available)} max={Math.min(MAX_WEEKS, available)} value={Math.min(o.weeks, available)} onChange={(e) => set({ weeks: +e.target.value })} aria-label="Weeks" />
+                <input type="range" min={isRace ? Math.min(4, available) : 2} max={Math.min(MAX_WEEKS, available)} value={Math.min(o.weeks, available)} onChange={(e) => set({ weeks: +e.target.value })} aria-label="Weeks" />
                 <b className="num">{Math.min(o.weeks, available)} weeks</b>
               </div>
               <p className="ps-note">
-                {DEFAULT_WEEKS[o.dist]}–{DEFAULT_WEEKS[o.dist] + 6} weeks suits a {DIST_LABEL[o.dist].toLowerCase()}; a longer build spends the extra weeks on base mileage and ramps up more gently.{" "}
-                {available > Math.min(MAX_WEEKS, available) ? "" : available > o.weeks ? <button type="button" className="link-btn" onClick={() => set({ weeks: Math.min(MAX_WEEKS, available) })}>Start now ({Math.min(MAX_WEEKS, available)} weeks)</button> : null}{" "}
-                {available > o.weeks ? `Your current plan carries on until ${fmt(start)}.` : "It starts next Monday."}
+                {isRace ? <>{DEFAULT_WEEKS[o.dist]}–{DEFAULT_WEEKS[o.dist] + 6} weeks suits a {DIST_LABEL[o.dist].toLowerCase()}; a longer build spends the extra weeks on base mileage and ramps up more gently.</> : `${GOALS.find((g) => g.id === o.goal)!.weeks} weeks suits this block.`}{" "}
+                {!isRace ? "" : available > o.weeks ? <button type="button" className="link-btn" onClick={() => set({ weeks: Math.min(MAX_WEEKS, available) })}>Start now ({Math.min(MAX_WEEKS, available)} weeks)</button> : null}{" "}
+                {isRace && available > o.weeks ? `Your current plan carries on until ${fmt(start)}.` : "It starts next Monday."}
               </p>
             </div>
           </div>
@@ -417,7 +455,7 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
     const peak = Math.max(...weeks.map((w) => w.km));
     const longest = Math.max(...weeks.map((w) => w.long));
     const newWeeks = np.weeks.filter((w) => w.start >= s0 && w.start <= mondayOf(o.raceDate));
-    const sessionsPerWeek = newWeeks.reduce((s, w) => s + WEEK_KEYS.filter((k) => /\bwith\b|hill sprints/.test(w.sessions[k] ?? "")).length, 0) / Math.max(1, newWeeks.length);
+    const sessionsPerWeek = newWeeks.reduce((s, w) => s + WEEK_KEYS.filter((k) => /\bwith\b|progression run/.test(w.sessions[k] ?? "")).length, 0) / Math.max(1, newWeeks.length);
     const p0 = pacesFor(history.vdot ?? 42);
     const replaced = base.weeks.filter((w) => w.start >= s0 && w.start <= mondayOf(o.raceDate)).length;
     const bars = weeks.map((w, i) => ({
@@ -437,13 +475,13 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
         <section className="ps-card ps-preview pb-step">
           <div className="ps-preview-head">
             <h3>
-              {o.raceName || DIST_LABEL[o.dist]} · {LEVELS[o.level].label}, {o.days} days a week
+              {isRace ? o.raceName || DIST_LABEL[o.dist] : `${GOALS.find((g) => g.id === o.goal)!.label} block`} · {LEVELS[o.level].label}, {o.days} days a week
             </h3>
             <span className="ps-sub">
               {fmtYear(s0)} → {fmtYear(o.raceDate)} · {weeks.length} weeks
             </span>
           </div>
-          {readiness?.next && (
+          {isRace && readiness?.next && (
             <div className="ip-compare">
               <ReadinessView r={readiness.next} compact={compact} />
               {readiness.now && (
@@ -570,9 +608,63 @@ function FineTune({ o, h, onChange }: { o: BuildOptions; h: History; onChange: (
       {slider("peakKm", "Peak week", 20, 200)}
       {slider("startKm", "First week", 10, Math.max(30, t.peakKm ?? d.peakKm))}
       {slider("longest", "Longest run", 10, o.dist === "marathon" ? 42 : 32)}
+      <label className="ft-row">
+        <span className="ft-label">
+          Mileage increase
+          {t.growth != null && (
+            <button type="button" className="link-btn small" onClick={() => put({ growth: undefined })}>
+              reset
+            </button>
+          )}
+        </span>
+        <input type="range" min={2} max={12} value={Math.round((t.growth ?? d.growth) * 100)} onChange={(e) => put({ growth: +e.target.value / 100 })} />
+        <b className={"num" + (t.growth != null ? " tone-accent" : "")}>{t.growth != null ? `${Math.round(t.growth * 100)}% a week` : `up to ${Math.round(d.growth * 100)}%`}</b>
+      </label>
       <div className="ft-row">
-        <span className="ft-label">Quality sessions a week</span>
-        <Chips value={t.quality ?? d.quality} options={[{ v: 1 as const, l: "1" }, { v: 2 as const, l: "2" }]} onChange={(v) => put({ quality: v === d.quality ? undefined : v })} />
+        <span className="ft-label">Speed sessions a week</span>
+        <Chips
+          value={t.quality ?? d.quality}
+          options={[
+            { v: 1 as const, l: "1" },
+            { v: 2 as const, l: "2" },
+            ...(o.days >= 6 ? [{ v: 3 as const, l: "3" }] : []),
+          ]}
+          onChange={(v) => put({ quality: v === d.quality ? undefined : v })}
+        />
+      </div>
+      <div className="ft-row ft-kinds">
+        <span className="ft-label">Kinds of speed work</span>
+        <div className="ps-choice">
+          {SESSION_KINDS.map((k) => {
+            const on = (t.kinds ?? d.kinds).includes(k.id);
+            return (
+              <button
+                key={k.id}
+                type="button"
+                className={on ? "on" : ""}
+                title={k.blurb}
+                onClick={() => {
+                  const cur = new Set<SessionKind>(t.kinds ?? d.kinds);
+                  if (on) cur.delete(k.id);
+                  else cur.add(k.id);
+                  const list = SESSION_KINDS.map((x) => x.id).filter((x) => cur.has(x));
+                  put({ kinds: list.length === SESSION_KINDS.length ? undefined : list.length ? list : t.kinds });
+                }}
+              >
+                {on ? "✓ " : ""}
+                {k.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div className="ft-row">
+        <span className="ft-label">Hill sprints on easy days</span>
+        <Chips value={(t.hillSprints ?? d.hillSprints) ? "on" : "off"} options={[{ v: "on", l: "Yes" }, { v: "off", l: "No" }]} onChange={(v) => put({ hillSprints: v === "on" ? true : undefined })} />
+      </div>
+      <div className="ft-row">
+        <span className="ft-label">Strides after easy runs</span>
+        <Chips value={(t.strides ?? d.strides) ? "on" : "off"} options={[{ v: "on", l: "Yes" }, { v: "off", l: "No" }]} onChange={(v) => put({ strides: v === "on" ? undefined : false })} />
       </div>
       <div className="ft-row">
         <span className="ft-label">Easier week</span>

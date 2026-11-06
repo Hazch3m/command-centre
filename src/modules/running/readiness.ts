@@ -2,6 +2,7 @@ import { addDays } from "../../core/time";
 import { shapeFactor } from "./fitness";
 import { forecastWeek, raceKm, type ForecastDay } from "./forecast";
 import { mondayOf, type Plan, type PlanRace } from "./plan";
+import { expectedGain } from "./planBuilder";
 import { predictTime } from "./vo2";
 
 /**
@@ -23,6 +24,10 @@ export interface Readiness {
   parts: ReadinessPart[];
   /** Predicted time on the day (s), from fitness on race day and how ready the plan gets you. */
   predicted: number | null;
+  /** Race-day range (s): fast end if training goes to plan and fitness responds well, slow end if it only partly does. */
+  range: [number, number] | null;
+  /** If you raced today: today's fitness and your last 8 weeks of actual running. */
+  now: number | null;
   goal: number | null;
   distanceKm: number;
 }
@@ -146,9 +151,35 @@ export function raceReadiness(
   const shape = (2 / 3) * Math.min(1.5, avg / need.km) + (1 / 3) * Math.min(1, longest / need.long);
   const meters = km * 1000;
   const scaled = km >= 40 ? shape : km >= 20 ? shape * 0.43 : km >= 9 ? shape * 0.17 : shape * 0.07;
-  const predicted = predictTime(meters, v) * shapeFactor(meters, scaled);
+  // Training adds fitness by race day: what the plan was built to gain (or what a build that long usually gains).
+  const b = plan.built;
+  const isThisPlan = !!b && b.raceDate === race.date;
+  const gain = isThisPlan ? Math.max(0, b!.vdotEnd != null ? b!.vdotEnd - b!.vdot : expectedGain(b!.weeks, b!.level)) : 0;
+  const vNow = vdotAt(today) ?? v;
+  // From today's fitness: the plan's gain, scaled by how well it prepares you.
+  const base = Math.max(v, vNow);
+  const likely = base + gain * Math.min(1, score / 100);
+  const scale = (sh: number) => (km >= 40 ? sh : km >= 20 ? sh * 0.43 : km >= 9 ? sh * 0.17 : sh * 0.07);
+  const predicted = predictTime(meters, likely) * shapeFactor(meters, scaled);
+  const range: [number, number] | null = gain > 0 ? [predictTime(meters, base + gain * 1.15) * shapeFactor(meters, scale(Math.max(1, shape))), predictTime(meters, base + gain * 0.4) * shapeFactor(meters, scaled)] : null;
+  // Today: your actual last 8 weeks against what the race needs.
+  let nowKm = 0;
+  let nowLong = 0;
+  for (let i = 1; i <= 8; i++) {
+    const mon = addDays(mondayOf(today), -7 * i);
+    let wk = 0;
+    for (let d = 0; d < 7; d++) {
+      const k = actual.get(addDays(mon, d)) ?? 0;
+      wk += k;
+      nowLong = Math.max(nowLong, k);
+    }
+    nowKm += wk / 8;
+  }
+  const needNow = needsFor(km, vNow);
+  const shapeNow = (2 / 3) * Math.min(1.5, nowKm / needNow.km) + (1 / 3) * Math.min(1, nowLong / needNow.long);
+  const now = actual.size ? predictTime(meters, vNow) * shapeFactor(meters, scale(shapeNow)) : null;
   const goal = race.target ? targetSeconds(race.target, meters) : null;
-  return { score, parts, predicted, goal, distanceKm: km };
+  return { score, parts, predicted, range, now, goal, distanceKm: km };
 }
 
 function targetSeconds(text: string, meters: number): number | null {

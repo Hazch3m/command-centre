@@ -44,7 +44,13 @@ export function ReadinessView({ r, compact }: { r: Readiness; compact?: boolean 
           <div className="muted small">
             {r.predicted ? (
               <>
-                Predicted <b>{fmtTime(r.predicted)}</b>
+                {r.now ? (
+                  <>
+                    Now <b>{fmtTime(r.now)}</b> ·{" "}
+                  </>
+                ) : null}
+                Race day <b>{r.range ? `${fmtTime(r.range[0])}–${fmtTime(r.range[1])}` : fmtTime(r.predicted)}</b>
+                {r.range ? <span className="muted"> (likely {fmtTime(r.predicted)})</span> : null}
                 {r.goal ? (
                   <>
                     {" "}

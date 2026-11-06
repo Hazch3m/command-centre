@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { forecastWeek } from "./forecast";
+import { sessionToWorkout } from "../watch/importWeek";
 import { BUNDLED_PLAN, WEEK_KEYS } from "./plan";
 import { buildPlan, LEVELS, pacesFor, recommend, type BuildOptions, type History } from "./planBuilder";
 
@@ -64,5 +65,52 @@ describe("plan builder", () => {
     expect(p.mp).toBeLessThan(262);
     expect(p.threshold).toBeLessThan(p.hmp + 2);
     expect(p.easy[0]).toBeGreaterThan(p.mp + 40);
+  });
+});
+
+describe("plan builder: goals, speed work and tweaks", () => {
+  const bp = buildPlan;
+  const h = { recent4: 60, recent12: 58, peak12: 70, runsPerWeek: 5, longest8: 26, weeksRun12: 12, vdot: 53.6 };
+  const base = { raceName: "Test Marathon", raceDate: "2027-10-24", dist: "marathon" as const, target: "", weeks: 20, level: "advanced" as const, days: 6, longDay: "sun" as const, keepRaces: false };
+  const all = (o: Parameters<typeof bp>[1]) => bp(BUNDLED_PLAN, o, h, "2026-11-06").plan.weeks.filter((w) => w.start >= "2026-11-09" && w.start <= "2027-10-24").flatMap((w) => Object.values(w.sessions) as string[]);
+
+  it("never puts in hill sprints unless asked, and varies the speed work", () => {
+    const s = all(base);
+    expect(s.some((x) => /hill sprints/.test(x))).toBe(false);
+    for (const re of [/fartlek/, /progression run/, /× 2 km at|× 3 km at|× 1 km at/, /km at MP/]) expect(s.some((x) => re.test(x))).toBe(true);
+    expect(all({ ...base, tune: { hillSprints: true } }).some((x) => /hill sprints/.test(x))).toBe(true);
+  });
+
+  it("only uses the kinds you pick", () => {
+    const s = all({ ...base, tune: { kinds: ["fartlek", "racepace"] } });
+    expect(s.some((x) => /fartlek/.test(x))).toBe(true);
+    expect(s.some((x) => /progression run|hill reps|min T at/.test(x))).toBe(false);
+  });
+
+  it("ramps faster when you ask for it", () => {
+    const slow = bp(BUNDLED_PLAN, { ...base, weeks: 30, tune: { growth: 0.03 } }, h, "2026-11-06").weeks;
+    const fast = bp(BUNDLED_PLAN, { ...base, weeks: 30, tune: { growth: 0.1 } }, h, "2026-11-06").weeks;
+    const peakAt = (ws: { km: number }[]) => ws.findIndex((w) => w.km >= Math.max(...ws.map((x) => x.km)) * 0.97);
+    expect(peakAt(fast)).toBeLessThan(peakAt(slow));
+  });
+
+  it("builds blocks without a race", () => {
+    const o = { ...base, goal: "base" as const, raceName: "Build base", weeks: 8, raceDate: "2027-01-03" };
+    const r = bp(BUNDLED_PLAN, o, h, "2026-11-06");
+    expect(r.plan.races.some((x) => x.name === "Build base")).toBe(false);
+    expect(r.weeks).toHaveLength(8);
+    const rec = bp(BUNDLED_PLAN, { ...o, goal: "recover" as const, weeks: 3, raceDate: "2026-11-29" }, h, "2026-11-06");
+    expect(Math.max(...rec.weeks.map((w) => w.km))).toBeLessThan(55);
+    const fast = bp(BUNDLED_PLAN, { ...o, goal: "faster" as const, dist: "10k" as const, weeks: 10, raceDate: "2027-01-17" }, h, "2026-11-06");
+    expect(Object.values(fast.plan.weeks.find((w) => w.start === "2027-01-11")!.sessions).some((x) => /time trial/.test(x ?? ""))).toBe(true);
+  });
+
+  it("every new session goes to the watch as a structured workout", () => {
+    for (const x of all(base)) {
+      if (/^Rest$|race$|Marathon$/i.test(x)) continue;
+      const w = sessionToWorkout(x);
+      expect(w, x).not.toBeNull();
+      if (/fartlek|× .* at|progression run|last \d+ at/.test(x)) expect(w!.steps.length, x).toBeGreaterThan(1);
+    }
   });
 });
