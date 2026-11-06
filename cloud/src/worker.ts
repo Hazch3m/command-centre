@@ -26,6 +26,9 @@ import initSqlJs, { type SqlJsStatic } from "sql.js/dist/sql-wasm.js";
 import wasmModule from "sql.js/dist/sql-wasm.wasm";
 
 let SQL: Promise<SqlJsStatic> | null = null;
+// sql.js sees Workers' WorkerGlobalScope, takes itself for a browser worker and reads self.location.href,
+// which Workers don't have. Give it one (the WebAssembly is bundled, so the address is never fetched).
+if (!(globalThis as { location?: unknown }).location) Object.defineProperty(globalThis, "location", { value: new URL("https://command-centre.invalid/"), configurable: true });
 /** sql.js with its WebAssembly bundled into the service (Workers can't fetch it at run time). */
 const sqlJs = () =>
   (SQL ??= initSqlJs({

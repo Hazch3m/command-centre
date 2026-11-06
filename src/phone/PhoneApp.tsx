@@ -8,7 +8,7 @@ import { loadRuns } from "../modules/running/strava";
 import { ModulePage } from "../shell/Dashboard";
 import { NavContext } from "../shell/nav";
 import { Calendar } from "./Calendar";
-import { PhoneNav, type Pushed, type Tab } from "./common";
+import { PhoneNav, usePhoneNav, type Pushed, type Tab } from "./common";
 import { Habits } from "./Habits";
 import { PbsTab } from "../modules/running/PbsTab";
 import { Runs } from "./Runs";
@@ -18,13 +18,14 @@ import { PlanAdjustPage } from "./PlanAdjust";
 import { Tasks } from "./Tasks";
 import { Today } from "./Today";
 import { Training } from "./Training";
+import { Planner, plannerView } from "./Planner";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "today", label: "Today", icon: "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" },
-  { id: "training", label: "Plan", icon: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M8 14h3M8 17h6" },
+  { id: "planner", label: "Planner", icon: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M8 14l2 2 4-4" },
+  { id: "training", label: "Plan", icon: "M4 20h4v-6H4zM10 20h4V10h-4zM16 20h4V5h-4z" },
   { id: "runs", label: "Runs", icon: "M13 4a2 2 0 1 0 4 0 2 2 0 0 0-4 0M6 20l3-6 3 2v5M9 14l2-5 4 2 3 3M11 9l-3 1-2 3" },
   { id: "stats", label: "Stats", icon: "M4 20V10M10 20V4M16 20v-7M22 20H2" },
-  { id: "more", label: "More", icon: "M5 12h.01M12 12h.01M19 12h.01" },
 ];
 const PUSHED: Record<Exclude<Pushed, null>, { title: string; module: string | null }> = {
   health: { title: "Health", module: "health" },
@@ -35,6 +36,9 @@ const PUSHED: Record<Exclude<Pushed, null>, { title: string; module: string | nu
   calendar: { title: "Calendar", module: null },
   tasks: { title: "Tasks", module: null },
   habits: { title: "Habits", module: null },
+  settings: { title: "Settings", module: null },
+  watch: { title: "Watch workouts", module: "watch" },
+  weather: { title: "Weather", module: "weather" },
 };
 const PUSHED_PAGE: Partial<Record<Exclude<Pushed, null>, () => ReactNode>> = {
   adjust: () => <PlanAdjustPage />,
@@ -42,6 +46,7 @@ const PUSHED_PAGE: Partial<Record<Exclude<Pushed, null>, () => ReactNode>> = {
   calendar: () => <Calendar />,
   tasks: () => <Tasks />,
   habits: () => <Habits />,
+  settings: () => <SettingsPage />,
 };
 
 function useSync() {
@@ -96,7 +101,7 @@ export function PhoneApp() {
   const cardNav = useMemo(
     () => ({
       tab,
-      go: (t: string) => (t === "health" || t === "fitness" ? push(t) : t === "running" ? setTab("training") : t === "checklist" ? push("habits") : t === "tasks" || t === "calendar" ? push(t) : setTab("today")),
+      go: (t: string) => (t === "health" || t === "fitness" ? push(t) : t === "running" ? setTab("training") : t === "checklist" || t === "tasks" || t === "calendar" ? (plannerView(t === "checklist" ? "habits" : t), setTab("planner")) : t === "weather" ? push("weather") : setTab("today")),
     }),
     [tab],
   );
@@ -191,7 +196,11 @@ export function PhoneApp() {
                 ‹ {TABS.find((t) => t.id === tab)!.label}
               </button>
             ) : (
-              <span />
+              <button className="p-gear" onClick={() => push("settings")} aria-label="Settings and account">
+                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                  <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
             )}
             <span className="p-head-right">
               <SyncLine onRefresh={askPc} busy={busy || asking} />
@@ -223,10 +232,10 @@ export function PhoneApp() {
               <Training />
             ) : tab === "runs" ? (
               <Runs />
-            ) : tab === "stats" ? (
-              <Stats />
+            ) : tab === "planner" ? (
+              <Planner />
             ) : (
-              <More push={push} />
+              <Stats />
             )}
           </main>
           <nav className="p-tabs" role="tablist">
@@ -246,12 +255,17 @@ export function PhoneApp() {
   );
 }
 
+/** The gear at the top: your account, Garmin, a PC, and the plan's settings. */
+function SettingsPage() {
+  const nav = usePhoneNav();
+  return <More push={nav.push} />;
+}
+
 function More({ push }: { push: (p: Pushed) => void }) {
   const rows: [Exclude<Pushed, null>, string, string][] = [
-    ["calendar", "Calendar", "Your events and the plan's sessions"],
-    ["tasks", "Tasks", "To-dos and projects"],
-    ["habits", "Habits", "Daily checklist and streaks"],
     ["adjust", "Your plan and races", "Build a plan, races and tapers, import a CSV"],
+    ["watch", "Watch workouts", "Build a workout and send it to your Garmin"],
+    ["weather", "Weather", "Forecast for your runs"],
   ];
   return (
     <div className="p-screen">

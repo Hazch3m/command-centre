@@ -15,6 +15,8 @@ import { useRunningData } from "../modules/running/useRunning";
 import { addTaskFromText, focusGroup, loadTasks, setDone } from "../modules/tasks/data";
 import { HabitButton } from "./Habits";
 import { GettingStarted } from "./Account";
+import { plannerView } from "./Planner";
+import { weatherModule } from "../modules/weather";
 import { isEmptyPlan } from "../core/account";
 import { Ring, Section, toneFor, usePhoneNav, useReadiness } from "./common";
 
@@ -125,7 +127,7 @@ export function Today() {
         <Section
           title="Habits"
           action={
-            <button className="p-link" onClick={() => nav.push("habits")}>
+            <button className="p-link" onClick={() => (plannerView("habits"), nav.setTab("planner"))}>
               {habits.items.filter((i) => (habits.today.get(i.id) ?? 0) >= i.target).length}/{habits.items.length} ›
             </button>
           }
@@ -142,7 +144,7 @@ export function Today() {
       <Section
         title="To do"
         action={
-          <button className="p-link" onClick={() => nav.push("tasks")}>
+          <button className="p-link" onClick={() => (plannerView("tasks"), nav.setTab("planner"))}>
             All tasks ›
           </button>
         }
@@ -180,7 +182,7 @@ export function Today() {
       <Section
         title="Coming up"
         action={
-          <button className="p-link" onClick={() => nav.push("calendar")}>
+          <button className="p-link" onClick={() => (plannerView("calendar"), nav.setTab("planner"))}>
             Calendar ›
           </button>
         }
@@ -200,6 +202,21 @@ export function Today() {
           </div>
         ))}
         {!upcoming.length && <div className="p-row p-empty">Nothing else today or tomorrow.</div>}
+      </Section>
+
+      <Section
+        title="Weather"
+        action={
+          <button className="p-link" onClick={() => nav.push("weather")}>
+            Forecast ›
+          </button>
+        }
+      >
+        <div className="p-weather card card-weather">
+          <div className="card-body">
+            <weatherModule.Card editing={false} variant="tile" />
+          </div>
+        </div>
       </Section>
 
       {race && (
