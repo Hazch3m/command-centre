@@ -63,6 +63,12 @@ jobs:
           npx wrangler deploy 2>&1 | tee deploy.log
           url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' deploy.log | head -1)
           echo "::notice title=Sync service address::${url:-see the deploy log}"
+          # A whole account sync, run on Cloudflare itself (SQLite, tables, encryption, a phone change).
+          if [ -n "$url" ]; then
+            for i in 1 2 3; do curl -s -m 60 "$url/api/selftest" > selftest.json && break; sleep 5; done
+            cat selftest.json; echo
+            grep -q '"ok":true' selftest.json || { echo "::error title=Sync service self-test failed::$(head -c 600 selftest.json)"; exit 1; }
+          fi
       - name: Cloudflare not set up yet
         if: env.HAS_CF != 'true'
         run: echo "::notice title=Phone sync::Add the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repository secrets to deploy the sync service."

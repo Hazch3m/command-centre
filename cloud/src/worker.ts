@@ -20,9 +20,11 @@
 import { DurableObject } from "cloudflare:workers";
 import { garminExchangeTicket, garminGet, type Creds } from "./appBackend";
 import { verifyAppleToken } from "./apple";
-import { linkKeys, newSecret } from "../../src/core/sync";
+import { gzip, linkKeys, newSecret, packSnapshot, seal, type PhoneOp } from "../../src/core/sync";
+import { accountHeader, buildAccountDb } from "../../src/core/account";
 import { runCloudSync, type SyncResult } from "./cloudSync";
-import initSqlJs, { type SqlJsStatic } from "sql.js/dist/sql-wasm.js";
+// The same (browser) build of sql.js the phone runs; the Node build would look for Node's files.
+import initSqlJs, { type SqlJsStatic } from "sql.js";
 import wasmModule from "sql.js/dist/sql-wasm.wasm";
 
 let SQL: Promise<SqlJsStatic> | null = null;
@@ -512,11 +514,55 @@ export class Store extends DurableObject<Env> {
   }
 }
 
+/**
+ * Checks, on Cloudflare itself, that a whole account sync works: SQLite, the app's tables, encryption,
+ * compression, and applying a phone change. Run after every deploy (GitHub Actions); holds no data.
+ */
+async function selfTest(): Promise<{ ok: boolean; steps: string[]; error?: string }> {
+  const steps: string[] = [];
+  try {
+    const S = await sqlJs();
+    steps.push("sqlite");
+    const bytes = buildAccountDb(new S.Database());
+    steps.push("tables");
+    const secret = newSecret();
+    const keys = await linkKeys(secret);
+    let snap = { box: await seal(keys.key, await gzip(packSnapshot(accountHeader("2026-01-01"), bytes))), version: 1, applied: 0 };
+    steps.push("sealed");
+    const op: PhoneOp = { at: "now", stmts: [{ sql: "INSERT INTO tasks (id, title, created_at) VALUES (?, ?, ?)", params: [1, "self-test", "2026-01-01T00:00:00Z"] }] };
+    const opBox = await seal(keys.key, new TextEncoder().encode(JSON.stringify(op)));
+    const r = await runCloudSync(
+      {
+        account: true,
+        sqlJs,
+        creds: { secret, garmin: null, google: null, ics: [] },
+        saveCreds: async () => {},
+        loadSnapshot: async () => snap,
+        saveSnapshot: async (box, applied, _c, v) => ((snap = { box, version: v + 1, applied }), true),
+        cloudOpsAfter: () => [],
+        addCloudOp: () => 1,
+        phoneOpsAfter: (id) => (id < 1 ? [{ id: 1, body: opBox }] : []),
+      },
+      ["watch"],
+    );
+    if (r.errors.cloud) throw new Error(r.errors.cloud);
+    if (r.applied !== 1 || snap.version !== 2) throw new Error(`phone change not applied (applied ${r.applied})`);
+    steps.push("account sync");
+    return { ok: true, steps };
+  } catch (e) {
+    return { ok: false, steps, error: String((e as Error)?.stack ?? e) };
+  }
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
     if (url.pathname.startsWith("/api/")) {
       if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+      if (url.pathname === "/api/selftest") {
+        const t = await selfTest();
+        return json(t, t.ok ? 200 : 500);
+      }
       if (url.pathname.startsWith("/api/internal/")) return err(404, "unknown request");
       const store = (name: string) => env.STORE.get(env.STORE.idFromName(name));
 
