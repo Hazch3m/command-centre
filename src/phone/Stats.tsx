@@ -6,7 +6,7 @@ import { Section, usePhoneNav, useReadiness } from "./common";
 export function Stats() {
   const nav = usePhoneNav();
   const today = useToday();
-  const ready = useReadiness(today).data;
+  const ready = useReadiness(today);
   return (
     <div className="p-screen">
       <Section>

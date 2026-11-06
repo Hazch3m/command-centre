@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { kvGet, kvSet } from "../core/db";
 import { notifyChanged } from "../core/events";
 import { REFRESHED_KEY, REFRESH_KEY } from "../core/sync";
@@ -35,7 +35,7 @@ const PUSHED: Record<Exclude<Pushed, null>, { title: string; module: string | nu
   tasks: { title: "Tasks", module: null },
   habits: { title: "Habits", module: null },
 };
-const PUSHED_PAGE: Partial<Record<Exclude<Pushed, null>, () => JSX.Element>> = {
+const PUSHED_PAGE: Partial<Record<Exclude<Pushed, null>, () => ReactNode>> = {
   adjust: () => <PlanAdjustPage />,
   pbs: () => <div className="p-embed"><PbsTab /></div>,
   calendar: () => <Calendar />,
