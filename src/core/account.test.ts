@@ -78,13 +78,15 @@ describe("accounts", () => {
 });
 
 describe("Sign in with Apple", () => {
+  let kids = 0;
   async function appleToken(claims: Record<string, unknown>) {
+    const kid = `k${++kids}`;
     const kp = (await crypto.subtle.generateKey({ name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }, true, ["sign", "verify"])) as CryptoKeyPair;
     const jwk = (await crypto.subtle.exportKey("jwk", kp.publicKey)) as JsonWebKey;
     const enc = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
-    const body = `${enc({ alg: "RS256", kid: "k1" })}.${enc(claims)}`;
+    const body = `${enc({ alg: "RS256", kid })}.${enc(claims)}`;
     const sig = Buffer.from(await crypto.subtle.sign("RSASSA-PKCS1-v1_5", kp.privateKey, new TextEncoder().encode(body))).toString("base64url");
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ keys: [{ kid: "k1", kty: "RSA", alg: "RS256", n: jwk.n, e: jwk.e }] })));
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ keys: [{ kid, kty: "RSA", alg: "RS256", n: jwk.n, e: jwk.e }] })));
     return `${body}.${sig}`;
   }
   const good = async (nonce: string) => ({ iss: "https://appleid.apple.com", aud: "com.hazch3m.commandcentre", exp: Math.floor(Date.now() / 1000) + 600, sub: "001234.abc", nonce: await sha256hex(nonce) });
