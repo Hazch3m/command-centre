@@ -14,6 +14,8 @@ import { TargetPrefs } from "../modules/running/TargetPrefs";
 import { AutoSyncSetting } from "../modules/watch/AutoSyncSetting";
 import { dayName, Section, usePhoneNav } from "./common";
 import { Session } from "./Today";
+import { ZoneIcon } from "./icons";
+import { zoneOf } from "./EffortProfile";
 import { PracticeTag } from "../modules/running/PracticeTag";
 import { PlanCoach } from "../modules/running/PlanCoach";
 import { isEmptyPlan } from "../core/account";
@@ -178,6 +180,7 @@ export function Training() {
               <span className="p-dayrow-dow">{dayName(d.date, today).replace(/ \d+ \w+$/, "")}</span>
               <span className="p-row-main">
                 <span className="p-row-title">
+                  <ZoneIcon zone={t === "rest" || !d.km ? "rest" : d.race ? "race" : zoneOf(d.text, d.kind)} title={d.text} size={15} />
                   {t === "rest" || !d.km ? "Rest" : d.text}
                   {t !== "rest" && !!d.km && <PracticeTag text={d.text} />}
                 </span>

@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useToday } from "../../core/time";
 import { useQuery } from "../../core/useQuery";
 import { forecastWeek } from "./forecast";
 import { mondayOf } from "./plan";
-import { RouteMap } from "./route";
-import { RunMap } from "./RunMap";
+import { RunMap, RunMapThumb } from "./RunMap";
 import { FEELS, loadAllRunMeta, loadMyShoes, loadRunMeta, saveMyShoes, saveRunMeta, sendToGarmin, shoeKm, type MyShoe, type RunMeta } from "./runMeta";
 import { duration, km, pace } from "./stats";
 import { loadOverrides, type Run } from "./strava";
@@ -25,6 +24,9 @@ export function RunReview({ run, onClose, auto }: { run: Run; onClose: () => voi
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [map, setMap] = useState(false);
+  // Pull the sheet down by its top to close it (skips the review when it opened by itself).
+  const sheet = useRef<HTMLDivElement | null>(null);
+  const drag = useRef<{ y: number; dy: number } | null>(null);
   const metas = useQuery(loadAllRunMeta, [run.id]).data;
   const overrides = useQuery(loadOverrides, []).data;
   useEffect(() => {
@@ -65,8 +67,29 @@ export function RunReview({ run, onClose, auto }: { run: Run; onClose: () => voi
   const when = new Date(run.start_local || run.date + "T12:00").toLocaleString("en-GB", { weekday: "long", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   return createPortal(
     <div className="modal-backdrop rr-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal rr" role="dialog" aria-label="Your run">
-        <header className="rr-head">
+      <div className="modal rr" role="dialog" aria-label="Your run" ref={sheet}>
+        <header
+          className="rr-head"
+          onTouchStart={(e) => (drag.current = { y: e.touches[0].clientY, dy: 0 })}
+          onTouchMove={(e) => {
+            if (!drag.current || !sheet.current) return;
+            drag.current.dy = Math.max(0, e.touches[0].clientY - drag.current.y);
+            sheet.current.style.transition = "none";
+            sheet.current.style.transform = `translateY(${drag.current.dy}px)`;
+          }}
+          onTouchEnd={() => {
+            const d = drag.current?.dy ?? 0;
+            drag.current = null;
+            const el = sheet.current;
+            if (!el) return;
+            el.style.transition = "transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)";
+            if (d > 110) {
+              el.style.transform = "translateY(110%)";
+              window.setTimeout(() => (auto ? save(true) : onClose()), 220);
+            } else el.style.transform = "";
+          }}
+        >
+          <i className="rr-grab" aria-hidden="true" />
           <span className="p-session-label">{auto ? (run.date === today ? "Nice run!" : "Your last run") : "Edit run"}</span>
           <button type="button" className="run-close" onClick={() => (auto ? save(true) : onClose())} aria-label={auto ? "Skip" : "Close"}>
             <span aria-hidden="true">✕</span>
@@ -101,7 +124,7 @@ export function RunReview({ run, onClose, auto }: { run: Run; onClose: () => voi
           </div>
           {run.polyline && (
             <button type="button" className="rr-map" onClick={() => setMap(true)} aria-label="Open the map">
-              <RouteMap polyline={run.polyline} height={120} />
+              <RunMapThumb polyline={run.polyline} height={140} />
               <span className="rr-map-hint">Tap for the map</span>
             </button>
           )}

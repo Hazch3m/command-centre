@@ -3854,10 +3854,25 @@ select:focus {
   min-height: 0;
   touch-action: none;
 }
-.rm-tiles-dark {
-  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6);
+.run-map-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
 }
-.leaflet-marker-icon.rm-pin {
+.run-map-canvas {
+  flex: 1;
+}
+.rm-thumb {
+  width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.rm-thumb .maplibregl-ctrl-attrib {
+  display: none;
+}
+.rm-pin {
   box-sizing: border-box;
   display: grid;
   place-items: center;
@@ -3865,18 +3880,104 @@ select:focus {
   box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
 }
 .rm-km {
+  width: 22px;
+  height: 22px;
   background: #fff;
   color: #111;
   border: 2px solid var(--accent);
   font: 700 0.68rem/1 system-ui, sans-serif;
 }
+.rm-start,
+.rm-end {
+  width: 16px;
+  height: 16px;
+  border: 3px solid #fff;
+}
 .rm-start {
   background: #22c55e;
-  border: 3px solid #fff;
 }
 .rm-end {
   background: #ef4444;
-  border: 3px solid #fff;
+}
+/* Map looks: little swatches top-left, like Strava's layer picker */
+.rm-styles {
+  position: absolute;
+  top: 0.7rem;
+  left: 0.7rem;
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.3rem;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
+}
+.rm-style {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.2rem;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 650;
+}
+.rm-style i {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.rm-style.on {
+  color: var(--accent);
+}
+.rm-style.on i {
+  border-color: var(--accent);
+  transform: scale(1.04);
+}
+.rm-style-standard i {
+  background: linear-gradient(135deg, #e9f0d8 0 40%, #cfe3f2 40% 55%, #f3efe6 55%), #eee;
+  background-image: linear-gradient(160deg, transparent 46%, #fff 46% 52%, transparent 52%), linear-gradient(135deg, #dfeccb 0 40%, #b9d7ef 40% 58%, #f4f0e7 58%);
+}
+.rm-style-light i {
+  background-image: linear-gradient(160deg, transparent 46%, #fff 46% 52%, transparent 52%), linear-gradient(135deg, #f2f2f0 0 50%, #e2e6ea 50%);
+}
+.rm-style-satellite i {
+  background-image: radial-gradient(circle at 30% 30%, #6f8b4e, transparent 45%), radial-gradient(circle at 75% 70%, #3e5a3a, transparent 50%), linear-gradient(135deg, #556b3a, #2f4a5c);
+}
+.rm-style-dark i {
+  background-image: linear-gradient(160deg, transparent 46%, #4a5260 46% 52%, transparent 52%), linear-gradient(135deg, #20242c 0 50%, #2c323c 50%);
+}
+.rm-recentre {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  display: grid;
+  place-items: center;
+  width: 2.8rem;
+  height: 2.8rem;
+  border: 0;
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
+}
+.rm-recentre svg {
+  width: 1.3rem;
+  height: 1.3rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.run-map .maplibregl-ctrl-bottom-right {
+  margin-bottom: env(safe-area-inset-bottom);
 }
 
 /* After a run: title, feel, effort, notes, shoes */

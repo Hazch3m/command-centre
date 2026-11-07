@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode, useRef } from "react";
 import { useSwipe } from "../../phone/swipe";
-import { RunMap } from "./RunMap";
+import { RunMap, RunMapThumb } from "./RunMap";
 import { RunReview } from "./RunReview";
 import { FEELS, loadAllRunMeta, loadMyShoes } from "./runMeta";
 import { createPortal } from "react-dom";
@@ -15,7 +15,6 @@ import { checkRun, fmtPace, fmtVal, verdictLabel } from "./pace";
 import { loadPlan } from "./plan";
 import { MedalBadges } from "./Medals";
 import { collectEfforts, medalsByRun } from "./pbs";
-import { RouteMap } from "./route";
 import { RunTypeDot, typeOfDay, typeOfRun } from "./runType";
 import { duration, km, pace } from "./stats";
 import { loadDetails, loadFullRun, loadOverrides, loadRuns, loadShoes, type FullRun, type Run } from "./strava";
@@ -266,7 +265,7 @@ function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; o
       <RunNotes id={run.id} />
       <div className="run-detail-top">
         <button type="button" className="run-detail-map" onClick={() => run.polyline && setMap(true)} aria-label="Open the map" disabled={!run.polyline}>
-          <RouteMap polyline={run.polyline} height={170} />
+          <RunMapThumb polyline={run.polyline} height={170} />
           {run.polyline && <span className="rr-map-hint">Tap for the map</span>}
         </button>
         <div className="run-stats">

@@ -281,6 +281,7 @@ export function PhoneApp() {
           </main>
           <AutoReview />
           <nav className="p-tabs" role="tablist">
+            <span className={"p-tab-ind" + (pushed ? " off" : "")} style={{ transform: `translateX(${TABS.findIndex((x) => x.id === tab) * 100}%)` }} aria-hidden="true" />
             {TABS.map((t) => (
               <button key={t.id} role="tab" aria-selected={tab === t.id} className={`p-tab tab-${t.id}` + (tab === t.id ? " on" : "")} onClick={() => setTab(t.id)}>
                 <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -352,6 +353,13 @@ function More({ push }: { push: (p: Pushed) => void }) {
   ];
   return (
     <div className="p-screen">
+      <div className="p-brand">
+        <img src="logo.svg" alt="" width={56} height={56} />
+        <span>
+          <b>Command Centre</b>
+          <small>Train, race, recover</small>
+        </span>
+      </div>
       <section className="p-section">
         <div className="p-group">
           {rows.map(([id, title, sub]) => (
