@@ -69,7 +69,8 @@ export function monotony(daily: Map<string, number>, today: string): { monotony:
   const week = xs.reduce((a, b) => a + b, 0);
   const mean = week / 7;
   const sd = Math.sqrt(xs.reduce((a, x) => a + (x - mean) ** 2, 0) / 7);
-  const m = sd > 0 ? mean / sd : null;
+  // Every day the same (spread ~0): off the scale, reported as null.
+  const m = sd > mean * 0.02 ? mean / sd : null;
   return { monotony: m, strain: m == null ? 0 : week * m, week };
 }
 
