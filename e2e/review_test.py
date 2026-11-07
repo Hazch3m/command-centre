@@ -115,16 +115,16 @@ try:
         check("windy on the way back" in txt and "Pegasus" in txt, "run shows notes and shoes")
         pp.screenshot(path=f"{out}/04-run.png")
         pp.locator(".run-detail-map").click()
-        pp.wait_for_selector(".run-map .leaflet-container", timeout=10000)
-        try:
-            pp.wait_for_selector(".leaflet-tile-loaded", timeout=15000)
-        except Exception:
-            pass
-        pp.wait_for_timeout(1500)
-        check(pp.locator(".run-map .leaflet-interactive").count() >= 1, "map draws the route")
+        pp.wait_for_selector(".run-map .maplibregl-canvas", timeout=15000)
+        pp.wait_for_timeout(5000)
         check(pp.locator(".rm-km").count() >= 1 and pp.locator(".rm-start").count() == 1, "km markers and start pin")
-        check(pp.locator(".leaflet-tile-loaded").count() > 0, "map tiles load")
+        check(pp.evaluate("""() => { const c = document.querySelector('.run-map .maplibregl-canvas'); return !!c && c.width > 100; }"""), "vector map draws")
         pp.screenshot(path=f"{out}/05-map.png")
+        for st in ["Satellite", "Light"]:
+            pp.locator(".rm-style", has_text=st).click()
+            pp.wait_for_timeout(3500)
+            pp.screenshot(path=f"{out}/05-map-{st.lower()}.png")
+        pp.locator(".rm-style", has_text="Standard").click()
         pp.locator(".run-map .run-close").click()
         pp.wait_for_timeout(500)
         check(pp.locator(".run-map").count() == 0, "map closes")
@@ -134,6 +134,7 @@ try:
         # A PC joins with a code, bringing its plan.
         pp.locator(".p-gear").click()
         pp.wait_for_timeout(1000)
+        pp.screenshot(path=f"{out}/04b-settings.png")
         pp.get_by_role("button", name="Link a PC").click()
         pp.wait_for_timeout(1500)
         code = re.search(r"([A-Z0-9]{4}-[A-Z0-9]{4})", pp.locator(".p-section").filter(has_text="Account").inner_text()).group(1)
@@ -245,6 +246,11 @@ try:
                 pp.wait_for_timeout(250)
         check(pp.locator(".p-when").count() == 0, "weeks: back to this week")
 
+        # Today once today's run is done: a small tile.
+        pp.locator(".p-tabs").get_by_role("tab", name="Today", exact=True).click()
+        pp.wait_for_timeout(1500)
+        print("done tile:", pp.locator(".p-donetile").count(), "session:", pp.locator(".p-session").count())
+        pp.screenshot(path=f"{out}/03b-today-done.png")
         # Stats: training load.
         pp.locator(".p-tabs").get_by_role("tab", name="Stats", exact=True).click()
         pp.wait_for_timeout(2500)
