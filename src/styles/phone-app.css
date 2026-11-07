@@ -2181,7 +2181,8 @@ svg.effort {
 .tl-key i.ctl { background: var(--accent); }
 .tl-key i.atl { background: var(--z-vo2); }
 .tl-key i.tsb { background: linear-gradient(90deg, var(--z-easy) 50%, var(--z-threshold) 50%); height: 0.5rem; }
-.tl-range button { padding: 0.25rem 0.55rem; font-size: 0.75rem; }
+.tl-range { flex: none; }
+.tl-range button { flex: none; padding: 0.3rem 0.6rem; font-size: 0.78rem; white-space: nowrap; }
 .hz-1 { background: #9aa6b8; }
 .hz-2 { background: var(--z-easy); }
 .hz-3 { background: var(--z-long); }
