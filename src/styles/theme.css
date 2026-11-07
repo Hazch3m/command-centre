@@ -3872,14 +3872,14 @@ select:focus {
 .rm-thumb .maplibregl-ctrl-attrib {
   display: none;
 }
-.rm-pin {
+.mp-pin {
   box-sizing: border-box;
   display: grid;
   place-items: center;
   border-radius: 50%;
   box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
 }
-.rm-km {
+.mp-km {
   width: 22px;
   height: 22px;
   background: #fff;
@@ -3887,16 +3887,16 @@ select:focus {
   border: 2px solid var(--accent);
   font: 700 0.68rem/1 system-ui, sans-serif;
 }
-.rm-start,
-.rm-end {
+.mp-start,
+.mp-end {
   width: 16px;
   height: 16px;
   border: 3px solid #fff;
 }
-.rm-start {
+.mp-start {
   background: #22c55e;
 }
-.rm-end {
+.mp-end {
   background: #ef4444;
 }
 /* Map looks: little swatches top-left, like Strava's layer picker */

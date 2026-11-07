@@ -2,8 +2,8 @@
 const PATHS: Record<string, string> = {
   // A leaf: easy, aerobic
   easy: "M5 19c0-8 5-13 14-14-1 9-6 14-14 14zM5 19l7-7",
-  // A winding road: long run
-  long: "M8 21c0-4 8-4 8-8s-8-4-8-8M12 3v2M12 11v2M12 19v2",
+  // A road into the distance: long run
+  long: "M9 3 4 21M15 3l5 18M12 4v2.5M12 10v3M12 17v4",
   // A flame: threshold
   threshold: "M12 21c-3.5 0-6-2.4-6-5.6 0-3.4 3-5 3.5-8.4 2 1.3 3 3.2 3 4.6 1-.6 1.6-1.8 1.6-3.2C16.5 10 18 12.5 18 15.4c0 3.2-2.5 5.6-6 5.6z",
   // A lightning bolt: VO2 max
