@@ -20,6 +20,7 @@ import { Today } from "./Today";
 import { Training } from "./Training";
 import { Planner, plannerView } from "./Planner";
 import { useSwipe } from "./swipe";
+import { WorkoutCreator } from "./WorkoutCreator";
 import { ACCENTS, phoneLook, setPhoneLook, type PhoneLook } from "../core/appearance";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
@@ -39,6 +40,7 @@ const PUSHED: Record<Exclude<Pushed, null>, { title: string; module: string | nu
   tasks: { title: "Tasks", module: null },
   habits: { title: "Habits", module: null },
   settings: { title: "Settings", module: null },
+  workout: { title: "Create a workout", module: null },
   watch: { title: "Watch workouts", module: "watch" },
   weather: { title: "Weather", module: "weather" },
 };
@@ -49,6 +51,7 @@ const PUSHED_PAGE: Partial<Record<Exclude<Pushed, null>, () => ReactNode>> = {
   tasks: () => <Tasks />,
   habits: () => <Habits />,
   settings: () => <SettingsPage />,
+  workout: () => <WorkoutCreator />,
 };
 
 function useSync() {
@@ -323,7 +326,8 @@ function SettingsPage() {
 function More({ push }: { push: (p: Pushed) => void }) {
   const rows: [Exclude<Pushed, null>, string, string][] = [
     ["adjust", "Your plan and races", "Build a plan, races and tapers, import a CSV"],
-    ["watch", "Watch workouts", "Build a workout and send it to your Garmin"],
+    ["workout", "Create a workout", "Pick what to work on, get suggestions, send it to your watch"],
+    ["watch", "Workout editor", "Every step by hand, and watch sync settings"],
     ["weather", "Weather", "Forecast for your runs"],
   ];
   return (

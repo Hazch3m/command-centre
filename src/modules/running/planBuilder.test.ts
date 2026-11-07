@@ -163,3 +163,26 @@ describe("plan builder: long runs and labels", () => {
     expect(s.filter((x) => / with /.test(x) && !/long run|time trial/.test(x) && !/warm-up, .*cool-down$/.test(x))).toEqual([]);
   });
 });
+
+describe("create a workout", () => {
+  it("every suggestion is a workout the watch understands, with its warm-up", async () => {
+    const { FOCUSES, suggestions, specText } = await import("./workoutLibrary");
+    const { pacesFor } = await import("./planBuilder");
+    const p = pacesFor(53.6);
+    for (const f of FOCUSES)
+      for (const dist of ["marathon", "10k"] as const)
+        for (const s of suggestions(f.id, p, dist)) {
+          const text = specText(s);
+          const w = sessionToWorkout(text);
+          expect(w, text).not.toBeNull();
+          if (!["long", "easy", "recovery"].includes(f.id)) expect(w!.steps.length, text).toBeGreaterThan(1);
+          if (/warm-up/.test(text)) expect(JSON.stringify(w!.steps[0]), text).toMatch(/"3km"|"\d+km"/);
+        }
+  });
+  it("suggests easy after a hard day and recovery when readiness is low", async () => {
+    const { suggestFocus } = await import("./workoutLibrary");
+    expect(suggestFocus({ readiness: 30, hardDaysAgo: 5, planToday: null, longDaysAgo: 2 }).focus).toBe("recovery");
+    expect(suggestFocus({ readiness: 80, hardDaysAgo: 1, planToday: null, longDaysAgo: 2 }).focus).toBe("easy");
+    expect(suggestFocus({ readiness: 80, hardDaysAgo: 5, planToday: null, longDaysAgo: 2 }).focus).toBe("threshold");
+  });
+});

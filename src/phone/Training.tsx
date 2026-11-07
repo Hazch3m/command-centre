@@ -108,6 +108,11 @@ export function Training() {
       </div>
       {fw.week ? <Session d={day} label={dayName(day.date, today)} /> : <div className="p-hint center">{fw.block ? `${fw.block.key}. No day-by-day sessions this far out yet.` : "No plan this week."}</div>}
 
+      <button type="button" className="wc-cta" onClick={() => nav.push("workout")}>
+        <b>Create a workout</b>
+        <span>Choose what to work on, get a suggestion at your paces, send it to your watch</span>
+      </button>
+
       <Section title="Plan check">
         <div className="p-coach">
           <PlanCoach plan={plan} monday={monday} compact />

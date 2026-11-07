@@ -1680,3 +1680,156 @@ svg.effort {
 .p-session.z-rest .p-session-km.rest {
   font-size: 2.6rem;
 }
+
+/* Create a workout */
+.wc-cta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 20px;
+  background: radial-gradient(120% 120% at 100% 0%, var(--accent-dim), transparent 70%), var(--card);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+.wc-cta b {
+  font-family: var(--display);
+  font-size: 1.5rem;
+  color: var(--accent);
+}
+.wc-cta span,
+.wc-tip span:last-child {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.wc-tip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--z) 35%, transparent);
+  border-radius: 20px;
+  background: radial-gradient(120% 120% at 100% 0%, color-mix(in srgb, var(--z) 22%, transparent), transparent 70%), var(--card);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+.wc-tip b {
+  font-family: var(--display);
+  font-size: 1.7rem;
+  color: var(--z);
+  line-height: 1.05;
+}
+.wc-focus {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.wc-chip {
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.92rem;
+}
+.wc-chip.on {
+  border-color: var(--z);
+  background: color-mix(in srgb, var(--z) 20%, transparent);
+  color: var(--z);
+  font-weight: 700;
+}
+.wc-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+.wc-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.65rem 0.6rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+.wc-option.on {
+  border-color: var(--z);
+  box-shadow: inset 0 0 0 1px var(--z);
+}
+.wc-option-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+.wc-option-head b {
+  font-size: 0.85rem;
+  line-height: 1.2;
+}
+.wc-option-head span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.wc-option svg.effort {
+  height: 1.9rem;
+}
+.wc-tweaks {
+  display: flex;
+  flex-direction: column;
+  margin: 0.3rem 0;
+  border-top: 1px solid var(--line);
+}
+.wc-step {
+  display: grid;
+  grid-template-columns: 1fr 2.4rem auto 2.4rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.wc-step > span {
+  color: var(--text-2);
+  font-size: 0.92rem;
+}
+.wc-step b {
+  min-width: 6.5rem;
+  text-align: center;
+  font-family: var(--display);
+  font-size: 1.3rem;
+}
+.wc-step button {
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 0;
+  border-radius: 50%;
+  background: var(--card-2);
+  color: var(--text);
+  font-size: 1.3rem;
+}
+.wc-step button:active {
+  background: var(--accent-dim);
+}
+.wc-when {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.wc-when .ps-choice {
+  flex-wrap: wrap;
+  align-items: center;
+}
+.wc-when input[type="date"] {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--card-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+}
