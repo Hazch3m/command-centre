@@ -4,7 +4,7 @@ import { useEffect, useRef, type RefObject } from "react";
 function ownsSideways(el: Element | null, stop: Element): boolean {
   for (let e = el; e && e !== stop; e = e.parentElement) {
     if (e instanceof HTMLInputElement && e.type === "range") return true;
-    if ((e as HTMLElement).dataset?.noswipe != null || e.classList.contains("leaflet-container") || e.tagName === "CANVAS") return true;
+    if ((e as HTMLElement).dataset?.noswipe != null || e.classList.contains("maplibregl-map") || e.tagName === "CANVAS") return true;
     const st = getComputedStyle(e);
     if ((st.overflowX === "auto" || st.overflowX === "scroll") && e.scrollWidth > e.clientWidth + 2) return true;
   }

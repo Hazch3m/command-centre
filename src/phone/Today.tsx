@@ -21,7 +21,9 @@ import { PracticeTag } from "../modules/running/PracticeTag";
 import { plannerView } from "./Planner";
 import { weatherModule } from "../modules/weather";
 import { isEmptyPlan } from "../core/account";
-import { Ring, Section, toneFor, usePhoneNav, useReadiness } from "./common";
+import { CountUp, Ring, Section, toneFor, usePhoneNav, useReadiness } from "./common";
+import { DrawnTick, StreakIcon, ZoneIcon } from "./icons";
+import type { Run } from "../modules/running/strava";
 
 /** What a session is, in a word or two, from its text ("VO2 max", "Long run", …). */
 export function sessionTitle(text: string, kind?: string): string {
@@ -52,13 +54,18 @@ export function Session({ d, label, next }: { d: ForecastDay; label: string; nex
     <div className={`p-session z-${zone}`}>
       <div className="p-session-top">
         <span className="p-session-label">{label}</span>
-        {!rest && <span className="p-zone-pill">{title}</span>}
+        {!rest && (
+          <span className="p-zone-pill">
+            <ZoneIcon zone={zone} title={title} size={15} />
+            {title}
+          </span>
+        )}
       </div>
       {rest ? (
         <div className="p-session-km rest">Rest</div>
       ) : (
         <div className="p-session-km num">
-          {d.km}
+          <CountUp value={d.km ?? 0} decimals={(d.km ?? 0) % 1 ? 1 : 0} />
           <small>km</small>
         </div>
       )}
@@ -126,7 +133,7 @@ export function LastRun() {
           </span>
         </span>
         <span className="p-lastrun-km num">
-          {km(last.distance).toFixed(1)}
+          <CountUp value={km(last.distance)} decimals={1} />
           <small>km</small>
         </span>
       </div>
@@ -203,11 +210,14 @@ export function Today() {
     .slice(0, 4);
   const race = plan ? upcomingRaces(plan, today)[0] : null;
   const [draft, setDraft] = useState("");
+  const streak = useMemo(() => weekStreak(runs, today), [runs, today]);
+  const [openDone, setOpenDone] = useState(false);
+  const done = !!todayRun && todayRun.runs.length > 0;
 
   return (
     <div className="p-screen">
       <GettingStarted />
-      {todayRun && !isEmptyPlan(plan) && <Session d={todayRun} label={dayGreeting(now)} next={tomorrowRun} />}
+      {todayRun && !isEmptyPlan(plan) && (done && !openDone ? <DoneToday d={todayRun} next={tomorrowRun} onOpen={() => setOpenDone(true)} /> : <Session d={todayRun} label={dayGreeting(now)} next={tomorrowRun} />)}
       <button type="button" className="wc-cta wc-cta-today" onClick={() => nav.push("workout")}>
         <i aria-hidden="true">+</i>
         <span className="wc-cta-text">
@@ -232,10 +242,16 @@ export function Today() {
         <button className="p-tile" onClick={() => nav.setTab("training")}>
           <span className="p-eyebrow">This week</span>
           <span className="p-big num">
-            {week ? week.actualKm.toFixed(0) : "–"}
+            {week ? <CountUp value={week.actualKm} /> : "–"}
             <small> / {week?.plannedKm ?? "–"} km</small>
           </span>
           {week && <WeekBars days={week.days} today={today} />}
+          {streak >= 2 && (
+            <span className="p-streak">
+              <StreakIcon size={14} />
+              {streak} weeks in a row
+            </span>
+          )}
           {tomorrowRun && (
             <span className="p-tile-note">
               Tomorrow: {tomorrowRun.km ? `${tomorrowRun.km} km ${RUN_TYPE_LABEL[typeOfDay(tomorrowRun.kind)].toLowerCase()}` : "rest"}
@@ -374,5 +390,53 @@ function WeekBars({ days, today }: { days: ForecastDay[]; today: string }) {
         );
       })}
     </span>
+  );
+}
+
+/** Weeks in a row (Monday to Sunday) with at least one run, counting this week once you've run in it. */
+export function weekStreak(runs: Pick<Run, "date">[], today: string): number {
+  const weeks = new Set(runs.map((r) => mondayOf(r.date)));
+  let m = mondayOf(today);
+  if (!weeks.has(m)) m = addDays(m, -7);
+  let n = 0;
+  while (weeks.has(m)) {
+    n++;
+    m = addDays(m, -7);
+  }
+  return n;
+}
+
+/** Today's session, done: a small tile with a tick (tap to see the session again) and what's next. */
+function DoneToday({ d, next, onOpen }: { d: ForecastDay; next?: ForecastDay; onOpen: () => void }) {
+  const ranKm = d.runs.reduce((a, r) => a + r.distance / 1000, 0);
+  const secs = d.runs.reduce((a, r) => a + r.moving_time, 0);
+  const zone = d.race ? "race" : !d.km ? "easy" : zoneOf(d.text, d.kind);
+  const title = d.race ? "Race" : !d.km ? "Bonus run" : sessionTitle(d.text, d.kind);
+  const nz = next ? (next.race ? "race" : !next.km ? "rest" : zoneOf(next.text, next.kind)) : null;
+  const nTitle = next ? (next.race ? "Race day" : !next.km ? "Rest day" : sessionTitle(next.text, next.kind)) : null;
+  return (
+    <div className={`p-donetile z-${zone}`}>
+      <button type="button" className="p-donetile-main" onClick={onOpen} aria-label="Show today's session">
+        <DrawnTick size={34} />
+        <span className="p-donetile-text">
+          <span className="p-session-label">Today · done</span>
+          <b>
+            <ZoneIcon zone={zone} title={title} size={16} /> {title}
+          </b>
+          <span className="num">
+            {ranKm.toFixed(1)}
+            {d.km ? ` of ${d.km}` : ""} km · {pace(ranKm * 1000, secs)}/km
+          </span>
+        </span>
+      </button>
+      {next && nz && (
+        <span className={`p-donetile-next z-${nz}`}>
+          <small>Tomorrow</small>
+          <ZoneIcon zone={nz} title={nTitle ?? ""} size={20} />
+          <b className="num">{next.km ? `${next.km} km` : "Rest"}</b>
+          <small>{next.km ? nTitle : ""}</small>
+        </span>
+      )}
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useDataVersion } from "../core/events";
 import { addDays, parseKey } from "../core/time";
 import { useQuery } from "../core/useQuery";
@@ -66,6 +66,7 @@ export function Ring({ value, size = 64, stroke = 7, tone }: { value: number; si
         strokeWidth={stroke}
         fill="none"
         strokeDasharray={c}
+        style={{ ["--c" as string]: c }}
         strokeDashoffset={c * (1 - Math.max(0, Math.min(100, value)) / 100)}
         transform={`rotate(-90 ${size / 2} ${size / 2})`}
         strokeLinecap="round"
@@ -96,3 +97,27 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
     </div>
   );
 }
+
+/** A number that counts up to its value when it first appears (and glides when it changes). */
+export function CountUp({ value, decimals = 0 }: { value: number; decimals?: number }) {
+  const [shown, setShown] = useState(() => (reducedMotion() ? value : 0));
+  const from = useRef(shown);
+  useEffect(() => {
+    if (reducedMotion()) return setShown(value);
+    const start = performance.now();
+    const a = from.current;
+    const ms = 750;
+    let raf = 0;
+    const tick = (t: number) => {
+      const f = Math.min(1, (t - start) / ms);
+      const v = a + (value - a) * (1 - Math.pow(1 - f, 3));
+      from.current = v;
+      setShown(v);
+      if (f < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return <>{shown.toFixed(decimals)}</>;
+}
+const reducedMotion = () => !!globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
