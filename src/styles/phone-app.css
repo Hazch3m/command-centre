@@ -1886,3 +1886,12 @@ svg.effort {
   height: 2.9rem;
   font-size: 1.6rem;
 }
+
+/* A page sliding off the side never widens the screen (no sideways scroll or zoom). */
+:root.phone-root,
+:root.phone-root body {
+  overflow-x: clip;
+}
+.p-app {
+  overflow-x: clip;
+}
