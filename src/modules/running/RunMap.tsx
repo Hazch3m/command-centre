@@ -89,7 +89,7 @@ function bounds(pts: [number, number][]): [[number, number], [number, number]] {
 
 function pin(cls: string, text = "") {
   const el = document.createElement("div");
-  el.className = `rm-pin ${cls}`;
+  el.className = `mp-pin ${cls}`;
   el.textContent = text;
   return el;
 }
@@ -111,10 +111,10 @@ async function makeMap(el: HTMLElement, pts: [number, number][], style: MapStyle
   if (opts.interactive) map.touchZoomRotate.disableRotation();
   map.on("style.load", () => addRoute(map, pts));
   if (opts.markers) {
-    for (const m of kmMarkers(pts)) new ml.Marker({ element: pin("rm-km", String(m.km)) }).setLngLat([m.at[1], m.at[0]]).addTo(map);
+    for (const m of kmMarkers(pts)) new ml.Marker({ element: pin("mp-km", String(m.km)) }).setLngLat([m.at[1], m.at[0]]).addTo(map);
   }
-  new ml.Marker({ element: pin("rm-start") }).setLngLat([pts[0][1], pts[0][0]]).addTo(map);
-  new ml.Marker({ element: pin("rm-end") }).setLngLat([pts[pts.length - 1][1], pts[pts.length - 1][0]]).addTo(map);
+  new ml.Marker({ element: pin("mp-start") }).setLngLat([pts[0][1], pts[0][0]]).addTo(map);
+  new ml.Marker({ element: pin("mp-end") }).setLngLat([pts[pts.length - 1][1], pts[pts.length - 1][0]]).addTo(map);
   return map;
 }
 
