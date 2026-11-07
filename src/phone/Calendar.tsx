@@ -18,7 +18,10 @@ export function Calendar() {
   const [sel, setSel] = useState(today);
   const strip = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    strip.current?.querySelector(".on")?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+    // Centre the chosen day by scrolling the strip itself: scrollIntoView would also move the page.
+    const s = strip.current;
+    const on = s?.querySelector<HTMLElement>(".on");
+    if (s && on) s.scrollTo({ left: s.scrollLeft + on.getBoundingClientRect().left - s.getBoundingClientRect().left - (s.clientWidth - on.offsetWidth) / 2, behavior: "smooth" });
   }, [sel]);
   const day = days.find((d) => d.date === sel);
   const nextBusy = days.filter((d) => d.date > sel && (d.timed.length || d.allDay.length)).slice(0, 3);
