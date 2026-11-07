@@ -21,7 +21,7 @@ import { PlanCoach } from "../modules/running/PlanCoach";
 import { isEmptyPlan } from "../core/account";
 
 import { PlanList } from "../modules/running/PlanList";
-import { PaceOnPointTab } from "../modules/running/PaceOnPoint";
+import { PaceOnTrack } from "./PaceOnTrack";
 import { RaceManager } from "../modules/running/RaceManager";
 import { ReadinessView, useReadiness } from "../modules/running/ReadinessCard";
 
@@ -107,9 +107,7 @@ export function Training() {
         </div>
       )}
       {view === "pace" && (
-        <div className="p-embed">
-          <PaceOnPointTab plan={plan} runs={runs} />
-        </div>
+        <PaceOnTrack plan={plan} runs={runs} />
       )}
       {view === "progress" && <PlanProgress plan={plan} first={range.first} last={range.last} />}
       {view === "week" && (

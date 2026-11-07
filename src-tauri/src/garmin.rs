@@ -45,6 +45,8 @@ const ALLOWED: &[&str] = &[
     // Workouts on your watch: what's scheduled, and one workout's steps.
     "/calendar-service/year/",
     "/workout-service/workout/",
+    // Your heart-rate zones (read only).
+    "/biometric-service/heartRateZones",
 ];
 
 /// Where the app may write: creating, changing, scheduling and removing workouts (nothing else).

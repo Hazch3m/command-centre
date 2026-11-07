@@ -1,7 +1,11 @@
 import { useMemo, useState } from "react";
 import { addDays, parseKey, useToday } from "../core/time";
 import { useFitness } from "../modules/running/fitness";
-import { dailyLoad, easyShare, FORM_TEXT, formLevel, loadSeries, monotony, ZONES, zoneMinutes } from "../modules/running/runalyze";
+import { useDataVersion } from "../core/events";
+import { useQuery } from "../core/useQuery";
+import { loadGarminZones, loadZoneSettings, resolveZones, saveZoneSettings, ZONE_METHODS, ZONE_NAMES, zoneRanges, type ZoneMethod, type Zones } from "../modules/running/hrZones";
+import { dailyLoad, easyShare, FORM_TEXT, formLevel, loadSeries, monotony, zoneMinutes } from "../modules/running/runalyze";
+import { loadDetails } from "../modules/running/strava";
 import { useRunningData } from "../modules/running/useRunning";
 import { Section } from "./common";
 
@@ -20,13 +24,19 @@ export function TrainingLoad() {
   const f = useFitness(plan);
   const [days, setDays] = useState<number>(90);
   const [pick, setPick] = useState<number | null>(null);
-  const hr = f?.config;
+  const rv = useDataVersion("running");
+  const zq = useQuery(() => Promise.all([loadZoneSettings(), loadGarminZones(), loadDetails(addDays(today, -27))]), [rv, today]).data;
+  const [editZones, setEditZones] = useState(false);
+  const zones = f && zq ? resolveZones(zq[0], zq[1], f.config) : null;
+  // Load uses the same max and resting heart rate as the zones.
+  const hr = zones && f ? { ...f.config, hrMax: zones.max, hrRest: zones.rest ?? f.config.hrRest } : null;
   const d = useMemo(() => {
-    if (!hr) return null;
+    if (!hr || !zones) return null;
     const daily = dailyLoad(runs, hr);
     const series = loadSeries(daily, addDays(today, -(days - 1)), today);
-    return { daily, series, mono: monotony(daily, today), zones4: zoneMinutes(runs, hr, addDays(today, -27)) };
-  }, [hr, runs, today, days]);
+    return { daily, series, mono: monotony(daily, today), zones4: zoneMinutes(runs, zones, addDays(today, -27), zq?.[2]) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hr?.hrMax, hr?.hrRest, zones?.floors.join(), runs, today, days, zq]);
   if (!d || !d.series.length) return null;
   const { series, mono, zones4 } = d;
   const at = series[pick ?? series.length - 1];
@@ -142,33 +152,91 @@ export function TrainingLoad() {
         </p>
       </Section>
 
-      {zoneAll > 0 && (
+      {zones && (
         <Section title="Heart-rate zones · 4 weeks">
-          <div className="tl-zbar" role="img" aria-label="Time in each heart-rate zone">
-            {zones4.map((z) => (z.minutes ? <i key={z.zone} className={`hz-${z.zone}`} style={{ flexGrow: z.minutes }} /> : null))}
-          </div>
+          {zoneAll > 0 && (
+            <div className="tl-zbar" role="img" aria-label="Time in each heart-rate zone">
+              {zones4.map((z) => (z.minutes ? <i key={z.zone} className={`hz-${z.zone}`} style={{ flexGrow: z.minutes }} /> : null))}
+            </div>
+          )}
           <div className="tl-zones">
-            {zones4.map((z) => {
-              const zone = ZONES[z.zone - 1];
-              return (
-                <span key={z.zone}>
-                  <i className={`hz-${z.zone}`} />
-                  <b>Z{z.zone}</b> {zone.name}
-                  <em className="num">
-                    {z.minutes >= 60 ? `${Math.floor(z.minutes / 60)}h ${String(Math.round(z.minutes % 60)).padStart(2, "0")}` : `${Math.round(z.minutes)} min`} · {Math.round((z.minutes / zoneAll) * 100)}%
-                  </em>
+            {zones4.map((z, i) => (
+              <span key={z.zone}>
+                <i className={`hz-${z.zone}`} />
+                <b>Z{z.zone}</b>
+                <span className="tl-zname">
+                  {ZONE_NAMES[i]}
+                  <small className="num">{zoneRanges(zones)[i]} bpm</small>
                 </span>
-              );
-            })}
+                <em className="num">
+                  {z.minutes >= 60 ? `${Math.floor(z.minutes / 60)}h ${String(Math.round(z.minutes % 60)).padStart(2, "0")}` : `${Math.round(z.minutes)} min`}
+                  {zoneAll > 0 ? ` · ${Math.round((z.minutes / zoneAll) * 100)}%` : ""}
+                </em>
+              </span>
+            ))}
           </div>
+          <div className="tl-zsource">
+            <span>{zones.source}</span>
+            <button type="button" className="btn small" onClick={() => setEditZones(!editZones)}>
+              {editZones ? "Done" : "Change"}
+            </button>
+          </div>
+          {editZones && <ZoneSetup zones={zones} hasGarmin={!!zq?.[1]} />}
           {share != null && (
             <p className="p-hint">
               {Math.round(share * 100)}% easy (zones 1–2).{" "}
-              {share >= 0.75 ? "That's the 80/20 balance most of your running should have." : "Most plans aim for about 80% easy: slow the easy runs down a little."} By each run's average heart rate (max {hr!.hrMax}).
+              {share >= 0.75 ? "That's the 80/20 balance most of your running should have." : "Most plans aim for about 80% easy: slow the easy runs down a little."} Time comes from each kilometre's heart rate.
             </p>
           )}
         </Section>
       )}
     </>
+  );
+}
+
+/** Pick how zones are worked out, and the heart rates they use. */
+function ZoneSetup({ zones, hasGarmin }: { zones: Zones; hasGarmin: boolean }) {
+  const [max, setMax] = useState(String(zones.max));
+  const [rest, setRest] = useState(String(zones.rest ?? ""));
+  const [lthr, setLthr] = useState(String(zones.lthr ?? Math.round(zones.max * 0.9)));
+  const save = (method: ZoneMethod, extra: { hrMax?: string; hrRest?: string; lthr?: string } = {}) => {
+    const n = (v: string | undefined) => (v && +v > 30 && +v < 240 ? Math.round(+v) : undefined);
+    void saveZoneSettings({ method, hrMax: n(extra.hrMax ?? max), hrRest: n(extra.hrRest ?? rest), lthr: n(extra.lthr ?? lthr) });
+  };
+  const method = zones.method;
+  return (
+    <div className="tl-zsetup">
+      <div className="p-seg tl-zmethods">
+        {ZONE_METHODS.filter((m) => m.id !== "garmin" || hasGarmin).map((m) => (
+          <button key={m.id} className={method === m.id ? "on" : ""} onClick={() => save(m.id)}>
+            {m.label}
+          </button>
+        ))}
+      </div>
+      <p className="p-hint">{ZONE_METHODS.find((m) => m.id === method)?.hint}</p>
+      {method !== "garmin" && (
+        <div className="tl-zinputs">
+          {method !== "lthr" && (
+            <label>
+              <span>Max HR</span>
+              <input type="number" inputMode="numeric" value={max} onChange={(e) => setMax(e.target.value)} onBlur={() => save(method)} />
+            </label>
+          )}
+          {method === "reserve" && (
+            <label>
+              <span>Resting HR</span>
+              <input type="number" inputMode="numeric" value={rest} onChange={(e) => setRest(e.target.value)} onBlur={() => save(method)} />
+            </label>
+          )}
+          {method === "lthr" && (
+            <label>
+              <span>Threshold HR</span>
+              <input type="number" inputMode="numeric" value={lthr} onChange={(e) => setLthr(e.target.value)} onBlur={() => save(method)} />
+            </label>
+          )}
+        </div>
+      )}
+      {!hasGarmin && <p className="p-hint">Connect Garmin and the zones from your watch appear here as an option.</p>}
+    </div>
   );
 }

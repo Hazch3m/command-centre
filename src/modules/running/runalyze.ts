@@ -1,5 +1,6 @@
 import { addDays } from "../../core/time";
-import type { Run } from "./strava";
+import { zoneOf, type Zones } from "./hrZones";
+import type { Run, RunDetail } from "./strava";
 import { trimp, type Vo2Config } from "./vo2";
 
 /**
@@ -74,22 +75,21 @@ export function monotony(daily: Map<string, number>, today: string): { monotony:
   return { monotony: m, strain: m == null ? 0 : week * m, week };
 }
 
-export const ZONES = [
-  { id: 1, name: "Recovery", lo: 0, hi: 0.68 },
-  { id: 2, name: "Easy", lo: 0.68, hi: 0.78 },
-  { id: 3, name: "Steady", lo: 0.78, hi: 0.86 },
-  { id: 4, name: "Threshold", lo: 0.86, hi: 0.92 },
-  { id: 5, name: "VO2 max", lo: 0.92, hi: 9 },
-] as const;
-
-/** Zone (1–5) of a heart rate, as a share of max. */
-export const zoneOfHr = (bpm: number, hr: Hr) => ZONES.find((z) => bpm / hr.hrMax < z.hi)?.id ?? 5;
-
-/** Minutes in each zone since `from` (by each run's average heart rate; runs without one are left out). */
-export function zoneMinutes(runs: Pick<Run, "date" | "moving_time" | "avg_hr">[], hr: Hr, from: string): { zone: number; minutes: number }[] {
-  const m = new Map<number, number>(ZONES.map((z) => [z.id, 0]));
-  for (const r of runs) if (r.date >= from && r.avg_hr) m.set(zoneOfHr(r.avg_hr, hr), m.get(zoneOfHr(r.avg_hr, hr))! + r.moving_time / 60);
-  return ZONES.map((z) => ({ zone: z.id, minutes: m.get(z.id)! }));
+/** Minutes in each zone since `from`: by each kilometre's heart rate where the run has splits, else the run's average. */
+export function zoneMinutes(
+  runs: Pick<Run, "id" | "date" | "moving_time" | "avg_hr">[],
+  zones: Pick<Zones, "floors">,
+  from: string,
+  details?: Map<string, Pick<RunDetail, "splits">>,
+): { zone: number; minutes: number }[] {
+  const m = [0, 0, 0, 0, 0];
+  for (const r of runs) {
+    if (r.date < from) continue;
+    const splits = details?.get(r.id)?.splits?.filter((s) => s.hr && s.moving_time > 0);
+    if (splits?.length) for (const s of splits) m[zoneOf(s.hr!, zones) - 1] += s.moving_time / 60;
+    else if (r.avg_hr) m[zoneOf(r.avg_hr, zones) - 1] += r.moving_time / 60;
+  }
+  return m.map((minutes, i) => ({ zone: i + 1, minutes }));
 }
 
 /** Share of time easy (zones 1–2): the 80/20 check. */

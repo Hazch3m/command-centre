@@ -86,6 +86,7 @@ export const GARMIN_ALLOWED = [
   "/activity-service/activity/",
   "/calendar-service/year/",
   "/workout-service/workout/",
+  "/biometric-service/heartRateZones",
 ];
 /** The headers Garmin's Android app sends; the token service and API expect them. */
 const NATIVE: Record<string, string> = {

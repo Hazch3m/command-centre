@@ -223,12 +223,13 @@ export function PhoneApp() {
   }, []);
 
   const slide = dir === 1 ? " slide-from-right" : dir === -1 ? " slide-from-left" : "";
-  const title = pushed
-    ? PUSHED[pushed].title
-    : tab === "today"
-      ? new Date().toLocaleDateString("en-GB", { weekday: "long" })
-      : TABS.find((t) => t.id === tab)!.label;
-  const sub = !pushed && tab === "today" ? new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long" }) : null;
+  // Each page carries its own title, so it slides with the page (no jump when the title changes size).
+  const pageTitle = (title: string, sub?: string | null) => (
+    <div className="p-title">
+      <h1>{title}</h1>
+      {sub && <span>{sub}</span>}
+    </div>
+  );
   return (
     <PhoneNav.Provider value={phoneNav}>
       <NavContext.Provider value={cardNav}>
@@ -260,13 +261,10 @@ export function PhoneApp() {
               {note}
             </div>
           )}
-          <div className="p-title">
-            <h1>{title}</h1>
-            {sub && <span>{sub}</span>}
-          </div>
           <main ref={mainRef} className="p-main p-track">
             {pushed && (
               <div key={pushed} data-pane="pushed" className={"p-pane on p-pushed" + slide}>
+                {pageTitle(PUSHED[pushed].title)}
                 {PUSHED[pushed].module ? <ModulePage id={PUSHED[pushed].module!} /> : PUSHED_PAGE[pushed]!()}
               </div>
             )}
@@ -274,6 +272,7 @@ export function PhoneApp() {
               const on = !pushed && t.id === tab;
               return (
                 <section key={t.id} data-pane={t.id} className={"p-pane" + (on ? " on" + slide : "")} aria-hidden={!on}>
+                  {t.id === "today" ? pageTitle(new Date().toLocaleDateString("en-GB", { weekday: "long" }), new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long" })) : pageTitle(t.label)}
                   {t.id === "today" ? <Today /> : t.id === "training" ? <Training /> : t.id === "runs" ? <Runs /> : t.id === "planner" ? <Planner /> : <Stats />}
                 </section>
               );
