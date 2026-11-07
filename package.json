@@ -13,13 +13,14 @@
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.5",
+    "@fontsource/barlow-condensed": "^5.1.0",
     "@tauri-apps/api": "^2.5.0",
     "@tauri-apps/plugin-autostart": "^2.3.0",
     "@tauri-apps/plugin-opener": "^2.2.6",
+    "qrcode-generator": "^1.4.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-grid-layout": "^1.5.1",
-    "qrcode-generator": "^1.4.4"
+    "react-grid-layout": "^1.5.1"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.5.0",

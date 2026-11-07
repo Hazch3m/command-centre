@@ -4,6 +4,8 @@ import { boot, showFatal } from "./boot";
 import { hasAccount, isLinked, loadLocal, phoneState, refresh } from "./core/backend.phone";
 import { Pair } from "./phone/Pair";
 import { PhoneApp } from "./phone/PhoneApp";
+import "@fontsource/barlow-condensed/600.css";
+import "@fontsource/barlow-condensed/700.css";
 import "./styles/phone.css";
 import "./styles/phone-app.css";
 import { applyPhoneLook } from "./core/appearance";
