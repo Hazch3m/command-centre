@@ -156,8 +156,10 @@ describe("plan builder: long runs and labels", () => {
     const r = buildPlan(BUNDLED_PLAN, o, h, "2026-11-06");
     const from = r.weeks[0].monday;
     const s = r.plan.weeks.filter((w) => w.start >= from && w.start <= o.raceDate).flatMap((w) => Object.values(w.sessions) as string[]);
-    expect(s.some((x) => /with VO2 max: /.test(x))).toBe(true);
-    expect(s.some((x) => /with Threshold(?: tempo)?: /.test(x))).toBe(true);
-    expect(s.filter((x) => / with /.test(x) && !/long run/.test(x) && !/with (VO2 max|Threshold|Threshold tempo|Hill strength|Race pace): |fartlek|time trial/.test(x))).toEqual([]);
+    expect(s.some((x) => /VO2 max: /.test(x))).toBe(true);
+    expect(s.some((x) => /Threshold(?: tempo)?: /.test(x))).toBe(true);
+    expect(s.filter((x) => / with /.test(x) && !/long run/.test(x) && !/(VO2 max|Threshold|Threshold tempo|Hill strength|Race pace): |fartlek|time trial/.test(x))).toEqual([]);
+    // Every speed session has its warm-up and cool-down written in.
+    expect(s.filter((x) => / with /.test(x) && !/long run|time trial/.test(x) && !/warm-up, .*cool-down$/.test(x))).toEqual([]);
   });
 });

@@ -9,8 +9,10 @@ import { mondayOf, upcomingRaces } from "../modules/running/plan";
 import { openRun } from "../modules/running/RunView";
 import { SendToWatch } from "../modules/watch/SendToWatch";
 import { RUN_TYPE_LABEL, typeOfDay } from "../modules/running/runType";
-import { km, pace } from "../modules/running/stats";
-import { loadOverrides } from "../modules/running/strava";
+import { duration, km, pace } from "../modules/running/stats";
+import { loadDetails, loadOverrides } from "../modules/running/strava";
+import { sessionKindOf } from "../modules/running/planBuilder";
+import { EffortProfile, zoneOf } from "./EffortProfile";
 import { useRunningData } from "../modules/running/useRunning";
 import { addTaskFromText, focusGroup, loadTasks, setDone } from "../modules/tasks/data";
 import { HabitButton } from "./Habits";
@@ -21,45 +23,143 @@ import { weatherModule } from "../modules/weather";
 import { isEmptyPlan } from "../core/account";
 import { Ring, Section, toneFor, usePhoneNav, useReadiness } from "./common";
 
+/** What a session is, in a word or two, from its text ("VO2 max", "Long run", …). */
+export function sessionTitle(text: string, kind?: string): string {
+  if (/VO2 max:/i.test(text)) return "VO2 max";
+  if (/Threshold tempo:/i.test(text)) return "Tempo";
+  if (/Threshold:/i.test(text)) return "Threshold";
+  if (/Hill strength|hill reps/i.test(text)) return "Hills";
+  if (/time trial/i.test(text)) return "Time trial";
+  if (/Race pace:|\bHMP\b/i.test(text) || (/\bMP\b/.test(text) && !/long run/i.test(text))) return "Race pace";
+  if (/fartlek/i.test(text)) return "Fartlek";
+  if (/progression run/i.test(text)) return "Progression";
+  if (/medium-long/i.test(text)) return "Medium-long";
+  if (/long run/i.test(text) || kind === "long") return "Long run";
+  if (/recovery/i.test(text)) return "Recovery run";
+  return sessionKindOf(text) ?? "Easy run";
+}
+/** The session without its distance up front ("13 km with 3 km warm-up, …" → "3 km warm-up, …"). */
+const detailOf = (text: string) => text.replace(/^\d+(?:\.\d+)?\s*km\s+(?:with\s+)?/i, "").replace(/^(?:VO2 max|Threshold tempo|Threshold|Hill strength|Race pace):\s*/i, "");
+
 export function Session({ d, label }: { d: ForecastDay; label: string }) {
+  const { plan } = useRunningData();
   const t = typeOfDay(d.kind);
   const rest = t === "rest" || !d.km;
+  const zone = rest ? "rest" : d.race ? "race" : zoneOf(d.text, d.kind);
+  const title = rest ? "Rest day" : d.race ? "Race day" : sessionTitle(d.text, d.kind);
+  const detail = d.race ? `${d.race.name}${d.race.target ? `, aiming for ${d.race.target}` : ""}` : detailOf(d.text);
   return (
-    <div className={`p-session rt-${t}`}>
+    <div className={`p-session z-${zone}`}>
       <div className="p-session-top">
-        <span className="p-eyebrow">{label}</span>
-        {!rest && <span className={`rt-pill rt-${t}`}>{RUN_TYPE_LABEL[t]}</span>}
+        <span className="p-session-label">{label}</span>
+        {!rest && <span className="p-zone-pill">{title}</span>}
       </div>
       {rest ? (
-        <div className="p-session-km">Rest day</div>
+        <div className="p-session-km rest">Rest</div>
       ) : (
         <div className="p-session-km num">
           {d.km}
-          <small> km</small>
+          <small>km</small>
         </div>
       )}
+      {!rest && !d.race && <EffortProfile text={d.text} kind={d.kind} plan={plan} />}
       {!rest && (
         <div className="p-session-text">
-          {d.race ? `${d.race.name}${d.race.target ? ` · ${d.race.target}` : ""}` : d.text}
+          {detail}
           {!d.race && <PracticeTag text={d.text} />}
         </div>
       )}
-      <div className="p-session-meta">
-        {d.pace && !rest && <span className="p-chip num">{/\d:\d\d/.test(d.pace) ? `${d.pace}/km` : d.pace}</span>}
-        {d.strength && <span className="p-chip">Strength {d.strength}</span>}
-      </div>
+      {rest && <div className="p-session-text muted">Recovery is training too. Walk, stretch, sleep well.</div>}
+      {(d.pace || d.strength) && !rest && (
+        <div className="p-session-meta">
+          {d.pace && <span className="p-chip num">{/\d:\d\d/.test(d.pace) ? `${d.pace}/km` : d.pace}</span>}
+          {d.strength && <span className="p-chip">Strength {d.strength}</span>}
+        </div>
+      )}
       {!rest && !d.race && !d.runs.length && d.date >= todayKey() && <SendToWatch date={d.date} text={d.text} compact />}
       {d.runs.map((r) => (
         <button key={r.id} className="p-done" onClick={() => openRun(r.id)}>
           <span className="p-done-tick">✓</span>
           <span>
             Ran <b className="num">{km(r.distance).toFixed(1)} km</b> at <b className="num">{pace(r.distance, r.moving_time)}/km</b>
-            {r.avg_hr ? ` · ${Math.round(r.avg_hr)} bpm` : ""}
+            {r.avg_hr ? `, ${Math.round(r.avg_hr)} bpm` : ""}
           </span>
           <span className="p-chev">›</span>
         </button>
       ))}
     </div>
+  );
+}
+
+/** Your most recent run: the numbers that matter, its splits and route, one tap from the full view. */
+export function LastRun() {
+  const today = useToday();
+  const { runs = [] } = useRunningData();
+  const last = useMemo(() => [...runs].filter((r) => r.date <= today).sort((a, b) => (a.start_local < b.start_local ? 1 : -1))[0], [runs, today]);
+  const rv = useDataVersion("running");
+  const details = useQuery(() => (last ? loadDetails(last.date) : Promise.resolve(null)), [last?.id, rv]).data;
+  if (!last) return null;
+  const splits = details?.get(last.id)?.splits ?? [];
+  const full = splits.filter((x) => x.distance > 900);
+  const speeds = full.map((x) => x.distance / x.moving_time);
+  const lo = Math.min(...speeds);
+  const hi = Math.max(...speeds);
+  const when = last.date === today ? "Today" : last.date === addDays(today, -1) ? "Yesterday" : new Date(last.date + "T12:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" });
+  return (
+    <button className="p-lastrun" onClick={() => openRun(last.id)}>
+      <div className="p-lastrun-head">
+        <span>
+          <span className="p-session-label">Last run</span>
+          <b className="p-lastrun-name">{last.name}</b>
+          <span className="p-lastrun-when">
+            {when}
+            {last.start_local ? `, ${last.start_local.slice(11, 16)}` : ""}
+          </span>
+        </span>
+        <span className="p-lastrun-km num">
+          {km(last.distance).toFixed(1)}
+          <small>km</small>
+        </span>
+      </div>
+      <div className="p-lastrun-stats">
+        <span>
+          <b className="num">{pace(last.distance, last.moving_time)}</b>
+          <small>/km pace</small>
+        </span>
+        <span>
+          <b className="num">{duration(last.moving_time)}</b>
+          <small>time</small>
+        </span>
+        {last.avg_hr ? (
+          <span>
+            <b className="num">{Math.round(last.avg_hr)}</b>
+            <small>avg bpm</small>
+          </span>
+        ) : null}
+        {last.elevation ? (
+          <span>
+            <b className="num">{Math.round(last.elevation)}</b>
+            <small>m climbed</small>
+          </span>
+        ) : null}
+      </div>
+      {full.length >= 2 && (
+        <div className="p-splits" aria-label="Pace for each kilometre">
+          {full.map((x, i) => {
+            const v = x.distance / x.moving_time;
+            const f = hi > lo ? (v - lo) / (hi - lo) : 0.6;
+            return <i key={i} style={{ height: `${28 + f * 72}%` }} title={`km ${i + 1}: ${pace(x.distance, x.moving_time)}/km`} />;
+          })}
+        </div>
+      )}
+      {full.length >= 2 && (
+        <div className="p-splits-legend">
+          <span>km 1</span>
+          <span>fastest {pace(1000, Math.round(1000 / hi))}/km</span>
+          <span>km {full.length}</span>
+        </div>
+      )}
+    </button>
   );
 }
 
@@ -93,12 +193,12 @@ export function Today() {
     .slice(0, 4);
   const race = plan ? upcomingRaces(plan, today)[0] : null;
   const [draft, setDraft] = useState("");
-  const pct = week?.plannedKm ? Math.min(1, week.actualKm / week.plannedKm) : 0;
 
   return (
     <div className="p-screen">
       <GettingStarted />
-      {todayRun && !isEmptyPlan(plan) && <Session d={todayRun} label="Today's run" />}
+      {todayRun && !isEmptyPlan(plan) && <Session d={todayRun} label={dayGreeting(now)} />}
+      <LastRun />
 
       <div className="p-tiles">
         <button className="p-tile" onClick={() => nav.push("health")}>
@@ -118,9 +218,7 @@ export function Today() {
             {week ? week.actualKm.toFixed(0) : "–"}
             <small> / {week?.plannedKm ?? "–"} km</small>
           </span>
-          <span className="p-bar">
-            <span style={{ width: `${pct * 100}%` }} />
-          </span>
+          {week && <WeekBars days={week.days} today={today} />}
           {tomorrowRun && (
             <span className="p-tile-note">
               Tomorrow: {tomorrowRun.km ? `${tomorrowRun.km} km ${RUN_TYPE_LABEL[typeOfDay(tomorrowRun.kind)].toLowerCase()}` : "rest"}
@@ -237,5 +335,27 @@ export function Today() {
         </button>
       )}
     </div>
+  );
+}
+
+const dayGreeting = (now: Date) => (now.getHours() < 12 ? "This morning" : now.getHours() < 17 ? "Today" : "This evening");
+
+/** The week at a glance: a bar a day, as tall as planned, coloured by its zone, solid once run. */
+function WeekBars({ days, today }: { days: ForecastDay[]; today: string }) {
+  const max = Math.max(1, ...days.map((d) => Math.max(d.km ?? 0, d.runs.reduce((a, r) => a + r.distance / 1000, 0))));
+  return (
+    <span className="p-weekdots" aria-hidden="true">
+      {days.map((d) => {
+        const ran = d.runs.reduce((a, r) => a + r.distance / 1000, 0);
+        const z = d.race ? "race" : zoneOf(d.text, d.kind);
+        const h = Math.max(ran, d.km ?? 0) / max;
+        return (
+          <span key={d.date} className={`p-wd z-${z}` + (ran ? " ran" : "") + (d.date === today ? " today" : "")}>
+            <i style={{ height: `${Math.max(8, h * 100)}%` }} />
+            <b>{"MTWTFSS"[(new Date(d.date + "T12:00").getDay() + 6) % 7]}</b>
+          </span>
+        );
+      })}
+    </span>
   );
 }

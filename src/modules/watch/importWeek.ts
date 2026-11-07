@@ -95,7 +95,9 @@ export function sessionToWorkout(text: string, zones: Zones = {}): Omit<Draft, "
     const recDur = rec ? (rec[1].includes(":") ? rec[1] : dur(rec[1], rec[2] ?? "min")) : hills ? "90s" : "2:00";
     const work = step("interval", dur(rep[2], rep[3]), p ? pace(p) : "open", hills ? "Hill sprint: fast, tall, relaxed" : p ? `${paceText(p)}/km` : "Hard but controlled");
     const reps = repeat(+rep[1], [work, step("recovery", recDur, "open", hills ? "Walk back down" : "Easy jog")]);
-    const warm = total ? step("warmup", "3km", "hr zone 2", "Easy") : step("warmup", "15:00", "hr zone 2", "Easy, build to steady");
+    // Written in ("3 km warm-up … 2 km cool-down"), or 3 km and the rest to finish the run.
+    const wu = /(\d+(?:\.\d+)?)\s*km warm-up/i.exec(s)?.[1];
+    const warm = wu ? step("warmup", `${wu}km`, "hr zone 2", "Easy") : total ? step("warmup", "3km", "hr zone 2", "Easy") : step("warmup", "15:00", "hr zone 2", "Easy, build to steady");
     const cool = total ? step("cooldown", "lap", "hr zone 2", `Easy to finish the ${total[1]} km, then lap`) : step("cooldown", "10:00", "hr zone 2", "Easy");
     const kind = hills ? (/hill reps|hill strength/i.test(s) ? "Hill reps" : "Hill sprints") : /fartlek/i.test(s) ? "Fartlek" : /vo2/i.test(s) ? "VO2 max" : /\bT\b|threshold/i.test(s) ? "Threshold" : /\bHMP\b/.test(s) ? "HMP" : /\bMP\b/.test(s) ? "MP" : "Intervals";
     const name = `${kind} ${rep[1]}×${durLabel(rep[2], rep[3])}${p ? ` @ ${paceText(p)}` : ""}`;
@@ -134,7 +136,7 @@ export function sessionToWorkout(text: string, zones: Zones = {}): Omit<Draft, "
       name: `${kind} ${block[1]} ${block[2]}${p ? ` @ ${paceText(p)}` : ""}`,
       sport: "running",
       steps: [
-        step("warmup", total ? "3km" : "15:00", "hr zone 2", "Easy"),
+        step("warmup", /(\d+(?:\.\d+)?)\s*km warm-up/i.exec(s) ? `${/(\d+(?:\.\d+)?)\s*km warm-up/i.exec(s)![1]}km` : total ? "3km" : "15:00", "hr zone 2", "Easy"),
         step("interval", dur(block[1], block[2]), p ? pace(p) : "open", p ? `${paceText(p)}/km` : undefined),
         total ? step("cooldown", "lap", "hr zone 2", `Easy to finish the ${total[1]} km`) : step("cooldown", "10:00", "hr zone 2", "Easy"),
       ],

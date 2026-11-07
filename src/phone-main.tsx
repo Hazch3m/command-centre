@@ -6,6 +6,10 @@ import { Pair } from "./phone/Pair";
 import { PhoneApp } from "./phone/PhoneApp";
 import "./styles/phone.css";
 import "./styles/phone-app.css";
+import { applyPhoneLook } from "./core/appearance";
+
+// Your colours before anything draws, so nothing flashes.
+applyPhoneLook();
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 

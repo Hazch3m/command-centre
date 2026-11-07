@@ -1,4 +1,5 @@
 import { kvGet, kvSet } from "./db";
+import { applyAccent } from "./appearance";
 
 /** App-wide preferences stored in SQLite (kv table). */
 export interface Settings {
@@ -12,6 +13,8 @@ export interface Settings {
   appearanceVersion?: number;
   /** Text size multiplier on top of the size that scales with the screen. */
   textScale: number;
+  /** Accent colour (see core/appearance); unset: the theme's own. */
+  accent?: string;
 }
 
 const APPEARANCE_VERSION = 2;
@@ -29,8 +32,12 @@ const darkQuery = typeof window !== "undefined" && window.matchMedia ? window.ma
 /** Puts the theme and text size on <html>, where the stylesheet reads them. */
 export function applyAppearance(s: Settings = current) {
   if (typeof document === "undefined") return;
-  document.documentElement.dataset.theme = s.theme === "system" ? (darkQuery?.matches ? "dark" : "light") : s.theme;
   document.documentElement.style.setProperty("--scale", String(s.textScale || 1));
+  // The phone has its own appearance (kept on the phone), not the PC's.
+  if (document.documentElement.classList.contains("phone-root")) return;
+  const theme = s.theme === "system" ? (darkQuery?.matches ? "dark" : "light") : s.theme;
+  document.documentElement.dataset.theme = theme;
+  applyAccent(s.accent, theme);
 }
 darkQuery?.addEventListener?.("change", () => applyAppearance());
 let current: Settings = DEFAULTS;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { kvGet, kvSet } from "../core/db";
 import { notifyChanged } from "../core/events";
 import { REFRESHED_KEY, REFRESH_KEY } from "../core/sync";
@@ -19,6 +19,8 @@ import { Tasks } from "./Tasks";
 import { Today } from "./Today";
 import { Training } from "./Training";
 import { Planner, plannerView } from "./Planner";
+import { useSwipe } from "./swipe";
+import { ACCENTS, phoneLook, setPhoneLook, type PhoneLook } from "../core/appearance";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "today", label: "Today", icon: "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" },
@@ -86,17 +88,34 @@ export function PhoneApp() {
   });
   const [pushed, setPushed] = useState<Pushed>(null);
   const [busy, setBusy] = useState(false);
+  // Which way the page slides in (from a swipe or a tap on a tab further along).
+  const [dir, setDir] = useState<1 | -1 | 0>(0);
   const setTab = (t: Tab) => {
+    const from = TABS.findIndex((x) => x.id === tab);
+    const to = TABS.findIndex((x) => x.id === t);
+    setDir(to > from ? 1 : to < from ? -1 : 0);
     setPushed(null);
     setTabState(t);
     sessionStorage.setItem("cc-phone-tab", t);
     window.scrollTo({ top: 0 });
   };
   const push = (p: Pushed) => {
+    setDir(p ? 1 : -1);
     setPushed(p);
     window.scrollTo({ top: 0 });
   };
   const phoneNav = useMemo(() => ({ tab, setTab, push }), [tab]);
+  const mainRef = useRef<HTMLElement | null>(null);
+  const onSwipe = useCallback(
+    (d: 1 | -1) => {
+      if (pushed) return d === -1 ? push(null) : undefined;
+      const i = TABS.findIndex((x) => x.id === tab) + d;
+      if (i >= 0 && i < TABS.length) setTab(TABS[i].id);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tab, pushed],
+  );
+  useSwipe(mainRef, onSwipe);
   // Cards from the PC version link to tabs by module id.
   const cardNav = useMemo(
     () => ({
@@ -221,7 +240,7 @@ export function PhoneApp() {
             <h1>{title}</h1>
             {sub && <span>{sub}</span>}
           </div>
-          <main className="p-main" key={pushed ?? tab}>
+          <main ref={mainRef} className={"p-main" + (dir === 1 ? " slide-from-right" : dir === -1 ? " slide-from-left" : "")} key={pushed ?? tab}>
             {pushed ? (
               <div className="p-pushed">
                 {PUSHED[pushed].module ? <ModulePage id={PUSHED[pushed].module!} /> : PUSHED_PAGE[pushed]!()}
@@ -255,6 +274,46 @@ export function PhoneApp() {
   );
 }
 
+/** Dark or light, and your accent colour (this phone only). */
+function Appearance() {
+  const [look, setLook] = useState(phoneLook);
+  const put = (l: Partial<PhoneLook>) => {
+    const n = { ...look, ...l };
+    setLook(n);
+    setPhoneLook(n);
+  };
+  return (
+    <section className="p-section">
+      <div className="p-section-head">
+        <h2>Appearance</h2>
+      </div>
+      <div className="p-group p-look">
+        <div className="p-seg">
+          {(
+            [
+              ["dark", "Dark"],
+              ["light", "Light"],
+              ["auto", "Match iPhone"],
+            ] as const
+          ).map(([m, l]) => (
+            <button key={m} className={look.mode === m ? "on" : ""} onClick={() => put({ mode: m })}>
+              {l}
+            </button>
+          ))}
+        </div>
+        <div className="p-swatches" role="radiogroup" aria-label="Accent colour">
+          {ACCENTS.map((a) => (
+            <button key={a.id} role="radio" aria-checked={look.accent === a.id} className={"p-swatch" + (look.accent === a.id ? " on" : "")} style={{ ["--sw" as string]: a.dark }} onClick={() => put({ accent: a.id })}>
+              <i />
+              <span>{a.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /** The gear at the top: your account, Garmin, a PC, and the plan's settings. */
 function SettingsPage() {
   const nav = usePhoneNav();
@@ -282,6 +341,7 @@ function More({ push }: { push: (p: Pushed) => void }) {
           ))}
         </div>
       </section>
+      <Appearance />
       <AccountSection />
       {!hasAccount() && <PhoneFooter />}
     </div>

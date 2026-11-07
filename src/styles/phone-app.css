@@ -1240,3 +1240,405 @@ button.p-row-main {
   background: none;
   box-shadow: none;
 }
+
+/* =====================================================================
+   The look: ink blue, zone colours that mean something, race-bib numbers.
+   Easy teal, long-run blue, threshold amber, VO2 coral, race-pace violet.
+   ===================================================================== */
+:root.phone-root:not([data-theme="light"]) {
+  --bg: #121821;
+  --card: #1a2230;
+  --card-2: #232d3c;
+  --line: #2b3646;
+  --line-2: #354256;
+  --text: #eef2f8;
+  --text-2: #c2cad7;
+  --muted: #8995a9;
+  --track: #2b3646;
+  --hover: rgba(255, 255, 255, 0.05);
+  --z-easy: #3fd1aa;
+  --z-long: #5aa9ff;
+  --z-threshold: #ffb23e;
+  --z-vo2: #ff6a55;
+  --z-race: #b88cff;
+  --z-rest: #5b687c;
+  --run-easy: var(--z-easy);
+  --run-long: var(--z-long);
+  --run-speed: var(--z-threshold);
+  --run-race: var(--z-race);
+  --run-rest: var(--z-rest);
+  color-scheme: dark;
+}
+:root.phone-root[data-theme="light"] {
+  --bg: #eef1f6;
+  --card: #ffffff;
+  --card-2: #f2f4f8;
+  --line: #dfe4ec;
+  --line-2: #cfd6e1;
+  --text: #131a25;
+  --text-2: #374355;
+  --muted: #687488;
+  --track: #dfe4ec;
+  --hover: rgba(0, 0, 0, 0.04);
+  --z-easy: #0b9673;
+  --z-long: #2c70d4;
+  --z-threshold: #c27500;
+  --z-vo2: #d6432d;
+  --z-race: #7449dc;
+  --z-rest: #a2acbc;
+  --run-easy: var(--z-easy);
+  --run-long: var(--z-long);
+  --run-speed: var(--z-threshold);
+  --run-race: var(--z-race);
+  --run-rest: var(--z-rest);
+  --shadow: 0 10px 30px rgba(30, 45, 70, 0.1);
+  color-scheme: light;
+}
+:root.phone-root {
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+}
+:root.phone-root body {
+  background: var(--bg);
+}
+.z-easy { --z: var(--z-easy); }
+.z-long { --z: var(--z-long); }
+.z-threshold { --z: var(--z-threshold); }
+.z-vo2 { --z: var(--z-vo2); }
+.z-race { --z: var(--z-race); }
+.z-rest { --z: var(--z-rest); }
+
+/* Type: condensed numerals and headings, Inter for reading */
+.p-title h1 {
+  font-family: var(--display);
+  font-size: 2.6rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+}
+.p-title span {
+  font-size: 0.95rem;
+}
+.p-section-head h2 {
+  font-family: var(--display);
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: 0.005em;
+}
+.p-eyebrow,
+.p-session-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+}
+.p-big,
+.p-total b,
+.p-runcard-stats b,
+.p-pb b,
+.p-ring-text {
+  font-family: var(--display);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.p-big {
+  font-size: 2.3rem;
+}
+.p-total b {
+  font-size: 2.1rem;
+  line-height: 1.05;
+}
+.p-runcard-stats b {
+  font-size: 1.4rem;
+}
+.p-pb b {
+  font-size: 1.6rem;
+}
+.p-ring-text {
+  font-size: 1.35rem;
+}
+
+/* The session: its zone's colour, a big number, and the shape of the work */
+.p-session {
+  gap: 0.55rem;
+  padding: 1.1rem 1.15rem 1.05rem;
+  border-radius: 26px;
+  border: 1px solid color-mix(in srgb, var(--z, var(--accent)) 28%, transparent);
+  background:
+    radial-gradient(130% 100% at 100% 0%, color-mix(in srgb, var(--z, var(--accent)) 28%, transparent) 0%, transparent 62%),
+    var(--card);
+  box-shadow: var(--shadow);
+}
+.p-session.z-rest {
+  border-color: var(--line);
+  background: var(--card);
+}
+.p-zone-pill {
+  padding: 0.22rem 0.7rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--z) 20%, transparent);
+  color: var(--z);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.p-session-km {
+  font-family: var(--display);
+  font-size: 4.6rem;
+  font-weight: 700;
+  line-height: 0.88;
+  letter-spacing: -0.005em;
+  color: var(--text);
+}
+.p-session-km small {
+  margin-left: 0.25rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.p-session-km.rest {
+  font-size: 3.4rem;
+  color: var(--muted);
+}
+.p-session-text {
+  font-size: 0.98rem;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+.p-session-text.muted {
+  color: var(--muted);
+}
+svg.effort {
+  display: block;
+  width: 100%;
+  height: 3.4rem;
+  margin: 0.15rem 0 0.1rem;
+}
+.effort-b {
+  fill: var(--z);
+}
+/* Warm-ups, jogs and cool-downs sit quietly under the hard parts. */
+.effort .effort-b.z-easy:not(:only-child) {
+  fill: color-mix(in srgb, var(--text) 16%, transparent);
+}
+
+/* Last run */
+.p-lastrun {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 1rem 1.1rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+.p-lastrun:active {
+  transform: scale(0.99);
+}
+.p-lastrun-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.8rem;
+}
+.p-lastrun-head > span:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.p-lastrun-name {
+  font-size: 1.05rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.p-lastrun-when {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.p-lastrun-km {
+  font-family: var(--display);
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 0.9;
+  color: var(--accent);
+}
+.p-lastrun-km small {
+  margin-left: 0.15rem;
+  font-size: 1.1rem;
+  color: var(--muted);
+}
+.p-lastrun-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+}
+.p-lastrun-stats span {
+  display: flex;
+  flex-direction: column;
+}
+.p-lastrun-stats b {
+  font-family: var(--display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.05;
+}
+.p-lastrun-stats small {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.p-splits {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 3.2rem;
+}
+.p-splits i {
+  flex: 1;
+  border-radius: 3px 3px 1px 1px;
+  background: linear-gradient(to top, color-mix(in srgb, var(--accent) 45%, transparent), var(--accent));
+}
+.p-splits-legend {
+  display: flex;
+  justify-content: space-between;
+  margin-top: -0.45rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+/* Tiles and the week at a glance */
+.p-tile {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+}
+.p-weekdots {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  width: 100%;
+  height: 3.3rem;
+}
+.p-wd {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+  gap: 3px;
+}
+.p-wd i {
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--z) 30%, transparent);
+}
+.p-wd.ran i {
+  background: var(--z);
+}
+.p-wd.z-rest i {
+  background: var(--line);
+}
+.p-wd b {
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.p-wd.today b {
+  color: var(--accent);
+}
+
+/* Groups and rows: a hairline frame instead of flat grey */
+.p-group {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+}
+
+/* Run feed */
+.p-runcard {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+}
+
+/* Tab bar: the current tab sits in a pill of the accent */
+.p-tabs {
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  border-top: 1px solid var(--line);
+}
+.p-tab {
+  --mod: var(--accent);
+  border-radius: 14px;
+  margin: 0 0.15rem;
+  padding: 0.3rem 0;
+  transition: color 0.15s;
+}
+.p-tab.on {
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+.p-tab.on svg {
+  stroke-width: 2.2;
+}
+
+/* Moving between tabs: the page comes in from the side you swiped towards */
+.p-main.slide-from-right {
+  animation: p-from-right 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.p-main.slide-from-left {
+  animation: p-from-left 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes p-from-right {
+  from {
+    opacity: 0.2;
+    transform: translateX(28px);
+  }
+}
+@keyframes p-from-left {
+  from {
+    opacity: 0.2;
+    transform: translateX(-28px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .p-main,
+  .p-main.slide-from-right,
+  .p-main.slide-from-left {
+    animation: none;
+  }
+}
+
+/* Appearance */
+.p-look {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 0.9rem;
+}
+.p-swatches {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+.p-swatch {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+}
+.p-swatch i {
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 50%;
+  background: var(--sw);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sw) 25%, transparent);
+}
+.p-swatch.on {
+  border-color: var(--sw);
+  background: color-mix(in srgb, var(--sw) 12%, transparent);
+}

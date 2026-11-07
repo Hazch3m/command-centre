@@ -1,3 +1,4 @@
+import { ACCENTS } from "../core/appearance";
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { backend } from "@backend";
 import type { AppConfig, BackupStatus, MonitorInfo } from "../core/backend.types";
@@ -179,6 +180,15 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
             {(["slate", "light", "dark", "system"] as const).map((t) => (
               <button key={t} className={settings.theme === t ? "on" : ""} onClick={() => updateSettings({ theme: t })}>
                 {t === "slate" ? "Slate" : t === "light" ? "Light" : t === "dark" ? "Dark" : "Match Windows"}
+              </button>
+            ))}
+          </div>
+        </Row>
+        <Row label="Accent colour">
+          <div className="accent-swatches">
+            {[{ id: "", name: "Theme's own", dark: "var(--muted)", light: "" }, ...ACCENTS].map((a) => (
+              <button key={a.id} className={"accent-swatch" + ((settings.accent ?? "") === a.id ? " on" : "")} style={{ ["--sw" as string]: a.dark }} title={a.name} aria-label={a.name} onClick={() => updateSettings({ accent: a.id || undefined })}>
+                <i />
               </button>
             ))}
           </div>

@@ -4884,3 +4884,30 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
   background: color-mix(in srgb, var(--c-fitness, #a78bfa) 22%, transparent);
   color: var(--c-fitness, #a78bfa);
 }
+
+/* Accent colour picker */
+.accent-swatches {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.accent-swatch {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+.accent-swatch i {
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  background: var(--sw);
+}
+.accent-swatch.on {
+  border-color: var(--text);
+}

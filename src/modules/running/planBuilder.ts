@@ -371,6 +371,12 @@ const WARM = 5;
 const JOG = 360;
 const lerp = (a: number, b: number, t: number) => a + (b - a) * Math.max(0, Math.min(1, t));
 const r1 = (x: number) => Math.round(x);
+/** Every speed session spells out its warm-up and cool-down (3 km and the rest of the 5 km of easy running). */
+const WARM_UP = 3;
+function withWarmUp(q: { km: number; text: string }) {
+  return `${q.km} km with ${WARM_UP} km warm-up, ${q.text}, ${WARM - WARM_UP} km cool-down`;
+}
+
 /** "{total} km with …": total = warm-up/cool-down + work + jogs. */
 function workout(work: number, jogSeconds: number, text: string) {
   return { km: r1(WARM + work + jogSeconds / JOG), text };
@@ -740,7 +746,7 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
     picks.forEach((q, j) => {
       const d = qDays[j];
       if (!d || raceDays.has(d) || near(d) || s[d]) return;
-      s[d] = q.whole ? q.text : `${q.km} km with ${q.text}`;
+      s[d] = q.whole ? q.text : withWarmUp(q);
       sized[d] = q.km;
     });
     // Hill sprints (if you want them): short and fast on an easy day in base and build weeks.
@@ -898,7 +904,7 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
  * (short reps at speed), fartlek, hills. Null for easy and long runs, and when the text already says.
  */
 export function sessionKindOf(text: string): string | null {
-  if (/^(?:\d+ km with )?(VO2 max|Threshold|Hill strength|Race pace)\b/i.test(text) || /fartlek/i.test(text)) return null;
+  if (/\b(VO2 max|Threshold|Threshold tempo|Hill strength|Race pace):/i.test(text) || /fartlek/i.test(text)) return null;
   if (/hill (?:reps|repeats)/i.test(text)) return "Hill strength";
   if (/\bT\b|threshold|tempo|cruise/i.test(text)) return "Threshold";
   const rep = /(\d+)\s*×\s*(\d+(?:\.\d+)?)\s*(km|m|min|s)\b[^,]*\bat\s+(?!MP|HMP)/i.exec(text);
