@@ -66,7 +66,7 @@ export function Session({ d, label, next }: { d: ForecastDay; label: string; nex
       {!rest && (
         <div className="p-session-text">
           {detail}
-          {!d.race && <PracticeTag text={d.text} />}
+          {!d.race && <PracticeTag text={d.text} kind={false} />}
         </div>
       )}
       {rest && <div className="p-session-text muted">Recovery is training too. Walk, stretch, sleep well.</div>}

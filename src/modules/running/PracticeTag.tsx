@@ -1,9 +1,9 @@
 import { practiceOf, sessionKindOf } from "./planBuilder";
 
 /** Small badges: what the session trains (when its text doesn't say), and race practice / fast finish. */
-export function PracticeTag({ text }: { text: string }) {
+export function PracticeTag({ text, kind = true }: { text: string; kind?: boolean }) {
   const p = practiceOf(text);
-  const k = sessionKindOf(text);
+  const k = kind ? sessionKindOf(text) : null;
   if (!p && !k) return null;
   return (
     <>

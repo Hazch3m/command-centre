@@ -2,12 +2,16 @@ import { useMemo } from "react";
 import type { Plan } from "../modules/running/plan";
 import { sessionToWorkout, type Zones } from "../modules/watch/importWeek";
 import type { Item, Step } from "../modules/watch/steps";
+import { sessionKindOf } from "../modules/running/planBuilder";
 
 /** The zone a session's hard parts belong to, by what it says it trains. */
 export type Zone = "easy" | "long" | "threshold" | "vo2" | "race" | "rest";
 export function zoneOf(text: string, kind?: string): Zone {
   if (!text || /^rest/i.test(text) || kind === "rest") return "rest";
-  if (/VO2|× \d+(?:\.\d+)? ?(?:m|s)\b|fartlek|hill/i.test(text)) return "vo2";
+  const k = sessionKindOf(text);
+  if (k === "VO2 max" || k === "Hill strength") return "vo2";
+  if (k === "Threshold") return "threshold";
+  if (/VO2|fartlek|hill reps|hill strength/i.test(text)) return "vo2";
   if (/\b(?:MP|HMP)\b|race pace|time trial/i.test(text)) return "race";
   if (/threshold|\bT\b|tempo|cruise/i.test(text)) return "threshold";
   if (/× [\d.]+ km at|× \d+ min at/i.test(text)) return "threshold";
