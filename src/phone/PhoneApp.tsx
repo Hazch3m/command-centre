@@ -354,7 +354,7 @@ function More({ push }: { push: (p: Pushed) => void }) {
   return (
     <div className="p-screen">
       <div className="p-brand">
-        <img src="logo.svg" alt="" width={56} height={56} />
+        <img src="apple-touch-icon.png" alt="" width={56} height={56} />
         <span>
           <b>Command Centre</b>
           <small>Train, race, recover</small>
