@@ -262,11 +262,11 @@ async fn wait_for_code(listener: tokio::net::TcpListener, state: &str) -> Result
         let get = |k: &str| url.query_pairs().find(|(n, _)| n == k).map(|(_, v)| v.into_owned());
         let (ok, msg, result) = match (get("state"), get("code"), get("error")) {
             (_, _, Some(err)) => (false, "Sign-in was cancelled. You can close this tab.", Err(format!("Sign-in was refused ({err}).")),),
-            (Some(s), Some(code), None) if s == state => (true, "Connected to Command Centre. You can close this tab.", Ok(code)),
+            (Some(s), Some(code), None) if s == state => (true, "Connected to Pacelife. You can close this tab.", Ok(code)),
             _ => (false, "Something went wrong. Close this tab and try again.", Err("Sign-in reply didn't match; please try again.".to_string())),
         };
         let body = format!(
-            "<!doctype html><meta charset=utf-8><title>Command Centre</title><body style=\"font:20px system-ui;background:#0a0c0f;color:{};display:grid;place-items:center;height:90vh\">{}</body>",
+            "<!doctype html><meta charset=utf-8><title>Pacelife</title><body style=\"font:20px system-ui;background:#0a0c0f;color:{};display:grid;place-items:center;height:90vh\">{}</body>",
             if ok { "#5ad6a8" } else { "#ff6b6b" },
             msg
         );

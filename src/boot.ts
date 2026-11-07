@@ -15,7 +15,7 @@ export function showFatal(root: HTMLElement, err: unknown) {
   root.innerHTML = "";
   const box = document.createElement("div");
   box.className = "fatal";
-  box.innerHTML = "<h1>Command Centre couldn't start</h1><p>The error below is also in the log file. Your data has not been touched.</p>";
+  box.innerHTML = "<h1>Pacelife couldn't start</h1><p>The error below is also in the log file. Your data has not been touched.</p>";
   const pre = document.createElement("pre");
   pre.textContent = String((err as Error)?.stack ?? err);
   box.appendChild(pre);

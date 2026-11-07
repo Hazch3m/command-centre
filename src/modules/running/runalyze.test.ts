@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { addDays } from "../../core/time";
-import { dailyLoad, easyShare, formLevel, loadSeries, monotony, zoneMinutes, zoneOfHr } from "./runalyze";
+import { dailyLoad, easyShare, formLevel, loadSeries, monotony, zoneMinutes } from "./runalyze";
+import { parseGarminZones, resolveZones, zoneOf, zoneRanges } from "./hrZones";
 
 const hr = { hrMax: 200, hrRest: 50 };
 const run = (date: string, min: number, avg: number | null) => ({ date, moving_time: min * 60, avg_hr: avg });
@@ -27,13 +28,41 @@ describe("runalyze", () => {
     expect(m.monotony).toBeLessThan(2);
     expect(m.strain).toBeGreaterThan(0);
   });
-  it("puts runs in heart-rate zones and checks 80/20", () => {
-    expect(zoneOfHr(120, hr)).toBe(1);
-    expect(zoneOfHr(150, hr)).toBe(2);
-    expect(zoneOfHr(180, hr)).toBe(4);
-    expect(zoneOfHr(195, hr)).toBe(5);
-    const z = zoneMinutes([run("2026-03-01", 80, 145), run("2026-03-02", 20, 182), run("2026-03-03", 30, null)], hr, "2026-03-01");
-    expect(z.find((x) => x.zone === 2)!.minutes).toBe(80);
-    expect(easyShare(z)).toBeCloseTo(0.8);
+  it("puts runs in heart-rate zones (by km where it can) and checks 80/20", () => {
+    const z = resolveZones({ method: "max", hrMax: 200 }, null, { hrMax: 190, hrRest: 50 });
+    expect(z.floors).toEqual([100, 120, 140, 160, 180]);
+    expect(zoneOf(90, z)).toBe(1);
+    expect(zoneOf(130, z)).toBe(2);
+    expect(zoneOf(175, z)).toBe(4);
+    expect(zoneOf(195, z)).toBe(5);
+    expect(zoneRanges(z)).toEqual(["< 120", "120–139", "140–159", "160–179", "180+"]);
+    const runs = [
+      { id: "a", date: "2026-03-01", moving_time: 80 * 60, avg_hr: 130 },
+      { id: "b", date: "2026-03-02", moving_time: 20 * 60, avg_hr: 170 },
+      { id: "c", date: "2026-03-03", moving_time: 30 * 60, avg_hr: null },
+    ];
+    const mins = zoneMinutes(runs, z, "2026-03-01");
+    expect(mins.find((x) => x.zone === 2)!.minutes).toBe(80);
+    expect(easyShare(mins)).toBeCloseTo(0.8);
+    // Splits win over the average: a run of 4 easy km and 1 hard one.
+    const split = (hr: number) => ({ distance: 1000, moving_time: 300, speed: 3.3, gap: null, hr, elev: null });
+    const d = new Map([["b", { splits: [split(130), split(130), split(130), split(130), split(185)] }]]);
+    const m2 = zoneMinutes([runs[1]], z, "2026-03-01", d);
+    expect(m2.find((x) => x.zone === 2)!.minutes).toBe(20);
+    expect(m2.find((x) => x.zone === 5)!.minutes).toBe(5);
+  });
+  it("uses Garmin's own zones when it has them", () => {
+    const g = parseGarminZones([
+      { sport: "DEFAULT", trainingMethod: "HR_MAX_BASED", zone1Floor: 98, zone2Floor: 118, zone3Floor: 137, zone4Floor: 157, zone5Floor: 176, maxHeartRateUsed: 196 },
+      { sport: "RUNNING", trainingMethod: "HR_RESERVE_BASED", zone1Floor: 120, zone2Floor: 134, zone3Floor: 148, zone4Floor: 163, zone5Floor: 177, maxHeartRateUsed: 192, restingHeartRateUsed: 48 },
+    ]);
+    expect(g?.floors).toEqual([120, 134, 148, 163, 177]);
+    const z = resolveZones(null, g, { hrMax: 190, hrRest: 50 });
+    expect(z.method).toBe("garmin");
+    expect(z.source).toMatch(/Garmin.*reserve/);
+    // Your own choice wins; reserve uses Garmin's max and resting.
+    const r = resolveZones({ method: "reserve" }, g, { hrMax: 190, hrRest: 50 });
+    expect(r.floors[1]).toBe(Math.round(48 + 0.6 * (192 - 48)));
+    expect(parseGarminZones({ nope: 1 })).toBeNull();
   });
 });

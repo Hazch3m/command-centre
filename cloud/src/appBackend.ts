@@ -1,5 +1,5 @@
 /**
- * The app's backend, as the sync service runs it. Command Centre's own sync
+ * The app's backend, as the sync service runs it. Pacelife's own sync
  * code (Garmin runs and health, Google Calendar and calendar feeds) runs here
  * unchanged against a working copy of your database, so the phone gets new
  * data with the PC switched off.
@@ -86,6 +86,7 @@ export const GARMIN_ALLOWED = [
   "/activity-service/activity/",
   "/calendar-service/year/",
   "/workout-service/workout/",
+  "/biometric-service/heartRateZones",
 ];
 /** The headers Garmin's Android app sends; the token service and API expect them. */
 const NATIVE: Record<string, string> = {

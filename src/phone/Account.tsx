@@ -92,7 +92,7 @@ export function AccountSection() {
       </div>
       <div className="p-row">
         <span className="p-row-main">
-          <span className="p-row-title">Command Centre on a PC</span>
+          <span className="p-row-title">Pacelife on a PC</span>
           <span className="p-row-sub">{code ? `On the PC: Settings → Phone & cloud → Sign in with Apple, or enter ${showCode(code.code)} there (valid 15 minutes).` : info?.pc ? "A PC is linked and stays in step" : "Optional: the desktop dashboard, synced with this account"}</span>
         </span>
         <button className="p-link" disabled={!!busy} onClick={() => act("code", async () => setCode(await makeComputerCode()))}>

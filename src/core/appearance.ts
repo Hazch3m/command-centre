@@ -16,6 +16,7 @@ export const ACCENTS: Accent[] = [
   { id: "violet", name: "Violet", dark: "#b08cff", light: "#6a43d4" },
   { id: "rose", name: "Rose", dark: "#ff6f91", light: "#c22d57" },
   { id: "gold", name: "Gold", dark: "#f5c542", light: "#9a7400" },
+  { id: "lime", name: "Pacelife", dark: "#9ef05a", light: "#3f7d12" },
 ];
 
 const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));

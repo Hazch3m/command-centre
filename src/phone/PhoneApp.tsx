@@ -179,7 +179,7 @@ export function PhoneApp() {
       await kvSet(REFRESH_KEY, stamp);
       await flush();
       const made = phoneState.header?.made ? Date.parse(phoneState.header.made) : 0;
-      answer = `Your PC didn't answer${made ? ` (it last sent data ${ago(made)})` : ""}. It's probably asleep, off, or Command Centre is closed; open Command Centre on the PC and it catches up within a minute.`;
+      answer = `Your PC didn't answer${made ? ` (it last sent data ${ago(made)})` : ""}. It's probably asleep, off, or Pacelife is closed; open Pacelife on the PC and it catches up within a minute.`;
       for (const until = Date.now() + 75_000; Date.now() < until; ) {
         await new Promise((r) => window.setTimeout(r, 5000));
         if (await refresh()) await notifyChanged("*");
@@ -223,12 +223,13 @@ export function PhoneApp() {
   }, []);
 
   const slide = dir === 1 ? " slide-from-right" : dir === -1 ? " slide-from-left" : "";
-  const title = pushed
-    ? PUSHED[pushed].title
-    : tab === "today"
-      ? new Date().toLocaleDateString("en-GB", { weekday: "long" })
-      : TABS.find((t) => t.id === tab)!.label;
-  const sub = !pushed && tab === "today" ? new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long" }) : null;
+  // Each page carries its own title, so it slides with the page (no jump when the title changes size).
+  const pageTitle = (title: string, sub?: string | null) => (
+    <div className="p-title">
+      <h1>{title}</h1>
+      {sub && <span>{sub}</span>}
+    </div>
+  );
   return (
     <PhoneNav.Provider value={phoneNav}>
       <NavContext.Provider value={cardNav}>
@@ -260,13 +261,10 @@ export function PhoneApp() {
               {note}
             </div>
           )}
-          <div className="p-title">
-            <h1>{title}</h1>
-            {sub && <span>{sub}</span>}
-          </div>
           <main ref={mainRef} className="p-main p-track">
             {pushed && (
               <div key={pushed} data-pane="pushed" className={"p-pane on p-pushed" + slide}>
+                {pageTitle(PUSHED[pushed].title)}
                 {PUSHED[pushed].module ? <ModulePage id={PUSHED[pushed].module!} /> : PUSHED_PAGE[pushed]!()}
               </div>
             )}
@@ -274,6 +272,7 @@ export function PhoneApp() {
               const on = !pushed && t.id === tab;
               return (
                 <section key={t.id} data-pane={t.id} className={"p-pane" + (on ? " on" + slide : "")} aria-hidden={!on}>
+                  {t.id === "today" ? pageTitle(new Date().toLocaleDateString("en-GB", { weekday: "long" }), new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long" })) : pageTitle(t.label)}
                   {t.id === "today" ? <Today /> : t.id === "training" ? <Training /> : t.id === "runs" ? <Runs /> : t.id === "planner" ? <Planner /> : <Stats />}
                 </section>
               );
@@ -354,9 +353,9 @@ function More({ push }: { push: (p: Pushed) => void }) {
   return (
     <div className="p-screen">
       <div className="p-brand">
-        <img src="logo.svg" alt="" width={56} height={56} />
+        <img src="apple-touch-icon.png" alt="" width={56} height={56} />
         <span>
-          <b>Command Centre</b>
+          <b>Pacelife</b>
           <small>Train, race, recover</small>
         </span>
       </div>
@@ -384,7 +383,7 @@ function PhoneFooter() {
   const [armed, setArmed] = useState(false);
   return (
     <footer className="p-footer">
-      <p>Runs, health, the plan and your calendar come from the PC whenever Command Centre is open there. Tasks, habits and plan changes made here are sent back to it.</p>
+      <p>Runs, health, the plan and your calendar come from the PC whenever Pacelife is open there. Tasks, habits and plan changes made here are sent back to it.</p>
       <button
         className="p-link danger"
         onClick={async () => {

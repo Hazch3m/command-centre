@@ -3,7 +3,7 @@ import { cleanCode } from "../core/sync";
 import { pairWithCode, signInWithApple } from "../core/backend.phone";
 import { cancelled, isNativeApp } from "../core/native";
 
-/** Opened from the home screen, or inside the Command Centre iPhone app (which needs no "add to home screen"). */
+/** Opened from the home screen, or inside the Pacelife iPhone app (which needs no "add to home screen"). */
 const standalone = () =>
   (navigator as Navigator & { standalone?: boolean }).standalone === true ||
   window.matchMedia?.("(display-mode: standalone)").matches ||
@@ -36,7 +36,7 @@ function SignIn({ onDone, useCode }: { onDone: () => void; useCode: () => void }
   return (
     <div className="pair signin">
       <img src="apple-touch-icon.png" alt="" className="pair-icon" />
-      <h1>Command Centre</h1>
+      <h1>Pacelife</h1>
       <p>Your training plan, runs, PBs, fitness and health in one place, synced from Garmin and sent to your watch.</p>
       <button className="apple-btn" disabled={busy} onClick={go}>
         <svg viewBox="0 0 17 20" width="17" height="20" aria-hidden="true">
@@ -45,9 +45,9 @@ function SignIn({ onDone, useCode }: { onDone: () => void; useCode: () => void }
         {busy ? "Signing in…" : "Sign in with Apple"}
       </button>
       {err && <div className="error-note">{err}</div>}
-      <p className="muted small">Your account and data are kept on Command Centre's sync service so it can fetch from Garmin with your phone locked. Nothing is shared with anyone.</p>
+      <p className="muted small">Your account and data are kept on Pacelife's sync service so it can fetch from Garmin with your phone locked. Nothing is shared with anyone.</p>
       <button className="p-link" onClick={useCode}>
-        Link to Command Centre on a PC with a code instead
+        Link to Pacelife on a PC with a code instead
       </button>
     </div>
   );
@@ -76,7 +76,7 @@ function PairWithCode({ onDone }: { onDone: () => void }) {
   return (
     <div className="pair">
       <img src="apple-touch-icon.png" alt="" className="pair-icon" />
-      <h1>Command Centre</h1>
+      <h1>Pacelife</h1>
       {!here ? (
         <>
           <p>Put it on your home screen first, so it opens full-screen like an app:</p>
@@ -87,7 +87,7 @@ function PairWithCode({ onDone }: { onDone: () => void }) {
             <li>
               Choose <b>Add to Home Screen</b>, then <b>Add</b>.
             </li>
-            <li>Open Command Centre from your home screen and enter the code from your PC.</li>
+            <li>Open Pacelife from your home screen and enter the code from your PC.</li>
           </ol>
           {fromLink && (
             <p className="muted">

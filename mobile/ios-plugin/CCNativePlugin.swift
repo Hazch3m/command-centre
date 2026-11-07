@@ -5,7 +5,7 @@ import Foundation
 import UIKit
 import WebKit
 
-/// Command Centre's own native abilities for the web app inside:
+/// Pacelife's own native abilities for the web app inside:
 /// - signInWithApple: Apple's sign-in sheet; returns Apple's identity token (checked by the sync service).
 /// - garminLogin: Garmin's real sign-in page in its own window; returns the one-time ticket Garmin gives
 ///   at the end (the password never touches the app).

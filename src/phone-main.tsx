@@ -59,7 +59,7 @@ async function start() {
           text={
             phoneState.error && (hasAccount() || !/Nothing has been sent/.test(phoneState.error))
               ? `Couldn't get your data from the cloud: ${phoneState.error}`
-              : "The cloud has no copy from your PC yet. Open Command Centre on the PC (it sends a copy within a minute), then try again."
+              : "The cloud has no copy from your PC yet. Open Pacelife on the PC (it sends a copy within a minute), then try again."
           }
           retry={start}
         />,

@@ -1,3 +1,4 @@
+import { parseGarminZones } from "../running/hrZones";
 import { backend } from "@backend";
 import { db, kvGet, kvSet } from "../../core/db";
 import { notifyChanged } from "../../core/events";
@@ -306,6 +307,10 @@ async function doSync(): Promise<HealthSync> {
     return s;
   }
 
+  await step("heart-rate zones", async () => {
+    const z = parseGarminZones(await get("/biometric-service/heartRateZones"));
+    if (z) await kvSet("health.hrZones", z);
+  });
   await step("VO2 max", async () => {
     for (const [a, b] of chunks(from, today, 60)) parseVo2(await get(`/metrics-service/metrics/maxmet/daily/${a}/${b}`), patch);
   });

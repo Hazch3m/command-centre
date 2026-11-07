@@ -39,7 +39,7 @@ export function eventFor(d: ForecastDay): { summary: string; description: string
   const short = d.text.length > 60 ? `${d.text.slice(0, 57)}…` : d.text;
   return {
     summary: `${icon} ${short}${km}`,
-    description: [d.text, d.pace ? `Pace: ${d.pace}` : "", strength, d.edited ? "(changed in Command Centre)" : "", "Added by Command Centre from your training plan."].filter(Boolean).join("\n"),
+    description: [d.text, d.pace ? `Pace: ${d.pace}` : "", strength, d.edited ? "(changed in Pacelife)" : "", "Added by Pacelife from your training plan."].filter(Boolean).join("\n"),
   };
 }
 
