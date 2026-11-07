@@ -41,7 +41,7 @@ export function sessionTitle(text: string, kind?: string): string {
 /** The session without its distance up front ("13 km with 3 km warm-up, …" → "3 km warm-up, …"). */
 const detailOf = (text: string) => text.replace(/^\d+(?:\.\d+)?\s*km\s+(?:with\s+)?/i, "").replace(/^(?:VO2 max|Threshold tempo|Threshold|Hill strength|Race pace):\s*/i, "");
 
-export function Session({ d, label }: { d: ForecastDay; label: string }) {
+export function Session({ d, label, next }: { d: ForecastDay; label: string; next?: ForecastDay }) {
   const { plan } = useRunningData();
   const t = typeOfDay(d.kind);
   const rest = t === "rest" || !d.km;
@@ -70,6 +70,15 @@ export function Session({ d, label }: { d: ForecastDay; label: string }) {
         </div>
       )}
       {rest && <div className="p-session-text muted">Recovery is training too. Walk, stretch, sleep well.</div>}
+      {rest && next && next.km ? (
+        <div className={`p-next z-${next.race ? "race" : zoneOf(next.text, next.kind)}`}>
+          <div className="p-next-head">
+            <b className="num">Tomorrow, {next.km} km</b>
+            <span>{next.race ? "Race day" : sessionTitle(next.text, next.kind)}</span>
+          </div>
+          {!next.race && <EffortProfile text={next.text} kind={next.kind} plan={plan} height={32} />}
+        </div>
+      ) : null}
       {(d.pace || d.strength) && !rest && (
         <div className="p-session-meta">
           {d.pace && <span className="p-chip num">{/\d:\d\d/.test(d.pace) ? `${d.pace}/km` : d.pace}</span>}
@@ -147,8 +156,9 @@ export function LastRun() {
         <div className="p-splits" aria-label="Pace for each kilometre">
           {full.map((x, i) => {
             const v = x.distance / x.moving_time;
-            const f = hi > lo ? (v - lo) / (hi - lo) : 0.6;
-            return <i key={i} style={{ height: `${28 + f * 72}%` }} title={`km ${i + 1}: ${pace(x.distance, x.moving_time)}/km`} />;
+            // From 85% of the slowest kilometre's speed up, so a steady run looks steady and a fast finish shows.
+            const f = Math.max(0, (v - lo * 0.85) / (hi - lo * 0.85));
+            return <i key={i} style={{ height: `${Math.max(12, f * 100)}%` }} title={`km ${i + 1}: ${pace(x.distance, x.moving_time)}/km`} />;
           })}
         </div>
       )}
@@ -197,7 +207,7 @@ export function Today() {
   return (
     <div className="p-screen">
       <GettingStarted />
-      {todayRun && !isEmptyPlan(plan) && <Session d={todayRun} label={dayGreeting(now)} />}
+      {todayRun && !isEmptyPlan(plan) && <Session d={todayRun} label={dayGreeting(now)} next={tomorrowRun} />}
       <LastRun />
 
       <div className="p-tiles">

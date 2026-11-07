@@ -149,7 +149,7 @@ function RunCard({ r, today, kind, medals }: { r: Run; today: string; kind?: Day
       </div>
       {r.polyline && (
         <div className="p-runcard-map">
-          <RouteMap polyline={r.polyline} height={120} />
+          <RouteMap polyline={r.polyline} height={100} />
         </div>
       )}
     </button>

@@ -1267,6 +1267,7 @@ button.p-row-main {
   --run-speed: var(--z-threshold);
   --run-race: var(--z-race);
   --run-rest: var(--z-rest);
+  --c-running: var(--accent);
   color-scheme: dark;
 }
 :root.phone-root[data-theme="light"] {
@@ -1291,6 +1292,7 @@ button.p-row-main {
   --run-speed: var(--z-threshold);
   --run-race: var(--z-race);
   --run-rest: var(--z-rest);
+  --c-running: var(--accent);
   --shadow: 0 10px 30px rgba(30, 45, 70, 0.1);
   color-scheme: light;
 }
@@ -1641,4 +1643,40 @@ svg.effort {
 .p-swatch.on {
   border-color: var(--sw);
   background: color-mix(in srgb, var(--sw) 12%, transparent);
+}
+
+.pc-head .link-btn {
+  white-space: nowrap;
+}
+/* A rest day previews what's next */
+.p-next {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+  padding: 0.75rem 0.85rem 0.6rem;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--z) 10%, var(--card-2));
+}
+.p-next-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+.p-next-head b {
+  font-family: var(--display);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+.p-next-head span {
+  color: var(--z);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.p-next svg.effort {
+  height: 2rem;
+}
+.p-session.z-rest .p-session-km.rest {
+  font-size: 2.6rem;
 }
