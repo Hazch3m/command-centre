@@ -54,7 +54,7 @@ export function phoneLook(): PhoneLook {
   } catch {
     /* default */
   }
-  return { mode: "dark", accent: "teal" };
+  return { mode: "light", accent: "sunset" };
 }
 const dark = () => globalThis.matchMedia?.("(prefers-color-scheme: dark)").matches ?? true;
 export function applyPhoneLook(l: PhoneLook = phoneLook()) {

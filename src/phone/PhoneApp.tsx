@@ -118,7 +118,7 @@ export function PhoneApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [tab, pushed],
   );
-  useSwipe(mainRef, onSwipe);
+  useSwipe(mainRef, onSwipe, (d) => (pushed ? d === -1 : TABS.findIndex((x) => x.id === tab) + d >= 0 && TABS.findIndex((x) => x.id === tab) + d < TABS.length));
   // Cards from the PC version link to tabs by module id.
   const cardNav = useMemo(
     () => ({

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSwipe } from "./swipe";
 import { useDataVersion } from "../core/events";
 import { addDays, parseKey, useToday } from "../core/time";
 import { useQuery } from "../core/useQuery";
@@ -33,6 +34,10 @@ export function Training() {
   const [sel, setSel] = useState(today);
   const range = useMemo(() => (plan ? forecastRange(plan, today) : null), [plan, today]);
   const fw = useMemo(() => (plan ? forecastWeek(plan, monday, runs, overrides) : null), [plan, monday, runs, overrides]);
+  // Swipe across the week (its days and session) to go to the week before or after.
+  const weekRef = useRef<HTMLDivElement | null>(null);
+  const can = (d: number) => !!range && addDays(monday, 7 * d) >= range.first && addDays(monday, 7 * d) <= range.last;
+  useSwipe(weekRef, (d) => can(d) && setMonday(addDays(monday, 7 * d)), can);
   useEffect(() => {
     setSel(monday === thisMonday ? today : monday);
   }, [monday]);
@@ -63,6 +68,7 @@ export function Training() {
   const off = Math.round((parseKey(monday).getTime() - parseKey(thisMonday).getTime()) / (7 * 86400000));
   return (
     <div className="p-screen">
+      <div ref={weekRef} data-noswipe className="p-weekswipe">
       <div className="p-weekbar">
         <button className="p-round" onClick={() => go(-1)} disabled={monday <= range.first} aria-label="Previous week">
           ‹
@@ -107,6 +113,7 @@ export function Training() {
         })}
       </div>
       {fw.week ? <Session d={day} label={dayName(day.date, today)} /> : <div className="p-hint center">{fw.block ? `${fw.block.key}. No day-by-day sessions this far out yet.` : "No plan this week."}</div>}
+      </div>
 
       <button type="button" className="wc-cta" onClick={() => nav.push("workout")}>
         <b>Create a workout</b>

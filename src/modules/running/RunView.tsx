@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode, useRef } from "react";
+import { useSwipe } from "../../phone/swipe";
 import { createPortal } from "react-dom";
 import { backend } from "@backend";
 import { useDataVersion } from "../../core/events";
@@ -45,12 +46,15 @@ export function RunViewHost() {
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
   }, [stack.length]);
+  // On a phone: swipe right to go back (or close), as anywhere else in the app.
+  const sheet = useRef<HTMLDivElement | null>(null);
+  useSwipe(sheet, () => setStack((s) => s.slice(0, -1)), (d) => d === -1);
   const top = stack[stack.length - 1];
   if (!top) return null;
   const back = () => setStack((s) => s.slice(0, -1));
   return createPortal(
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setStack([])}>
-      <div className="modal run-modal" role="dialog">
+      <div ref={sheet} className="modal run-modal" role="dialog">
         {top.kind === "week" ? <WeekRuns monday={top.id} onBack={stack.length > 1 ? back : undefined} onClose={() => setStack([])} /> : <RunDetail id={top.id} onBack={stack.length > 1 ? back : undefined} onClose={() => setStack([])} />}
       </div>
     </div>,
@@ -74,8 +78,9 @@ function Head({ title, sub, onBack, onClose, right }: { title: string; sub?: str
       </div>
       <div className="inline">
         {right}
-        <button className="btn icon ghost" onClick={onClose} aria-label="Close">
-          ✕
+        <button className="btn icon ghost run-close" onClick={onClose} aria-label="Close">
+          <span aria-hidden="true">✕</span>
+          <span className="run-close-label">Close</span>
         </button>
       </div>
     </header>
