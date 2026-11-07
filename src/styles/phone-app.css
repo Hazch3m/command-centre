@@ -2767,16 +2767,16 @@ svg.effort {
   flex-direction: column;
   align-items: flex-start;
 }
-.pt-row.now b {
+.pt-now-row b {
   color: var(--text);
 }
-.pt-row.day {
+.pt-day-row {
   background: color-mix(in srgb, var(--accent) 12%, var(--card-2));
 }
-.pt-row.day b {
+.pt-day-row b {
   color: var(--accent);
 }
-.pt-row.goal b {
+.pt-goal-row b {
   color: var(--z-easy);
 }
 .pt-goal-btn {
@@ -2835,10 +2835,10 @@ svg.effort {
   box-shadow: 0 1px 4px rgb(0 0 0 / 0.25);
   transition: left 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.pt-bar-dot.now {
+.pt-dot-now {
   background: var(--text);
 }
-.pt-bar-dot.day {
+.pt-dot-day {
   background: var(--accent);
 }
 .pt-bar-flag {
@@ -2854,10 +2854,10 @@ svg.effort {
   font-weight: 700;
   color: var(--muted);
 }
-.pt-bar-dot.now small {
+.pt-dot-now small {
   top: -1.2rem;
 }
-.pt-bar-dot.day small,
+.pt-dot-day small,
 .pt-bar-flag small {
   top: 1rem;
 }

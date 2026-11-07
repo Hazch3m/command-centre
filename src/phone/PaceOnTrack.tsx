@@ -117,17 +117,17 @@ export function PaceOnTrack({ plan, runs }: { plan: Plan; runs: Run[] }) {
           </div>
 
           <div className="pt-rows">
-            <div className="pt-row now">
+            <div className="pt-row pt-now-row">
               <small>Current race pace</small>
               <b className="num">{r.now ? `${perKm(r.now, km)}/km` : "–"}</b>
               <span className="num">{r.now ? fmtTime(r.now) : ""}</span>
             </div>
-            <div className="pt-row day">
+            <div className="pt-row pt-day-row">
               <small>Predicted on race day</small>
               <b className="num">{r.predicted ? `${perKm(r.predicted, km)}/km` : "–"}</b>
               <span className="num">{r.range ? `${fmtTime(r.range[0])} – ${fmtTime(r.range[1])}` : r.predicted ? fmtTime(r.predicted) : ""}</span>
             </div>
-            <div className="pt-row goal">
+            <div className="pt-row pt-goal-row">
               <small>Goal</small>
               {editing ? (
                 <span className="pt-goal-edit">
@@ -161,7 +161,7 @@ export function PaceOnTrack({ plan, runs }: { plan: Plan; runs: Run[] }) {
           <TrackBar now={r.now} range={r.range} predicted={r.predicted} goal={goal} />
           <ProgressChart history={history} now={r.now} predicted={r.predicted} range={r.range} goal={goal} raceDate={race.date!} today={today} />
           <p className="p-hint">
-            "Current" is a race today from your recent runs and fitness; "race day" adds what the plan should bring if you follow it, as a range.
+            Current: a race today, from your recent running. Race day: where the plan should take you if you follow it.
           </p>
         </div>
       )}
@@ -192,12 +192,12 @@ function TrackBar({ now, range, predicted, goal }: { now: number | null; range: 
       <div className="pt-bar-line" />
       {range && <span className="pt-bar-range" style={{ left: at(range[1]), right: `calc(100% - ${at(range[0])})` }} />}
       {now && (
-        <span className="pt-bar-dot now" style={{ left: at(now) }}>
+        <span className="pt-bar-dot pt-dot-now" style={{ left: at(now) }}>
           <small>Now</small>
         </span>
       )}
       {predicted && (
-        <span className="pt-bar-dot day" style={{ left: at(predicted) }}>
+        <span className="pt-bar-dot pt-dot-day" style={{ left: at(predicted) }}>
           <small>Race day</small>
         </span>
       )}
