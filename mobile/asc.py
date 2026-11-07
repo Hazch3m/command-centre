@@ -38,7 +38,7 @@ def call(method, path, body=None):
 
 ids = [b for b in call("GET", f"/bundleIds?filter[identifier]={BUNDLE}&limit=5")["data"] if b["attributes"]["identifier"] == BUNDLE]
 if not ids:
-    ids = [call("POST", "/bundleIds", {"data": {"type": "bundleIds", "attributes": {"identifier": BUNDLE, "name": "Command Centre", "platform": "IOS"}}})["data"]]
+    ids = [call("POST", "/bundleIds", {"data": {"type": "bundleIds", "attributes": {"identifier": BUNDLE, "name": "Pacelife", "platform": "IOS"}}})["data"]]
     print(f"Registered the bundle ID {BUNDLE}")
 else:
     print(f"Bundle ID {BUNDLE} is registered")
@@ -53,6 +53,28 @@ apps = call("GET", f"/apps?filter[bundleId]={BUNDLE}&limit=5")["data"]
 if not apps:
     sys.exit(
         "::error::One manual step left: in App Store Connect choose Apps → + → New App, platform iOS, "
-        f"name 'Command Centre' (or any free name), bundle ID {BUNDLE}, SKU commandcentre. Then run this workflow again."
+        f"name 'Pacelife' (or any free name), bundle ID {BUNDLE}, SKU commandcentre. Then run this workflow again."
     )
 print(f"App record found: {apps[0]['attributes']['name']}")
+
+
+# The app's name in App Store Connect and TestFlight (best effort: Apple may say the name is taken).
+WANT = "Pacelife"
+def try_call(method, path, body=None):
+    req = urllib.request.Request(API + path, method=method, data=json.dumps(body).encode() if body else None)
+    req.add_header("Authorization", "Bearer " + token())
+    req.add_header("Content-Type", "application/json")
+    try:
+        with urllib.request.urlopen(req) as r:
+            return json.load(r)
+    except urllib.error.HTTPError as e:
+        print(f"::warning::Couldn't rename the app to {WANT} in App Store Connect ({e.code}): {e.read().decode(errors='replace')[:300]}")
+        return None
+
+if apps[0]["attributes"]["name"] != WANT:
+    infos = try_call("GET", f"/apps/{apps[0]['id']}/appInfos") or {"data": []}
+    for info in infos["data"]:
+        locs = try_call("GET", f"/appInfos/{info['id']}/appInfoLocalizations") or {"data": []}
+        for loc in locs["data"]:
+            if loc["attributes"].get("name") != WANT and try_call("PATCH", f"/appInfoLocalizations/{loc['id']}", {"data": {"type": "appInfoLocalizations", "id": loc["id"], "attributes": {"name": WANT}}}):
+                print(f"Renamed the app to {WANT} ({loc['attributes'].get('locale')})")

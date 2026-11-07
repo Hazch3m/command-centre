@@ -40,7 +40,7 @@ export interface SyncResult {
 export async function runCloudSync(io: CloudIO, only?: ("runs" | "health" | "calendar" | "watch")[]): Promise<SyncResult & { applied?: number }> {
   const ranAt = new Date().toISOString();
   const snap = await io.loadSnapshot();
-  if (!snap) return { ranAt, wrote: 0, errors: { data: "No copy from the PC yet: open Command Centre on the PC once." }, newRuns: 0 };
+  if (!snap) return { ranAt, wrote: 0, errors: { data: "No copy from the PC yet: open Pacelife on the PC once." }, newRuns: 0 };
   const keys = await linkKeys(io.creds.secret);
   const { header, db: bytes } = unpackSnapshot(await gunzip(await unseal(keys.key, snap.box)));
   const S = await io.sqlJs();

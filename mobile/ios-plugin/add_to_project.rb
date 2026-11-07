@@ -1,4 +1,4 @@
-# Adds Command Centre's native plugin and entitlements to the Capacitor Xcode project.
+# Adds Pacelife's native plugin and entitlements to the Capacitor Xcode project.
 require 'xcodeproj'
 project = Xcodeproj::Project.open('ios/App/App.xcodeproj')
 target = project.targets.find { |t| t.name == 'App' } or abort 'no App target'

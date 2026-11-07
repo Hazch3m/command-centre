@@ -179,7 +179,7 @@ export function PhoneApp() {
       await kvSet(REFRESH_KEY, stamp);
       await flush();
       const made = phoneState.header?.made ? Date.parse(phoneState.header.made) : 0;
-      answer = `Your PC didn't answer${made ? ` (it last sent data ${ago(made)})` : ""}. It's probably asleep, off, or Command Centre is closed; open Command Centre on the PC and it catches up within a minute.`;
+      answer = `Your PC didn't answer${made ? ` (it last sent data ${ago(made)})` : ""}. It's probably asleep, off, or Pacelife is closed; open Pacelife on the PC and it catches up within a minute.`;
       for (const until = Date.now() + 75_000; Date.now() < until; ) {
         await new Promise((r) => window.setTimeout(r, 5000));
         if (await refresh()) await notifyChanged("*");
@@ -355,7 +355,7 @@ function More({ push }: { push: (p: Pushed) => void }) {
       <div className="p-brand">
         <img src="apple-touch-icon.png" alt="" width={56} height={56} />
         <span>
-          <b>Command Centre</b>
+          <b>Pacelife</b>
           <small>Train, race, recover</small>
         </span>
       </div>
@@ -383,7 +383,7 @@ function PhoneFooter() {
   const [armed, setArmed] = useState(false);
   return (
     <footer className="p-footer">
-      <p>Runs, health, the plan and your calendar come from the PC whenever Command Centre is open there. Tasks, habits and plan changes made here are sent back to it.</p>
+      <p>Runs, health, the plan and your calendar come from the PC whenever Pacelife is open there. Tasks, habits and plan changes made here are sent back to it.</p>
       <button
         className="p-link danger"
         onClick={async () => {

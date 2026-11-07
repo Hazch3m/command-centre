@@ -268,5 +268,5 @@ pub fn run() {
             quickadd::hide_quick_add,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Command Centre");
+        .expect("error while running Pacelife");
 }

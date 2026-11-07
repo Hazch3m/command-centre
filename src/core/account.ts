@@ -1,5 +1,5 @@
 /**
- * Accounts: Command Centre without a PC. Signing in with Apple on the iPhone
+ * Accounts: Pacelife without a PC. Signing in with Apple on the iPhone
  * app gives each person their own private store on the sync service, which
  * keeps their data and fetches from Garmin itself. A PC can join the account
  * later with a code from the phone.

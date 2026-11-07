@@ -81,7 +81,7 @@ export function PhoneSetting() {
         </div>
         <AccountLine tick={tick} busy={busy} />
         <p className="muted small">
-          This PC is part of the account you signed in to on the Command Centre iPhone app. The account syncs Garmin in the cloud every 15 minutes, PC on or off; changes here and on
+          This PC is part of the account you signed in to on the Pacelife iPhone app. The account syncs Garmin in the cloud every 15 minutes, PC on or off; changes here and on
           the phone reach both. Sent {ago(status?.lastPush ?? null)} · phone changes checked {ago(status?.lastPull ?? null)}.
         </p>
         {status?.error && <div className="error-note small">{status.error.replace(/^offline: /, "")}</div>}
@@ -159,7 +159,7 @@ export function PhoneSetting() {
             <li>
               In Safari, tap <b>Share</b> → <b>Add to Home Screen</b>.
             </li>
-            <li>Open Command Centre from your home screen and enter this code:</li>
+            <li>Open Pacelife from your home screen and enter this code:</li>
           </ol>
           <div className="phone-code num">{showCode(pair.code)}</div>
           <div className="muted small">Works for {left} more minute{left === 1 ? "" : "s"}, for up to three phones or browsers.</div>
@@ -255,7 +255,7 @@ function JoinAccount({ busy, run, defaultUrl, replacing }: { busy: boolean; run:
   return (
     <div className="cloud-sync join-account">
       <div className="cloud-sync-head">
-        <b>Your Command Centre account</b>
+        <b>Your Pacelife account</b>
       </div>
       <div className="inline">
         <button className="btn btn-primary" disabled={busy} onClick={() => run(async () => (await signInWithAppleOnPc(defaultUrl, setWait), setWait(null)))}>

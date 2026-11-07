@@ -1,5 +1,5 @@
 /**
- * Command Centre sync service (Cloudflare Worker + one SQLite Durable Object).
+ * Pacelife sync service (Cloudflare Worker + one SQLite Durable Object).
  *
  * Holds three things, all encrypted by the PC or phone before they arrive:
  *  - the PC's latest snapshot (the dashboard's database), in chunks
@@ -337,7 +337,7 @@ export class Store extends DurableObject<Env> {
       if (!token || !/^[0-9a-f]{64}$/.test(token)) return err(400, "bad token");
       const h = await sha256hex(token);
       const have = this.get("tokenHash");
-      if (have && have !== h) return err(409, "This sync service is already linked to another Command Centre.");
+      if (have && have !== h) return err(409, "This sync service is already linked to another Pacelife.");
       this.set("tokenHash", h);
       return json({ ok: true });
     }
@@ -366,7 +366,7 @@ export class Store extends DurableObject<Env> {
       return json({ blob: row.blob });
     }
 
-    if (!(await this.authed(req))) return err(401, "Not linked. Pair this device from Command Centre on your PC.");
+    if (!(await this.authed(req))) return err(401, "Not linked. Pair this device from Pacelife on your PC.");
 
     // ---- PC and phone --------------------------------------------------------------
     if (path === "/meta" && m === "GET") {
@@ -660,7 +660,7 @@ export default {
         // Google's sign-in comes back here, then on to the app (or a page saying you can close the browser).
         const [account, state, from] = (url.searchParams.get("state") ?? "").split(".");
         const done = (ok: boolean, msg: string) =>
-          from === "app" ? Response.redirect(`commandcentre://auth-done?ok=${ok ? 1 : 0}&msg=${encodeURIComponent(msg)}`, 302) : page(ok ? "Google connected" : "Google sign-in didn't finish", ok ? "Your calendar now syncs to Command Centre. You can close this tab." : msg, ok ? 200 : 400);
+          from === "app" ? Response.redirect(`commandcentre://auth-done?ok=${ok ? 1 : 0}&msg=${encodeURIComponent(msg)}`, 302) : page(ok ? "Google connected" : "Google sign-in didn't finish", ok ? "Your calendar now syncs to Pacelife. You can close this tab." : msg, ok ? 200 : 400);
         if (url.searchParams.get("error")) return done(false, `Google said: ${url.searchParams.get("error")}`);
         if (!/^[0-9a-f]{64}$/.test(account ?? "") || !state) return done(false, "This sign-in link is broken. Start it again.");
         const r = await store("acct:" + account).fetch("https://cc/internal/google/finish", { method: "POST", body: JSON.stringify({ state, code: url.searchParams.get("code"), redirect: `${url.origin}/api/oauth/google/callback` }) });
@@ -671,7 +671,7 @@ export default {
       if (url.pathname === "/api/auth/apple/web/start" && req.method === "GET") {
         // Sign in with Apple on the PC: the PC opens this in the browser with a one-time session id, then collects the result.
         const session = url.searchParams.get("session") ?? "";
-        if (!/^[0-9a-f]{64}$/.test(session)) return page("Sign-in link is broken", "Start again from Command Centre on your PC.", 400);
+        if (!/^[0-9a-f]{64}$/.test(session)) return page("Sign-in link is broken", "Start again from Pacelife on your PC.", 400);
         const u = new URL("https://appleid.apple.com/auth/authorize");
         for (const [k, v] of Object.entries({ client_id: APPLE_WEB_ID, redirect_uri: `${url.origin}/api/auth/apple/web`, response_type: "code id_token", response_mode: "form_post", scope: "email", state: session, nonce: await sha256hex(session) })) u.searchParams.set(k, v);
         return Response.redirect(u.toString(), 302);
@@ -679,7 +679,7 @@ export default {
       if (url.pathname === "/api/auth/apple/web" && req.method === "POST") {
         const f = await req.formData().catch(() => null);
         const session = String(f?.get("state") ?? "");
-        if (!/^[0-9a-f]{64}$/.test(session)) return page("Sign-in didn't finish", "Start again from Command Centre on your PC.", 400);
+        if (!/^[0-9a-f]{64}$/.test(session)) return page("Sign-in didn't finish", "Start again from Pacelife on your PC.", 400);
         if (f?.get("error")) return page("Sign-in cancelled", "You can close this tab.", 400);
         let who: Awaited<ReturnType<typeof verifyAppleToken>>;
         try {
@@ -690,7 +690,7 @@ export default {
         const account = await sha256hex("cc-apple:" + who.sub);
         const result = await (await store("acct:" + account).fetch("https://cc/internal/login", { method: "POST", body: JSON.stringify({ account, sub: who.sub }) })).json();
         await store("directory").fetch("https://cc/internal/session/put", { method: "POST", body: JSON.stringify({ session, result }) });
-        return page("Signed in", "Go back to Command Centre on your PC: it finishes setting up by itself. You can close this tab.");
+        return page("Signed in", "Go back to Pacelife on your PC: it finishes setting up by itself. You can close this tab.");
       }
       if (url.pathname === "/api/auth/session" && req.method === "GET") {
         const session = url.searchParams.get("id") ?? "";

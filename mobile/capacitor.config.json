@@ -1,6 +1,6 @@
 {
   "appId": "com.hazch3m.commandcentre",
-  "appName": "Command Centre",
+  "appName": "Pacelife",
   "webDir": "www",
   "server": {
     "url": "https://command-centre-sync.harryknoblauch12.workers.dev",
