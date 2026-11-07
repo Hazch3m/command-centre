@@ -21,7 +21,7 @@ export function WorkoutCreator() {
   const today = useToday();
   const { plan, runs = [] } = useRunningData();
   const f = useFitness(plan);
-  const ready = useReadiness(today).data;
+  const ready = useReadiness(today);
   const rv = useDataVersion("running");
   const overrides = useQuery(loadOverrides, [rv]).data;
 
