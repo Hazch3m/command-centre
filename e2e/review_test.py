@@ -189,6 +189,8 @@ try:
         check(sw <= 392, f"no sideways scroll ({sw})")
 
         # Plan views along the top.
+        if pp.locator(".p-subnav button").count() != 4:
+            print("plan pane:", pp.locator(".p-pane.on").inner_text()[:400].replace("\n", " | "))
         check(pp.locator(".p-subnav button").count() == 4, "Plan: four views along the top")
         for i, name in enumerate(["Week", "All weeks", "Pace on point", "Progress"]):
             pp.locator(".p-subnav button", has_text=name).click()
