@@ -3854,7 +3854,11 @@ select:focus {
   min-height: 0;
   touch-action: none;
 }
-.rm-pin {
+.rm-tiles-dark {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6);
+}
+.leaflet-marker-icon.rm-pin {
+  box-sizing: border-box;
   display: grid;
   place-items: center;
   border-radius: 50%;
