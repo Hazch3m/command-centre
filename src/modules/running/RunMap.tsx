@@ -39,10 +39,11 @@ export function RunMap({ polyline, title, onClose }: { polyline: string; title: 
     const pts = decodePolyline(polyline);
     if (pts.length < 2) return;
     const map = L.map(el.current, { zoomControl: false, attributionControl: true });
-    L.tileLayer(`https://{s}.basemaps.cartocdn.com/${dark() ? "dark_all" : "rastertiles/voyager"}/{z}/{x}/{y}{r}.png`, {
-      subdomains: "abcd",
+    // OpenStreetMap's own tiles (free, no key); dimmed and inverted in dark mode by CSS.
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>',
+      className: dark() ? "rm-tiles-dark" : "",
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
     const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#ff8c42";
     // A dark edge under the line keeps it readable on any map.
