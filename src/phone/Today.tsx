@@ -208,6 +208,13 @@ export function Today() {
     <div className="p-screen">
       <GettingStarted />
       {todayRun && !isEmptyPlan(plan) && <Session d={todayRun} label={dayGreeting(now)} next={tomorrowRun} />}
+      <button type="button" className="wc-cta wc-cta-today" onClick={() => nav.push("workout")}>
+        <i aria-hidden="true">+</i>
+        <span className="wc-cta-text">
+          <b>Create a workout</b>
+          <span>Pick what to work on, get a suggestion, send it to your watch</span>
+        </span>
+      </button>
       <LastRun />
 
       <div className="p-tiles">

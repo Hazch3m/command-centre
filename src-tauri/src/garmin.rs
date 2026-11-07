@@ -48,7 +48,7 @@ const ALLOWED: &[&str] = &[
 ];
 
 /// Where the app may write: creating, changing, scheduling and removing workouts (nothing else).
-const WRITE_ALLOWED: &[&str] = &["/workout-service/workout", "/workout-service/schedule/"];
+const WRITE_ALLOWED: &[&str] = &["/workout-service/workout", "/workout-service/schedule/", "/activity-service/activity/"];
 
 #[derive(Serialize, Deserialize, Clone)]
 struct GToken {
@@ -259,6 +259,10 @@ pub async fn garmin_write(http: tauri::State<'_, reqwest::Client>, method: Strin
         "DELETE" => reqwest::Method::DELETE,
         _ => return Err("Only POST, PUT and DELETE".into()),
     };
+    // Activities may only be renamed or described (PUT), never deleted.
+    if path.starts_with("/activity-service/") && method != "PUT" {
+        return Err("Activities can only be updated".into());
+    }
     if !path.starts_with('/') || path.contains("..") || path.contains("://") || path.contains('?') || !WRITE_ALLOWED.iter().any(|p| path.starts_with(p)) {
         return Err(format!("{path} is not an allowed Garmin address"));
     }

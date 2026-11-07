@@ -1583,10 +1583,10 @@ svg.effort {
 }
 
 /* Moving between tabs: the page comes in from the side you swiped towards */
-.p-main.slide-from-right {
+.p-pane.slide-from-right {
   animation: p-from-right 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.p-main.slide-from-left {
+.p-pane.slide-from-left {
   animation: p-from-left 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 @keyframes p-from-right {
@@ -1603,8 +1603,8 @@ svg.effort {
 }
 @media (prefers-reduced-motion: reduce) {
   .p-main,
-  .p-main.slide-from-right,
-  .p-main.slide-from-left {
+  .p-pane.slide-from-right,
+  .p-pane.slide-from-left {
     animation: none;
   }
 }
@@ -1894,4 +1894,326 @@ svg.effort {
 }
 .p-app {
   overflow-x: clip;
+}
+
+/* The tabs sit side by side: the one you're on is in the page, the others wait just off screen
+   (ready, so a swipe never shows a blank page) and slide in under your finger. */
+.p-track {
+  position: relative;
+  overflow-x: clip;
+  animation: none;
+  will-change: auto;
+}
+.p-pane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+.p-pane.on {
+  position: relative;
+  height: auto;
+  overflow: visible;
+  visibility: visible;
+  pointer-events: auto;
+  touch-action: pan-y;
+}
+.p-pane.peeking {
+  height: auto;
+  max-height: 100dvh;
+  visibility: visible;
+  will-change: transform;
+}
+
+/* The review sheet on the phone: up from the bottom, full width */
+:root.phone-root .rr-backdrop {
+  align-items: flex-end;
+  padding: 0;
+}
+:root.phone-root .modal.rr {
+  width: 100vw;
+  max-width: 100vw;
+  max-height: 94dvh;
+  border-radius: 22px 22px 0 0;
+  animation: rr-up 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes rr-up {
+  from {
+    transform: translateY(40%);
+    opacity: 0.4;
+  }
+}
+:root.phone-root .run-detail-top {
+  flex-direction: column;
+}
+:root.phone-root .run-detail-map {
+  flex: none;
+}
+
+/* Create a workout, right on Today */
+.wc-cta.wc-cta-today {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.85rem;
+}
+.wc-cta-today > i {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.8rem;
+  height: 2.8rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent, #fff);
+  font-style: normal;
+  font-size: 1.9rem;
+  font-weight: 500;
+  line-height: 1;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.wc-cta-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.wc-cta-today b {
+  font-size: 1.3rem;
+}
+
+/* The Plan tab's views, left to right */
+.p-subnav {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.3rem;
+  padding: 0.3rem;
+  border-radius: 18px;
+  background: var(--card);
+  border: 1px solid var(--line);
+}
+.p-subnav button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.5rem 0.2rem 0.45rem;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 650;
+  line-height: 1.1;
+  text-align: center;
+  transition: background 0.18s, color 0.18s;
+}
+.p-subnav svg {
+  width: 1.45rem;
+  height: 1.45rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.p-subnav button.on {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+/* Progress: planned against done, week by week */
+.pp-weeks {
+  display: flex;
+  gap: 0.3rem;
+  overflow-x: auto;
+  padding: 0.3rem 0.1rem 0.2rem;
+  scrollbar-width: none;
+}
+.pp-week {
+  flex: 0 0 1.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+.pp-week small {
+  color: var(--muted);
+  font-size: 0.6rem;
+}
+.pp-week.now small {
+  color: var(--accent);
+  font-weight: 700;
+}
+.pp-bars {
+  position: relative;
+  width: 100%;
+  height: 7rem;
+}
+.pp-bars i {
+  position: absolute;
+  bottom: 0;
+  border-radius: 5px 5px 2px 2px;
+}
+.pp-plan {
+  left: 0;
+  right: 0;
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+}
+.pp-done {
+  left: 22%;
+  right: 22%;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.pp-done.hit {
+  background: var(--accent);
+}
+.pp-week.future .pp-plan {
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--text) 12%, transparent) 0 4px, transparent 4px 7px);
+}
+.pp-key {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.4rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.pp-key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.pp-key i {
+  position: static;
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 3px;
+}
+
+/* Training load (Runalyze style) */
+.tl {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.tl-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+}
+.tl-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 14px;
+  background: var(--card-2);
+}
+.tl-tile small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.tl-tile b {
+  font-family: var(--display);
+  font-size: 1.9rem;
+  line-height: 1;
+}
+.tl-tile.ctl b { color: var(--accent); }
+.tl-tile.atl b { color: var(--z-vo2); }
+.f-fresh { --f: var(--z-easy); }
+.f-neutral { --f: var(--z-long); }
+.f-productive { --f: var(--z-threshold); }
+.f-tired { --f: var(--z-vo2); }
+.f-overload { --f: #e0245e; }
+.tl-tile.tsb b { color: var(--f); }
+.tl-tile.tone-warn b { color: var(--z-vo2); }
+.tl-tile.tone-amber b { color: var(--z-threshold); }
+.tl-tile.tone-good b { color: var(--z-easy); }
+.tl-level {
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  border-left: 3px solid var(--f);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--f) 10%, transparent);
+  font-size: 0.86rem;
+}
+.tl-chart {
+  width: 100%;
+  height: auto;
+  touch-action: pan-y;
+}
+.tl-ctl { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linejoin: round; }
+.tl-ctl-fill { fill: color-mix(in srgb, var(--accent) 14%, transparent); }
+.tl-atl { fill: none; stroke: var(--z-vo2); stroke-width: 1.5; stroke-dasharray: 3 2; opacity: 0.85; }
+.tl-zero { stroke: var(--line); stroke-width: 1; }
+.tl-pos { fill: var(--z-easy); }
+.tl-neg { fill: var(--z-threshold); }
+.tl-mon { fill: var(--muted); font-size: 9px; }
+.tl-cursor { stroke: var(--text); stroke-width: 1; opacity: 0.5; }
+.tl-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.tl-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+.tl-key i {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.22rem;
+  margin-left: 0.3rem;
+  border-radius: 2px;
+}
+.tl-key i.ctl { background: var(--accent); }
+.tl-key i.atl { background: var(--z-vo2); }
+.tl-key i.tsb { background: linear-gradient(90deg, var(--z-easy) 50%, var(--z-threshold) 50%); height: 0.5rem; }
+.tl-range button { padding: 0.25rem 0.55rem; font-size: 0.75rem; }
+.hz-1 { background: #9aa6b8; }
+.hz-2 { background: var(--z-easy); }
+.hz-3 { background: var(--z-long); }
+.hz-4 { background: var(--z-threshold); }
+.hz-5 { background: var(--z-vo2); }
+.tl-zbar {
+  display: flex;
+  gap: 2px;
+  height: 0.9rem;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.tl-zbar i { min-width: 3px; }
+.tl-zones {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+  font-size: 0.86rem;
+}
+.tl-zones span {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.tl-zones span > i {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 3px;
+}
+.tl-zones em {
+  margin-left: auto;
+  font-style: normal;
+  color: var(--muted);
 }

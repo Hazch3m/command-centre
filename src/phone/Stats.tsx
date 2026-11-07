@@ -2,6 +2,7 @@ import { useToday } from "../core/time";
 import { ModulePage } from "../shell/Dashboard";
 import { FitnessFrom } from "../modules/running/BuildPlan";
 import { Section, usePhoneNav, useReadiness } from "./common";
+import { TrainingLoad } from "./TrainingLoad";
 
 /** Stats, Runalyze and Garmin style: fitness, fatigue, predictions and health in one place. */
 export function Stats() {
@@ -26,6 +27,7 @@ export function Stats() {
           <span className="p-chev">›</span>
         </button>
       </Section>
+      <TrainingLoad />
       <Section title="Race fitness">
         <div className="p-row p-fitfrom">
           <FitnessFrom />

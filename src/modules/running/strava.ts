@@ -312,7 +312,9 @@ async function doSyncStrava(): Promise<SyncState> {
 /** Runs from Strava and Garmin; a run in both shows once (the Strava copy, with its details). */
 export function loadRuns(fromDate: string) {
   return db.select<Run>(
-    `SELECT id, date, start_local, name, sport, distance, moving_time, elapsed_time, elevation, avg_hr, max_hr, workout_type, polyline, gear_id
+    // A title you gave the run in the app (Run review) wins over the synced one.
+    `SELECT id, date, start_local, COALESCE((SELECT json_extract(k.value, '$.name') FROM kv k WHERE k.key = 'run.meta.' || a.id), name) AS name,
+            sport, distance, moving_time, elapsed_time, elevation, avg_hr, max_hr, workout_type, polyline, gear_id
      FROM strava_activities a WHERE date >= ? AND ${SHOWN_RUNS} ORDER BY start_local`,
     [fromDate],
   );

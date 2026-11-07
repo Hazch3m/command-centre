@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode, useRef } from "react";
 import { useSwipe } from "../../phone/swipe";
+import { RunMap } from "./RunMap";
+import { RunReview } from "./RunReview";
+import { FEELS, loadAllRunMeta, loadMyShoes } from "./runMeta";
 import { createPortal } from "react-dom";
 import { backend } from "@backend";
 import { useDataVersion } from "../../core/events";
@@ -209,7 +212,10 @@ function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; o
   const today = useToday();
   const [full, setFull] = useState<FullRun | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const { data } = useQuery(() => Promise.all([loadRuns("2024-01-01"), loadShoes(), loadPlan(), loadOverrides(), loadDetails("2024-01-01")]), [id]);
+  const [edit, setEdit] = useState(false);
+  const [map, setMap] = useState(false);
+  const rv = useDataVersion("running");
+  const { data } = useQuery(() => Promise.all([loadRuns("2024-01-01"), loadShoes(), loadPlan(), loadOverrides(), loadDetails("2024-01-01")]), [id, rv]);
   useEffect(() => {
     setFull(null);
     setErr(null);
@@ -245,15 +251,24 @@ function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; o
         onBack={onBack}
         onClose={onClose}
         right={
-          <button className="btn" onClick={() => openSource(run.id)}>
-            {run.id.startsWith("g") ? "Garmin Connect ↗" : "Strava ↗"}
-          </button>
+          <>
+            <button className="btn" onClick={() => setEdit(true)}>
+              Edit
+            </button>
+            <button className="btn" onClick={() => openSource(run.id)}>
+              {run.id.startsWith("g") ? "Garmin ↗" : "Strava ↗"}
+            </button>
+          </>
         }
       />
+      {edit && <RunReview run={run} onClose={() => setEdit(false)} />}
+      {map && run.polyline && <RunMap polyline={run.polyline} title={run.name} onClose={() => setMap(false)} />}
+      <RunNotes id={run.id} />
       <div className="run-detail-top">
-        <div className="run-detail-map">
+        <button type="button" className="run-detail-map" onClick={() => run.polyline && setMap(true)} aria-label="Open the map" disabled={!run.polyline}>
           <RouteMap polyline={run.polyline} height={170} />
-        </div>
+          {run.polyline && <span className="rr-map-hint">Tap for the map</span>}
+        </button>
         <div className="run-stats">
           <Stat label="Distance" value={`${km(run.distance).toFixed(2)} km`} />
           <Stat label="Moving time" value={duration(run.moving_time)} note={run.elapsed_time > run.moving_time + 60 ? `${duration(run.elapsed_time)} elapsed` : undefined} />
@@ -350,5 +365,25 @@ function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; o
         </>
       )}
     </>
+  );
+}
+
+/** What you wrote about the run: feel, effort, shoes, notes. */
+function RunNotes({ id }: { id: string }) {
+  const rv = useDataVersion("running");
+  const { data } = useQuery(() => Promise.all([loadAllRunMeta(), loadMyShoes()]), [id, rv]);
+  const m = data?.[0].get(id);
+  if (!m || (!m.notes && !m.feel && !m.rpe && !m.shoe)) return null;
+  const f = FEELS.find((x) => x.id === m.feel);
+  const shoe = data![1].find((s) => s.id === m.shoe);
+  return (
+    <div className="run-notes">
+      <div className="inline">
+        {f && <span className="pill">{f.face} {f.label}</span>}
+        {m.rpe ? <span className="pill">Effort {m.rpe}/10</span> : null}
+        {shoe && <span className="pill">👟 {shoe.name}</span>}
+      </div>
+      {m.notes && <p>{m.notes}</p>}
+    </div>
   );
 }

@@ -4,6 +4,7 @@ import { notifyChanged } from "../core/events";
 import { REFRESHED_KEY, REFRESH_KEY } from "../core/sync";
 import { cloudOn, cloudRun, flush, hasAccount, phoneState, refresh, unpair } from "../core/backend.phone";
 import { RunViewHost } from "../modules/running/RunView";
+import { AutoReview } from "../modules/running/RunReview";
 import { loadRuns } from "../modules/running/strava";
 import { ModulePage } from "../shell/Dashboard";
 import { NavContext } from "../shell/nav";
@@ -91,26 +92,42 @@ export function PhoneApp() {
   });
   const [pushed, setPushed] = useState<Pushed>(null);
   const [busy, setBusy] = useState(false);
-  // Which way the page slides in (from a swipe or a tap on a tab further along).
+  // Which way the page slides in (a tap on a tab further along; a swipe already moved it).
   const [dir, setDir] = useState<1 | -1 | 0>(0);
+  // Tabs stay alive once opened (and the ones either side get ready), so swiping never shows a blank page.
+  const [seen, setSeen] = useState<Set<Tab>>(() => new Set([tab]));
+  const swiped = useRef(false);
   const setTab = (t: Tab) => {
     const from = TABS.findIndex((x) => x.id === tab);
     const to = TABS.findIndex((x) => x.id === t);
-    setDir(to > from ? 1 : to < from ? -1 : 0);
+    setDir(swiped.current ? 0 : to > from ? 1 : to < from ? -1 : 0);
+    swiped.current = false;
+    setSeen((x) => (x.has(t) ? x : new Set([...x, t])));
     setPushed(null);
     setTabState(t);
     sessionStorage.setItem("cc-phone-tab", t);
     window.scrollTo({ top: 0 });
   };
   const push = (p: Pushed) => {
-    setDir(p ? 1 : -1);
+    setDir(swiped.current ? 0 : p ? 1 : -1);
+    swiped.current = false;
     setPushed(p);
     window.scrollTo({ top: 0 });
   };
   const phoneNav = useMemo(() => ({ tab, setTab, push }), [tab]);
   const mainRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      const i = TABS.findIndex((x) => x.id === tab);
+      const near = [TABS[i - 1]?.id, TABS[i + 1]?.id].filter(Boolean) as Tab[];
+      setSeen((x) => (near.every((n) => x.has(n)) ? x : new Set([...x, ...near])));
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, [tab]);
+  const pane = (id: string) => mainRef.current?.querySelector<HTMLElement>(`:scope > [data-pane="${id}"]`) ?? null;
   const onSwipe = useCallback(
     (d: 1 | -1) => {
+      swiped.current = true;
       if (pushed) return d === -1 ? push(null) : undefined;
       const i = TABS.findIndex((x) => x.id === tab) + d;
       if (i >= 0 && i < TABS.length) setTab(TABS[i].id);
@@ -118,7 +135,10 @@ export function PhoneApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [tab, pushed],
   );
-  useSwipe(mainRef, onSwipe, (d) => (pushed ? d === -1 : TABS.findIndex((x) => x.id === tab) + d >= 0 && TABS.findIndex((x) => x.id === tab) + d < TABS.length));
+  useSwipe(mainRef, onSwipe, (d) => (pushed ? d === -1 : TABS.findIndex((x) => x.id === tab) + d >= 0 && TABS.findIndex((x) => x.id === tab) + d < TABS.length), {
+    target: () => pane(pushed ? "pushed" : tab),
+    peer: (d) => (pushed ? (d === -1 ? pane(tab) : null) : TABS[TABS.findIndex((x) => x.id === tab) + d] ? pane(TABS[TABS.findIndex((x) => x.id === tab) + d].id) : null),
+  });
   // Cards from the PC version link to tabs by module id.
   const cardNav = useMemo(
     () => ({
@@ -202,6 +222,7 @@ export function PhoneApp() {
     };
   }, []);
 
+  const slide = dir === 1 ? " slide-from-right" : dir === -1 ? " slide-from-left" : "";
   const title = pushed
     ? PUSHED[pushed].title
     : tab === "today"
@@ -243,23 +264,22 @@ export function PhoneApp() {
             <h1>{title}</h1>
             {sub && <span>{sub}</span>}
           </div>
-          <main ref={mainRef} className={"p-main" + (dir === 1 ? " slide-from-right" : dir === -1 ? " slide-from-left" : "")} key={pushed ?? tab}>
-            {pushed ? (
-              <div className="p-pushed">
+          <main ref={mainRef} className="p-main p-track">
+            {pushed && (
+              <div key={pushed} data-pane="pushed" className={"p-pane on p-pushed" + slide}>
                 {PUSHED[pushed].module ? <ModulePage id={PUSHED[pushed].module!} /> : PUSHED_PAGE[pushed]!()}
               </div>
-            ) : tab === "today" ? (
-              <Today />
-            ) : tab === "training" ? (
-              <Training />
-            ) : tab === "runs" ? (
-              <Runs />
-            ) : tab === "planner" ? (
-              <Planner />
-            ) : (
-              <Stats />
             )}
+            {TABS.filter((t) => seen.has(t.id)).map((t) => {
+              const on = !pushed && t.id === tab;
+              return (
+                <section key={t.id} data-pane={t.id} className={"p-pane" + (on ? " on" + slide : "")} aria-hidden={!on}>
+                  {t.id === "today" ? <Today /> : t.id === "training" ? <Training /> : t.id === "runs" ? <Runs /> : t.id === "planner" ? <Planner /> : <Stats />}
+                </section>
+              );
+            })}
           </main>
+          <AutoReview />
           <nav className="p-tabs" role="tablist">
             {TABS.map((t) => (
               <button key={t.id} role="tab" aria-selected={tab === t.id} className={`p-tab tab-${t.id}` + (tab === t.id ? " on" : "")} onClick={() => setTab(t.id)}>

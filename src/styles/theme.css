@@ -3785,10 +3785,274 @@ select:focus {
   align-items: stretch;
 }
 .run-detail-map {
+  position: relative;
   flex: 0 0 15rem;
   background: var(--card-2);
+  border: 0;
   border-radius: 10px;
   padding: 0.4rem;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.run-detail-map:disabled {
+  cursor: default;
+}
+.rr-map-hint {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  backdrop-filter: blur(8px);
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--text);
+  pointer-events: none;
+}
+.run-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 9%, var(--card-2));
+}
+.run-notes p {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 0.9rem;
+}
+
+/* The run on a real map, full screen */
+.run-map {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+.run-map-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: calc(env(safe-area-inset-top) + 0.5rem) 0.9rem 0.5rem;
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+}
+.run-map-head b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.05rem;
+}
+.run-map-canvas {
+  flex: 1;
+  min-height: 0;
+  touch-action: none;
+}
+.rm-pin {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
+}
+.rm-km {
+  background: #fff;
+  color: #111;
+  border: 2px solid var(--accent);
+  font: 700 0.68rem/1 system-ui, sans-serif;
+}
+.rm-start {
+  background: #22c55e;
+  border: 3px solid #fff;
+}
+.rm-end {
+  background: #ef4444;
+  border: 3px solid #fff;
+}
+
+/* After a run: title, feel, effort, notes, shoes */
+.rr-backdrop {
+  z-index: 1500;
+}
+.modal.rr {
+  display: flex;
+  flex-direction: column;
+  width: min(30rem, 100vw);
+  max-height: min(92dvh, 52rem);
+  padding: 0;
+  overflow: hidden;
+}
+.rr-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 0.9rem 0.3rem;
+}
+.rr-body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 0.3rem 0.9rem 1rem;
+}
+.rr-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+.rr-km {
+  font-size: 2.8rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.rr-km small {
+  margin-left: 0.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.rr-when {
+  margin-top: 0.2rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.rr-stats {
+  display: flex;
+  gap: 0.9rem;
+}
+.rr-stats span {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.rr-stats b {
+  font-size: 1.15rem;
+}
+.rr-stats small {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+.rr-map {
+  position: relative;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--card-2);
+  cursor: pointer;
+}
+.rr-planned {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.rr-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.rr-field > span {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.rr-field > span b {
+  margin-left: 0.3rem;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--accent);
+}
+.rr-field input:not([type="range"]),
+.rr-field textarea,
+.rr-newshoe input {
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--card-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 1rem;
+}
+.rr-field textarea {
+  resize: vertical;
+}
+.rr-field input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.rr-feels {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.35rem;
+}
+.rr-feels button,
+.rr-shoes button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.5rem 0.3rem;
+  border-radius: 12px;
+  border: 1.5px solid var(--line);
+  background: var(--card-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.rr-feels i {
+  font-style: normal;
+  font-size: 1.5rem;
+}
+.rr-feels button.on,
+.rr-shoes button.on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--card-2));
+}
+.rr-shoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.rr-shoes button {
+  align-items: flex-start;
+  padding: 0.5rem 0.75rem;
+}
+.rr-shoes small {
+  color: var(--muted);
+}
+.rr-shoes .rr-add {
+  justify-content: center;
+  border-style: dashed;
+  color: var(--accent);
+}
+.rr-newshoe {
+  display: grid;
+  grid-template-columns: 1fr 5rem auto;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+.rr-foot {
+  padding: 0.7rem 0.9rem calc(env(safe-area-inset-bottom) + 0.7rem);
+  border-top: 1px solid var(--line);
+}
+.rr-save {
+  width: 100%;
+  padding: 0.8rem;
+  font-size: 1.05rem;
 }
 .run-plan-line {
   background: var(--card-2);

@@ -145,11 +145,13 @@ export async function garminExchangeTicket(ticket: string): Promise<GarminToken>
 }
 
 /** Where writes may go: creating, changing, scheduling and removing workouts. */
-export const GARMIN_WRITE_ALLOWED = ["/workout-service/workout", "/workout-service/schedule/"];
+export const GARMIN_WRITE_ALLOWED = ["/workout-service/workout", "/workout-service/schedule/", "/activity-service/activity/"];
 
 /** GET a Garmin Connect address with the handed-over sign-in. Also used directly by the /garmin pass-through. */
 export async function garminGet(c: { creds: Creds; saveCreds: Ctx["saveCreds"] }, path: string, method: "GET" | "POST" | "PUT" | "DELETE" = "GET", payload?: unknown): Promise<{ status: number; body: unknown }> {
   const allowed = method === "GET" ? GARMIN_ALLOWED : GARMIN_WRITE_ALLOWED;
+  // Activities may only be renamed or described (PUT), never deleted.
+  if (path.startsWith("/activity-service/") && method !== "PUT" && method !== "GET") throw new Error("Activities can only be updated");
   if (!path.startsWith("/") || path.includes("..") || path.includes("://") || (method !== "GET" && path.includes("?")) || !allowed.some((p) => path.startsWith(p)))
     throw new Error(`${path} is not an allowed Garmin address`);
   let t = c.creds.garmin;
