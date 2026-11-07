@@ -165,6 +165,33 @@ try:
             if pp.locator(".p-subnav").count():
                 break
 
+        if not pp.locator(".p-subnav").count() and pp.get_by_role("button", name="Build your plan").count():
+            # No plan yet: build one on the phone with the builder's defaults.
+            pp.get_by_role("button", name="Build your plan").click()
+            pp.wait_for_timeout(1500)
+            for step in range(8):
+                use = pp.get_by_role("button", name=re.compile("Use this plan|Tap again to replace"))
+                if use.count():
+                    pp.screenshot(path=f"{out}/05c-builder-review.png")
+                    use.first.click()
+                    pp.wait_for_timeout(1500)
+                    if pp.get_by_role("button", name=re.compile("Tap again")).count():
+                        pp.get_by_role("button", name=re.compile("Tap again")).first.click()
+                        pp.wait_for_timeout(1500)
+                    break
+                nxt = pp.locator(".pb-nav .btn-primary")
+                if not nxt.count():
+                    print("builder: no next button at step", step, pp.locator(".p-pushed").inner_text()[:300].replace("\n", " | "))
+                    break
+                nxt.last.click()
+                pp.wait_for_timeout(1500)
+            pp.wait_for_timeout(2000)
+            if pp.locator(".p-back").count():
+                pp.locator(".p-back").click()
+                pp.wait_for_timeout(1000)
+            pp.locator(".p-tabs").get_by_role("tab", name="Plan", exact=True).click()
+            pp.wait_for_timeout(1500)
+            check(pp.locator(".p-subnav").count() == 1, "plan built on the phone")
         if pp.locator(".modal.rr").count():
             pp.screenshot(path=f"{out}/05b-another-review.png")
             pp.locator(".rr .run-close").click()
