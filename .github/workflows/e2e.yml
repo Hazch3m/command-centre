@@ -1,0 +1,50 @@
+name: phone e2e
+
+on:
+  push:
+    branches: [e2e]
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: npm install --no-audit --no-fund && npm i -g tsx
+      - run: pip install --quiet playwright && python -m playwright install --with-deps chromium
+      - name: Builds (PC preview and phone)
+        run: |
+          npx vite build --mode browser --outDir /tmp/pv --base ./
+          npm run build:phone && cp -r cloud/public /tmp/ppv
+      - name: Fixtures dated to today
+        run: |
+          mkdir -p /tmp/fix && cp e2e/fixtures/* /tmp/fix/
+          python3 - <<'PY'
+          import json, datetime as dt
+          p = "/tmp/fix/garmin.json"; f = json.load(open(p))
+          acts = f["/activitylist-service/activities/search/activities"]
+          last = max(dt.datetime.fromisoformat(a["startTimeLocal"]) for a in acts)
+          shift = dt.date.today() - last.date()
+          for a in acts:
+              for k in ("startTimeLocal", "startTimeGMT"):
+                  if a.get(k): a[k] = (dt.datetime.fromisoformat(a[k]) + shift).strftime("%Y-%m-%d %H:%M:%S")
+          # Keep the newest run earlier today so it's never "in the future".
+          json.dump(f, open(p, "w"))
+          print("shifted by", shift)
+          PY
+      - run: e2e/emu/make-shim.sh
+      - name: Phone end to end
+        env:
+          FIX: /tmp/fix
+        run: python e2e/review_test.py /tmp/pv /tmp/ppv e2e-out
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-shots
+          path: e2e-out
