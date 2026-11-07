@@ -233,8 +233,8 @@ try:
         pp.locator(".p-subnav").get_by_role("tab", name="Week", exact=True).click()
         pp.wait_for_timeout(800)
         # Weeks: forward then all the way back to this week.
-        nxt = pp.get_by_role("button", name="Next week")
-        prv = pp.get_by_role("button", name="Previous week")
+        nxt = pp.locator(".p-pane.on .p-weekbar").get_by_role("button", name="Next week")
+        prv = pp.locator(".p-pane.on .p-weekbar").get_by_role("button", name="Previous week")
         for _ in range(3):
             if nxt.is_enabled():
                 nxt.click()
