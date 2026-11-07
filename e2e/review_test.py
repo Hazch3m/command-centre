@@ -117,7 +117,7 @@ try:
         pp.locator(".run-detail-map").click()
         pp.wait_for_selector(".run-map .maplibregl-canvas", timeout=15000)
         pp.wait_for_timeout(5000)
-        check(pp.locator(".rm-km").count() >= 1 and pp.locator(".rm-start").count() == 1, "km markers and start pin")
+        check(pp.locator(".run-map .mp-km").count() >= 1 and pp.locator(".run-map .mp-start").count() == 1, "km markers and start pin")
         check(pp.evaluate("""() => { const c = document.querySelector('.run-map .maplibregl-canvas'); return !!c && c.width > 100; }"""), "vector map draws")
         pp.screenshot(path=f"{out}/05-map.png")
         for st in ["Satellite", "Light"]:
