@@ -155,11 +155,15 @@ try:
         pg.get_by_role("button", name="Join", exact=True).click()
         pg.wait_for_selector("text=Your account", timeout=60000)
         pg.wait_for_timeout(2500)
-        pcx.close()
         pp.locator(".p-back").click()
         pp.wait_for_timeout(300)
-        pp.locator(".p-refresh").click()
-        pp.wait_for_timeout(8000)
+        for _ in range(4):
+            pp.locator(".p-refresh").click()
+            pp.wait_for_timeout(6000)
+            pp.locator(".p-tabs").get_by_role("tab", name="Plan", exact=True).click()
+            pp.wait_for_timeout(1000)
+            if pp.locator(".p-subnav").count():
+                break
 
         if pp.locator(".modal.rr").count():
             pp.screenshot(path=f"{out}/05b-another-review.png")
@@ -222,6 +226,7 @@ try:
         pp.screenshot(path=f"{out}/09-stats.png", full_page=True)
         pp.locator(".tl").scroll_into_view_if_needed()
         pp.screenshot(path=f"{out}/10-stats-load.png")
+        pcx.close()
         b.close()
 finally:
     emu.terminate()
