@@ -224,13 +224,13 @@ try:
             print("plan pane:", pp.locator(".p-pane.on").inner_text()[:400].replace("\n", " | "))
         check(pp.locator(".p-subnav button").count() == 4, "Plan: four views along the top")
         for i, name in enumerate(["Week", "All weeks", "Pace on point", "Progress"]):
-            pp.locator(".p-subnav button", has_text=name).click()
+            pp.locator(".p-subnav").get_by_role("tab", name=name, exact=True).click()
             pp.wait_for_timeout(1500)
             pp.screenshot(path=f"{out}/08-plan-{i}-{name.split()[0].lower()}.png", full_page=True)
             sw = pp.evaluate("document.documentElement.scrollWidth")
             check(sw <= 392, f"Plan/{name}: no sideways scroll ({sw})")
         check(pp.locator(".pp-week").count() > 3, "Progress: weeks planned vs done")
-        pp.locator(".p-subnav button", has_text="Week").click()
+        pp.locator(".p-subnav").get_by_role("tab", name="Week", exact=True).click()
         pp.wait_for_timeout(800)
         # Weeks: forward then all the way back to this week.
         nxt = pp.get_by_role("button", name="Next week")
