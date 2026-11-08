@@ -43,7 +43,8 @@ export interface DashboardModule {
    * Gives the module its own tab at the top of the screen. `Page` defaults to
    * the Card rendered with variant "page".
    */
-  page?: { label: string; order: number; Page?: ComponentType };
+  /** A full page; `inTraining`: shown as a tab inside Training rather than across the top. */
+  page?: { label: string; order: number; Page?: ComponentType; inTraining?: boolean };
   minW?: number;
   minH?: number;
   /** SQL migrations, run once each in order. Only ever append. */

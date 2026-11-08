@@ -29,14 +29,20 @@ import { ImportPlan } from "./ImportPlan";
 import { PlanEditor } from "./PlanEditor";
 import { PlanList } from "./PlanList";
 import { PlanWeekView } from "./PlanWeekView";
+import { WatchPage } from "../watch";
+import { TrainingLoad } from "../../phone/TrainingLoad";
+import { RunalyzeMore } from "../../phone/RunalyzeMore";
+import { FitnessPredictor, GoalCarousel } from "../../phone/PlanGoals";
 
-type Tab = "plan" | "runs" | "pace" | "edit" | "progress" | "pbs";
+type Tab = "plan" | "runs" | "pace" | "edit" | "progress" | "pbs" | "load" | "watch";
 const TABS: { id: Tab; label: string }[] = [
   { id: "plan", label: "Plan" },
   { id: "runs", label: "Runs" },
   { id: "pace", label: "Pace on point" },
   { id: "progress", label: "Races & progress" },
+  { id: "load", label: "Training load" },
   { id: "pbs", label: "PBs" },
+  { id: "watch", label: "Watch" },
   { id: "edit", label: "Plan & races" },
 ];
 const PLAN_VIEWS = [
@@ -129,6 +135,18 @@ export function RunningPage() {
         {tab === "pace" && <PaceOnPointTab plan={plan} runs={runs} />}
         {tab === "runs" && <RunsTab runs={runs} plan={plan} />}
         {tab === "pbs" && <PbsTab />}
+        {tab === "watch" && <WatchPage />}
+        {tab === "load" && (
+          <div className="pl-embed pl-cols">
+            <div>
+              <TrainingLoad />
+            </div>
+            <div>
+              <FitnessPredictor plan={plan} />
+              <RunalyzeMore />
+            </div>
+          </div>
+        )}
         {tab === "edit" && (
           <>
             <div className="plan-view-switch">
@@ -152,7 +170,6 @@ export function RunningPage() {
 
         {tab === "plan" && (
           <>
-            <PlanCoach plan={plan} />
             <div className="plan-view-switch">
               <span className="segmented small-seg">
                 {PLAN_VIEWS.map((v) => (
@@ -168,9 +185,20 @@ export function RunningPage() {
               </summary>
               <TargetPrefs />
             </details>
-            {view === "week" && <PlanWeekView plan={plan} runs={runs} />}
-            {view === "list" && <PlanList plan={plan} runs={runs} />}
-            {view === "six" && <WeekCalendar plan={plan} runs={runs} count={6} />}
+            {/* The week (or weeks) first and widest; how the plan's going alongside. */}
+            <div className="plan-focus">
+              <div className="plan-focus-main">
+                {view === "week" && <PlanWeekView plan={plan} runs={runs} />}
+                {view === "list" && <PlanList plan={plan} runs={runs} />}
+                {view === "six" && <WeekCalendar plan={plan} runs={runs} count={6} />}
+              </div>
+              <aside className="plan-focus-side">
+                <PlanCoach plan={plan} />
+                <div className="pl-embed">
+                  <GoalCarousel plan={plan} />
+                </div>
+              </aside>
+            </div>
           </>
         )}
         {tab === "progress" && (
