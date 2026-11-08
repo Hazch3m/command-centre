@@ -380,7 +380,7 @@ try:
         check(pp.locator(".tl-zname small").count() == 5, "Zones: bpm range for each")
         check(pp.locator(".rz-paces .rz-pace").count() == 8, "Stats: training paces")
         print("load focus:", pp.locator(".lf").inner_text().replace("\n", " ")[:300] if pp.locator(".lf").count() else None)
-        check(pp.locator(".lf-row").count() == 3, "Stats: load focus")
+        check(pp.locator(".lf-row2").count() == 3 and pp.locator(".lf-st").count() == 3, "Stats: load focus, each with in/below/above")
         pp.locator(".lf").scroll_into_view_if_needed()
         pp.screenshot(path=f"{out}/12-load-focus.png")
         pp.locator(".xp-btn").first.click()
