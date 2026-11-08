@@ -304,7 +304,23 @@ function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; o
       {charts && (
         <div className="run-charts">
           {charts.pace.length > 1 && <XYChart label="Pace" points={charts.pace} invert format={(v) => fmtPace(v)} marks={lapMarks} />}
-          {charts.hr.length > 1 && <XYChart label="Heart rate" points={charts.hr} className="s-acute" format={(v) => `${Math.round(v)}`} marks={lapMarks} />}
+          {charts.hr.length > 1 && (
+            <XYChart
+              label="Heart rate"
+              points={charts.hr}
+              className="s-acute"
+              height={130}
+              fill="#e8344e"
+              format={(v) => `${Math.round(v)}`}
+              marks={lapMarks}
+              // Like Strava: the scale starts well below your lowest heart rate, in steps of 20 (or 10 for a narrow range).
+              range={(lo, hi) => {
+                const step = hi - lo > 50 ? 20 : 10;
+                const bottom = Math.max(40, Math.floor((lo - Math.max(25, (hi - lo) * 0.8)) / step) * step);
+                return { lo: bottom, hi: Math.ceil((hi + 3) / step) * step, step };
+              }}
+            />
+          )}
           {charts.alt.length > 1 && <XYChart label="Elevation" points={charts.alt} className="s-chronic" area height={80} format={(v) => `${Math.round(v)} m`} />}
           {charts.cad.length > 1 && <XYChart label="Cadence" points={charts.cad} className="s-eff" height={80} format={(v) => `${Math.round(v)}`} />}
         </div>

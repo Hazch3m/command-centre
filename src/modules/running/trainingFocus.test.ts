@@ -17,12 +17,18 @@ describe("training focus", () => {
     expect(v.anaerobic).toBeGreaterThan(0.15);
     expect(v.low).toBeGreaterThan(0.4);
   });
-  it("a run splits by each km's heart rate", () => {
-    const split = (hr: number) => ({ distance: 1000, moving_time: 300, speed: 3.3, gap: null, hr, elev: null });
-    const m = runFocus({ moving_time: 1500, distance: 5000, avg_hr: 150 }, { splits: [split(130), split(130), split(150), split(170), split(185)] }, zones, cuts)!;
-    expect(m.low).toBeCloseTo(0.4);
-    expect(m.high).toBeCloseTo(0.4);
-    expect(m.anaerobic).toBeCloseTo(0.2);
+  it("a run splits by each km: heart rate for aerobic, 5K pace or faster for anaerobic", () => {
+    const split = (hr: number, secs = 300) => ({ distance: 1000, moving_time: secs, speed: 1000 / secs, gap: null, hr, elev: null });
+    const m = runFocus({ moving_time: 1410, distance: 5000, avg_hr: 150 }, { splits: [split(130), split(130), split(150), split(185), split(186, 210)] }, zones, cuts)!;
+    expect(m.low).toBeCloseTo(900 / 1410);
+    expect(m.high).toBeCloseTo(300 / 1410);
+    expect(m.anaerobic).toBeCloseTo(210 / 1410);
+    // An easy run in zones 2–3 (under ~150 here) is all low aerobic.
+    const e = runFocus({ moving_time: 1500, distance: 5000, avg_hr: 145 }, { splits: [split(135), split(142), split(148), split(149), split(146)] }, zones, cuts)!;
+    expect(e.low).toBeCloseTo(1);
+    // A hard tempo in zone 5 is still high aerobic, not anaerobic.
+    const t = runFocus({ moving_time: 1200, distance: 5000, avg_hr: 186 }, { splits: [split(186, 240)] }, zones, cuts)!;
+    expect(t.high).toBeCloseTo(1);
   });
   it("four weeks of only easy running is short of high aerobic or anaerobic", () => {
     const runs = Array.from({ length: 12 }, (_, i) => ({ id: `r${i}`, date: `2026-03-${String(i + 1).padStart(2, "0")}`, moving_time: 3000, distance: 10000, avg_hr: 130 }));

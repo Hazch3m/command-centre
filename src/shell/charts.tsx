@@ -314,7 +314,13 @@ export function XYChart({
   area = false,
   label,
   marks = [],
+  range,
+  fill,
 }: {
+  /** The y scale from the data's low and high (e.g. heart rate: start well below the lowest, Strava-style). */
+  range?: (lo: number, hi: number) => { lo: number; hi: number; step: number };
+  /** Fill under the line with this colour, fading down (Strava's heart-rate chart). */
+  fill?: string;
   points: [number, number][];
   height?: number;
   invert?: boolean;
@@ -338,8 +344,11 @@ export function XYChart({
   const x1 = xs[xs.length - 1] || 1;
   // Trim outliers (GPS glitches) for the y range.
   const sorted = [...ys].sort((a, b) => a - b);
-  const lo = sorted[Math.floor(sorted.length * 0.02)];
-  const hi = sorted[Math.ceil(sorted.length * 0.98) - 1];
+  const dataLo = sorted[Math.floor(sorted.length * 0.02)];
+  const dataHi = sorted[Math.ceil(sorted.length * 0.98) - 1];
+  const scale = range?.(dataLo, dataHi);
+  const lo = scale ? scale.lo : dataLo;
+  const hi = scale ? scale.hi : dataHi;
   const span = hi - lo || 1;
   const X = (x: number) => pad.left + ((x - x0) / (x1 - x0 || 1)) * (W - pad.left - pad.right);
   const Y = (y: number) => {
@@ -348,22 +357,36 @@ export function XYChart({
   };
   const d = points.map((p, i) => `${i ? "L" : "M"}${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join("");
   const hp = hover != null ? points[hover] : null;
-  const ticks = [lo, (lo + hi) / 2, hi];
+  const ticks = scale ? Array.from({ length: Math.floor((hi - lo) / scale.step) + 1 }, (_, i) => lo + i * scale.step) : [lo, (lo + hi) / 2, hi];
+  const gid = `xyfill-${label.replace(/\W/g, "")}`;
+  const scrub = (clientX: number, el: SVGSVGElement) => {
+    const r = el.getBoundingClientRect();
+    const xv = x0 + ((((clientX - r.left) / r.width) * W - pad.left) / (W - pad.left - pad.right)) * (x1 - x0);
+    let best = 0;
+    for (let i = 0; i < points.length; i++) if (Math.abs(points[i][0] - xv) < Math.abs(points[best][0] - xv)) best = i;
+    setHover(best);
+  };
   return (
     <div className="chart xy" ref={ref}>
       <svg
         viewBox={`0 0 ${W} ${H}`}
         width="100%"
         height={H}
-        onMouseMove={(e) => {
-          const r = (e.currentTarget as SVGSVGElement).getBoundingClientRect();
-          const xv = x0 + (((e.clientX - r.left) / r.width) * W - pad.left) / (W - pad.left - pad.right) * (x1 - x0);
-          let best = 0;
-          for (let i = 0; i < points.length; i++) if (Math.abs(points[i][0] - xv) < Math.abs(points[best][0] - xv)) best = i;
-          setHover(best);
-        }}
+        onMouseMove={(e) => scrub(e.clientX, e.currentTarget)}
         onMouseLeave={() => setHover(null)}
+        onTouchStart={(e) => scrub(e.touches[0].clientX, e.currentTarget)}
+        onTouchMove={(e) => scrub(e.touches[0].clientX, e.currentTarget)}
+        onTouchEnd={() => window.setTimeout(() => setHover(null), 1500)}
+        data-noswipe
       >
+        {fill && (
+          <defs>
+            <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor={fill} stopOpacity="0.55" />
+              <stop offset="1" stopColor={fill} stopOpacity="0.08" />
+            </linearGradient>
+          </defs>
+        )}
         {ticks.map((v, i) => (
           <g key={i}>
             <line x1={pad.left} x2={W - pad.right} y1={Y(v)} y2={Y(v)} className="chart-grid" />
@@ -375,8 +398,10 @@ export function XYChart({
         {marks.map((m) => (
           <line key={m} x1={X(m)} x2={X(m)} y1={pad.top} y2={H - pad.bottom} className="chart-marker" />
         ))}
-        {area && <path d={`${d}L${X(x1)},${H - pad.bottom}L${X(x0)},${H - pad.bottom}Z`} className={`chart-area ${className}`} />}
-        <path d={d} className={`chart-line ${className}`} />
+        {area && !fill && <path d={`${d}L${X(x1)},${H - pad.bottom}L${X(x0)},${H - pad.bottom}Z`} className={`chart-area ${className}`} />}
+        {fill && <path d={`${d}L${X(x1)},${H - pad.bottom}L${X(x0)},${H - pad.bottom}Z`} fill={`url(#${gid})`} stroke="none" />}
+        <path d={d} className={`chart-line ${className}`} style={fill ? { stroke: fill, strokeWidth: 1.6 } : undefined} />
+        {hp && <circle cx={X(hp[0])} cy={Y(hp[1])} r={3.5} className="chart-hover-dot" style={fill ? { fill } : undefined} />}
         {[0.25, 0.5, 0.75, 1].map((f) => (
           <text key={f} x={X(x0 + (x1 - x0) * f)} y={H - 3} className="chart-label" textAnchor={f === 1 ? "end" : "middle"}>
             {(x0 + (x1 - x0) * f).toFixed(1)}

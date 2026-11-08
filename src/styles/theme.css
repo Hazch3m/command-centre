@@ -5497,3 +5497,8 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
     position: static;
   }
 }
+.chart-hover-dot {
+  fill: var(--accent);
+  stroke: var(--card);
+  stroke-width: 2;
+}
