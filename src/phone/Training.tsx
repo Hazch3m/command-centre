@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSwipe } from "./swipe";
 import { useDataVersion } from "../core/events";
@@ -164,12 +165,18 @@ export function Training() {
       {fw.week || day.km || day.runs.length || day.race ? <Session d={day} label={dayName(day.date, today)} /> : <div className="p-hint center">{fw.block ? `${fw.block.key}. No day-by-day sessions this far out yet.` : "No plan this week."}</div>}
       </div>
 
-      <button type="button" className="p-fab" onClick={() => nav.push("workout")} aria-label="Create a workout">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-        <span>Workout</span>
-      </button>
+      {/* On the screen itself (not the sliding page), and only while you're on Plan. */}
+      {nav.tab === "training" &&
+        !nav.pushed &&
+        createPortal(
+          <button type="button" className="p-fab" onClick={() => nav.push("workout")} aria-label="Create a workout">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            <span>Workout</span>
+          </button>,
+          document.body,
+        )}
 
       <Section title="Plan check">
         <div className="p-coach">

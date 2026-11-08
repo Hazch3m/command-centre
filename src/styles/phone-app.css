@@ -4236,3 +4236,89 @@ svg.effort {
   font-family: var(--display);
   font-size: 1.15rem;
 }
+
+/* Workout builder: sets and blocks you can add */
+.wc-sets {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+.wc-set {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.65rem 0.7rem;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--z) 7%, var(--card-2));
+  border: 1px solid color-mix(in srgb, var(--z) 22%, transparent);
+  animation: rise-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.wc-set.wc-easy {
+  background: var(--card-2);
+  border-color: var(--line);
+}
+.wc-set-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.86rem;
+}
+.wc-set-head b {
+  color: var(--z);
+  font-weight: 750;
+}
+.wc-set .wc-tweaks {
+  margin: 0;
+}
+.wc-x {
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.74rem;
+}
+.wc-x:disabled {
+  visibility: hidden;
+}
+.wc-add {
+  padding: 0.65rem;
+  border: 1.5px dashed color-mix(in srgb, var(--z) 45%, var(--line));
+  border-radius: 14px;
+  background: transparent;
+  color: var(--z);
+  font: inherit;
+  font-weight: 700;
+}
+.wc-add:active {
+  transform: scale(0.98);
+}
+.wc-seg {
+  display: inline-flex;
+  gap: 0.15rem;
+  padding: 0.15rem;
+  border-radius: 999px;
+  background: var(--card);
+}
+.wc-seg button {
+  padding: 0.25rem 0.6rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+.wc-seg button.on {
+  background: var(--z);
+  color: #fff;
+}
+.wc-unit {
+  grid-column: 1 / -1;
+}
+.wc-step.wc-unit {
+  grid-template-columns: 1fr auto;
+}

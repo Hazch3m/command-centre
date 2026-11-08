@@ -68,18 +68,13 @@ export function withAutoHeartRate(config: FitnessConfig, runs: Run[], today: str
   return seen && seen >= 160 ? { ...config, hrMax: Math.round(seen) } : config;
 }
 
-/** Defaults from the coach's log: max HR 199, threshold ~186–189; goals sub-2:50 then sub-2:45. */
+/** Defaults until you set your own (or your runs and Garmin fill them in): nobody's goals or heart rate in particular. */
 export const DEFAULT_FITNESS: FitnessConfig = {
-  hrMax: 199,
-  hrRest: 50,
+  hrMax: 190,
+  hrRest: 55,
   calibrate: true,
-  projection: {
-    start: { date: "2026-11-09", vo2: null },
-    milestones: [
-      { date: "2027-05-30", vo2: Math.round(vdot(42195, 170 * 60) * 10) / 10, label: "Sub-2:50 · Edinburgh" },
-      { date: "2027-12-05", vo2: Math.round(vdot(42195, 165 * 60) * 10) / 10, label: "Sub-2:45 · Valencia" },
-    ],
-  },
+  auto: true,
+  projection: { start: { date: "2026-11-09", vo2: null }, milestones: [] },
 };
 
 export async function loadFitnessConfig(): Promise<FitnessConfig> {

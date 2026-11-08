@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultWeekStart, parseWeek } from "./importWeek";
+import { defaultWeekStart, parseWeek, sessionToWorkout } from "./importWeek";
 import { toToolSteps } from "./steps";
 
 const zones = { MP: "4:00–4:05", HMP: "3:43–3:48", T: "3:40–3:48" };
@@ -44,5 +44,26 @@ describe("importing a week", () => {
     const [p] = parseWeek("Sat: Parkrun with friends", "2026-11-16");
     expect(p.warning).toBeTruthy();
     expect(toToolSteps(p.steps)).toEqual([{ kind: "other", duration: "lap", target: "open", notes: "Parkrun with friends" }]);
+  });
+});
+
+describe("sets and steps", () => {
+  it("reads a fartlek in two sets as two repeats with easy between", () => {
+    const w = sessionToWorkout("12 km with 2 km warm-up, fartlek: 4 × 1 min fartlek at 3:38–3:42, 1 min jog; then 4 × 2 min fartlek at 3:55–3:59, 90 s jog; 2 km cool-down")!;
+    const kinds = w.steps.map((x) => (x.kind === "repeat" ? `rep${x.times}` : x.kind));
+    expect(kinds).toEqual(["warmup", "rep4", "recovery", "rep4", "cooldown"]);
+    expect(w.name).toBe("Fartlek 4×1 min + 4×2 min");
+    expect(JSON.stringify(w.steps[3])).toContain("3:55");
+    expect(JSON.stringify(w.steps[3])).toContain("90s");
+  });
+  it("reads a progression in steps", () => {
+    const w = sessionToWorkout("15 km progression run: 5 km easy, 4 km at 4:40–4:46, 4 km at 4:25–4:31, 2 km at 4:10–4:16")!;
+    expect(w.steps).toHaveLength(4);
+    expect(w.name).toBe("Progression 15 km: 4/4/2 km faster");
+    expect(JSON.stringify(w.steps[3])).toContain("4:10");
+  });
+  it("still reads one set and a plain fast finish as before", () => {
+    expect(sessionToWorkout("10 km with 3 km warm-up, VO2 max: 6 × 800 m at 3:28–3:32, 90 s jog, 2 km cool-down")!.name).toBe("VO2 max 6×800 m @ 3:28–3:32");
+    expect(sessionToWorkout("14 km progression run, last 4 at 4:10–4:16")!.name).toMatch(/^Progression 14 km, last 4 km/);
   });
 });
