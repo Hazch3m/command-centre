@@ -336,7 +336,11 @@ try:
         # The desktop: Training with the week first, Training load, Watch.
         try:
             pg.bring_to_front()
-            pg.get_by_role("tab", name="Training", exact=True).click()
+            for _ in range(3):
+                pg.keyboard.press("Escape")
+                pg.wait_for_timeout(300)
+            pg.screenshot(path=f"{out}/19-desktop-before.png")
+            pg.get_by_role("tab", name="Training", exact=True).click(force=True)
             pg.wait_for_timeout(2500)
             pg.screenshot(path=f"{out}/20-desktop-plan.png")
             pg.locator(".page-tabs").get_by_role("tab", name="Training load", exact=True).click()
