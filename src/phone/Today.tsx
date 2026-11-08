@@ -1,4 +1,6 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { kvGet, kvSet } from "../core/db";
+import { notifyChanged } from "../core/events";
 import { useDataVersion } from "../core/events";
 import { addDays, todayKey, useNow, useToday } from "../core/time";
 import { useQuery } from "../core/useQuery";
@@ -210,23 +212,17 @@ export function Today() {
     .slice(0, 4);
   const race = plan ? upcomingRaces(plan, today)[0] : null;
   const [draft, setDraft] = useState("");
+  const [editing, setEditing] = useState(false);
+  const uv = useDataVersion("ui");
+  const layout = fixLayout(useQuery(loadLayout, [uv]).data);
   const streak = useMemo(() => weekStreak(runs, today), [runs, today]);
   const [openDone, setOpenDone] = useState(false);
   const done = !!todayRun && todayRun.runs.length > 0;
 
-  return (
-    <div className="p-screen">
-      <GettingStarted />
-      {todayRun && !isEmptyPlan(plan) && (done && !openDone ? <DoneToday d={todayRun} next={tomorrowRun} onOpen={() => setOpenDone(true)} /> : <Session d={todayRun} label={dayGreeting(now)} next={tomorrowRun} />)}
-      <button type="button" className="wc-cta wc-cta-today" onClick={() => nav.push("workout")}>
-        <i aria-hidden="true">+</i>
-        <span className="wc-cta-text">
-          <b>Create a workout</b>
-          <span>Pick what to work on, get a suggestion, send it to your watch</span>
-        </span>
-      </button>
-      <LastRun />
-
+  const blocks: Record<BlockId, ReactNode> = {
+    session: todayRun && !isEmptyPlan(plan) && (done && !openDone ? <DoneToday d={todayRun} next={tomorrowRun} onOpen={() => setOpenDone(true)} /> : <Session d={todayRun} label={dayGreeting(now)} next={tomorrowRun} />),
+    lastrun: <LastRun />,
+    tiles: (
       <div className="p-tiles">
         <button className="p-tile" onClick={() => nav.push("health")}>
           <span className="p-eyebrow">Readiness</span>
@@ -259,8 +255,17 @@ export function Today() {
           )}
         </button>
       </div>
-
-      {habits && habits.items.length > 0 && (
+    ),
+    workout: (
+      <button type="button" className="wc-cta wc-cta-today" onClick={() => nav.push("workout")}>
+        <i aria-hidden="true">+</i>
+        <span className="wc-cta-text">
+          <b>Create a workout</b>
+          <span>Pick what to work on, get a suggestion, send it to your watch</span>
+        </span>
+      </button>
+    ),
+    habits: habits && habits.items.length > 0 && (
         <Section
           title="Habits"
           action={
@@ -276,8 +281,8 @@ export function Today() {
             ))}
           </div>
         </Section>
-      )}
-
+      ),
+    todo: (
       <Section
         title="To do"
         action={
@@ -315,7 +320,8 @@ export function Today() {
           <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Add a task for today" enterKeyHint="done" />
         </form>
       </Section>
-
+    ),
+    coming: (
       <Section
         title="Coming up"
         action={
@@ -340,7 +346,8 @@ export function Today() {
         ))}
         {!upcoming.length && <div className="p-row p-empty">Nothing else today or tomorrow.</div>}
       </Section>
-
+    ),
+    weather: (
       <Section
         title="Weather"
         action={
@@ -355,8 +362,8 @@ export function Today() {
           </div>
         </div>
       </Section>
-
-      {race && (
+    ),
+    race: race && (
         <button className="p-race" onClick={() => nav.push("fitness")}>
           <span className="p-race-days num">{race.days}</span>
           <span className="p-race-text">
@@ -365,6 +372,27 @@ export function Today() {
             <span className="p-row-sub">Target {race.target}</span>
           </span>
           <span className="p-chev">›</span>
+        </button>
+      ),
+  };
+  return (
+    <div className="p-screen">
+      <GettingStarted />
+      {layout.order
+        .filter((id) => !layout.hidden.includes(id))
+        .map((id) => (
+          <Fragment key={id}>{blocks[id]}</Fragment>
+        ))}
+      {editing ? (
+        <DashboardEditor layout={layout} onDone={() => setEditing(false)} />
+      ) : (
+        <button type="button" className="p-edit-dash" onClick={() => setEditing(true)}>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7h10M18 7h2M4 17h4M12 17h8" />
+            <circle cx="16" cy="7" r="2" />
+            <circle cx="10" cy="17" r="2" />
+          </svg>
+          Customise this page
         </button>
       )}
     </div>
@@ -438,5 +466,77 @@ function DoneToday({ d, next, onOpen }: { d: ForecastDay; next?: ForecastDay; on
         </span>
       )}
     </div>
+  );
+}
+
+// ---- Your Today page: which blocks, in what order ------------------------------------------
+
+type BlockId = "session" | "lastrun" | "tiles" | "workout" | "habits" | "todo" | "coming" | "weather" | "race";
+const BLOCKS: { id: BlockId; label: string; hint: string }[] = [
+  { id: "session", label: "Today's session", hint: "The run of the day, or a small tile once it's done" },
+  { id: "lastrun", label: "Last run", hint: "Distance, pace and splits" },
+  { id: "tiles", label: "Readiness & this week", hint: "Sleep-based readiness, km so far, streak" },
+  { id: "workout", label: "Create a workout", hint: "A big button for a one-off session" },
+  { id: "habits", label: "Habits", hint: "Tick off today's habits" },
+  { id: "todo", label: "To do", hint: "Tasks due today" },
+  { id: "coming", label: "Coming up", hint: "Calendar for today and tomorrow" },
+  { id: "weather", label: "Weather", hint: "Now and the next hours" },
+  { id: "race", label: "Next race", hint: "Days to go" },
+];
+interface Layout {
+  order: BlockId[];
+  hidden: BlockId[];
+}
+const DEFAULT_LAYOUT: Layout = { order: BLOCKS.map((b) => b.id), hidden: ["workout"] };
+const loadLayout = () => kvGet<Layout | null>("phone.today", null);
+/** Saved layouts pick up blocks added later (in their default place). */
+function fixLayout(l: Layout | null | undefined): Layout {
+  if (!l) return DEFAULT_LAYOUT;
+  const known = l.order.filter((id) => BLOCKS.some((b) => b.id === id));
+  for (const b of BLOCKS) if (!known.includes(b.id)) known.splice(Math.min(known.length, BLOCKS.indexOf(b)), 0, b.id);
+  return { order: known, hidden: l.hidden.filter((id) => known.includes(id)) };
+}
+async function saveLayout(l: Layout) {
+  await kvSet("phone.today", l);
+  await notifyChanged("ui");
+}
+
+function DashboardEditor({ layout, onDone }: { layout: Layout; onDone: () => void }) {
+  const move = (i: number, d: -1 | 1) => {
+    const order = [...layout.order];
+    [order[i], order[i + d]] = [order[i + d], order[i]];
+    void saveLayout({ ...layout, order });
+  };
+  const toggle = (id: BlockId) => void saveLayout({ ...layout, hidden: layout.hidden.includes(id) ? layout.hidden.filter((x) => x !== id) : [...layout.hidden, id] });
+  return (
+    <Section title="Customise Today" action={<button className="p-link" onClick={onDone}>Done</button>} className="p-dash-edit">
+      {layout.order.map((id, i) => {
+        const b = BLOCKS.find((x) => x.id === id)!;
+        const on = !layout.hidden.includes(id);
+        return (
+          <div key={id} className={"p-row p-dash-row" + (on ? "" : " off")}>
+            <label className="p-switch">
+              <input type="checkbox" checked={on} onChange={() => toggle(id)} />
+              <i aria-hidden="true" />
+            </label>
+            <span className="p-row-main">
+              <span className="p-row-title">{b.label}</span>
+              <span className="p-row-sub">{b.hint}</span>
+            </span>
+            <span className="p-dash-move">
+              <button type="button" disabled={i === 0} onClick={() => move(i, -1)} aria-label={`Move ${b.label} up`}>
+                ↑
+              </button>
+              <button type="button" disabled={i === layout.order.length - 1} onClick={() => move(i, 1)} aria-label={`Move ${b.label} down`}>
+                ↓
+              </button>
+            </span>
+          </div>
+        );
+      })}
+      <button type="button" className="p-row p-row-btn p-dash-reset" onClick={() => void saveLayout(DEFAULT_LAYOUT)}>
+        Back to the standard layout
+      </button>
+    </Section>
   );
 }

@@ -23,7 +23,8 @@ import { isEmptyPlan } from "../core/account";
 import { PlanList } from "../modules/running/PlanList";
 import { PaceOnTrack } from "./PaceOnTrack";
 import { RaceManager } from "../modules/running/RaceManager";
-import { ReadinessView, useReadiness } from "../modules/running/ReadinessCard";
+import { useReadiness } from "../modules/running/ReadinessCard";
+import { RaceReady } from "./RaceReady";
 
 type View = "week" | "calendar" | "pace" | "progress";
 const VIEWS: { id: View; label: string; icon: string }[] = [
@@ -103,7 +104,7 @@ export function Training() {
       </nav>
       {view === "calendar" && (
         <div className="p-embed">
-          <PlanList plan={plan} runs={runs} />
+          <PlanList plan={plan} runs={runs} single />
         </div>
       )}
       {view === "pace" && (
@@ -156,12 +157,14 @@ export function Training() {
           );
         })}
       </div>
-      {fw.week ? <Session d={day} label={dayName(day.date, today)} /> : <div className="p-hint center">{fw.block ? `${fw.block.key}. No day-by-day sessions this far out yet.` : "No plan this week."}</div>}
+      {fw.week || day.km || day.runs.length || day.race ? <Session d={day} label={dayName(day.date, today)} /> : <div className="p-hint center">{fw.block ? `${fw.block.key}. No day-by-day sessions this far out yet.` : "No plan this week."}</div>}
       </div>
 
-      <button type="button" className="wc-cta" onClick={() => nav.push("workout")}>
-        <b>Create a workout</b>
-        <span>Choose what to work on, get a suggestion at your paces, send it to your watch</span>
+      <button type="button" className="p-fab" onClick={() => nav.push("workout")} aria-label="Create a workout">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        <span>Workout</span>
       </button>
 
       <Section title="Plan check">
@@ -272,11 +275,11 @@ function PlanProgress({ plan, first, last }: { plan: Plan; first: string; last: 
   return (
     <>
       {race && (
-        <Section title={`${race.name} · ${race.days} days`}>
-          {ready ? <ReadinessView r={ready} compact /> : <div className="p-hint">Working out your readiness…</div>}
+        <Section title={`${race.name} · ${race.days} days`} className="p-padded">
+          {ready ? <RaceReady r={ready} /> : <div className="p-hint">Working out your readiness…</div>}
         </Section>
       )}
-      <Section title="Week by week">
+      <Section title="Week by week" className="p-padded">
         {past.length > 0 && (
           <p className="p-hint">
             {hit} of {past.length} weeks so far within 10% of the plan.
@@ -302,7 +305,7 @@ function PlanProgress({ plan, first, last }: { plan: Plan; first: string; last: 
           </span>
         </div>
       </Section>
-      <Section title="Races">
+      <Section title="Races" className="p-padded">
         <div className="p-embed">
           <RaceManager plan={plan} />
         </div>

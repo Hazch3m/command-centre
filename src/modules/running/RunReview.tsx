@@ -215,7 +215,12 @@ export function AutoReview() {
   const [done, setDone] = useState<Set<string>>(new Set());
   useEffect(() => {
     if (!runs?.length) return;
-    import("./runMeta").then(({ runToReview }) => runToReview(runs, today)).then((r) => r && !done.has(r.id) && setRun(r));
+    import("./runMeta").then(async ({ runToReview, markSeen }) => {
+      const r = await runToReview(runs, today);
+      if (!r || done.has(r.id)) return;
+      setRun(r);
+      await markSeen(r.id);
+    });
   }, [runs, today, done]);
   if (!run) return null;
   return <RunReview run={run} auto onClose={() => (setDone(new Set([...done, run.id])), setRun(null))} />;

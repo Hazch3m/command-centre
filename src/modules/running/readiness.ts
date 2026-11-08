@@ -30,6 +30,8 @@ export interface Readiness {
   now: number | null;
   goal: number | null;
   distanceKm: number;
+  /** The same check on what you've actually run in the last 8 weeks: ready if the race were today. */
+  today: { score: number; parts: ReadinessPart[] };
 }
 
 const WEIGHTS: Record<ReadinessPart["key"], number> = { volume: 0.35, long: 0.25, specific: 0.2, taper: 0.1, ramp: 0.1 };
@@ -148,6 +150,42 @@ export function raceReadiness(
     },
   ];
   const score = Math.round(parts.reduce((s, p) => s + p.pct * WEIGHTS[p.key], 0));
+
+  // Ready today: your actual last 8 weeks (no taper, so the other parts share its weight).
+  const thisMon = mondayOf(today);
+  const past: WeekLook[] = [];
+  for (let i = 8; i >= 1; i--) {
+    const monday = addDays(thisMon, -7 * i);
+    const days = forecastWeek(plan, monday).days;
+    let total = 0;
+    let longest = 0;
+    for (let k = 0; k < 7; k++) {
+      const x = actual.get(addDays(monday, k)) ?? 0;
+      total += x;
+      longest = Math.max(longest, x);
+    }
+    past.push({ monday, km: total, longest, days });
+  }
+  const tAvg = past.reduce((a, w) => a + w.km, 0) / past.length;
+  const tLong = Math.max(...past.map((w) => w.longest));
+  const tSpecific = past.flatMap((w) => w.days.filter((d) => (d.kind === "key" || d.kind === "long") && isSpecific(d) && (actual.get(d.date) ?? 0) > 0)).length;
+  let tJump = 0;
+  for (let i = 1; i < past.length; i++) {
+    const ref = Math.max(past[i - 1].km, i >= 2 ? past[i - 2].km : 0, i >= 3 ? past[i - 3].km : 0);
+    if (ref >= 20) tJump = Math.max(tJump, past[i].km / ref - 1);
+  }
+  const todayParts: ReadinessPart[] = [
+    { key: "volume", label: "Weekly volume", pct: pct((tAvg / need.km) * 100), note: `${Math.round(tAvg)} km a week over your last 8 weeks; this race needs about ${Math.round(need.km)}.` },
+    { key: "long", label: "Long runs", pct: pct((tLong / need.long) * 100), note: `Longest ${Math.round(tLong)} km in the last 8 weeks; about ${Math.round(need.long)} km is what this distance asks for.` },
+    { key: "specific", label: "Race-specific work", pct: pct((tSpecific / wantSpecific) * 100), note: `${tSpecific} race-pace session${tSpecific === 1 ? "" : "s"} done in the last 8 weeks (${wantSpecific}+ is ideal).` },
+    {
+      key: "ramp",
+      label: "Safe build",
+      pct: pct(tJump <= 0.12 ? 100 : tJump <= 0.25 ? 100 - ((tJump - 0.12) / 0.13) * 50 : 50 - Math.min(40, (tJump - 0.25) * 200)),
+      note: tJump > 0.12 ? `Biggest jump: ${Math.round(tJump * 100)}% in a week (10–12% is safe).` : "No big jumps in mileage.",
+    },
+  ];
+  const todayScore = Math.round(todayParts.reduce((a, p) => a + p.pct * WEIGHTS[p.key], 0) / (1 - WEIGHTS.taper));
   const shape = (2 / 3) * Math.min(1.5, avg / need.km) + (1 / 3) * Math.min(1, longest / need.long);
   const meters = km * 1000;
   const scaled = km >= 40 ? shape : km >= 20 ? shape * 0.43 : km >= 9 ? shape * 0.17 : shape * 0.07;
@@ -191,7 +229,7 @@ export function raceReadiness(
   const shapeNow = (2 / 3) * Math.min(1.5, nowKm / needNow.km) + (1 / 3) * Math.min(1, nowLong / needNow.long);
   const now = actual.size ? predictTime(meters, vNow) * shapeFactor(meters, scale(shapeNow)) + hills : null;
   const goal = race.target ? targetSeconds(race.target, meters) : null;
-  return { score, parts, predicted, range, now, goal, distanceKm: km };
+  return { score, parts, predicted, range, now, goal, distanceKm: km, today: { score: todayScore, parts: todayParts } };
 }
 
 function targetSeconds(text: string, meters: number): number | null {

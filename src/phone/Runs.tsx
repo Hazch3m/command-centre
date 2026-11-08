@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { cachedPic, routePic } from "../modules/running/routeSnapshot";
 import { addDays, parseKey, useToday } from "../core/time";
 import { MedalBadges } from "../modules/running/Medals";
 import { usePbData } from "../modules/running/PbsTab";
@@ -26,6 +27,7 @@ export function Runs() {
   const kinds = useMemo(() => (plan ? plannedKinds(plan, addDays(today, -400), today, overrides) : new Map<string, DayKind>()), [plan, today, overrides]);
   const pb = usePbData();
   const [shown, setShown] = useState(15);
+  const [pickWeek, setPickWeek] = useState<string | null>(null);
 
   const totals = useMemo(() => {
     const sum = (from: string) => {
@@ -44,7 +46,6 @@ export function Runs() {
     }
     return out;
   }, [runs, today]);
-  const maxW = Math.max(1, ...weeks.map((w) => w.km));
   const feed = useMemo(() => [...runs].sort((a, b) => (a.start_local < b.start_local ? 1 : -1)), [runs]);
 
   return (
@@ -65,13 +66,26 @@ export function Runs() {
         ))}
       </div>
 
-      <div className="p-weekbars" aria-label="Kilometres per week, last 12 weeks">
-        {weeks.map((w) => (
-          <span key={w.week} className={"p-weekbar" + (w.week === mondayOf(today) ? " now" : "")} title={`${w.km.toFixed(1)} km`}>
-            <i style={{ height: `${Math.max(3, (w.km / maxW) * 100)}%` }} />
-          </span>
-        ))}
-      </div>
+      <WeekChart weeks={weeks} today={today} pick={pickWeek} onPick={(w) => setPickWeek(pickWeek === w ? null : w)} />
+      {pickWeek && (
+        <div className="p-weekpick">
+          <div className="p-weekpick-head">
+            <b>
+              Week of {parseKey(pickWeek).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} ·{" "}
+              <span className="num">{weeks.find((w) => w.week === pickWeek)!.km.toFixed(1)} km</span>
+            </b>
+            <button className="p-link" onClick={() => setPickWeek(null)}>
+              Close
+            </button>
+          </div>
+          {feed
+            .filter((r) => r.date >= pickWeek && r.date <= addDays(pickWeek, 6))
+            .map((r) => (
+              <RunCard key={r.id} r={r} today={today} kind={kinds.get(r.date)} medals={pb?.medals.get(r.id)} />
+            ))}
+          {!feed.some((r) => r.date >= pickWeek && r.date <= addDays(pickWeek, 6)) && <div className="p-hint">No runs that week.</div>}
+        </div>
+      )}
 
       {pb && pb.table.length > 0 && (
         <Section
@@ -149,9 +163,94 @@ function RunCard({ r, today, kind, medals }: { r: Run; today: string; kind?: Day
       </div>
       {r.polyline && (
         <div className="p-runcard-map">
-          <RouteMap polyline={r.polyline} height={100} />
+          <RouteThumb polyline={r.polyline} height={130} />
         </div>
       )}
     </button>
+  );
+}
+
+/** Kilometres a week, last 12 weeks: a scale up the side, the week's date under each bar; tap a bar for its runs. */
+function WeekChart({ weeks, today, pick, onPick }: { weeks: { week: string; km: number }[]; today: string; pick: string | null; onPick: (w: string) => void }) {
+  const max = Math.max(10, ...weeks.map((w) => w.km));
+  const step = max > 120 ? 40 : max > 60 ? 20 : max > 30 ? 10 : 5;
+  const top = Math.ceil(max / step) * step;
+  const ticks = Array.from({ length: top / step + 1 }, (_, i) => i * step);
+  const now = mondayOf(today);
+  return (
+    <div className="p-wchart" role="group" aria-label="Kilometres per week, last 12 weeks">
+      <div className="p-wchart-axis" aria-hidden="true">
+        {ticks
+          .slice()
+          .reverse()
+          .map((t) => (
+            <span key={t} className="num">
+              {t}
+            </span>
+          ))}
+      </div>
+      <div className="p-wchart-plot">
+        <span className="p-wchart-grids" aria-hidden="true">
+          {ticks.map((t) => (
+            <i key={t} style={{ bottom: `${(t / top) * 100}%` }} />
+          ))}
+        </span>
+        {weeks.map((w) => {
+          const d = parseKey(w.week);
+          return (
+            <button
+              key={w.week}
+              type="button"
+              className={"p-wchart-col" + (w.week === now ? " now" : "") + (pick === w.week ? " on" : "")}
+              onClick={() => onPick(w.week)}
+              aria-label={`Week of ${d.toLocaleDateString("en-GB", { day: "numeric", month: "long" })}: ${w.km.toFixed(1)} km`}
+            >
+              <span className="p-wchart-bar">
+                {pick === w.week && <small className="num">{Math.round(w.km)}</small>}
+                <i style={{ height: `${Math.max(1.5, (w.km / top) * 100)}%` }} />
+              </span>
+              <small className="p-wchart-date num">
+                {d.getDate()}/{d.getMonth() + 1}
+              </small>
+            </button>
+          );
+        })}
+      </div>
+      <span className="p-wchart-unit">km</span>
+    </div>
+  );
+}
+
+/** The route on the real map once it's on screen (a picture, cached); the plain line until then. */
+function RouteThumb({ polyline, height }: { polyline: string; height: number }) {
+  const el = useRef<HTMLDivElement | null>(null);
+  const [w, setW] = useState(0);
+  const [pic, setPic] = useState<string | null>(null);
+  useEffect(() => {
+    const box = el.current;
+    if (!box) return;
+    const width = Math.round(box.clientWidth) || 340;
+    setW(width);
+    const hit = cachedPic(polyline, width, height);
+    if (hit) return setPic(hit);
+    let gone = false;
+    const io = new IntersectionObserver(
+      (es) => {
+        if (!es.some((e) => e.isIntersecting)) return;
+        io.disconnect();
+        routePic(polyline, width, height).then((u) => !gone && u && setPic(u));
+      },
+      { rootMargin: "300px" },
+    );
+    io.observe(box);
+    return () => {
+      gone = true;
+      io.disconnect();
+    };
+  }, [polyline, height]);
+  return (
+    <div ref={el} className="p-routethumb" style={{ height }}>
+      {pic ? <img src={pic} alt="" width={w} height={height} /> : <RouteMap polyline={polyline} height={height - 10} />}
+    </div>
   );
 }

@@ -4,7 +4,7 @@ import { notifyChanged, useDataVersion } from "../core/events";
 import { addDays, parseKey, useToday } from "../core/time";
 import { useQuery } from "../core/useQuery";
 import { useFitness } from "../modules/running/fitness";
-import { PaceBadge, usePaceChecks } from "../modules/running/PaceOnPoint";
+import { IntervalChart, PaceBadge, usePaceChecks } from "../modules/running/PaceOnPoint";
 import { fmtTarget, fmtVal } from "../modules/running/pace";
 import { upcomingRaces, type Plan } from "../modules/running/plan";
 import { fmtTime } from "../modules/running/pbs";
@@ -272,7 +272,7 @@ function PaceChecks({ plan, runs }: { plan: Plan; runs: Run[] }) {
   const p = usePaceChecks(plan, runs, 12);
   if (!p) return null;
   return (
-    <Section title="Pace on point">
+    <Section title="Pace on point" className="pt-checks">
       <div className="pt-score">
         <b className="num">{p.last14 ?? "–"}</b>
         <span>
@@ -288,6 +288,11 @@ function PaceChecks({ plan, runs }: { plan: Plan; runs: Run[] }) {
               <small>{parseKey(w.week).getDate()}</small>
             </span>
           ))}
+        </div>
+      )}
+      {p.rows.length > 0 && (
+        <div className="pt-ivchart" data-noswipe>
+          <IntervalChart rows={p.rows} />
         </div>
       )}
       <div className="pt-list">
