@@ -299,7 +299,7 @@ try:
         pp.locator(".p-tabs").get_by_role("tab", name="Stats", exact=True).click()
         pp.wait_for_timeout(2500)
         check(pp.locator(".tl-chart").count() == 1, "Stats: training load chart")
-        check(pp.locator(".tl-zones span").count() == 5, "Stats: heart-rate zones")
+        check(pp.locator(".tl-zones > span").count() == 5, "Stats: heart-rate zones")
         pp.screenshot(path=f"{out}/09-stats.png", full_page=True)
         check(pp.locator(".tl-zname small").count() == 5, "Zones: bpm range for each")
         print("zones:", pp.locator(".tl-zsource").inner_text())
