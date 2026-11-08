@@ -54,6 +54,12 @@ const share = (m: FocusMix): FocusMix => {
 
 /** A planned workout's mix (shares of its time), from its steps and your paces. Null for rest days. */
 export function plannedFocus(text: string, cuts: Cuts, zones: Zones = {}): FocusMix | null {
+  const m = plannedSeconds(text, cuts, zones);
+  return m ? share(m) : null;
+}
+
+/** A planned workout's seconds in each focus. Null for rest days or text it can't read. */
+export function plannedSeconds(text: string, cuts: Cuts, zones: Zones = {}): FocusMix | null {
   if (!text || /^rest\b/i.test(text)) return null;
   const w = sessionToWorkout(text, zones);
   if (!w) return null;
@@ -68,7 +74,7 @@ export function plannedFocus(text: string, cuts: Cuts, zones: Zones = {}): Focus
     else k = "low";
     m[k] += secs;
   }
-  return share(m);
+  return m;
 }
 
 /**
@@ -97,6 +103,35 @@ export function runFocus(run: Pick<Run, "moving_time" | "distance" | "avg_hr">, 
 const WEIGHT: FocusMix = { low: 1, high: 2.3, anaerobic: 3.6 };
 /** Healthy share of load in each, over four weeks (roughly Garmin's optimal ranges). */
 export const TARGET: Record<FocusKind, [number, number]> = { low: [0.45, 0.68], high: [0.22, 0.42], anaerobic: [0.06, 0.18] };
+
+/** Load (weighted minutes) from seconds in each focus. */
+export const loadOf = (secs: FocusMix): FocusMix => ({ low: (secs.low / 60) * WEIGHT.low, high: (secs.high / 60) * WEIGHT.high, anaerobic: (secs.anaerobic / 60) * WEIGHT.anaerobic });
+export const addMix = (a: FocusMix, b: FocusMix): FocusMix => ({ low: a.low + b.low, high: a.high + b.high, anaerobic: a.anaerobic + b.anaerobic });
+export const shareOf = share;
+export const statusOf = (k: FocusKind, v: number): "in" | "below" | "above" => (v < TARGET[k][0] ? "below" : v > TARGET[k][1] ? "above" : "in");
+
+/** A planned day as seconds by focus: its session's steps, else its km at easy pace. */
+export function plannedDaySeconds(d: { text: string; km: number | null; flex?: [number, number]; optional?: boolean; kind: string }, cuts: Cuts, zones: Zones = {}): FocusMix | null {
+  if (d.optional || d.kind === "rest" || /^rest\b/i.test(d.text)) return null;
+  const easy = cuts.low + 35;
+  if (d.kind === "race") {
+    const km = d.km ?? 0;
+    if (!km) return null;
+    // Racing a 5K is anaerobic-heavy; 10K and up is mostly high aerobic.
+    const t = km * (km <= 6 ? cuts.anaerobic : cuts.low - 20);
+    return km <= 6 ? { low: 0, high: t * 0.4, anaerobic: t * 0.6 } : { low: 0, high: t, anaerobic: 0 };
+  }
+  const m = d.text ? plannedSeconds(d.text, cuts, zones) : null;
+  const total = m ? m.low + m.high + m.anaerobic : 0;
+  const km = d.km ?? (d.flex ? (d.flex[0] + d.flex[1]) / 2 : null);
+  if (m && total > 0) {
+    // Steps can miss the easy running around them: top up to the day's km.
+    const plannedKm = km ?? 0;
+    const extra = Math.max(0, plannedKm * easy - total - plannedKm * 30);
+    return { ...m, low: m.low + extra };
+  }
+  return km ? { low: km * easy, high: 0, anaerobic: 0 } : null;
+}
 
 export interface LoadFocus {
   load: FocusMix;

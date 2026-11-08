@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type CSSProperties } from "react";
 import { useDataVersion } from "../core/events";
 import { addDays, useToday } from "../core/time";
 import { useQuery } from "../core/useQuery";
@@ -7,7 +7,10 @@ import { loadGarminZones, loadZoneSettings, resolveZones } from "../modules/runn
 import type { Plan } from "../modules/running/plan";
 import { pacesFor } from "../modules/running/planBuilder";
 import { loadDetails, type Run } from "../modules/running/strava";
-import { cutsFrom, FILL, FOCUS_KINDS, loadFocus, plannedFocus, runFocus, TARGET, type FocusKind, type FocusMix } from "../modules/running/trainingFocus";
+import { forecastWeek, type ForecastWeek } from "../modules/running/forecast";
+import { mondayOf } from "../modules/running/plan";
+import { loadOverrides } from "../modules/running/strava";
+import { addMix, cutsFrom, FILL, FOCUS_KINDS, loadFocus, loadOf, plannedDaySeconds, plannedFocus, runFocus, shareOf, statusOf, TARGET, type FocusKind, type FocusMix } from "../modules/running/trainingFocus";
 import { useRunningData } from "../modules/running/useRunning";
 import { Section, usePhoneNav } from "./common";
 
@@ -81,39 +84,42 @@ export function LoadFocusCard({ plan }: { plan?: Plan | null }) {
   return (
     <Section title="Load focus · 4 weeks" className="p-padded">
       <div className="lf">
-        <span className={"lf-verdict" + (lf.short ? " short" : lf.over ? " over" : " ok")}>{verdict}</span>
+        <div className="lf-head">
+          <span className={"lf-verdict" + (lf.short ? " short" : lf.over ? " over" : " ok")}>{verdict}</span>
+          <span className="lf-legend">
+            <i /> Target zone
+          </span>
+        </div>
         {FOCUS_KINDS.map((k) => {
           const [lo, hi] = TARGET[k.id];
           const v = lf.share[k.id];
           const amount = Math.round(lf.load[k.id] / 10);
           const range = [Math.round((lf.total * lo) / 10), Math.round((lf.total * hi) / 10)];
-          const st = v < lo ? "below" : v > hi ? "above" : "in";
+          const st = statusOf(k.id, v);
           return (
-            <div key={k.id} className={`lf-row2 lf-${st}`}>
+            <div key={k.id} className={`lf-row2 lf-${st}`} style={{ "--k": KCOL[k.id] } as CSSProperties}>
               <div className="lf-top">
                 <span className="lf-name">
                   <i className={`fo-${k.id}`} />
                   {k.label}
                 </span>
-                <span className={`lf-st lf-st-${st}`}>{st === "in" ? "✓ In range" : st === "below" ? "Below range" : "Above range"}</span>
+                <span className="lf-big num">{pct(v)}%</span>
+                <span className={`lf-st lf-st-${st}`}>{st === "in" ? "✓ In zone" : st === "below" ? "↓ Below zone" : "↑ Above zone"}</span>
               </div>
-              <span className="lf-track">
-                <span className="lf-range" style={{ left: `${(lo / max) * 100}%`, width: `${((hi - lo) / max) * 100}%` }} />
-                <i className={`fo-${k.id}`} style={{ width: `${(v / max) * 100}%` }} />
-              </span>
+              <ZoneTrack v={v} lo={lo} hi={hi} max={max} kind={k.id} />
               <div className="lf-nums">
                 <span>
-                  <b className="num">{pct(v)}%</b> of your load · <b className="num">{amount}</b>
+                  load <b className="num">{amount}</b>
                 </span>
                 <span className="num">
-                  target {pct(lo)}–{pct(hi)}% · {range[0]}–{range[1]}
+                  zone {pct(lo)}–{pct(hi)}% · {range[0]}–{range[1]}
                 </span>
               </div>
             </div>
           );
         })}
         <p className="p-hint">
-          Load is each run's minutes, weighted by how hard each kilometre was (harder minutes count for more), over the last four weeks. The shaded part of each bar is the healthy range; like Garmin's load focus, all three in range means balanced training.
+          Load is each run's minutes, weighted by how hard each kilometre was (harder minutes count for more), over the last four weeks. The tinted band on each bar is its target zone (the % at each edge), and the upright line is where you are. Like Garmin's load focus, all three in their zone means balanced training.
         </p>
         {fill && (
           <button
@@ -135,6 +141,165 @@ export function LoadFocusCard({ plan }: { plan?: Plan | null }) {
             <span className="p-chev">›</span>
           </button>
         )}
+      </div>
+    </Section>
+  );
+}
+
+const KCOL: Record<FocusKind, string> = { low: "#3d9be9", high: "#f2913d", anaerobic: "#9b5cf0" };
+
+/** A bar with the target zone drawn on it (tinted band with solid edges and its % at each edge) and a marker where you are. */
+function ZoneTrack({ v, lo, hi, max, kind }: { v: number; lo: number; hi: number; max: number; kind: FocusKind }) {
+  const at = (x: number) => `${Math.min(100, (x / max) * 100)}%`;
+  return (
+    <span className="lf-zone" aria-hidden="true">
+      <span className="lf-track">
+        <span className="lf-range" style={{ left: at(lo), width: `calc(${at(hi)} - ${at(lo)})` }} />
+        <i className={`fo-${kind}`} style={{ width: at(v) }} />
+        <span className="lf-mark" style={{ left: at(v) }} />
+      </span>
+      <span className="lf-scale">
+        <span style={{ left: at(lo) }}>{pct(lo)}%</span>
+        <span style={{ left: at(hi) }}>{pct(hi)}%</span>
+      </span>
+    </span>
+  );
+}
+
+/** A week's load by focus: runs done so far, plus the sessions still to come. */
+export function weekFocus(fw: ForecastWeek, today: string, b: ReturnType<typeof useFocusBasis>) {
+  let load: FocusMix = { low: 0, high: 0, anaerobic: 0 };
+  let planned = 0;
+  for (const d of fw.days) {
+    const ran = d.runs.length > 0 && d.date <= today;
+    if (ran || d.date < today) {
+      for (const r of d.runs) {
+        const f = runFocus(r, b.details.get(r.id), b.zones, b.cuts);
+        if (f) load = addMix(load, loadOf({ low: f.low * r.moving_time, high: f.high * r.moving_time, anaerobic: f.anaerobic * r.moving_time }));
+      }
+      continue;
+    }
+    const secs = plannedDaySeconds(d, b.cuts, b.planZones);
+    if (secs) {
+      load = addMix(load, loadOf(secs));
+      planned++;
+    }
+  }
+  const total = load.low + load.high + load.anaerobic;
+  return total > 0 ? { load, total, share: shareOf(load), planned } : null;
+}
+
+/** The three shares as one stacked bar with the numbers on it. */
+function FocusStack({ share }: { share: FocusMix }) {
+  return (
+    <span className="lfw-stack" aria-hidden="true">
+      {FOCUS_KINDS.filter((k) => share[k.id] > 0.005).map((k) => (
+        <i key={k.id} className={`fo-${k.id}`} style={{ flexGrow: share[k.id] }}>
+          {share[k.id] >= 0.12 ? `${pct(share[k.id])}` : ""}
+        </i>
+      ))}
+    </span>
+  );
+}
+
+/** This week's load focus on the Plan's week: the % of each and whether it's in its zone. */
+export function WeekFocusStrip({ fw }: { fw: ForecastWeek }) {
+  const today = useToday();
+  const b = useFocusBasis();
+  const w = useMemo(() => (b.ready ? weekFocus(fw, today, b) : null), [fw, today, b]);
+  if (!w) return null;
+  const future = fw.days[0].date > today;
+  return (
+    <div className="lfw-strip" aria-label={`Load focus this week: ${FOCUS_KINDS.map((k) => `${k.label} ${pct(w.share[k.id])}%`).join(", ")}`}>
+      <span className="lfw-title">{future ? "Planned load focus" : "Load focus this week"}</span>
+      <FocusStack share={w.share} />
+      <span className="lfw-nums">
+        {FOCUS_KINDS.map((k) => {
+          const st = statusOf(k.id, w.share[k.id]);
+          return (
+            <span key={k.id} className={`lfw-n lf-st-${st}`}>
+              <i className={`fo-${k.id}`} />
+              {k.short} <b className="num">{pct(w.share[k.id])}%</b>
+              <em>{st === "in" ? "✓" : st === "below" ? "↓" : "↑"}</em>
+            </span>
+          );
+        })}
+      </span>
+    </div>
+  );
+}
+
+/** Every week from this one to the end of the plan, with the planned % of each focus. */
+export function PlanFocusWeeks({ plan, first, last }: { plan: Plan; first: string; last: string }) {
+  const today = useToday();
+  const { runs = [] } = useRunningData();
+  const rv = useDataVersion("running");
+  const overrides = useQuery(loadOverrides, [rv]).data;
+  const b = useFocusBasis();
+  const thisMonday = mondayOf(today);
+  const rows = useMemo(() => {
+    if (!b.ready) return [];
+    const out: { monday: string; label: string; w: NonNullable<ReturnType<typeof weekFocus>> }[] = [];
+    for (let m = first < thisMonday ? thisMonday : first; m <= last; m = addDays(m, 7)) {
+      const fw = forecastWeek(plan, m, runs, overrides);
+      const w = weekFocus(fw, today, b);
+      if (w) out.push({ monday: m, label: fw.week ? `W${fw.week.week}` : "", w });
+    }
+    return out;
+  }, [b, plan, first, last, runs, overrides, today, thisMonday]);
+  if (!rows.length) return null;
+  // The next four weeks together (load focus is a four-week measure).
+  const next4 = rows.slice(0, 4).reduce<FocusMix>((a, r) => addMix(a, r.w.load), { low: 0, high: 0, anaerobic: 0 });
+  const s4 = shareOf(next4);
+  const fmtD = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  return (
+    <Section title="Load focus by week" className="p-padded">
+      <div className="lfw">
+        <div className="lfw-next">
+          <span className="lfw-title">Next 4 weeks as planned</span>
+          <span className="lfw-nums">
+            {FOCUS_KINDS.map((k) => {
+              const st = statusOf(k.id, s4[k.id]);
+              return (
+                <span key={k.id} className={`lfw-n lf-st-${st}`}>
+                  <i className={`fo-${k.id}`} />
+                  {k.short} <b className="num">{pct(s4[k.id])}%</b>
+                  <em>{st === "in" ? "✓" : st === "below" ? "↓" : "↑"}</em>
+                </span>
+              );
+            })}
+          </span>
+        </div>
+        <div className="lfw-head">
+          <span />
+          {FOCUS_KINDS.map((k) => (
+            <span key={k.id} className="lfw-col">
+              <i className={`fo-${k.id}`} />
+              {k.short}
+              <small>
+                {pct(TARGET[k.id][0])}–{pct(TARGET[k.id][1])}%
+              </small>
+            </span>
+          ))}
+        </div>
+        {rows.map((r) => (
+          <div key={r.monday} className={"lfw-row" + (r.monday === thisMonday ? " now" : "")}>
+            <span className="lfw-wk">
+              <b>{r.monday === thisMonday ? "This week" : r.label || fmtD(r.monday)}</b>
+              <small>{fmtD(r.monday)}</small>
+            </span>
+            {FOCUS_KINDS.map((k) => {
+              const st = statusOf(k.id, r.w.share[k.id]);
+              return (
+                <span key={k.id} className={`lfw-cell lf-st-${st}`}>
+                  <b className="num">{pct(r.w.share[k.id])}%</b>
+                </span>
+              );
+            })}
+            <FocusStack share={r.w.share} />
+          </div>
+        ))}
+        <p className="p-hint">Each week's load from its planned sessions (this week: what you've run plus what's left). Green is inside its target zone. Single weeks swing (recovery and race weeks especially); the four weeks together are what count.</p>
       </div>
     </Section>
   );

@@ -25,6 +25,7 @@ import { PlanList } from "../modules/running/PlanList";
 import { PaceOnTrack } from "./PaceOnTrack";
 import { RaceManager } from "../modules/running/RaceManager";
 import { FitnessPredictor, GoalCarousel, PlanWeeksChart } from "./PlanGoals";
+import { LoadFocusCard, PlanFocusWeeks, WeekFocusStrip } from "./Focus";
 
 type View = "week" | "calendar" | "pace" | "progress";
 const VIEWS: { id: View; label: string; icon: string }[] = [
@@ -107,6 +108,7 @@ export function Training() {
           <PlanWeeksChart plan={plan} first={range.first} last={range.last} />
         </Section>
       )}
+      {view === "calendar" && <PlanFocusWeeks plan={plan} first={range.first} last={range.last} />}
       {view === "calendar" && (
         <div className="p-embed">
           <PlanList plan={plan} runs={runs} single />
@@ -150,6 +152,7 @@ export function Training() {
           </button>
         )}
       </div>
+      <WeekFocusStrip fw={fw} />
       <div className="p-weekdays">
         {fw.days.map((d, i) => {
           const t = typeOfDay(d.kind);
@@ -183,6 +186,8 @@ export function Training() {
           <PlanCoach plan={plan} monday={monday} compact />
         </div>
       </Section>
+
+      <LoadFocusCard plan={plan} />
 
       <Section title="The week">
         {fw.days.map((d) => {
