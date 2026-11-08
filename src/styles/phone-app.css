@@ -3530,3 +3530,13 @@ svg.effort {
 :root.phone-root body {
   overflow-anchor: none;
 }
+
+/* The phone page scrolls as a whole (the window), not inside <body>: back-to-top, pull to refresh
+   and iOS's tap-the-clock-to-scroll-up all rely on it. */
+:root.phone-root,
+:root.phone-root body,
+:root.phone-root #root {
+  height: auto;
+  min-height: 100%;
+  overflow-y: visible;
+}

@@ -6,6 +6,7 @@ import { cloudOn, cloudRun, flush, hasAccount, phoneState, refresh, unpair } fro
 import { RunViewHost } from "../modules/running/RunView";
 import { AutoReview } from "../modules/running/RunReview";
 import { PullSpinner, usePullRefresh } from "./pullRefresh";
+import { resetPageScroll } from "./scroll";
 import { loadRuns } from "../modules/running/strava";
 import { ModulePage } from "../shell/Dashboard";
 import { NavContext } from "../shell/nav";
@@ -110,13 +111,13 @@ export function PhoneApp() {
   };
   // A new page starts at the top: done after it's laid out and before it's drawn, so nothing jumps.
   useLayoutEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
+    resetPageScroll();
   }, [tab, pushed]);
   const push = (p: Pushed) => {
     setDir(swiped.current ? 0 : p ? 1 : -1);
     swiped.current = false;
     setPushed(p);
-    window.scrollTo({ top: 0 });
+    resetPageScroll();
   };
   const phoneNav = useMemo(() => ({ tab, setTab, push }), [tab]);
   const mainRef = useRef<HTMLElement | null>(null);

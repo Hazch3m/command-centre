@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Calendar } from "./Calendar";
 import { Habits } from "./Habits";
 import { Tasks } from "./Tasks";
+import { resetPageScroll } from "./scroll";
 
 export type PlannerView = "calendar" | "tasks" | "habits";
 const VIEWS: { id: PlannerView; label: string }[] = [
@@ -34,7 +35,7 @@ export function Planner() {
   const pick = (v: PlannerView) => {
     plannerView(v);
     setView(v);
-    window.scrollTo({ top: 0 });
+    resetPageScroll();
   };
   return (
     <>
