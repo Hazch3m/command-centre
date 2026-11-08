@@ -4760,3 +4760,16 @@ svg.effort {
   -webkit-user-select: none;
   user-select: none;
 }
+.lfw-strip .lfw-nums,
+.lfw-next .lfw-nums {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  justify-content: space-between;
+  gap: 0.2rem;
+}
+.lfw-strip .lfw-n,
+.lfw-next .lfw-n {
+  padding: 0.12rem 0.35rem;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
