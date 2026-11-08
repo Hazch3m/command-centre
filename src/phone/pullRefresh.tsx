@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
+import { pageScrollTop } from "./scroll";
 
 const PULL = 72;
 
@@ -16,7 +17,7 @@ export function usePullRefresh(ref: RefObject<HTMLElement | null>, onRefresh: ()
     if (!el || !enabled) return;
     let s: { y: number; x: number; axis: "x" | "y" | null; d: number } | null = null;
     const down = (e: TouchEvent) => {
-      s = window.scrollY <= 0 && e.touches.length === 1 ? { y: e.touches[0].clientY, x: e.touches[0].clientX, axis: null, d: 0 } : null;
+      s = pageScrollTop() <= 0 && e.touches.length === 1 ? { y: e.touches[0].clientY, x: e.touches[0].clientX, axis: null, d: 0 } : null;
     };
     const move = (e: TouchEvent) => {
       if (!s) return;
@@ -27,7 +28,7 @@ export function usePullRefresh(ref: RefObject<HTMLElement | null>, onRefresh: ()
         s.axis = dy > 0 && Math.abs(dy) > Math.abs(dx) * 1.2 ? "y" : "x";
         if (s.axis === "x") return void (s = null);
       }
-      if (window.scrollY > 0 || dy <= 0) return void setPull(0);
+      if (pageScrollTop() > 0 || dy <= 0) return void setPull(0);
       e.preventDefault();
       // Resistance: the further you pull, the slower it follows.
       s.d = Math.min(PULL * 1.6, dy * 0.5);
