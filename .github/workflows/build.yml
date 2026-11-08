@@ -131,13 +131,20 @@ jobs:
         run: |
           dir="$LOCALAPPDATA/tauri"
           mkdir -p "$dir"
-          for i in 1 2 3 4 5 6; do
-            curl -fsSL --retry 5 --retry-all-errors -o /tmp/nsis.zip https://github.com/tauri-apps/binary-releases/releases/download/nsis-3.13/nsis-3.13.zip && break
-            echo "retry $i"; sleep $((i * 15))
+          got=""
+          for v in 3.13 3.11; do
+            for i in 1 2 3; do
+              if curl -fsSL --retry 3 --retry-all-errors -o /tmp/nsis.zip "https://github.com/tauri-apps/binary-releases/releases/download/nsis-$v/nsis-$v.zip" && unzip -tq /tmp/nsis.zip >/dev/null; then got=$v; break 2; fi
+              echo "NSIS $v: retry $i"; sleep $((i * 10))
+            done
           done
-          if [ -f /tmp/nsis.zip ]; then
-            rm -rf "$dir/NSIS" && mkdir -p /tmp/nsis && unzip -qo /tmp/nsis.zip -d /tmp/nsis && mv /tmp/nsis/nsis-3.13 "$dir/NSIS" || mv /tmp/nsis/* "$dir/NSIS"
-            ls "$dir/NSIS" | head
+          if [ -n "$got" ]; then
+            rm -rf "$dir/NSIS" /tmp/nsis && mkdir -p /tmp/nsis && unzip -qo /tmp/nsis.zip -d /tmp/nsis
+            src=$(find /tmp/nsis -maxdepth 2 -name makensis.exe -printf '%h\n' | head -1)
+            mv "$src" "$dir/NSIS"
+            echo "NSIS $got ready"; ls "$dir/NSIS" | head
+          else
+            echo "::warning::Couldn't fetch NSIS ahead; Tauri will try itself."
           fi
 
       - name: Build installer
