@@ -3052,13 +3052,13 @@ svg.effort {
 .pt-bar-label.end {
   transform: translateX(calc(-100% + 7px));
 }
-.pt-bar-label.now {
+.pt-bar-label.lbl-now {
   color: var(--text);
 }
-.pt-bar-label.day {
+.pt-bar-label.lbl-day {
   color: var(--accent);
 }
-.pt-bar-label.goal {
+.pt-bar-label.lbl-goal {
   color: var(--z-easy);
 }
 .pt-bar-ends {
@@ -3802,4 +3802,252 @@ svg.effort {
 }
 .p-tiles.one {
   grid-template-columns: 1fr;
+}
+.pt-aim {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 14px;
+  background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 18%, transparent), color-mix(in srgb, var(--accent) 6%, transparent));
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.pt-aim svg {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.pt-aim span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+}
+.pt-aim small {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.pt-aim b {
+  font-family: var(--display);
+  font-size: 1.5rem;
+  line-height: 1.05;
+  color: var(--accent);
+}
+.pt-aim b i {
+  font-style: normal;
+  font-size: 1rem;
+  color: var(--text);
+}
+.pt-aim em {
+  font-style: normal;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+/* The Now / Race day / Goal labels always fit their boxes */
+.pt-row small {
+  font-size: 0.64rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.pt-bar small.pt-bar-label {
+  padding: 0;
+  background: none;
+  border: 0;
+  line-height: 1.2;
+}
+
+/* Progress: goals you swipe across */
+.gc-strip {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  margin: 0 calc(-1 * var(--p-pad));
+  padding: 0.2rem var(--p-pad) 0.4rem;
+  scroll-padding: 0 var(--p-pad);
+}
+.gc-strip::-webkit-scrollbar {
+  display: none;
+}
+.gc-card {
+  flex: 0 0 86%;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0.95rem 1rem;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.2s;
+  transform: scale(0.97);
+}
+.gc-card.on {
+  transform: none;
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+.gc-head {
+  display: flex;
+  flex-direction: column;
+}
+.gc-head b {
+  font-family: var(--display);
+  font-size: 1.45rem;
+  line-height: 1.05;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gc-head small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.gc-times {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+}
+.gc-times > span {
+  display: flex;
+  flex-direction: column;
+  padding: 0.45rem 0.5rem;
+  border-radius: 12px;
+  background: var(--card-2);
+}
+.gc-times small {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.gc-times b {
+  font-family: var(--display);
+  font-size: 1.2rem;
+  white-space: nowrap;
+}
+.gc-times .gc-day {
+  background: color-mix(in srgb, var(--accent) 12%, var(--card-2));
+}
+.gc-times .gc-day b {
+  color: var(--accent);
+}
+.gc-ready {
+  position: relative;
+  display: block;
+  height: 7px;
+  margin-bottom: 1.1rem;
+  border-radius: 999px;
+  background: var(--track, var(--line));
+}
+.gc-ready > i:first-child {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: currentColor;
+}
+.gc-ready-day {
+  position: absolute;
+  top: -3px;
+  width: 3px;
+  height: 13px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--text);
+}
+.gc-ready small {
+  position: absolute;
+  top: 0.65rem;
+  left: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+/* Fitness & race predictor */
+.fp-top {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.9rem;
+}
+.fp-vo2 {
+  display: flex;
+  flex-direction: column;
+}
+.fp-vo2 small {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.fp-vo2 b {
+  font-family: var(--display);
+  font-size: 2.6rem;
+  line-height: 1;
+}
+.fp-vo2 em {
+  font-style: normal;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+.fp-vo2 em.up {
+  color: var(--z-easy);
+}
+.fp-vo2 em.down {
+  color: var(--z-vo2);
+}
+.fp-spark {
+  flex: 1;
+  height: 3.2rem;
+}
+.fp-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.6;
+  vector-effect: non-scaling-stroke;
+}
+.fp-fill {
+  fill: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.fp-table {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 0.9fr;
+  margin-top: 0.8rem;
+  font-size: 0.88rem;
+}
+.fp-th {
+  padding-bottom: 0.3rem;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.fp-row {
+  display: contents;
+}
+.fp-row > * {
+  padding: 0.45rem 0;
+  border-top: 1px solid var(--line);
+}
+.pp-ahead {
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--text) 14%, transparent) 0 3px, transparent 3px 6px) !important;
+}
+.pp-flag {
+  position: absolute;
+  top: -1.1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--accent);
+  font-size: 0.8rem;
 }
