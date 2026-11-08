@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent as RMouseEvent, type PointerEvent as RPointerEvent } from "react";
 import { addDays, useToday } from "../core/time";
 import { useDataVersion } from "../core/events";
 import { useQuery } from "../core/useQuery";
@@ -142,7 +142,8 @@ export function WorkoutCreator() {
                       <Stepper label="Reps" value={`${x.reps}`} dec={() => putSet({ reps: Math.max(1, x.reps - 1) })} inc={() => putSet({ reps: Math.min(30, x.reps + 1) })} />
                       <Stepper
                         label="Each rep"
-                        value={x.timed ? (x.size % 60 ? `${x.size} s` : `${x.size / 60} min`) : x.size >= 1000 ? `${+(x.size / 1000).toFixed(1)} km` : `${x.size} m`}
+                        exact={{ kind: x.timed ? "secs" : "m", value: x.size, set: (n) => putSet({ size: Math.round(n) }), min: x.timed ? 5 : 50, max: x.timed ? 3600 : 20000 }}
+                        value={x.timed ? secsText(x.size) : x.size >= 1000 ? `${+(x.size / 1000).toFixed(2)} km` : `${x.size} m`}
                         dec={() => putSet({ size: Math.max(x.timed ? 15 : 100, x.size - (x.timed ? (x.size > 120 ? 60 : 15) : x.size >= 2000 ? 1000 : x.size >= 1000 ? 200 : 100)) })}
                         inc={() => putSet({ size: x.size + (x.timed ? (x.size >= 120 ? 60 : 15) : x.size >= 2000 ? 1000 : x.size >= 1000 ? 200 : 100) })}
                       />
@@ -157,11 +158,12 @@ export function WorkoutCreator() {
                           </button>
                         </span>
                       </div>
-                      {spec.focus !== "hills" && <Stepper label="Pace" value={x.pace ? `${fmtP(x.pace)}/km` : "by feel"} dec={() => putSet({ pace: (x.pace || paces.tenk) - 2 })} inc={() => putSet({ pace: (x.pace || paces.tenk) + 2 })} decLabel="Faster" incLabel="Slower" />}
+                      {spec.focus !== "hills" && <Stepper label="Pace" value={x.pace ? `${fmtP(x.pace)}/km` : "by feel"} dec={() => putSet({ pace: (x.pace || paces.tenk) - 1 })} inc={() => putSet({ pace: (x.pace || paces.tenk) + 1 })} exact={{ kind: "pace", value: x.pace || Math.round(paces.tenk), set: (n) => putSet({ pace: n }), min: 120, max: 600 }} decLabel="Faster" incLabel="Slower" />}
                       {spec.focus !== "hills" && x.reps > 1 && (
                         <Stepper
                           label="Recovery"
-                          value={`${x.rec >= 60 && x.rec % 60 === 0 ? `${x.rec / 60} min` : `${x.rec} s`} ${x.float ? "float" : "jog"}`}
+                          exact={{ kind: "secs", value: x.rec, set: (n) => putSet({ rec: Math.round(n) }), min: 5, max: 900 }}
+                          value={`${secsText(x.rec)} ${x.float ? "float" : "jog"}`}
                           dec={() => putSet({ rec: Math.max(15, x.rec - 15) })}
                           inc={() => putSet({ rec: Math.min(600, x.rec + 15) })}
                         />
@@ -179,7 +181,7 @@ export function WorkoutCreator() {
                           </span>
                         </div>
                       )}
-                      {x.float ? <Stepper label="Float pace" value={`${fmtP(x.float)}/km`} dec={() => putSet({ float: x.float! - 3 })} inc={() => putSet({ float: x.float! + 3 })} decLabel="Faster" incLabel="Slower" /> : null}
+                      {x.float ? <Stepper label="Float pace" value={`${fmtP(x.float)}/km`} dec={() => putSet({ float: x.float! - 1 })} inc={() => putSet({ float: x.float! + 1 })} exact={{ kind: "pace", value: x.float, set: (n) => putSet({ float: n }), min: 150, max: 600 }} decLabel="Faster" incLabel="Slower" /> : null}
                     </div>
                   </div>
                 );
@@ -213,11 +215,11 @@ export function WorkoutCreator() {
                 <div className="wc-tweaks">
                   <Stepper label="Blocks" value={`${spec.reps}`} dec={() => put({ reps: Math.max(1, spec.reps - 1) })} inc={() => put({ reps: Math.min(6, spec.reps + 1) })} />
                   <Stepper label="Pairs per block" value={`${spec.ou.pairs}`} dec={() => put({ ou: { ...spec.ou!, pairs: Math.max(2, spec.ou!.pairs - 1) } })} inc={() => put({ ou: { ...spec.ou!, pairs: Math.min(10, spec.ou!.pairs + 1) } })} />
-                  <Stepper label="Under" value={spec.ou.under >= 60 && spec.ou.under % 60 === 0 ? `${spec.ou.under / 60} min` : `${spec.ou.under} s`} dec={() => put({ ou: { ...spec.ou!, under: Math.max(30, spec.ou!.under - 30) } })} inc={() => put({ ou: { ...spec.ou!, under: Math.min(600, spec.ou!.under + 30) } })} />
-                  <Stepper label="Under pace" value={`${fmtP(spec.ou.underPace)}/km`} dec={() => put({ ou: { ...spec.ou!, underPace: spec.ou!.underPace - 2 } })} inc={() => put({ ou: { ...spec.ou!, underPace: spec.ou!.underPace + 2 } })} decLabel="Faster" incLabel="Slower" />
-                  <Stepper label="Over" value={spec.ou.over >= 60 && spec.ou.over % 60 === 0 ? `${spec.ou.over / 60} min` : `${spec.ou.over} s`} dec={() => put({ ou: { ...spec.ou!, over: Math.max(15, spec.ou!.over - 15) } })} inc={() => put({ ou: { ...spec.ou!, over: Math.min(300, spec.ou!.over + 15) } })} />
-                  <Stepper label="Over pace" value={`${fmtP(spec.ou.overPace)}/km`} dec={() => put({ ou: { ...spec.ou!, overPace: spec.ou!.overPace - 2 } })} inc={() => put({ ou: { ...spec.ou!, overPace: spec.ou!.overPace + 2 } })} decLabel="Faster" incLabel="Slower" />
-                  {spec.reps > 1 && <Stepper label="Between blocks" value={`${spec.rec >= 60 && spec.rec % 60 === 0 ? `${spec.rec / 60} min` : `${spec.rec} s`} jog`} dec={() => put({ rec: Math.max(30, spec.rec - 30) })} inc={() => put({ rec: Math.min(600, spec.rec + 30) })} />}
+                  <Stepper label="Under" exact={{ kind: "secs", value: spec.ou.under, set: (n) => put({ ou: { ...spec.ou!, under: Math.round(n) } }), min: 10, max: 1200 }} value={secsText(spec.ou.under)} dec={() => put({ ou: { ...spec.ou!, under: Math.max(30, spec.ou!.under - 30) } })} inc={() => put({ ou: { ...spec.ou!, under: Math.min(600, spec.ou!.under + 30) } })} />
+                  <Stepper label="Under pace" value={`${fmtP(spec.ou.underPace)}/km`} exact={{ kind: "pace", value: spec.ou.underPace, set: (n) => put({ ou: { ...spec.ou!, underPace: n } }), min: 120, max: 600 }} dec={() => put({ ou: { ...spec.ou!, underPace: spec.ou!.underPace - 2 } })} inc={() => put({ ou: { ...spec.ou!, underPace: spec.ou!.underPace + 2 } })} decLabel="Faster" incLabel="Slower" />
+                  <Stepper label="Over" exact={{ kind: "secs", value: spec.ou.over, set: (n) => put({ ou: { ...spec.ou!, over: Math.round(n) } }), min: 5, max: 600 }} value={secsText(spec.ou.over)} dec={() => put({ ou: { ...spec.ou!, over: Math.max(15, spec.ou!.over - 15) } })} inc={() => put({ ou: { ...spec.ou!, over: Math.min(300, spec.ou!.over + 15) } })} />
+                  <Stepper label="Over pace" value={`${fmtP(spec.ou.overPace)}/km`} exact={{ kind: "pace", value: spec.ou.overPace, set: (n) => put({ ou: { ...spec.ou!, overPace: n } }), min: 120, max: 600 }} dec={() => put({ ou: { ...spec.ou!, overPace: spec.ou!.overPace - 2 } })} inc={() => put({ ou: { ...spec.ou!, overPace: spec.ou!.overPace + 2 } })} decLabel="Faster" incLabel="Slower" />
+                  {spec.reps > 1 && <Stepper exact={{ kind: "secs", value: spec.rec, set: (n) => put({ rec: Math.round(n) }), min: 10, max: 900 }} label="Between blocks" value={`${spec.rec >= 60 && spec.rec % 60 === 0 ? `${spec.rec / 60} min` : `${spec.rec} s`} jog`} dec={() => put({ rec: Math.max(30, spec.rec - 30) })} inc={() => put({ rec: Math.min(600, spec.rec + 30) })} />}
                 </div>
               </div>
             </div>
@@ -247,7 +249,7 @@ export function WorkoutCreator() {
                     </div>
                     <div className="wc-tweaks">
                       <Stepper label="Distance" value={`${b.km} km`} dec={() => putBlock({ km: Math.max(1, b.km - 1) })} inc={() => putBlock({ km: Math.min(30, b.km + 1) })} />
-                      <Stepper label="Pace" value={`${fmtP(b.pace)}/km`} dec={() => putBlock({ pace: b.pace - 2 })} inc={() => putBlock({ pace: b.pace + 2 })} decLabel="Faster" incLabel="Slower" />
+                      <Stepper label="Pace" value={`${fmtP(b.pace)}/km`} exact={{ kind: "pace", value: b.pace, set: (n) => putBlock({ pace: n }), min: 120, max: 600 }} dec={() => putBlock({ pace: b.pace - 2 })} inc={() => putBlock({ pace: b.pace + 2 })} decLabel="Faster" incLabel="Slower" />
                     </div>
                   </div>
                 );
@@ -272,12 +274,13 @@ export function WorkoutCreator() {
             {spec.focus === "tempo" && (
               <Stepper
                 label="Length"
-                value={`${spec.size / 60} min`}
+                exact={{ kind: "secs", value: spec.size, set: (n) => put({ size: Math.round(n) }), min: 120, max: 7200 }}
+                value={secsText(spec.size)}
                 dec={() => put({ size: Math.max(600, spec.size - 300) })}
                 inc={() => put({ size: Math.min(3600, spec.size + 300) })}
               />
             )}
-            {spec.focus === "tempo" && <Stepper label="Pace" value={`${fmtP(spec.pace)}/km`} dec={() => put({ pace: spec.pace - 2 })} inc={() => put({ pace: spec.pace + 2 })} decLabel="Faster" incLabel="Slower" />}
+            {spec.focus === "tempo" && <Stepper label="Pace" value={`${fmtP(spec.pace)}/km`} exact={{ kind: "pace", value: spec.pace, set: (n) => put({ pace: n }), min: 120, max: 600 }} dec={() => put({ pace: spec.pace - 2 })} inc={() => put({ pace: spec.pace + 2 })} decLabel="Faster" incLabel="Slower" />}
             {(spec.focus === "easy" || spec.focus === "recovery") && <Stepper label="Distance" value={`${spec.km} km`} dec={() => put({ km: Math.max(3, spec.km - 1) })} inc={() => put({ km: Math.min(30, spec.km + 1) })} />}
             {!CONTINUOUS.includes(spec.focus) && <Stepper label="Warm-up" value={`${spec.warm} km`} dec={() => put({ warm: Math.max(1, spec.warm - 1) })} inc={() => put({ warm: Math.min(6, spec.warm + 1) })} />}
             {!CONTINUOUS.includes(spec.focus) && <Stepper label="Cool-down" value={`${spec.cool} km`} dec={() => put({ cool: Math.max(1, spec.cool - 1) })} inc={() => put({ cool: Math.min(6, spec.cool + 1) })} />}
@@ -318,15 +321,91 @@ export function WorkoutCreator() {
   );
 }
 
-function Stepper({ label, value, dec, inc, decLabel = "Less", incLabel = "More" }: { label: string; value: string; dec: () => void; inc: () => void; decLabel?: string; incLabel?: string }) {
+type Exact = { kind: "pace" | "secs" | "km" | "m"; value: number; set: (n: number) => void; min?: number; max?: number };
+
+/** Hold a button and it keeps going, quicker the longer you hold. */
+function useHold(fn: () => void) {
+  const t = useRef<number | null>(null);
+  const cb = useRef(fn);
+  cb.current = fn;
+  const stop = () => {
+    if (t.current) window.clearTimeout(t.current);
+    t.current = null;
+  };
+  const start = () => {
+    stop();
+    cb.current();
+    let n = 0;
+    const tick = () => {
+      cb.current();
+      n++;
+      t.current = window.setTimeout(tick, n > 12 ? 40 : n > 5 ? 80 : 140);
+    };
+    t.current = window.setTimeout(tick, 420);
+  };
+  useEffect(() => stop, []);
+  return { onPointerDown: (e: RPointerEvent) => (e.preventDefault(), start()), onPointerUp: stop, onPointerLeave: stop, onPointerCancel: stop, onContextMenu: (e: RMouseEvent) => e.preventDefault() };
+}
+
+/** 45 s, 2 min, 1:35. */
+const secsText = (v: number) => (v < 60 ? `${v} s` : v % 60 ? mmss(v) : `${v / 60} min`);
+const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+/** "3:47" → 227; "90" → 90 (seconds); "1.5" km; "850" m. */
+function parseExact(kind: Exact["kind"], text: string): number | null {
+  const t = text.trim().replace(",", ".");
+  if (kind === "pace" || kind === "secs") {
+    const m = /^(\d+):(\d{1,2})$/.exec(t);
+    if (m) return +m[1] * 60 + +m[2];
+    const n = Number(t.replace(/\s*(s|sec|secs)$/i, ""));
+    if (!Number.isFinite(n)) return null;
+    return /min$/i.test(t) ? Number(t.replace(/\s*min$/i, "")) * 60 : n;
+  }
+  const n = Number(t.replace(/\s*(km|m)$/i, ""));
+  return Number.isFinite(n) ? n : null;
+}
+
+/** − value +, holding to repeat; with `exact`, ±1 s for paces and tapping the value lets you type it to the second. */
+function Stepper({ label, value, dec, inc, decLabel = "Less", incLabel = "More", exact }: { label: string; value: string; dec: () => void; inc: () => void; decLabel?: string; incLabel?: string; exact?: Exact }) {
+  const [typing, setTyping] = useState<string | null>(null);
+  // Fine steps: a second on paces, 5 s on times (type for exact), 0.1 km, 10 m.
+  const step = exact ? { pace: 1, secs: exact.value < 60 ? 1 : 5, km: 0.1, m: 10 }[exact.kind] : 0;
+  const clamp = (n: number) => Math.min(exact?.max ?? Infinity, Math.max(exact?.min ?? 1, n));
+  const live = useRef(exact?.value ?? 0);
+  live.current = exact?.value ?? 0;
+  const down = useHold(exact ? () => exact.set(clamp(+(live.current - step).toFixed(2))) : dec);
+  const up = useHold(exact ? () => exact.set(clamp(+(live.current + step).toFixed(2))) : inc);
+  const commit = () => {
+    if (exact && typing != null) {
+      const n = parseExact(exact.kind, typing);
+      if (n != null && n > 0) exact.set(clamp(n));
+    }
+    setTyping(null);
+  };
   return (
     <div className="wc-step">
       <span>{label}</span>
-      <button type="button" onClick={dec} aria-label={`${decLabel}: ${label}`}>
+      <button type="button" {...down} aria-label={`${decLabel}: ${label}`}>
         −
       </button>
-      <b className="num">{value}</b>
-      <button type="button" onClick={inc} aria-label={`${incLabel}: ${label}`}>
+      {exact && typing != null ? (
+        <input
+          className="wc-exact num"
+          autoFocus
+          inputMode={exact.kind === "pace" || exact.kind === "secs" ? "text" : "decimal"}
+          value={typing}
+          onChange={(e) => setTyping(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => e.key === "Enter" && commit()}
+          aria-label={`${label}, exact`}
+        />
+      ) : exact ? (
+        <button type="button" className="wc-val num" onClick={() => setTyping(exact.kind === "pace" || (exact.kind === "secs" && exact.value >= 60) ? mmss(exact.value) : String(exact.value))} aria-label={`${label}: ${value}, tap to type`}>
+          {value}
+        </button>
+      ) : (
+        <b className="num">{value}</b>
+      )}
+      <button type="button" {...up} aria-label={`${incLabel}: ${label}`}>
         +
       </button>
     </div>

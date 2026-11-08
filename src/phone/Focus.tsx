@@ -84,21 +84,37 @@ export function LoadFocusCard({ plan }: { plan?: Plan | null }) {
         <span className={"lf-verdict" + (lf.short ? " short" : lf.over ? " over" : " ok")}>{verdict}</span>
         {FOCUS_KINDS.map((k) => {
           const [lo, hi] = TARGET[k.id];
+          const v = lf.share[k.id];
+          const amount = Math.round(lf.load[k.id] / 10);
+          const range = [Math.round((lf.total * lo) / 10), Math.round((lf.total * hi) / 10)];
+          const st = v < lo ? "below" : v > hi ? "above" : "in";
           return (
-            <div key={k.id} className="lf-row">
-              <span className="lf-name">
-                <i className={`fo-${k.id}`} />
-                {k.label}
-              </span>
+            <div key={k.id} className={`lf-row2 lf-${st}`}>
+              <div className="lf-top">
+                <span className="lf-name">
+                  <i className={`fo-${k.id}`} />
+                  {k.label}
+                </span>
+                <span className={`lf-st lf-st-${st}`}>{st === "in" ? "✓ In range" : st === "below" ? "Below range" : "Above range"}</span>
+              </div>
               <span className="lf-track">
                 <span className="lf-range" style={{ left: `${(lo / max) * 100}%`, width: `${((hi - lo) / max) * 100}%` }} />
-                <i className={`fo-${k.id}`} style={{ width: `${(lf.share[k.id] / max) * 100}%` }} />
+                <i className={`fo-${k.id}`} style={{ width: `${(v / max) * 100}%` }} />
               </span>
-              <b className="num">{pct(lf.share[k.id])}%</b>
+              <div className="lf-nums">
+                <span>
+                  <b className="num">{pct(v)}%</b> of your load · <b className="num">{amount}</b>
+                </span>
+                <span className="num">
+                  target {pct(lo)}–{pct(hi)}% · {range[0]}–{range[1]}
+                </span>
+              </div>
             </div>
           );
         })}
-        <p className="p-hint">Shaded: the healthy range. Each run counts by its kilometres' heart rate (harder minutes weigh more), like Garmin's load focus.</p>
+        <p className="p-hint">
+          Load is each run's minutes, weighted by how hard each kilometre was (harder minutes count for more), over the last four weeks. The shaded part of each bar is the healthy range; like Garmin's load focus, all three in range means balanced training.
+        </p>
         {fill && (
           <button
             type="button"
