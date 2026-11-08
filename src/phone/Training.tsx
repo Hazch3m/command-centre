@@ -169,7 +169,7 @@ export function Training() {
       {nav.tab === "training" &&
         !nav.pushed &&
         createPortal(
-          <button type="button" className="p-fab" onClick={() => nav.push("workout")} aria-label="Create a workout">
+          <button type="button" className="p-wfab" onClick={() => nav.push("workout")} aria-label="Create a workout">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 5v14M5 12h14" />
             </svg>
