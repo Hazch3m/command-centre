@@ -171,7 +171,7 @@ export function IntervalChart({ rows }: { rows: { day: ForecastDay; check: PaceC
         <p className="muted small">No sessions with quick laps or kilometres in the last 12 weeks yet. Your plan's first is the threshold session on Tue 17 Nov.</p>
       </div>
     );
-  const W = box.w || 800;
+  const W = Math.max(320, box.w || 800);
   const H = 300;
   const TOL = 5;
   const pad = { top: 14, bottom: 34, left: 44, right: 8 };
@@ -179,7 +179,7 @@ export function IntervalChart({ rows }: { rows: { day: ForecastDay; check: PaceC
   const lo = Math.min(...all) - 6;
   const hi = Math.max(...all) + 6;
   const y = (v: number) => pad.top + ((v - lo) / (hi - lo)) * (H - pad.top - pad.bottom);
-  const bw = (W - pad.left - pad.right) / items.length;
+  const bw = Math.max(4, (W - pad.left - pad.right) / items.length);
   const cx = (i: number) => pad.left + bw * (i + 0.5);
   const ticks: number[] = [];
   const stepS = hi - lo > 90 ? 30 : hi - lo > 40 ? 15 : 5;
