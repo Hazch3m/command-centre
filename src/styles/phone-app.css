@@ -4525,3 +4525,36 @@ svg.effort {
 .lf-nums b {
   color: var(--text);
 }
+/* Workout builder: tap a value to type it exactly */
+.wc-val {
+  padding: 0.15rem 0.3rem;
+  border: 0;
+  border-bottom: 1.5px dashed color-mix(in srgb, var(--z, var(--accent)) 50%, transparent);
+  border-radius: 4px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-family: var(--display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-align: center;
+}
+.wc-exact {
+  width: 100%;
+  min-width: 0;
+  padding: 0.25rem 0.3rem;
+  border: 1.5px solid var(--z, var(--accent));
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-family: var(--display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-align: center;
+}
+.wc-step button {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
