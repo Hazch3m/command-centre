@@ -181,7 +181,7 @@ export function TrainingLoad() {
               {editZones ? "Done" : "Change"}
             </button>
           </div>
-          {editZones && <ZoneSetup zones={zones} hasGarmin={!!zq?.[1]} />}
+          {editZones && <ZoneSetup key={zones.method} zones={zones} hasGarmin={!!zq?.[1]} />}
           {share != null && (
             <p className="p-hint">
               {Math.round(share * 100)}% easy (zones 1–2).{" "}

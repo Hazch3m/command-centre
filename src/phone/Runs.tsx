@@ -195,8 +195,10 @@ function WeekChart({ weeks, today, pick, onPick }: { weeks: { week: string; km: 
             <i key={t} style={{ bottom: `${(t / top) * 100}%` }} />
           ))}
         </span>
-        {weeks.map((w) => {
+        {weeks.map((w, i) => {
           const d = parseKey(w.week);
+          // Every other date (and always this week and the one you picked), so they never run together.
+          const label = (weeks.length - 1 - i) % 2 === 0 || pick === w.week;
           return (
             <button
               key={w.week}
@@ -209,9 +211,7 @@ function WeekChart({ weeks, today, pick, onPick }: { weeks: { week: string; km: 
                 {pick === w.week && <small className="num">{Math.round(w.km)}</small>}
                 <i style={{ height: `${Math.max(1.5, (w.km / top) * 100)}%` }} />
               </span>
-              <small className="p-wchart-date num">
-                {d.getDate()}/{d.getMonth() + 1}
-              </small>
+              <small className="p-wchart-date num">{label ? `${d.getDate()}/${d.getMonth() + 1}` : ""}</small>
             </button>
           );
         })}

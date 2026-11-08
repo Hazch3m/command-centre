@@ -3540,3 +3540,7 @@ svg.effort {
   min-height: 100%;
   overflow-y: visible;
 }
+.tl-zones .tl-zname {
+  align-items: flex-start;
+  gap: 0;
+}
