@@ -105,7 +105,7 @@ try:
         pp.locator(".p-edit-dash").click()
         pp.wait_for_timeout(600)
         check(pp.locator(".p-dash-row").count() >= 8, "Today: customise lists the blocks")
-        pp.locator(".p-dash-row", has_text="Create a workout").locator(".p-switch input").check()
+        pp.locator(".p-dash-row", has_text="Create a workout").locator(".p-switch input").click(force=True)
         pp.locator(".p-dash-row", has_text="Weather").get_by_role("button", name=re.compile("up")).click()
         pp.wait_for_timeout(800)
         check(pp.locator(".wc-cta-today").count() == 1, "Today: turn a block on")
