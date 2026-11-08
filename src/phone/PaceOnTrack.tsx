@@ -118,12 +118,12 @@ export function PaceOnTrack({ plan, runs }: { plan: Plan; runs: Run[] }) {
 
           <div className="pt-rows">
             <div className="pt-row pt-now-row">
-              <small>Current race pace</small>
+              <small>Now</small>
               <b className="num">{r.now ? `${perKm(r.now, km)}/km` : "–"}</b>
               <span className="num">{r.now ? fmtTime(r.now) : ""}</span>
             </div>
             <div className="pt-row pt-day-row">
-              <small>Predicted on race day</small>
+              <small>Race day</small>
               <b className="num">{r.predicted ? `${perKm(r.predicted, km)}/km` : "–"}</b>
               <span className="num">{r.range ? `${fmtTime(r.range[0])} – ${fmtTime(r.range[1])}` : r.predicted ? fmtTime(r.predicted) : ""}</span>
             </div>
@@ -180,32 +180,43 @@ function TrackTag({ now, predicted, goal }: { now: number | null; predicted: num
   return <span className={`pt-tag ${cls}`}>{text}</span>;
 }
 
-/** Slower on the left, faster on the right: now, the race-day range and the goal on one line. */
+/** Slower on the left, faster on the right: now, the race-day range and the goal on one line. Labels never overlap. */
 function TrackBar({ now, range, predicted, goal }: { now: number | null; range: [number, number] | null; predicted: number | null; goal: number | null }) {
   const xs = [now, predicted, goal, ...(range ?? [])].filter((x): x is number => !!x);
   if (xs.length < 2) return null;
   const slow = Math.max(...xs) * 1.01;
   const fast = Math.min(...xs) * 0.99;
-  const at = (t: number) => `${((slow - t) / (slow - fast)) * 100}%`;
+  const pos = (t: number) => ((slow - t) / (slow - fast)) * 100;
+  const at = (t: number) => `${pos(t)}%`;
+  // Labels: Now above, Race day below, Goal above; one that would overlap moves to the other side,
+  // and two at the same spot share a label.
+  const want: { id: string; text: string; x: number; slot: "up" | "down"; cls: string }[] = [];
+  if (now) want.push({ id: "now", text: "Now", x: pos(now), slot: "up", cls: "now" });
+  if (predicted) want.push({ id: "day", text: "Race day", x: pos(predicted), slot: "down", cls: "day" });
+  if (goal) want.push({ id: "goal", text: "Goal", x: pos(goal), slot: "up", cls: "goal" });
+  const placed: typeof want = [];
+  const near = (a: number, b: number) => Math.abs(a - b) < 20;
+  for (const l of want) {
+    const other = l.slot === "up" ? "down" : "up";
+    if (!placed.some((p) => p.slot === l.slot && near(p.x, l.x))) placed.push(l);
+    else if (!placed.some((p) => p.slot === other && near(p.x, l.x))) placed.push({ ...l, slot: other });
+    else {
+      const p = placed.find((q) => near(q.x, l.x))!;
+      p.text += ` · ${l.text}`;
+    }
+  }
   return (
     <div className="pt-bar" aria-hidden="true">
       <div className="pt-bar-line" />
       {range && <span className="pt-bar-range" style={{ left: at(range[1]), right: `calc(100% - ${at(range[0])})` }} />}
-      {now && (
-        <span className="pt-bar-dot pt-dot-now" style={{ left: at(now) }}>
-          <small>Now</small>
-        </span>
-      )}
-      {predicted && (
-        <span className="pt-bar-dot pt-dot-day" style={{ left: at(predicted) }}>
-          <small>Race day</small>
-        </span>
-      )}
-      {goal && (
-        <span className="pt-bar-flag" style={{ left: at(goal) }}>
-          <small>Goal</small>
-        </span>
-      )}
+      {now && <span className="pt-bar-dot pt-dot-now" style={{ left: at(now) }} />}
+      {predicted && <span className="pt-bar-dot pt-dot-day" style={{ left: at(predicted) }} />}
+      {goal && <span className="pt-bar-flag" style={{ left: at(goal) }} />}
+      {placed.map((l) => (
+        <small key={l.id} className={`pt-bar-label ${l.slot} ${l.cls}` + (l.x < 12 ? " start" : l.x > 88 ? " end" : "")} style={{ left: `${l.x}%` }}>
+          {l.text}
+        </small>
+      ))}
       <span className="pt-bar-ends">
         <small>Slower</small>
         <small>Faster</small>

@@ -3002,3 +3002,78 @@ svg.effort {
   color: var(--muted);
   font-size: 0.74rem;
 }
+
+/* iOS: a rounded box that clips its contents is drawn as one piece, so its text doesn't wobble while you scroll. */
+.p-group,
+.p-card,
+.pt-card,
+.p-lastrun,
+.p-tile {
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+/* A page sliding in: its sticky bar sits in place (sticky only works on the page you're on). */
+.p-pane:not(.on) .p-planner-seg {
+  position: relative;
+  top: 0;
+}
+/* Track bar labels (placed so they never overlap) */
+.pt-bar {
+  height: 4.4rem;
+}
+.pt-bar-line {
+  top: 2rem;
+}
+.pt-bar-range {
+  top: 1.85rem;
+}
+.pt-bar-dot,
+.pt-bar-flag {
+  top: 1.65rem;
+}
+.pt-bar small.pt-bar-label {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 0.68rem;
+  font-weight: 750;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.pt-bar-label.up {
+  top: 0.35rem;
+}
+.pt-bar-label.down {
+  top: 2.75rem;
+}
+.pt-bar-label.start {
+  transform: translateX(-7px);
+}
+.pt-bar-label.end {
+  transform: translateX(calc(-100% + 7px));
+}
+.pt-bar-label.now {
+  color: var(--text);
+}
+.pt-bar-label.day {
+  color: var(--accent);
+}
+.pt-bar-label.goal {
+  color: var(--z-easy);
+}
+.pt-bar-ends {
+  bottom: -0.2rem;
+}
+.pt-row small {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.pt-row > span {
+  font-size: 0.74rem;
+  white-space: nowrap;
+}
+.pt-row b {
+  font-size: 1.35rem;
+  white-space: nowrap;
+}

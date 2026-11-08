@@ -81,7 +81,10 @@ jobs:
         if: env.HAS_CF != 'true'
         run: echo "::notice title=Phone sync::Add the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repository secrets to deploy the sync service."
 
+  # The Windows installer costs the most build time, so it's made only when asked:
+  # run this workflow by hand, or put [installer] in the commit message.
   windows:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[installer]')
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
