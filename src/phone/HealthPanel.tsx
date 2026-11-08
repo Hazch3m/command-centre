@@ -56,8 +56,8 @@ export function HealthPanel({ today }: { today: string }) {
           <div className="hp-stats">
             <Stat label="Sleep" value={night?.sleep_secs ? hm(night.sleep_secs) : "–"} sub={night?.sleep_score ? `score ${night.sleep_score}` : ""} />
             <Stat label="HRV" value={last.hrv ? `${Math.round(last.hrv)}` : "–"} unit="ms" sub={last.hrv_status ? last.hrv_status.toLowerCase().replace(/_/g, " ") : last.hrv_week ? `week ${Math.round(last.hrv_week)}` : ""} />
-            <Stat label="Resting HR" value={last.rhr ? `${Math.round(last.rhr)}` : "–"} unit="bpm" sub={trendWord(rows, "rhr", true)} />
-            <Stat label="Body battery" value={last.bb_now ?? last.bb_high ?? "–"} sub={last.bb_high ? `high ${last.bb_high}` : ""} />
+            <Stat label="Rest HR" value={last.rhr ? `${Math.round(last.rhr)}` : "–"} unit="bpm" sub={trendWord(rows, "rhr", true)} />
+            <Stat label="Battery" value={last.bb_now ?? last.bb_high ?? "–"} sub={last.bb_high ? `high ${last.bb_high}` : ""} />
           </div>
         </button>
 
@@ -80,9 +80,9 @@ export function HealthPanel({ today }: { today: string }) {
                 </span>
               </div>
               <div className="hp-stats">
-                <Stat label="Fitness" value={Math.round(load.ctl)} sub="6-week load" />
-                <Stat label="Fatigue" value={Math.round(load.atl)} sub="1-week load" />
-                <Stat label="Week load" value={Math.round(load.week)} sub="TRIMP" />
+                <Stat label="Fitness" value={Math.round(load.ctl)} sub="6 weeks" />
+                <Stat label="Fatigue" value={Math.round(load.atl)} sub="7 days" />
+                <Stat label="Load" value={Math.round(load.week)} sub="7-day TRIMP" />
                 <Stat label="VO2 max" value={last.vo2 ? Math.round(last.vo2) : f?.current ? f.current.toFixed(1) : "–"} sub={last.vo2 ? "Garmin" : "from runs"} />
               </div>
             </>
@@ -131,7 +131,7 @@ function trendWord(rows: HealthDay[], field: "rhr", lowGood: boolean) {
   const before = xs.slice(0, -3).reduce((a, b) => a + b, 0) / (xs.length - 3);
   const d = recent - before;
   if (Math.abs(d) < 1) return "steady";
-  return (d < 0) === lowGood ? "better than usual" : "higher than usual";
+  return (d < 0) === lowGood ? "↓ vs usual" : "↑ vs usual";
 }
 
 /** A little bar per day for the last week, with the latest value. */
