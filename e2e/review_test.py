@@ -220,6 +220,7 @@ try:
         # Swipe: hold mid-drag, the next page is drawn alongside (not blank).
         pp.locator(".p-tabs").get_by_role("tab", name="Today", exact=True).click()
         pp.wait_for_timeout(2000)
+        print("before swipe scrollY:", pp.evaluate("window.scrollY"))
         pp.evaluate(SW, [".p-main", 330, 150, 600, True])
         pp.wait_for_timeout(100)
         peek = pp.evaluate("""() => { const p = document.querySelector('[data-pane="planner"]'); if (!p) return null; const r = p.getBoundingClientRect(); return { peeking: p.classList.contains('peeking'), left: r.left, h: r.height, text: p.innerText.trim().length }; }""")
@@ -230,6 +231,7 @@ try:
         pp.evaluate(END, [".p-main", 150])
         pp.wait_for_timeout(800)
         y1 = pp.evaluate("document.querySelector('[data-pane=planner]').getBoundingClientRect().top")
+        print("after landing:", pp.evaluate("""() => { const p = document.querySelector('[data-pane=planner]'); const m = document.querySelector('.p-main'); return { scrollY: window.scrollY, mainTop: m.getBoundingClientRect().top, cls: p.className, style: p.getAttribute('style'), docH: document.documentElement.scrollHeight, act: document.activeElement && document.activeElement.className }; }"""))
         print("planner top during/after swipe:", y0, y1)
         check(abs(y0 - y1) < 3, f"no jump when the swipe lands ({y0} -> {y1})")
         check(pp.locator(".p-tab.on").inner_text().strip() == "Planner", "swipe: Today -> Planner")
