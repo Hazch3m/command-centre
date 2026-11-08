@@ -23,8 +23,9 @@ import { PracticeTag } from "../modules/running/PracticeTag";
 import { plannerView } from "./Planner";
 import { weatherModule } from "../modules/weather";
 import { isEmptyPlan } from "../core/account";
-import { CountUp, Ring, Section, toneFor, usePhoneNav, useReadiness } from "./common";
+import { CountUp, Section, usePhoneNav } from "./common";
 import { DrawnTick, StreakIcon, ZoneIcon } from "./icons";
+import { HealthPanel } from "./HealthPanel";
 import type { Run } from "../modules/running/strava";
 
 /** What a session is, in a word or two, from its text ("VO2 max", "Long run", …). */
@@ -198,7 +199,6 @@ export function Today() {
   const todayRun = days.find((d) => d.date === today);
   const tomorrowRun = days.find((d) => d.date === addDays(today, 1));
   const week = weeks?.[0];
-  const ready = useReadiness(today);
   const cv = useDataVersion("checklist");
   const habits = useQuery(() => loadChecklist(today), [cv, today]).data;
   const tv = useDataVersion("tasks");
@@ -223,18 +223,9 @@ export function Today() {
     session: todayRun && !isEmptyPlan(plan) && (done && !openDone ? <DoneToday d={todayRun} next={tomorrowRun} onOpen={() => setOpenDone(true)} /> : <Session d={todayRun} label={dayGreeting(now)} next={tomorrowRun} />),
     lastrun: <LastRun />,
     tiles: (
-      <div className="p-tiles">
-        <button className="p-tile" onClick={() => nav.push("health")}>
-          <span className="p-eyebrow">Readiness</span>
-          {ready ? (
-            <div className="p-tile-row">
-              <Ring value={ready.score} tone={toneFor(ready.score)} />
-              <span className="p-tile-note">{ready.level}</span>
-            </div>
-          ) : (
-            <span className="p-tile-note">Waiting for last night's sleep</span>
-          )}
-        </button>
+      <>
+      <HealthPanel today={today} />
+      <div className="p-tiles one">
         <button className="p-tile" onClick={() => nav.setTab("training")}>
           <span className="p-eyebrow">This week</span>
           <span className="p-big num">
@@ -255,6 +246,7 @@ export function Today() {
           )}
         </button>
       </div>
+      </>
     ),
     workout: (
       <button type="button" className="wc-cta wc-cta-today" onClick={() => nav.push("workout")}>
@@ -475,7 +467,7 @@ type BlockId = "session" | "lastrun" | "tiles" | "workout" | "habits" | "todo" |
 const BLOCKS: { id: BlockId; label: string; hint: string }[] = [
   { id: "session", label: "Today's session", hint: "The run of the day, or a small tile once it's done" },
   { id: "lastrun", label: "Last run", hint: "Distance, pace and splits" },
-  { id: "tiles", label: "Readiness & this week", hint: "Sleep-based readiness, km so far, streak" },
+  { id: "tiles", label: "Health & this week", hint: "Readiness, sleep, HRV, training load, trends; km so far" },
   { id: "workout", label: "Create a workout", hint: "A big button for a one-off session" },
   { id: "habits", label: "Habits", hint: "Tick off today's habits" },
   { id: "todo", label: "To do", hint: "Tasks due today" },

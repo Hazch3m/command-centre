@@ -3611,3 +3611,195 @@ svg.effort {
   object-fit: cover;
   border-radius: 12px;
 }
+
+/* Today: the health panel, three pages with dots */
+.hp {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.hp-strip {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  border-radius: 22px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  -webkit-overflow-scrolling: touch;
+}
+.hp-strip::-webkit-scrollbar {
+  display: none;
+}
+.hp-page {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.95rem 1rem 1rem;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+.hp-top {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  min-height: 4.9rem;
+}
+.hp-lead {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.hp-lead b {
+  font-family: var(--display);
+  font-size: 1.55rem;
+  line-height: 1.05;
+}
+.hp-lead small {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.hp-wait {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.hp-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 4.9rem;
+  height: 4.9rem;
+  border-radius: 50%;
+  border: 7px solid color-mix(in srgb, var(--f) 75%, transparent);
+  background: color-mix(in srgb, var(--f) 10%, transparent);
+}
+.hp-form b {
+  font-family: var(--display);
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--f);
+}
+.hp-form small {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.hp-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.35rem;
+}
+.hp-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+  padding: 0.5rem 0.45rem;
+  border-radius: 12px;
+  background: var(--card-2);
+}
+.hp-stat small {
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hp-stat b {
+  font-family: var(--display);
+  font-size: 1.3rem;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.hp-stat b i {
+  font-family: inherit;
+  font-style: normal;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+.hp-stat em {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-style: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hp-trends {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+.hp-spark {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto 2.6rem;
+  gap: 0.25rem 0.4rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: 12px;
+  background: var(--card-2);
+}
+.hp-spark small {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.hp-spark em {
+  grid-row: 1;
+  grid-column: 2;
+  font-style: normal;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.hp-bars {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+}
+.hp-bars i {
+  flex: 1;
+  border-radius: 3px 3px 1px 1px;
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
+  transform-origin: bottom;
+  animation: grow-up 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.hp-bars i.good {
+  background: var(--accent);
+}
+.hp-bars i.none {
+  background: var(--line);
+}
+.hp-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+}
+.hp-dots button {
+  width: 0.45rem;
+  height: 0.45rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--line-2, var(--line));
+  transition: width 0.25s cubic-bezier(0.3, 1.3, 0.5, 1), background 0.2s;
+}
+.hp-dots button.on {
+  width: 1.3rem;
+  background: var(--accent);
+}
+.p-tiles.one {
+  grid-template-columns: 1fr;
+}
