@@ -263,6 +263,7 @@ function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; o
       {edit && <RunReview run={run} onClose={() => setEdit(false)} />}
       {map && run.polyline && <RunMap polyline={run.polyline} title={run.name} onClose={() => setMap(false)} />}
       <RunNotes id={run.id} />
+      {details.get(run.id)?.photo && <img className="run-photo" src={details.get(run.id)!.photo!} alt="Photo from the run" referrerPolicy="no-referrer" />}
       <div className="run-detail-top">
         <button type="button" className="run-detail-map" onClick={() => run.polyline && setMap(true)} aria-label="Open the map" disabled={!run.polyline}>
           <RunMapThumb polyline={run.polyline} height={170} />

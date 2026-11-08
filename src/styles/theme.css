@@ -5366,3 +5366,10 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
   background: var(--accent);
   color: var(--on-accent);
 }
+.run-photo {
+  display: block;
+  width: 100%;
+  max-height: 22rem;
+  object-fit: cover;
+  border-radius: 12px;
+}

@@ -8,7 +8,7 @@ import { RouteMap } from "../modules/running/route";
 import { openRun } from "../modules/running/RunView";
 import { plannedKinds, RUN_TYPE_LABEL, typeOfRun } from "../modules/running/runType";
 import type { DayKind } from "../modules/running/forecast";
-import { loadOverrides } from "../modules/running/strava";
+import { loadDetails, loadOverrides } from "../modules/running/strava";
 import { useDataVersion } from "../core/events";
 import { useQuery } from "../core/useQuery";
 import { duration, km, pace } from "../modules/running/stats";
@@ -24,6 +24,8 @@ export function Runs() {
   const { plan, runs = [] } = useRunningData();
   const rv = useDataVersion("running");
   const overrides = useQuery(loadOverrides, [rv]).data;
+  // Strava photos (and other details) for the runs listed.
+  const photos = useQuery(() => loadDetails(addDays(today, -430)), [rv, today]).data;
   const kinds = useMemo(() => (plan ? plannedKinds(plan, addDays(today, -400), today, overrides) : new Map<string, DayKind>()), [plan, today, overrides]);
   const pb = usePbData();
   const [shown, setShown] = useState(15);
@@ -81,7 +83,7 @@ export function Runs() {
           {feed
             .filter((r) => r.date >= pickWeek && r.date <= addDays(pickWeek, 6))
             .map((r) => (
-              <RunCard key={r.id} r={r} today={today} kind={kinds.get(r.date)} medals={pb?.medals.get(r.id)} />
+              <RunCard key={r.id} r={r} today={today} kind={kinds.get(r.date)} medals={pb?.medals.get(r.id)} photo={photos?.get(r.id)?.photo} />
             ))}
           {!feed.some((r) => r.date >= pickWeek && r.date <= addDays(pickWeek, 6)) && <div className="p-hint">No runs that week.</div>}
         </div>
@@ -114,7 +116,7 @@ export function Runs() {
         {feed.length === 0 && <div className="p-hint">No runs yet. They arrive from Garmin.</div>}
       </Section>
       {feed.slice(0, shown).map((r) => (
-        <RunCard key={r.id} r={r} today={today} kind={kinds.get(r.date)} medals={pb?.medals.get(r.id)} />
+        <RunCard key={r.id} r={r} today={today} kind={kinds.get(r.date)} medals={pb?.medals.get(r.id)} photo={photos?.get(r.id)?.photo} />
       ))}
       {feed.length > shown && (
         <button className="p-more" onClick={() => setShown((n) => n + 20)}>
@@ -125,7 +127,7 @@ export function Runs() {
   );
 }
 
-function RunCard({ r, today, kind, medals }: { r: Run; today: string; kind?: DayKind | null; medals: Parameters<typeof MedalBadges>[0]["medals"] }) {
+function RunCard({ r, today, kind, medals, photo }: { r: Run; today: string; kind?: DayKind | null; medals: Parameters<typeof MedalBadges>[0]["medals"]; photo?: string | null }) {
   const t = typeOfRun(r, kind);
   const time = r.start_local?.slice(11, 16);
   return (
@@ -161,9 +163,10 @@ function RunCard({ r, today, kind, medals }: { r: Run; today: string; kind?: Day
           </span>
         ) : null}
       </div>
-      {r.polyline && (
-        <div className="p-runcard-map">
-          <RouteThumb polyline={r.polyline} height={130} />
+      {(r.polyline || photo) && (
+        <div className={"p-runcard-map" + (photo && r.polyline ? " with-photo" : "")}>
+          {r.polyline && <RouteThumb polyline={r.polyline} height={130} />}
+          {photo && <img className="p-runcard-photo" src={photo} alt="" loading="lazy" referrerPolicy="no-referrer" />}
         </div>
       )}
     </button>

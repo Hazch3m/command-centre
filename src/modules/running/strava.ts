@@ -26,6 +26,8 @@ export interface RunDetail {
   bestEfforts: { name: string; time: number }[];
   /** Watch laps (auto-lap or workout steps), when fetched. */
   laps?: { distance: number; moving_time: number; speed: number; hr: number | null }[];
+  /** The run's main photo on Strava (600 px), when it has one; null when it has none. */
+  photo?: string | null;
 }
 
 export const migrations = [
@@ -204,6 +206,7 @@ interface StravaDetail {
   splits_metric?: { distance: number; moving_time: number; average_speed: number; average_grade_adjusted_speed?: number; average_heartrate?: number; elevation_difference?: number }[];
   best_efforts?: { name: string; elapsed_time: number }[];
   laps?: { distance: number; moving_time: number; average_speed: number; average_heartrate?: number }[];
+  photos?: { count?: number; primary?: { urls?: Record<string, string> } | null };
 }
 
 /**
@@ -359,7 +362,9 @@ async function syncDetails(): Promise<boolean> {
      WHERE a.id NOT LIKE 'g%' AND a.has_hr = 1 AND a.date >= date('now', '-430 days')
        AND (d.id IS NULL OR (d.fetched_at < a.synced_at AND a.date >= date('now', '-2 days'))
             -- laps (for pace on point) arrived later: fetch recent runs again once
-            OR (d.json NOT LIKE '%"laps"%' AND a.date >= date('now', '-60 days')))
+            OR (d.json NOT LIKE '%"laps"%' AND a.date >= date('now', '-60 days'))
+            -- photos arrived later still: fill them in for the last ~14 months, a batch at a time
+            OR d.json NOT LIKE '%"photo"%')
      ORDER BY a.start_epoch DESC LIMIT ?`,
     [DETAIL_BATCH],
   );
@@ -383,6 +388,7 @@ async function syncDetails(): Promise<boolean> {
       })),
       bestEfforts: (r.body.best_efforts ?? []).map((b) => ({ name: b.name, time: b.elapsed_time })),
       laps: (r.body.laps ?? []).map((l) => ({ distance: l.distance, moving_time: l.moving_time, speed: l.average_speed, hr: l.average_heartrate ?? null })),
+      photo: r.body.photos?.primary?.urls?.["600"] ?? Object.values(r.body.photos?.primary?.urls ?? {}).pop() ?? null,
     };
     await db.execute("INSERT OR REPLACE INTO strava_details (id, json, fetched_at) VALUES (?, ?, ?)", [id, JSON.stringify(detail), new Date().toISOString()]);
     any = true;
