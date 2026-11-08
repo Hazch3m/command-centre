@@ -74,14 +74,15 @@ export function plannedFocus(text: string, cuts: Cuts, zones: Zones = {}): Focus
 /**
  * A run's mix, kilometre by kilometre: anaerobic when it was run at about 5K pace or faster
  * (heart rate lags too much to show short, very hard efforts), otherwise its heart-rate zone
- * (1–2 low aerobic, 3 and up high aerobic), else its pace.
+ * (1–3 low aerobic, 4–5 high aerobic), else its pace.
  */
 export function runFocus(run: Pick<Run, "moving_time" | "distance" | "avg_hr">, detail: Pick<RunDetail, "splits"> | undefined, zones: Pick<HrZones, "floors"> | null, cuts: Cuts): FocusMix | null {
   const m: FocusMix = { low: 0, high: 0, anaerobic: 0 };
   const splits = detail?.splits?.filter((s) => s.moving_time > 0) ?? [];
   const kindOf = (secPerKm: number, hr: number | null | undefined): FocusKind => {
     if (secPerKm <= cuts.anaerobic) return "anaerobic";
-    if (zones && hr) return hrZoneOf(hr, zones) <= 2 ? "low" : "high";
+    // Zones 1–3 are below your aerobic threshold (easy and steady running): low aerobic; 4 and 5 high.
+    if (zones && hr) return hrZoneOf(hr, zones) <= 3 ? "low" : "high";
     return secPerKm < cuts.low ? "high" : "low";
   };
   if (splits.length) {
