@@ -157,7 +157,7 @@ const offText = (pace: number, [lo, hi]: [number, number], bpm = false) =>
  * Key sessions over the last weeks, Runna-style: for each one the fastest and
  * slowest rep (or km) against the target range. Faster is up.
  */
-function IntervalChart({ rows }: { rows: { day: ForecastDay; check: PaceCheck }[] }) {
+export function IntervalChart({ rows }: { rows: { day: ForecastDay; check: PaceCheck }[] }) {
   const [ref, box] = useBox(false);
   const [hover, setHover] = useState<number | null>(null);
   const sessions = rows.filter((r) => r.check.session && r.check.fastest != null).sort((a, b) => a.check.date.localeCompare(b.check.date));

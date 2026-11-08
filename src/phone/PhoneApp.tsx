@@ -5,6 +5,7 @@ import { REFRESHED_KEY, REFRESH_KEY } from "../core/sync";
 import { cloudOn, cloudRun, flush, hasAccount, phoneState, refresh, unpair } from "../core/backend.phone";
 import { RunViewHost } from "../modules/running/RunView";
 import { AutoReview } from "../modules/running/RunReview";
+import { PullSpinner, usePullRefresh } from "./pullRefresh";
 import { loadRuns } from "../modules/running/strava";
 import { ModulePage } from "../shell/Dashboard";
 import { NavContext } from "../shell/nav";
@@ -124,6 +125,7 @@ export function PhoneApp() {
     }, 600);
     return () => window.clearTimeout(t);
   }, [tab]);
+  const ptr = usePullRefresh(mainRef, () => askPc(), !pushed);
   const pane = (id: string) => mainRef.current?.querySelector<HTMLElement>(`:scope > [data-pane="${id}"]`) ?? null;
   const onSwipe = useCallback(
     (d: 1 | -1) => {
@@ -261,6 +263,7 @@ export function PhoneApp() {
               {note}
             </div>
           )}
+          <PullSpinner pull={ptr.pull} busy={ptr.busy} />
           <main ref={mainRef} className="p-main p-track">
             {pushed && (
               <div key={pushed} data-pane="pushed" className={"p-pane on p-pushed" + slide}>

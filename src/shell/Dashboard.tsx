@@ -1,3 +1,4 @@
+import logoUrl from "../../phone-public/apple-touch-icon.png";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import GridLayout, { type Layout } from "react-grid-layout";
@@ -298,6 +299,10 @@ export function Dashboard() {
     <NavContext.Provider value={nav}>
     <div className={"app" + (cursorHidden ? " cursor-hidden" : "") + (editing ? " is-editing" : "")}>
       <header className="topbar">
+        <span className="brand" aria-label="Pacelife">
+          <img src={logoUrl} alt="" width={30} height={30} />
+          <b>Pacelife</b>
+        </span>
         <nav className="tabs" role="tablist">
           {tabs.map((t) => (
             <button key={t.id} role="tab" aria-selected={tab === t.id} className={`tab tab-${t.id}` + (tab === t.id ? " on" : "")} onClick={() => go(t.id)}>

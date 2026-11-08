@@ -25,6 +25,8 @@ export interface RunMeta {
   shoe?: string | null;
   /** You've seen (and saved or skipped) the review. */
   reviewed?: boolean;
+  /** The review has opened by itself once (it never opens by itself again). */
+  seen?: boolean;
 }
 const key = (id: string) => `run.meta.${id}`;
 export const loadRunMeta = (id: string) => kvGet<RunMeta>(key(id), {});
@@ -48,8 +50,30 @@ export async function loadAllRunMeta(): Promise<Map<string, RunMeta>> {
 export async function runToReview(runs: Run[], today: string): Promise<Run | null> {
   const from = new Date(Date.parse(today) - 2 * 86400000).toISOString().slice(0, 10);
   const recent = runs.filter((r) => r.date >= from).sort((a, b) => (a.start_local < b.start_local ? 1 : -1));
-  for (const r of recent.slice(0, 1)) if (!(await loadRunMeta(r.id)).reviewed) return r;
+  for (const r of recent.slice(0, 1)) {
+    if (seenHere(r.id)) continue;
+    const m = await loadRunMeta(r.id);
+    if (!m.reviewed && !m.seen) return r;
+  }
   return null;
+}
+
+/** Shown once: remembered with the run (so other devices know) and on this device straight away. */
+export async function markSeen(id: string) {
+  try {
+    localStorage.setItem(`cc-review-seen-${id}`, "1");
+  } catch {
+    /* private mode */
+  }
+  const m = await loadRunMeta(id);
+  if (!m.seen) await saveRunMeta(id, { ...m, seen: true });
+}
+function seenHere(id: string) {
+  try {
+    return localStorage.getItem(`cc-review-seen-${id}`) === "1";
+  } catch {
+    return false;
+  }
 }
 
 /** A new title and notes go to Garmin Connect too (Garmin runs); false when that couldn't be done. */

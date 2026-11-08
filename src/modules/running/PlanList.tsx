@@ -25,7 +25,8 @@ const phaseName = (p: string) => p.replace(/\s*\(.*\)\s*$/, "").replace(/^Recove
  * highlighted, every day with its type colour, distance, pace and what you ran.
  * Click a week to open or close it, a day to change it.
  */
-export function PlanList({ plan, runs }: { plan: Plan; runs: Run[] }) {
+/** `single`: opening a week closes the others (the phone). */
+export function PlanList({ plan, runs, single = false }: { plan: Plan; runs: Run[]; single?: boolean }) {
   const today = useToday();
   const thisMonday = mondayOf(today);
   const version = useDataVersion("running");
@@ -48,7 +49,10 @@ export function PlanList({ plan, runs }: { plan: Plan; runs: Run[] }) {
     setOpen((s) => {
       const n = new Set(s);
       if (n.has(m)) n.delete(m);
-      else n.add(m);
+      else {
+        if (single) n.clear();
+        n.add(m);
+      }
       return n;
     });
 
