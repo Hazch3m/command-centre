@@ -8,6 +8,7 @@ import { dailyLoad, easyShare, FORM_TEXT, formLevel, loadSeries, monotony, zoneM
 import { loadDetails } from "../modules/running/strava";
 import { useRunningData } from "../modules/running/useRunning";
 import { Section } from "./common";
+import { Explain } from "./RunalyzeMore";
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const RANGES = [
@@ -122,6 +123,18 @@ export function TrainingLoad() {
             </span>
           </div>
         </div>
+        <Explain label="What do these mean?">
+          <p>
+            <b>Fitness</b> is your training load averaged over about six weeks (Runalyze's CTL): it rises slowly as you train consistently and is the base you race on.
+          </p>
+          <p>
+            <b>Fatigue</b> is the same over about a week (ATL): it jumps after hard days and falls quickly when you rest.
+          </p>
+          <p>
+            <b>Form</b> is fitness minus fatigue (TSB). Negative means you're carrying fatigue, which is normal in training; around zero to slightly positive is fresh enough to race;
+            very negative for long is a warning sign. Each day's load is its TRIMP: time weighted by how hard your heart worked.
+          </p>
+        </Explain>
       </Section>
 
       <Section title="This week">
@@ -150,6 +163,10 @@ export function TrainingLoad() {
                 ? "Getting samey: make sure easy days are truly easy."
                 : "Good variety between hard, easy and rest days."}
         </p>
+        <Explain>
+          Monotony (Foster) is the week's average daily load divided by how much it varies: below 1.5 means a healthy mix of hard, easy and rest days; above 2, every day is
+          alike and the risk of illness or injury goes up. Strain is the week's load times its monotony.
+        </Explain>
       </Section>
 
       {zones && (

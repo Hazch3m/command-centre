@@ -4051,3 +4051,188 @@ svg.effort {
   color: var(--accent);
   font-size: 0.8rem;
 }
+
+/* "What is this?" explanations */
+.xp {
+  margin-top: 0.6rem;
+}
+.xp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.7rem 0.3rem 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card-2);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+.xp-btn i {
+  display: grid;
+  place-items: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-style: italic;
+  font-weight: 800;
+  font-size: 0.72rem;
+  font-family: Georgia, serif;
+}
+.xp-body {
+  margin-top: 0.5rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 12px;
+  background: var(--card-2);
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  animation: rise-in 0.25s ease-out;
+}
+.xp-body p {
+  margin: 0 0 0.45rem;
+}
+.xp-body p:last-child {
+  margin: 0;
+}
+.xp-body b {
+  color: var(--text);
+}
+
+/* Runalyze: marathon shape, paces, per-run VO2 */
+.rz-shape {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.rz-big {
+  display: flex;
+  align-items: baseline;
+}
+.rz-big b {
+  font-family: var(--display);
+  font-size: 3rem;
+  line-height: 1;
+}
+.rz-big.good b { color: var(--z-easy); }
+.rz-big.ok b { color: var(--z-threshold); }
+.rz-big.low b { color: var(--z-vo2); }
+.rz-parts {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.rz-parts > span {
+  display: grid;
+  grid-template-columns: 5.2rem 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 0.5rem;
+  align-items: center;
+}
+.rz-parts small {
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+.rz-parts em {
+  grid-column: 2;
+  font-style: normal;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.rz-bar {
+  height: 7px;
+  border-radius: 999px;
+  background: var(--track, var(--line));
+  overflow: hidden;
+}
+.rz-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transform-origin: left;
+  animation: grow-x 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.rz-paces {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+.rz-pace {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0.6rem;
+  border-radius: 12px;
+  background: var(--card-2);
+}
+.rz-pace b {
+  font-size: 0.8rem;
+}
+.rz-pace .num {
+  font-family: var(--display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.rz-pace small {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+.rz-runs {
+  display: flex;
+  flex-direction: column;
+}
+.rz-run {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+.rz-run:first-child {
+  border-top: 0;
+}
+.rz-run-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.rz-run-main b {
+  font-size: 0.88rem;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rz-run-main small {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+.rz-run-vals {
+  display: flex;
+  gap: 0.8rem;
+}
+.rz-run-vals span {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.rz-run-vals small {
+  color: var(--muted);
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+.rz-run-vals b {
+  font-family: var(--display);
+  font-size: 1.15rem;
+}
