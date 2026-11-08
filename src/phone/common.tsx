@@ -11,7 +11,7 @@ import { trimp } from "../modules/running/vo2";
 /** Where the phone is: a bottom tab, optionally with a page pushed on top (Health, Fitness). */
 export type Tab = "today" | "planner" | "training" | "runs" | "stats";
 export type Pushed = "health" | "fitness" | "plan" | "adjust" | "pbs" | "calendar" | "tasks" | "habits" | "settings" | "watch" | "weather" | "workout" | null;
-export const PhoneNav = createContext<{ tab: Tab; setTab: (t: Tab) => void; push: (p: Pushed) => void }>({ tab: "today", setTab: () => {}, push: () => {} });
+export const PhoneNav = createContext<{ tab: Tab; pushed?: Pushed; setTab: (t: Tab) => void; push: (p: Pushed) => void }>({ tab: "today", setTab: () => {}, push: () => {} });
 export const usePhoneNav = () => useContext(PhoneNav);
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

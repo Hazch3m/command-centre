@@ -8,13 +8,15 @@ import { mondayOf, upcomingRaces } from "../modules/running/plan";
 import { pacesFor } from "../modules/running/planBuilder";
 import { loadOverrides, setOverride } from "../modules/running/strava";
 import { useRunningData } from "../modules/running/useRunning";
-import { FOCUSES, specKm, specText, suggestFocus, suggestions, type Focus, type Spec } from "../modules/running/workoutLibrary";
+import { blocksOf, FOCUSES, setsOf, specKm, specText, suggestFocus, suggestions, withBlocks, withSets, type Block, type Focus, type RepSet, type Spec } from "../modules/running/workoutLibrary";
 import { SendToWatch } from "../modules/watch/SendToWatch";
 import { EffortProfile } from "./EffortProfile";
 import { Section, useReadiness } from "./common";
 
 const fmtP = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
 const CONTINUOUS: Focus[] = ["long", "easy", "recovery", "progression"];
+/** Sessions made of reps (sets of them). */
+const REPS: Focus[] = ["vo2", "threshold", "racepace", "fartlek", "hills"];
 
 /** Create a workout: what to work on, a suggestion at your paces, your tweaks, then the watch or the plan. */
 export function WorkoutCreator() {
@@ -106,20 +108,118 @@ export function WorkoutCreator() {
           <EffortProfile text={text} plan={plan} />
           <div className="p-session-text">{text.replace(/^\d+ km with /, "")}</div>
 
+          {/* Rep sessions: one card per set; add more (a fartlek ladder, a VO2 set then a faster one). */}
+          {REPS.includes(spec.focus) && (
+            <div className="wc-sets">
+              {setsOf(spec).map((x, k, all) => {
+                const putSet = (patch: Partial<RepSet>) => put(withSets(spec, all.map((y, n) => (n === k ? { ...y, ...patch } : y))));
+                return (
+                  <div key={k} className="wc-set">
+                    <div className="wc-set-head">
+                      <b>{all.length > 1 ? `Set ${k + 1}` : "The reps"}</b>
+                      {all.length > 1 && (
+                        <button type="button" className="wc-x" onClick={() => put(withSets(spec, all.filter((_, n) => n !== k)))} aria-label={`Remove set ${k + 1}`}>
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    <div className="wc-tweaks">
+                      <Stepper label="Reps" value={`${x.reps}`} dec={() => putSet({ reps: Math.max(1, x.reps - 1) })} inc={() => putSet({ reps: Math.min(30, x.reps + 1) })} />
+                      <Stepper
+                        label="Each rep"
+                        value={x.timed ? (x.size % 60 ? `${x.size} s` : `${x.size / 60} min`) : x.size >= 1000 ? `${+(x.size / 1000).toFixed(1)} km` : `${x.size} m`}
+                        dec={() => putSet({ size: Math.max(x.timed ? 15 : 100, x.size - (x.timed ? (x.size > 120 ? 60 : 15) : x.size >= 2000 ? 1000 : x.size >= 1000 ? 200 : 100)) })}
+                        inc={() => putSet({ size: x.size + (x.timed ? (x.size >= 120 ? 60 : 15) : x.size >= 2000 ? 1000 : x.size >= 1000 ? 200 : 100) })}
+                      />
+                      <div className="wc-step wc-unit">
+                        <span>Reps by</span>
+                        <span className="wc-seg">
+                          <button type="button" className={x.timed ? "on" : ""} onClick={() => !x.timed && putSet({ timed: true, size: 60 })}>
+                            time
+                          </button>
+                          <button type="button" className={!x.timed ? "on" : ""} onClick={() => x.timed && putSet({ timed: false, size: 400 })}>
+                            distance
+                          </button>
+                        </span>
+                      </div>
+                      {spec.focus !== "hills" && <Stepper label="Pace" value={x.pace ? `${fmtP(x.pace)}/km` : "by feel"} dec={() => putSet({ pace: (x.pace || paces.tenk) - 2 })} inc={() => putSet({ pace: (x.pace || paces.tenk) + 2 })} decLabel="Faster" incLabel="Slower" />}
+                      {spec.focus !== "hills" && x.reps > 1 && <Stepper label="Recovery" value={x.rec >= 60 && x.rec % 60 === 0 ? `${x.rec / 60} min jog` : `${x.rec} s jog`} dec={() => putSet({ rec: Math.max(15, x.rec - 15) })} inc={() => putSet({ rec: Math.min(600, x.rec + 15) })} />}
+                    </div>
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                className="wc-add"
+                onClick={() => {
+                  const all = setsOf(spec);
+                  const last = all[all.length - 1];
+                  // The next set: a step on (longer reps, or quicker for short ones), easy to change.
+                  const next: RepSet = last.timed ? { ...last, size: last.size >= 120 ? last.size + 60 : last.size * 2, pace: last.pace ? last.pace + 5 : 0, reps: Math.max(2, last.reps - 1) } : { ...last, pace: last.pace ? last.pace - 3 : 0 };
+                  put(withSets(spec, [...all, next]));
+                }}
+              >
+                + Add a set
+              </button>
+            </div>
+          )}
+
+          {/* Progression and long runs: an easy start, then each block (add as many as you like). */}
+          {(spec.focus === "progression" || spec.focus === "long") && (
+            <div className="wc-sets">
+              <div className="wc-tweaks">
+                <Stepper label="Distance" value={`${spec.km} km`} dec={() => put({ km: Math.max(blocksOf(spec).reduce((t, b) => t + b.km, 0) + 2, spec.km - 1) })} inc={() => put({ km: Math.min(45, spec.km + 1) })} />
+              </div>
+              <div className="wc-set wc-easy">
+                <div className="wc-set-head">
+                  <b>Easy start</b>
+                  <span className="num">{Math.max(0, +(spec.km - blocksOf(spec).reduce((t, b) => t + b.km, 0)).toFixed(1))} km</span>
+                </div>
+              </div>
+              {blocksOf(spec).map((b, k, all) => {
+                const putBlock = (patch: Partial<Block>) => put(withBlocks(spec, all.map((y, n) => (n === k ? { ...y, ...patch } : y))));
+                return (
+                  <div key={k} className="wc-set">
+                    <div className="wc-set-head">
+                      <b>{all.length > 1 ? `Block ${k + 1}` : spec.focus === "long" ? "Fast finish" : "Faster block"}</b>
+                      <button type="button" className="wc-x" onClick={() => put(withBlocks(spec, all.filter((_, n) => n !== k)))} aria-label={`Remove block ${k + 1}`} disabled={spec.focus === "progression" && all.length === 1}>
+                        Remove
+                      </button>
+                    </div>
+                    <div className="wc-tweaks">
+                      <Stepper label="Distance" value={`${b.km} km`} dec={() => putBlock({ km: Math.max(1, b.km - 1) })} inc={() => putBlock({ km: Math.min(30, b.km + 1) })} />
+                      <Stepper label="Pace" value={`${fmtP(b.pace)}/km`} dec={() => putBlock({ pace: b.pace - 2 })} inc={() => putBlock({ pace: b.pace + 2 })} decLabel="Faster" incLabel="Slower" />
+                    </div>
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                className="wc-add"
+                onClick={() => {
+                  const all = blocksOf(spec);
+                  const last = all[all.length - 1];
+                  // Each new block a little quicker than the last.
+                  const next: Block = last ? { km: Math.max(1, Math.min(last.km, 3)), pace: last.pace - 10 } : { km: 4, pace: Math.round(paces.mp + 8) };
+                  put(withBlocks(spec, [...all, next]));
+                }}
+              >
+                + Add a {blocksOf(spec).length ? "faster block" : "fast finish"}
+              </button>
+            </div>
+          )}
+
           <div className="wc-tweaks">
-            {!CONTINUOUS.includes(spec.focus) && spec.focus !== "tempo" && <Stepper label="Reps" value={`${spec.reps}`} dec={() => put({ reps: Math.max(1, spec.reps - 1) })} inc={() => put({ reps: Math.min(30, spec.reps + 1) })} />}
-            {!CONTINUOUS.includes(spec.focus) && (
+            {spec.focus === "tempo" && (
               <Stepper
-                label={spec.focus === "tempo" ? "Length" : "Each rep"}
-                value={spec.timed ? (spec.size % 60 ? `${spec.size} s` : `${spec.size / 60} min`) : spec.size >= 1000 ? `${+(spec.size / 1000).toFixed(1)} km` : `${spec.size} m`}
-                dec={() => put({ size: Math.max(spec.timed ? 15 : 100, spec.size - (spec.timed ? (spec.size > 120 ? 60 : 15) : spec.size >= 2000 ? 1000 : spec.size >= 1000 ? 200 : 100)) })}
-                inc={() => put({ size: spec.size + (spec.timed ? (spec.size >= 120 ? 60 : 15) : spec.size >= 2000 ? 1000 : spec.size >= 1000 ? 200 : 100) })}
+                label="Length"
+                value={`${spec.size / 60} min`}
+                dec={() => put({ size: Math.max(600, spec.size - 300) })}
+                inc={() => put({ size: Math.min(3600, spec.size + 300) })}
               />
             )}
-            {CONTINUOUS.includes(spec.focus) && <Stepper label="Distance" value={`${spec.km} km`} dec={() => put({ km: Math.max(3, spec.km - 1), fast: Math.min(spec.fast, Math.max(0, spec.km - 4)) })} inc={() => put({ km: Math.min(45, spec.km + 1) })} />}
-            {(spec.focus === "long" || spec.focus === "progression") && <Stepper label="Fast finish" value={spec.fast ? `last ${spec.fast} km` : "none"} dec={() => put({ fast: Math.max(spec.focus === "progression" ? 1 : 0, spec.fast - 1) })} inc={() => put({ fast: Math.min(spec.km - 3, spec.fast + 1), pace: spec.pace || Math.round(paces.mp + 8) })} />}
-            {spec.pace > 0 && (spec.focus !== "long" || spec.fast > 0) && <Stepper label="Pace" value={`${fmtP(spec.pace)}/km`} dec={() => put({ pace: spec.pace - 2 })} inc={() => put({ pace: spec.pace + 2 })} decLabel="Faster" incLabel="Slower" />}
-            {!CONTINUOUS.includes(spec.focus) && spec.focus !== "tempo" && spec.focus !== "hills" && spec.reps > 1 && <Stepper label="Recovery" value={spec.rec >= 60 && spec.rec % 60 === 0 ? `${spec.rec / 60} min jog` : `${spec.rec} s jog`} dec={() => put({ rec: Math.max(15, spec.rec - 15) })} inc={() => put({ rec: Math.min(600, spec.rec + 15) })} />}
+            {spec.focus === "tempo" && <Stepper label="Pace" value={`${fmtP(spec.pace)}/km`} dec={() => put({ pace: spec.pace - 2 })} inc={() => put({ pace: spec.pace + 2 })} decLabel="Faster" incLabel="Slower" />}
+            {(spec.focus === "easy" || spec.focus === "recovery") && <Stepper label="Distance" value={`${spec.km} km`} dec={() => put({ km: Math.max(3, spec.km - 1) })} inc={() => put({ km: Math.min(30, spec.km + 1) })} />}
             {!CONTINUOUS.includes(spec.focus) && <Stepper label="Warm-up" value={`${spec.warm} km`} dec={() => put({ warm: Math.max(1, spec.warm - 1) })} inc={() => put({ warm: Math.min(6, spec.warm + 1) })} />}
             {!CONTINUOUS.includes(spec.focus) && <Stepper label="Cool-down" value={`${spec.cool} km`} dec={() => put({ cool: Math.max(1, spec.cool - 1) })} inc={() => put({ cool: Math.min(6, spec.cool + 1) })} />}
             {spec.focus === "easy" && <Stepper label="Strides" value={`${spec.reps} × 20 s`} dec={() => put({ reps: Math.max(4, spec.reps - 1) })} inc={() => put({ reps: Math.min(10, spec.reps + 1) })} />}

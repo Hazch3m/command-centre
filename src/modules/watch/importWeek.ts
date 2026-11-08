@@ -85,28 +85,54 @@ export function sessionToWorkout(text: string, zones: Zones = {}): Omit<Draft, "
   const extra = strength ? ` Strength ${strength[1].toUpperCase()} after.` : "";
   const total = /^(?:easy\s+)?(\d+(?:\.\d+)?)\s*km\b/i.exec(s);
 
-  // Repeats: "4 × 6 min T at 3:46-3:50, 1 min jog", "8 × 10 s hill sprints", "10 × 1 min on, 1 min off".
-  const rep = /(\d+)\s*×\s*(\d+(?:\.\d+)?)\s*(km|m|min|s)\b(?!\s*strides)/i.exec(s);
-  if (rep) {
-    const after = s.slice(rep.index + rep[0].length);
-    const p = targetPace(after.split(",")[0] + " " + s, zones);
-    const rec = /(?:,|\+)\s*(\d+(?::\d{2})?(?:\.\d+)?)\s*(min|s|m)?\s*(?:jog|walk|rest|easy|off|recovery)/i.exec(after) ?? /(\d+(?::\d{2})?)\s*(min|s)?\s*(?:jog|off)/i.exec(after);
+  // Repeats: "4 × 6 min T at 3:46-3:50, 1 min jog", "8 × 10 s hill sprints", "10 × 1 min on, 1 min off";
+  // several sets in turn: "4 × 1 min at 3:40, 1 min jog; then 4 × 2 min at 3:55, 1 min jog".
+  const reps = [...s.matchAll(/(\d+)\s*×\s*(\d+(?:\.\d+)?)\s*(km|m|min|s)\b(?!\s*strides)/gi)];
+  if (reps.length) {
     const hills = /hill/i.test(s);
-    const recDur = rec ? (rec[1].includes(":") ? rec[1] : dur(rec[1], rec[2] ?? "min")) : hills ? "90s" : "2:00";
-    const work = step("interval", dur(rep[2], rep[3]), p ? pace(p) : "open", hills ? "Hill sprint: fast, tall, relaxed" : p ? `${paceText(p)}/km` : "Hard but controlled");
-    const reps = repeat(+rep[1], [work, step("recovery", recDur, "open", hills ? "Walk back down" : "Easy jog")]);
+    const sets = reps.map((rep, i) => {
+      const end = i + 1 < reps.length ? reps[i + 1].index! : s.length;
+      const after = s.slice(rep.index! + rep[0].length, end);
+      const p = targetPace(after.split(",")[0] + " " + (reps.length > 1 ? "" : s), zones) ?? (reps.length > 1 ? targetPace(s, zones) : null);
+      const rec = /(?:,|\+)\s*(\d+(?::\d{2})?(?:\.\d+)?)\s*(min|s|m)?\s*(?:jog|walk|rest|easy|off|recovery)/i.exec(after) ?? /(\d+(?::\d{2})?)\s*(min|s)?\s*(?:jog|off)/i.exec(after);
+      const recDur = rec ? (rec[1].includes(":") ? rec[1] : dur(rec[1], rec[2] ?? "min")) : hills ? "90s" : "2:00";
+      const work = step("interval", dur(rep[2], rep[3]), p ? pace(p) : "open", hills ? "Hill sprint: fast, tall, relaxed" : p ? `${paceText(p)}/km` : "Hard but controlled");
+      return { block: repeat(+rep[1], [work, step("recovery", recDur, "open", hills ? "Walk back down" : "Easy jog")]), p, label: `${rep[1]}×${durLabel(rep[2], rep[3])}`, after };
+    });
+    // Between sets: two easy minutes before the next one starts.
+    const middle: Item[] = sets.flatMap((x, i) => (i ? [step("recovery", "2:00", "open", "Easy between sets"), x.block] : [x.block]));
+    const p = sets[0].p;
     // Written in ("3 km warm-up … 2 km cool-down"), or 3 km and the rest to finish the run.
     const wu = /(\d+(?:\.\d+)?)\s*km warm-up/i.exec(s)?.[1];
     const warm = wu ? step("warmup", `${wu}km`, "hr zone 2", "Easy") : total ? step("warmup", "3km", "hr zone 2", "Easy") : step("warmup", "15:00", "hr zone 2", "Easy, build to steady");
     const cool = total ? step("cooldown", "lap", "hr zone 2", `Easy to finish the ${total[1]} km, then lap`) : step("cooldown", "10:00", "hr zone 2", "Easy");
     const kind = hills ? (/hill reps|hill strength/i.test(s) ? "Hill reps" : "Hill sprints") : /fartlek/i.test(s) ? "Fartlek" : /vo2/i.test(s) ? "VO2 max" : /\bT\b|threshold/i.test(s) ? "Threshold" : /\bHMP\b/.test(s) ? "HMP" : /\bMP\b/.test(s) ? "MP" : "Intervals";
-    const name = `${kind} ${rep[1]}×${durLabel(rep[2], rep[3])}${p ? ` @ ${paceText(p)}` : ""}`;
+    const name = sets.length > 1 ? `${kind} ${sets.map((x) => x.label).join(" + ")}` : `${kind} ${sets[0].label}${p ? ` @ ${paceText(p)}` : ""}`;
     return {
       name,
       sport: "running",
-      steps: [warm, reps, cool, ...strides(after.replace(rep[0], ""))],
-      description: `${raw}. ${hills ? "Full recovery between sprints." : p ? `Hit ${paceText(p)}/km from the first rep; even splits, the last should feel like the first.` : "Controlled effort."}${extra}`,
+      steps: [warm, ...middle, cool, ...strides(sets[sets.length - 1].after.replace(reps[reps.length - 1][0], ""))],
+      description: `${raw}. ${hills ? "Full recovery between sprints." : sets.length > 1 ? "Each set at its own pace; easy between sets." : p ? `Hit ${paceText(p)}/km from the first rep; even splits, the last should feel like the first.` : "Controlled effort."}${extra}`,
     };
+  }
+
+  // A run in steps: "15 km progression run: 5 km easy, 4 km at 4:40-4:46, 4 km at 4:25-4:31, 2 km at 4:10-4:16".
+  const stepped = /^(\d+(?:\.\d+)?)\s*km\s+(progression|long)(?:\s+run)?\s*:\s*(\d+(?:\.\d+)?)\s*km easy\s*,(.+)$/i.exec(s);
+  if (stepped) {
+    const blocks = [...stepped[4].matchAll(/(\d+(?:\.\d+)?)\s*km at\s*((?:HMP|MP|T)\b|\d:\d{2}(?:\s*[-–]\s*\d:\d{2})?)/gi)];
+    if (blocks.length) {
+      const steps: Item[] = [step("interval", `${stepped[3]}km`, "hr zone 2", "Easy start")];
+      for (const b of blocks) {
+        const p = targetPace(b[2], zones);
+        steps.push(step("interval", `${b[1]}km`, p ? pace(p) : "open", p ? `${paceText(p)}/km` : `${b[2]} effort`));
+      }
+      return {
+        name: `${/progression/i.test(stepped[2]) ? "Progression" : "Long"} ${stepped[1]} km: ${blocks.map((b) => b[1]).join("/")} km faster`,
+        sport: "running",
+        steps,
+        description: `${raw}. Each block a little quicker than the last; the easy start really easy.${extra}`,
+      };
+    }
   }
 
   // Long run with a faster finish or block: "28 km, last 6 at 4:05", "35 km, 22 at 3:58-4:02", "26 km, 14 at MP".

@@ -43,6 +43,37 @@ export interface Spec {
   /** Which race pace ("MP", "HMP", or none for 10k/5k). */
   raceTag?: "MP" | "HMP";
   name: string;
+  /** Rep sessions with more than one set ("4 × 1 min, then 4 × 2 min"): every set, the first included. */
+  sets?: RepSet[];
+  /** Progression and long runs in steps: each faster block after the easy start, in order. */
+  blocks?: Block[];
+}
+export interface RepSet {
+  reps: number;
+  size: number;
+  timed: boolean;
+  pace: number;
+  rec: number;
+}
+export interface Block {
+  km: number;
+  pace: number;
+}
+
+/** The sets of a rep session (one, unless you've added more). */
+export const setsOf = (sp: Spec): RepSet[] => sp.sets ?? [{ reps: sp.reps, size: sp.size, timed: sp.timed, pace: sp.pace, rec: sp.rec }];
+/** The faster blocks of a progression or long run (none for a plain long run). */
+export const blocksOf = (sp: Spec): Block[] => sp.blocks ?? (sp.fast > 0 ? [{ km: sp.fast, pace: sp.pace }] : []);
+/** A spec with its sets changed; the first set stays mirrored in the plain fields. */
+export function withSets(sp: Spec, sets: RepSet[]): Spec {
+  const [a] = sets;
+  return { ...sp, sets: sets.length > 1 ? sets : undefined, reps: a.reps, size: a.size, timed: a.timed, pace: a.pace, rec: a.rec };
+}
+/** A spec with its blocks changed (the total distance grows to fit them with a 2 km easy start). */
+export function withBlocks(sp: Spec, blocks: Block[]): Spec {
+  const fast = blocks.reduce((t, b) => t + b.km, 0);
+  const km = Math.max(sp.km, fast + 2);
+  return { ...sp, km, blocks: blocks.length > 1 ? blocks : undefined, fast: blocks.length ? fast : 0, pace: blocks.length ? blocks[blocks.length - 1].pace : sp.pace };
 }
 
 const fmtP = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
@@ -54,13 +85,39 @@ const LABEL: Partial<Record<Focus, string>> = { vo2: "VO2 max", threshold: "Thre
 /** Distance a spec covers (warm-up, work, jogs, cool-down), km. */
 export function specKm(sp: Spec): number {
   if (["long", "easy", "recovery", "progression"].includes(sp.focus)) return sp.km;
-  const work = sp.timed ? (sp.reps * sp.size) / (sp.pace || 240) : (sp.reps * sp.size) / 1000;
-  const jogs = (Math.max(0, sp.reps - 1) * (sp.rec || 90)) / 360;
+  let work = 0;
+  let jogs = 0;
+  for (const x of setsOf(sp)) {
+    work += x.timed ? (x.reps * x.size) / (x.pace || 240) : (x.reps * x.size) / 1000;
+    jogs += (Math.max(0, x.reps - 1) * (x.rec || 90)) / 360;
+  }
+  // A couple of easy minutes between sets.
+  jogs += (setsOf(sp).length - 1) * 0.4;
   return Math.round(sp.warm + sp.cool + work + jogs);
+}
+
+const lenOf = (x: RepSet) => fmtLen({ timed: x.timed, size: x.size } as Spec);
+/** One set in words: "4 × 1 min at 3:38–3:42, 1 min jog". */
+function setText(sp: Spec, x: RepSet): string {
+  const tag = sp.focus === "racepace" && sp.raceTag ? `${sp.raceTag} ` : "";
+  if (sp.focus === "hills") return `${x.reps} × ${lenOf(x)} hill reps, jog back down`;
+  const at = x.pace > 0 ? ` at ${tag}${around(x.pace)}` : "";
+  return `${x.reps} × ${lenOf(x)}${sp.focus === "fartlek" ? " fartlek" : x.timed && sp.focus === "threshold" ? " T" : ""}${at}, ${fmtRec(x.rec)}`;
 }
 
 /** The workout in the plan's words. */
 export function specText(sp: Spec): string {
+  // Several sets: each in turn, "then" between them.
+  if (sp.sets && sp.sets.length > 1 && !["long", "easy", "recovery", "progression", "tempo"].includes(sp.focus)) {
+    const label = sp.focus === "fartlek" ? "Fartlek" : LABEL[sp.focus] ?? "Intervals";
+    return `${specKm(sp)} km with ${sp.warm} km warm-up, ${label}: ${sp.sets.map((x) => setText(sp, x)).join("; then ")}; ${sp.cool} km cool-down`;
+  }
+  // Progression or long run in steps: an easy start, then each block faster.
+  if (sp.blocks && sp.blocks.length > 1 && (sp.focus === "progression" || sp.focus === "long")) {
+    const fast = sp.blocks.reduce((t, b) => t + b.km, 0);
+    const easy = Math.max(0, +(sp.km - fast).toFixed(1));
+    return `${sp.km} km ${sp.focus === "long" ? "long run" : "progression run"}: ${easy} km easy, ${sp.blocks.map((b) => `${b.km} km at ${around(b.pace, 3)}`).join(", ")}`;
+  }
   switch (sp.focus) {
     case "long":
       return sp.fast > 0 ? `${sp.km} km long run, last ${sp.fast} at ${around(sp.pace, 3)}` : `${sp.km} km long run`;

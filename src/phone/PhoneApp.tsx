@@ -119,7 +119,7 @@ export function PhoneApp() {
     setPushed(p);
     resetPageScroll();
   };
-  const phoneNav = useMemo(() => ({ tab, setTab, push }), [tab]);
+  const phoneNav = useMemo(() => ({ tab, pushed, setTab, push }), [tab, pushed]);
   const mainRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     const t = window.setTimeout(() => {
