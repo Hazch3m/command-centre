@@ -57,7 +57,7 @@ export function goalOptions(plan: Plan, today: string): { options: GoalOption[];
   };
 }
 /** The race to judge an option on: a plan race as it is, a standard distance on your main race's date (or 12 weeks out). */
-export function raceFor(opt: GoalOption, mainDate: string | undefined, goals: Record<string, number>, today: string) {
+export function raceFor(opt: GoalOption, mainDate: string | null | undefined, goals: Record<string, number>, today: string) {
   if (opt.race) return opt.race;
   const goal = goals[opt.id];
   return { date: mainDate ?? addDays(today, 84), name: STANDARD.find((s) => s.id === opt.id)!.name, km: opt.km, target: goal ? fmtTime(goal) : "", elevation: undefined };

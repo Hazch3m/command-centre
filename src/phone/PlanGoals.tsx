@@ -52,7 +52,7 @@ export function GoalCarousel({ plan }: { plan: Plan }) {
   );
 }
 
-function GoalCard({ opt, mainDate, goals, active, onTap }: { opt: GoalOption; mainDate?: string; goals: Record<string, number>; active: boolean; onTap: () => void }) {
+function GoalCard({ opt, mainDate, goals, active, onTap }: { opt: GoalOption; mainDate?: string | null; goals: Record<string, number>; active: boolean; onTap: () => void }) {
   const today = useToday();
   const { plan } = useRunningData();
   const race = useMemo(
@@ -100,7 +100,7 @@ function GoalCard({ opt, mainDate, goals, active, onTap }: { opt: GoalOption; ma
   );
 }
 
-function GoalReadiness({ plan, opt, mainDate, goals }: { plan: Plan; opt: GoalOption; mainDate?: string; goals: Record<string, number> }) {
+function GoalReadiness({ plan, opt, mainDate, goals }: { plan: Plan; opt: GoalOption; mainDate?: string | null; goals: Record<string, number> }) {
   const today = useToday();
   const race = useMemo(() => raceFor(opt, mainDate, goals, today), [opt, mainDate, goals, today]);
   const r = useReadiness(plan, race);
