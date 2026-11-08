@@ -85,10 +85,10 @@ async function draw(polyline: string, w: number, h: number, accent: string): Pro
     type: "FeatureCollection" as const,
     features: [pts[0], pts[pts.length - 1]].map(([a, b], i) => ({ type: "Feature" as const, properties: { end: i }, geometry: { type: "Point" as const, coordinates: [b, a] } })),
   };
-  const src = m.getSource("snap") as { setData?: (d: unknown) => void } | undefined;
+  const src = m.getSource("snap") as unknown as { setData?: (d: unknown) => void } | undefined;
   if (src?.setData) {
     src.setData(line);
-    (m.getSource("snap-ends") as { setData: (d: unknown) => void }).setData(ends);
+    (m.getSource("snap-ends") as unknown as { setData: (d: unknown) => void }).setData(ends);
     m.setPaintProperty("snap-line", "line-color", accent);
   } else {
     m.addSource("snap", { type: "geojson", data: line });
