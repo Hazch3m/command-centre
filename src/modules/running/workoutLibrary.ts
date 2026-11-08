@@ -7,12 +7,13 @@ import type { Paces } from "./planBuilder";
  * VO2 max: 6 × 800 m at 3:28–3:32, 90 s jog, 2 km cool-down"), so the watch,
  * the plan and Pace on point all understand it.
  */
-export type Focus = "vo2" | "threshold" | "tempo" | "racepace" | "fartlek" | "hills" | "progression" | "long" | "easy" | "recovery";
+export type Focus = "vo2" | "threshold" | "tempo" | "overunder" | "racepace" | "fartlek" | "hills" | "progression" | "long" | "easy" | "recovery";
 
 export const FOCUSES: { id: Focus; label: string; what: string; zone: "vo2" | "threshold" | "race" | "long" | "easy" }[] = [
   { id: "vo2", label: "VO2 max", what: "Speed and top-end aerobic power: short, hard reps at 3k–5k pace", zone: "vo2" },
   { id: "threshold", label: "Threshold", what: "Hold a hard pace for longer: reps at the pace you could race for an hour", zone: "threshold" },
   { id: "tempo", label: "Tempo", what: "One continuous block at threshold: steady and strong", zone: "threshold" },
+  { id: "overunder", label: "Over-unders", what: "Threshold with surges: just under, then just over, so you learn to clear lactate on the move", zone: "threshold" },
   { id: "racepace", label: "Race pace", what: "Rehearse your goal race's pace until it feels routine", zone: "race" },
   { id: "fartlek", label: "Fartlek", what: "Minutes on, minutes off: varied, playful, by feel", zone: "vo2" },
   { id: "hills", label: "Hills", what: "Strength and form: hard uphill reps, jog back down", zone: "vo2" },
@@ -40,6 +41,8 @@ export interface Spec {
   km: number;
   /** Fast finish for long runs and progression runs, km. */
   fast: number;
+  /** Recovery as a float at this pace (s/km) instead of a jog: fartleks. */
+  float?: number;
   /** Which race pace ("MP", "HMP", or none for 10k/5k). */
   raceTag?: "MP" | "HMP";
   name: string;
@@ -47,6 +50,8 @@ export interface Spec {
   sets?: RepSet[];
   /** Progression and long runs in steps: each faster block after the easy start, in order. */
   blocks?: Block[];
+  /** Over-unders: `reps` blocks of these, `rec` between blocks. */
+  ou?: OverUnder;
 }
 export interface RepSet {
   reps: number;
@@ -54,6 +59,16 @@ export interface RepSet {
   timed: boolean;
   pace: number;
   rec: number;
+  /** Recovery as a float at this pace (s/km) instead of a jog: fartleks. */
+  float?: number;
+}
+/** Over-unders: blocks of `pairs` × (under, over) around threshold. */
+export interface OverUnder {
+  pairs: number;
+  under: number;
+  over: number;
+  underPace: number;
+  overPace: number;
 }
 export interface Block {
   km: number;
@@ -61,13 +76,13 @@ export interface Block {
 }
 
 /** The sets of a rep session (one, unless you've added more). */
-export const setsOf = (sp: Spec): RepSet[] => sp.sets ?? [{ reps: sp.reps, size: sp.size, timed: sp.timed, pace: sp.pace, rec: sp.rec }];
+export const setsOf = (sp: Spec): RepSet[] => sp.sets ?? [{ reps: sp.reps, size: sp.size, timed: sp.timed, pace: sp.pace, rec: sp.rec, float: sp.float }];
 /** The faster blocks of a progression or long run (none for a plain long run). */
 export const blocksOf = (sp: Spec): Block[] => sp.blocks ?? (sp.fast > 0 ? [{ km: sp.fast, pace: sp.pace }] : []);
 /** A spec with its sets changed; the first set stays mirrored in the plain fields. */
 export function withSets(sp: Spec, sets: RepSet[]): Spec {
   const [a] = sets;
-  return { ...sp, sets: sets.length > 1 ? sets : undefined, reps: a.reps, size: a.size, timed: a.timed, pace: a.pace, rec: a.rec };
+  return { ...sp, sets: sets.length > 1 ? sets : undefined, reps: a.reps, size: a.size, timed: a.timed, pace: a.pace, rec: a.rec, float: a.float };
 }
 /** A spec with its blocks changed (the total distance grows to fit them with a 2 km easy start). */
 export function withBlocks(sp: Spec, blocks: Block[]): Spec {
@@ -80,16 +95,24 @@ const fmtP = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).
 const around = (s: number, d = 2) => `${fmtP(s - d)}–${fmtP(s + d)}`;
 const fmtLen = (sp: Spec) => (sp.timed ? (sp.size >= 60 && sp.size % 60 === 0 ? `${sp.size / 60} min` : `${sp.size} s`) : sp.size >= 1000 ? `${+(sp.size / 1000).toFixed(1)} km` : `${sp.size} m`);
 const fmtRec = (sec: number) => (sec === 0 ? "jog back down" : sec >= 60 && sec % 60 === 0 ? `${sec / 60} min jog` : `${sec} s jog`);
+const fmtSecs = (sec: number) => (sec >= 60 && sec % 60 === 0 ? `${sec / 60} min` : `${sec} s`);
+/** "1 min jog", or a float: "1 min float at 4:28–4:34". */
+const recText = (sec: number, float?: number) => (float ? `${fmtSecs(sec)} float at ${around(float, 3)}` : fmtRec(sec));
 const LABEL: Partial<Record<Focus, string>> = { vo2: "VO2 max", threshold: "Threshold", tempo: "Threshold tempo", racepace: "Race pace", hills: "Hill strength" };
 
 /** Distance a spec covers (warm-up, work, jogs, cool-down), km. */
 export function specKm(sp: Spec): number {
   if (["long", "easy", "recovery", "progression"].includes(sp.focus)) return sp.km;
+  if (sp.focus === "overunder" && sp.ou) {
+    const o = sp.ou;
+    const work = sp.reps * o.pairs * (o.under / o.underPace + o.over / o.overPace);
+    return Math.round(sp.warm + sp.cool + work + ((sp.reps - 1) * sp.rec) / 360);
+  }
   let work = 0;
   let jogs = 0;
   for (const x of setsOf(sp)) {
     work += x.timed ? (x.reps * x.size) / (x.pace || 240) : (x.reps * x.size) / 1000;
-    jogs += (Math.max(0, x.reps - 1) * (x.rec || 90)) / 360;
+    jogs += (Math.max(0, x.reps - 1) * (x.rec || 90)) / (x.float || 360);
   }
   // A couple of easy minutes between sets.
   jogs += (setsOf(sp).length - 1) * 0.4;
@@ -102,7 +125,7 @@ function setText(sp: Spec, x: RepSet): string {
   const tag = sp.focus === "racepace" && sp.raceTag ? `${sp.raceTag} ` : "";
   if (sp.focus === "hills") return `${x.reps} × ${lenOf(x)} hill reps, jog back down`;
   const at = x.pace > 0 ? ` at ${tag}${around(x.pace)}` : "";
-  return `${x.reps} × ${lenOf(x)}${sp.focus === "fartlek" ? " fartlek" : x.timed && sp.focus === "threshold" ? " T" : ""}${at}, ${fmtRec(x.rec)}`;
+  return `${x.reps} × ${lenOf(x)}${sp.focus === "fartlek" ? " fartlek" : x.timed && sp.focus === "threshold" ? " T" : ""}${at}, ${recText(x.rec, x.float)}`;
 }
 
 /** The workout in the plan's words. */
@@ -135,7 +158,11 @@ export function specText(sp: Spec): string {
       return `${specKm(sp)} km with ${sp.warm} km warm-up, ${LABEL.racepace}: ${work}, ${sp.cool} km cool-down`;
     }
     case "fartlek":
-      return `${specKm(sp)} km with ${sp.warm} km warm-up, ${sp.reps} × ${fmtLen(sp)} fartlek at ${around(sp.pace)}, ${fmtRec(sp.rec)}, ${sp.cool} km cool-down`;
+      return `${specKm(sp)} km with ${sp.warm} km warm-up, ${sp.reps} × ${fmtLen(sp)} fartlek at ${around(sp.pace)}, ${recText(sp.rec, sp.float)}, ${sp.cool} km cool-down`;
+    case "overunder": {
+      const o = sp.ou!;
+      return `${specKm(sp)} km with ${sp.warm} km warm-up, Threshold over-unders: ${sp.reps} × (${o.pairs} × ${fmtSecs(o.under)} at ${around(o.underPace)} + ${fmtSecs(o.over)} at ${around(o.overPace)}), ${fmtRec(sp.rec)}, ${sp.cool} km cool-down`;
+    }
     case "hills":
       return `${specKm(sp)} km with ${sp.warm} km warm-up, ${LABEL.hills}: ${sp.reps} × ${fmtLen(sp)} hill reps, jog back down, ${sp.cool} km cool-down`;
     default:
@@ -197,13 +224,24 @@ export function suggestions(focus: Focus, p: Paces, raceDist: "marathon" | "half
       );
     }
     case "fartlek":
+      // Floats, not jogs: the recoveries stay brisk (around marathon pace), so the whole run keeps moving.
       return each((s) =>
         s === "short"
-          ? { name: "10 × 1 min", reps: 10, size: 60, timed: true, pace: Math.round(p.fivek), rec: 60 }
+          ? { name: "10 × 1 min, 1 min float", reps: 10, size: 60, timed: true, pace: Math.round(p.fivek), rec: 60, float: Math.round(p.mp + 15) }
           : s === "classic"
-            ? { name: "8 × 2 min", reps: 8, size: 120, timed: true, pace: Math.round(p.tenk), rec: 60 }
-            : { name: "6 × 4 min", reps: 6, size: 240, timed: true, pace: Math.round(p.threshold + 3), rec: 120 },
+            ? { name: "8 × 2 min, 1 min float", reps: 8, size: 120, timed: true, pace: Math.round(p.tenk), rec: 60, float: Math.round(p.mp + 10) }
+            : { name: "6 × 4 min, 2 min float", reps: 6, size: 240, timed: true, pace: Math.round(p.threshold + 3), rec: 120, float: Math.round(p.mp + 5) },
       );
+    case "overunder": {
+      const ou = (pairs: number, under: number, over: number): OverUnder => ({ pairs, under, over, underPace: Math.round(p.threshold + 6), overPace: Math.round(p.threshold - 8) });
+      return each((s) =>
+        s === "short"
+          ? { name: "3 × (3 × 90 s / 30 s)", reps: 3, rec: 120, ou: ou(3, 90, 30) }
+          : s === "classic"
+            ? { name: "3 × (4 × 2 min / 1 min)", reps: 3, rec: 120, ou: ou(4, 120, 60) }
+            : { name: "2 × (5 × 3 min / 1 min)", reps: 2, rec: 180, ou: ou(5, 180, 60) },
+      );
+    }
     case "hills":
       return each((s) =>
         s === "short"
@@ -231,12 +269,15 @@ export function suggestFocus(o: {
   hardDaysAgo: number | null;
   planToday: string | null;
   longDaysAgo: number | null;
+  /** What your last four weeks are short of (Garmin-style load focus), as a workout to fill it. */
+  loadShort?: { focus: Focus; why: string } | null;
 }): { focus: Focus; why: string } {
   if (o.readiness != null && o.readiness < 40) return { focus: "recovery", why: `Readiness is ${o.readiness}: keep today very easy.` };
   if (o.hardDaysAgo != null && o.hardDaysAgo <= 1) return { focus: "easy", why: "You ran a hard session in the last day or two: easy running lets it pay off." };
   if (o.planToday && /VO2|× .*m at|fartlek/i.test(o.planToday)) return { focus: "vo2", why: "Your plan has speed work today." };
   if (o.planToday && /threshold|tempo|\bT\b/i.test(o.planToday)) return { focus: "threshold", why: "Your plan has a threshold session today." };
   if (o.planToday && /long run/i.test(o.planToday)) return { focus: "long", why: "Your plan has a long run today." };
+  if (o.loadShort) return o.loadShort;
   if (o.longDaysAgo == null || o.longDaysAgo >= 7) return { focus: "long", why: "No long run for a week or more: time on your feet builds endurance." };
   if (o.hardDaysAgo == null || o.hardDaysAgo >= 4) return { focus: "threshold", why: `No hard session for ${o.hardDaysAgo ?? "a few"} days: a threshold session is the best value for fitness.` };
   return { focus: "fartlek", why: "Fresh and in a good rhythm: a fartlek keeps speed fun." };

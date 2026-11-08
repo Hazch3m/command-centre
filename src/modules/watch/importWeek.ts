@@ -85,6 +85,23 @@ export function sessionToWorkout(text: string, zones: Zones = {}): Omit<Draft, "
   const extra = strength ? ` Strength ${strength[1].toUpperCase()} after.` : "";
   const total = /^(?:easy\s+)?(\d+(?:\.\d+)?)\s*km\b/i.exec(s);
 
+  // Over-unders: "Threshold over-unders: 3 × (4 × 2 min at 3:58-4:02 + 1 min at 3:38-3:42), 2 min jog".
+  const ou = /over-unders?:\s*(\d+)\s*×\s*\(\s*(\d+)\s*×\s*(\d+(?:\.\d+)?)\s*(min|s)\s*at\s*(\d:\d{2}(?:\s*[-–]\s*\d:\d{2})?)\s*\+\s*(\d+(?:\.\d+)?)\s*(min|s)\s*at\s*(\d:\d{2}(?:\s*[-–]\s*\d:\d{2})?)\s*\)(?:\s*,\s*(\d+(?:\.\d+)?)\s*(min|s)\s*jog)?/i.exec(s);
+  if (ou) {
+    const under = paceIn(ou[5])!;
+    const over = paceIn(ou[8])!;
+    const pair = repeat(+ou[2], [step("interval", dur(ou[3], ou[4]), pace(under), `Under: ${paceText(under)}/km, controlled`), step("interval", dur(ou[6], ou[7]), pace(over), `Over: ${paceText(over)}/km, a surge`)]);
+    const rest = step("recovery", ou[9] ? dur(ou[9], ou[10]) : "2:00", "open", "Easy jog");
+    const middle: Item[] = Array.from({ length: +ou[1] }, (_, i) => (i ? [rest, { ...pair, id: `${pair.id}-${i}` }] : [pair])).flat();
+    const wu = /(\d+(?:\.\d+)?)\s*km warm-up/i.exec(s)?.[1];
+    return {
+      name: `Over-unders ${ou[1]}×(${ou[2]}×${durLabel(ou[3], ou[4])}/${durLabel(ou[6], ou[7])})`,
+      sport: "running",
+      steps: [step("warmup", wu ? `${wu}km` : "3km", "hr zone 2", "Easy"), ...middle, total ? step("cooldown", "lap", "hr zone 2", `Easy to finish the ${total[1]} km, then lap`) : step("cooldown", "10:00", "hr zone 2", "Easy")],
+      description: `${raw}. The "under" just below threshold, the "over" a controlled surge just above; don't slow right down after the surge.${extra}`,
+    };
+  }
+
   // Repeats: "4 × 6 min T at 3:46-3:50, 1 min jog", "8 × 10 s hill sprints", "10 × 1 min on, 1 min off";
   // several sets in turn: "4 × 1 min at 3:40, 1 min jog; then 4 × 2 min at 3:55, 1 min jog".
   const reps = [...s.matchAll(/(\d+)\s*×\s*(\d+(?:\.\d+)?)\s*(km|m|min|s)\b(?!\s*strides)/gi)];
@@ -95,9 +112,13 @@ export function sessionToWorkout(text: string, zones: Zones = {}): Omit<Draft, "
       const after = s.slice(rep.index! + rep[0].length, end);
       const p = targetPace(after.split(",")[0] + " " + (reps.length > 1 ? "" : s), zones) ?? (reps.length > 1 ? targetPace(s, zones) : null);
       const rec = /(?:,|\+)\s*(\d+(?::\d{2})?(?:\.\d+)?)\s*(min|s|m)?\s*(?:jog|walk|rest|easy|off|recovery)/i.exec(after) ?? /(\d+(?::\d{2})?)\s*(min|s)?\s*(?:jog|off)/i.exec(after);
-      const recDur = rec ? (rec[1].includes(":") ? rec[1] : dur(rec[1], rec[2] ?? "min")) : hills ? "90s" : "2:00";
+      // A float: the recovery at a pace ("1 min float at 4:28-4:34"), not a jog.
+      const fl = /(\d+(?:\.\d+)?)\s*(min|s)\s*float(?:\s*at\s*(\d:\d{2}(?:\s*[-–]\s*\d:\d{2})?))?/i.exec(after);
+      const recDur = fl ? dur(fl[1], fl[2]) : rec ? (rec[1].includes(":") ? rec[1] : dur(rec[1], rec[2] ?? "min")) : hills ? "90s" : "2:00";
+      const fp = fl?.[3] ? paceIn(fl[3]) : null;
       const work = step("interval", dur(rep[2], rep[3]), p ? pace(p) : "open", hills ? "Hill sprint: fast, tall, relaxed" : p ? `${paceText(p)}/km` : "Hard but controlled");
-      return { block: repeat(+rep[1], [work, step("recovery", recDur, "open", hills ? "Walk back down" : "Easy jog")]), p, label: `${rep[1]}×${durLabel(rep[2], rep[3])}`, after };
+      const back = fl ? step("recovery", recDur, fp ? pace(fp) : "open", fp ? `Float: ${paceText(fp)}/km, keep moving` : "Float: steady, keep moving") : step("recovery", recDur, "open", hills ? "Walk back down" : "Easy jog");
+      return { block: repeat(+rep[1], [work, back]), p, label: `${rep[1]}×${durLabel(rep[2], rep[3])}`, after };
     });
     // Between sets: two easy minutes before the next one starts.
     const middle: Item[] = sets.flatMap((x, i) => (i ? [step("recovery", "2:00", "open", "Easy between sets"), x.block] : [x.block]));

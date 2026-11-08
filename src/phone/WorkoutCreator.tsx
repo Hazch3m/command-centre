@@ -11,6 +11,8 @@ import { useRunningData } from "../modules/running/useRunning";
 import { blocksOf, FOCUSES, setsOf, specKm, specText, suggestFocus, suggestions, withBlocks, withSets, type Block, type Focus, type RepSet, type Spec } from "../modules/running/workoutLibrary";
 import { SendToWatch } from "../modules/watch/SendToWatch";
 import { EffortProfile } from "./EffortProfile";
+import { PlannedFocus, useFocusBasis } from "./Focus";
+import { FILL, loadFocus } from "../modules/running/trainingFocus";
 import { Section, useReadiness } from "./common";
 
 const fmtP = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
@@ -33,6 +35,8 @@ export function WorkoutCreator() {
   const nextRace = plan ? upcomingRaces(plan, today)[0] : null;
   const raceDist = !nextRace ? "marathon" : /half/i.test(nextRace.name) ? "half" : /10\s?k/i.test(nextRace.name) ? "10k" : /5\s?k/i.test(nextRace.name) ? "5k" : "marathon";
 
+  const basis = useFocusBasis();
+  const lf = useMemo(() => (basis.ready ? loadFocus(runs, basis.details, basis.zones, basis.cuts, today) : null), [basis, runs, today]);
   // What to work on today: readiness, your last hard session and long run, and the plan.
   const tip = useMemo(() => {
     if (!plan) return null;
@@ -41,10 +45,19 @@ export function WorkoutCreator() {
     const hard = days.filter((d) => d.date < today && d.kind === "key" && d.runs.length).map((d) => d.date).sort().pop();
     const long = runs.filter((r) => r.date < today && r.distance >= 18000).map((r) => r.date).sort().pop();
     const planToday = days.find((d) => d.date === today);
-    return suggestFocus({ readiness: ready?.score ?? null, hardDaysAgo: hard ? ago(hard) : null, longDaysAgo: long ? ago(long) : null, planToday: planToday?.km ? planToday.text : null });
-  }, [plan, runs, overrides, today, ready?.score]);
+    return suggestFocus({ readiness: ready?.score ?? null, hardDaysAgo: hard ? ago(hard) : null, longDaysAgo: long ? ago(long) : null, planToday: planToday?.km ? planToday.text : null, loadShort: lf?.short ? FILL[lf.short][0] : null });
+  }, [plan, runs, overrides, today, ready?.score, lf?.short]);
 
-  const [focus, setFocus] = useState<Focus | null>(null);
+  // A focus picked elsewhere (the load focus card's suggestion) opens here.
+  const [focus, setFocus] = useState<Focus | null>(() => {
+    try {
+      const f = sessionStorage.getItem("cc-wc-focus") as Focus | null;
+      sessionStorage.removeItem("cc-wc-focus");
+      return f && FOCUSES.some((x) => x.id === f) ? f : null;
+    } catch {
+      return null;
+    }
+  });
   const active = focus ?? tip?.focus ?? "threshold";
   const options = useMemo(() => (paces ? suggestions(active, paces, raceDist) : []), [active, paces, raceDist]);
   const [picked, setPicked] = useState<Spec | null>(null);
@@ -90,6 +103,7 @@ export function WorkoutCreator() {
                 <span className="num">{specKm(o)} km</span>
               </span>
               <EffortProfile text={specText(o)} plan={plan} height={30} />
+              <PlannedFocus text={specText(o)} compact />
             </button>
           );
         })}
@@ -106,6 +120,7 @@ export function WorkoutCreator() {
             <small>km</small>
           </div>
           <EffortProfile text={text} plan={plan} />
+          <PlannedFocus text={text} label="Training focus" />
           <div className="p-session-text">{text.replace(/^\d+ km with /, "")}</div>
 
           {/* Rep sessions: one card per set; add more (a fartlek ladder, a VO2 set then a faster one). */}
@@ -143,7 +158,28 @@ export function WorkoutCreator() {
                         </span>
                       </div>
                       {spec.focus !== "hills" && <Stepper label="Pace" value={x.pace ? `${fmtP(x.pace)}/km` : "by feel"} dec={() => putSet({ pace: (x.pace || paces.tenk) - 2 })} inc={() => putSet({ pace: (x.pace || paces.tenk) + 2 })} decLabel="Faster" incLabel="Slower" />}
-                      {spec.focus !== "hills" && x.reps > 1 && <Stepper label="Recovery" value={x.rec >= 60 && x.rec % 60 === 0 ? `${x.rec / 60} min jog` : `${x.rec} s jog`} dec={() => putSet({ rec: Math.max(15, x.rec - 15) })} inc={() => putSet({ rec: Math.min(600, x.rec + 15) })} />}
+                      {spec.focus !== "hills" && x.reps > 1 && (
+                        <Stepper
+                          label="Recovery"
+                          value={`${x.rec >= 60 && x.rec % 60 === 0 ? `${x.rec / 60} min` : `${x.rec} s`} ${x.float ? "float" : "jog"}`}
+                          dec={() => putSet({ rec: Math.max(15, x.rec - 15) })}
+                          inc={() => putSet({ rec: Math.min(600, x.rec + 15) })}
+                        />
+                      )}
+                      {spec.focus !== "hills" && x.reps > 1 && (
+                        <div className="wc-step wc-unit">
+                          <span>Recovery as</span>
+                          <span className="wc-seg">
+                            <button type="button" className={!x.float ? "on" : ""} onClick={() => putSet({ float: undefined })}>
+                              jog
+                            </button>
+                            <button type="button" className={x.float ? "on" : ""} onClick={() => !x.float && putSet({ float: Math.round(paces.mp + 12) })}>
+                              float
+                            </button>
+                          </span>
+                        </div>
+                      )}
+                      {x.float ? <Stepper label="Float pace" value={`${fmtP(x.float)}/km`} dec={() => putSet({ float: x.float! - 3 })} inc={() => putSet({ float: x.float! + 3 })} decLabel="Faster" incLabel="Slower" /> : null}
                     </div>
                   </div>
                 );
@@ -161,6 +197,29 @@ export function WorkoutCreator() {
               >
                 + Add a set
               </button>
+            </div>
+          )}
+
+          {/* Over-unders: blocks of under/over pairs around threshold. */}
+          {spec.focus === "overunder" && spec.ou && (
+            <div className="wc-sets">
+              <div className="wc-set">
+                <div className="wc-set-head">
+                  <b>Each block</b>
+                  <span className="num">
+                    {spec.ou.pairs} × ({spec.ou.under >= 60 ? `${spec.ou.under / 60} min` : `${spec.ou.under} s`} under + {spec.ou.over >= 60 ? `${spec.ou.over / 60} min` : `${spec.ou.over} s`} over)
+                  </span>
+                </div>
+                <div className="wc-tweaks">
+                  <Stepper label="Blocks" value={`${spec.reps}`} dec={() => put({ reps: Math.max(1, spec.reps - 1) })} inc={() => put({ reps: Math.min(6, spec.reps + 1) })} />
+                  <Stepper label="Pairs per block" value={`${spec.ou.pairs}`} dec={() => put({ ou: { ...spec.ou!, pairs: Math.max(2, spec.ou!.pairs - 1) } })} inc={() => put({ ou: { ...spec.ou!, pairs: Math.min(10, spec.ou!.pairs + 1) } })} />
+                  <Stepper label="Under" value={spec.ou.under >= 60 && spec.ou.under % 60 === 0 ? `${spec.ou.under / 60} min` : `${spec.ou.under} s`} dec={() => put({ ou: { ...spec.ou!, under: Math.max(30, spec.ou!.under - 30) } })} inc={() => put({ ou: { ...spec.ou!, under: Math.min(600, spec.ou!.under + 30) } })} />
+                  <Stepper label="Under pace" value={`${fmtP(spec.ou.underPace)}/km`} dec={() => put({ ou: { ...spec.ou!, underPace: spec.ou!.underPace - 2 } })} inc={() => put({ ou: { ...spec.ou!, underPace: spec.ou!.underPace + 2 } })} decLabel="Faster" incLabel="Slower" />
+                  <Stepper label="Over" value={spec.ou.over >= 60 && spec.ou.over % 60 === 0 ? `${spec.ou.over / 60} min` : `${spec.ou.over} s`} dec={() => put({ ou: { ...spec.ou!, over: Math.max(15, spec.ou!.over - 15) } })} inc={() => put({ ou: { ...spec.ou!, over: Math.min(300, spec.ou!.over + 15) } })} />
+                  <Stepper label="Over pace" value={`${fmtP(spec.ou.overPace)}/km`} dec={() => put({ ou: { ...spec.ou!, overPace: spec.ou!.overPace - 2 } })} inc={() => put({ ou: { ...spec.ou!, overPace: spec.ou!.overPace + 2 } })} decLabel="Faster" incLabel="Slower" />
+                  {spec.reps > 1 && <Stepper label="Between blocks" value={`${spec.rec >= 60 && spec.rec % 60 === 0 ? `${spec.rec / 60} min` : `${spec.rec} s`} jog`} dec={() => put({ rec: Math.max(30, spec.rec - 30) })} inc={() => put({ rec: Math.min(600, spec.rec + 30) })} />}
+                </div>
+              </div>
             </div>
           )}
 

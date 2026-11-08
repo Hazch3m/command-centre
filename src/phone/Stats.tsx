@@ -3,13 +3,16 @@ import { ModulePage } from "../shell/Dashboard";
 import { FitnessFrom } from "../modules/running/BuildPlan";
 import { Section, usePhoneNav, useReadiness } from "./common";
 import { TrainingLoad } from "./TrainingLoad";
+import { LoadFocusCard } from "./Focus";
 import { RunalyzeMore } from "./RunalyzeMore";
+import { useRunningData } from "../modules/running/useRunning";
 
 /** Stats, Runalyze and Garmin style: fitness, fatigue, predictions and health in one place. */
 export function Stats() {
   const nav = usePhoneNav();
   const today = useToday();
   const ready = useReadiness(today);
+  const { plan } = useRunningData();
   return (
     <div className="p-screen">
       <Section>
@@ -28,6 +31,7 @@ export function Stats() {
           <span className="p-chev">›</span>
         </button>
       </Section>
+      <LoadFocusCard plan={plan} />
       <TrainingLoad />
       <RunalyzeMore />
       <Section title="Race fitness">

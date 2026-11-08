@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cachedPic, routePic } from "../modules/running/routeSnapshot";
+import { RunFocus } from "./Focus";
 import { addDays, parseKey, useToday } from "../core/time";
 import { MedalBadges } from "../modules/running/Medals";
 import { usePbData } from "../modules/running/PbsTab";
@@ -143,6 +144,7 @@ function RunCard({ r, today, kind, medals, photo }: { r: Run; today: string; kin
         </span>
         <MedalBadges medals={medals} max={3} />
       </div>
+      <RunFocus run={r} compact />
       <div className="p-runcard-stats">
         <span>
           <small>Distance</small>
