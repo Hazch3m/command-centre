@@ -134,6 +134,14 @@ try:
         check("Tempo by the lake" in txt, "run shows the new title")
         check("windy on the way back" in txt and "Pegasus" in txt, "run shows notes and shoes")
         pp.screenshot(path=f"{out}/04-run.png")
+        hrc = pp.locator(".chart.xy", has_text="Heart rate")
+        if hrc.count():
+            hrc.scroll_into_view_if_needed()
+            pp.wait_for_timeout(500)
+            hrc.screenshot(path=f"{out}/04c-hr-chart.png")
+            print("hr chart ticks:", hrc.locator(".chart-label").all_inner_texts()[:8])
+        else:
+            print("hr chart: none")
         pp.locator(".run-detail-map").click()
         pp.wait_for_selector(".run-map .maplibregl-canvas", timeout=15000)
         pp.wait_for_timeout(5000)
