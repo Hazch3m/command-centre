@@ -284,10 +284,11 @@ try:
         pp.locator(".p-subnav").get_by_role("tab", name="Week", exact=True).click()
         pp.wait_for_timeout(800)
         # The + Workout button: on screen, and building a fartlek in two sets.
-        fab = pp.locator(".p-fab")
+        fab = pp.locator(".p-wfab")
         check(fab.count() == 1, "Plan: workout button shown")
         bb = fab.bounding_box()
-        check(bool(bb and bb["x"] >= 0 and bb["x"] + bb["width"] <= 390), f"Plan: workout button fully on screen ({bb})")
+        check(bool(bb and bb["x"] >= 0 and bb["x"] + bb["width"] <= 390 and bb["width"] > 90), f"Plan: workout button fully on screen ({bb})")
+        check(fab.evaluate("e => e.scrollWidth <= e.clientWidth + 1"), "Plan: workout button's label fits")
         pp.screenshot(path=f"{out}/08-plan-0b-fab.png")
         fab.click()
         pp.wait_for_timeout(1500)
