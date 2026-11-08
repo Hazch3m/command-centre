@@ -67,3 +67,21 @@ describe("sets and steps", () => {
     expect(sessionToWorkout("14 km progression run, last 4 at 4:10–4:16")!.name).toMatch(/^Progression 14 km, last 4 km/);
   });
 });
+
+describe("floats and over-unders", () => {
+  it("reads float recoveries with their pace", () => {
+    const w = sessionToWorkout("11 km with 3 km warm-up, 8 × 2 min fartlek at 3:50–3:54, 1 min float at 4:25–4:31, 2 km cool-down")!;
+    const reps = w.steps[1] as { kind: string; times: number; steps: { kind: string; duration: string; target: string }[] };
+    expect(reps.kind).toBe("repeat");
+    expect(reps.times).toBe(8);
+    expect(reps.steps[1].duration).toBe("1:00");
+    expect(reps.steps[1].target).toContain("4:25");
+    expect(reps.steps[0].target).toContain("3:50");
+  });
+  it("reads over-unders as blocks of under/over pairs with jogs between", () => {
+    const w = sessionToWorkout("12 km with 3 km warm-up, Threshold over-unders: 3 × (4 × 2 min at 3:58–4:02 + 1 min at 3:38–3:42), 2 min jog, 2 km cool-down")!;
+    const kinds = w.steps.map((x) => (x.kind === "repeat" ? `rep${x.times}` : x.kind));
+    expect(kinds).toEqual(["warmup", "rep4", "recovery", "rep4", "recovery", "rep4", "cooldown"]);
+    expect(w.name).toBe("Over-unders 3×(4×2 min/1 min)");
+  });
+});

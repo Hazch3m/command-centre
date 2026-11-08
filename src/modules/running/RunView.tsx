@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode, useRef } from "react";
 import { useSwipe } from "../../phone/swipe";
 import { RunMap, RunMapThumb } from "./RunMap";
 import { RunReview } from "./RunReview";
+import { RunFocus } from "../../phone/Focus";
 import { FEELS, loadAllRunMeta, loadMyShoes } from "./runMeta";
 import { createPortal } from "react-dom";
 import { backend } from "@backend";
@@ -263,6 +264,7 @@ function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; o
       {edit && <RunReview run={run} onClose={() => setEdit(false)} />}
       {map && run.polyline && <RunMap polyline={run.polyline} title={run.name} onClose={() => setMap(false)} />}
       <RunNotes id={run.id} />
+      <RunFocus run={run} label="Training focus" />
       {details.get(run.id)?.photo && <img className="run-photo" src={details.get(run.id)!.photo!} alt="Photo from the run" referrerPolicy="no-referrer" />}
       <div className="run-detail-top">
         <button type="button" className="run-detail-map" onClick={() => run.polyline && setMap(true)} aria-label="Open the map" disabled={!run.polyline}>

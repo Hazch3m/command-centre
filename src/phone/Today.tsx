@@ -26,6 +26,7 @@ import { isEmptyPlan } from "../core/account";
 import { CountUp, Section, usePhoneNav } from "./common";
 import { DrawnTick, StreakIcon, ZoneIcon } from "./icons";
 import { HealthPanel } from "./HealthPanel";
+import { PlannedFocus, RunFocus } from "./Focus";
 import type { Run } from "../modules/running/strava";
 
 /** What a session is, in a word or two, from its text ("VO2 max", "Long run", …). */
@@ -73,6 +74,7 @@ export function Session({ d, label, next }: { d: ForecastDay; label: string; nex
         </div>
       )}
       {!rest && !d.race && <EffortProfile text={d.text} kind={d.kind} plan={plan} />}
+      {!rest && !d.race && <PlannedFocus text={d.text} compact />}
       {!rest && (
         <div className="p-session-text">
           {detail}
@@ -162,6 +164,7 @@ export function LastRun() {
           </span>
         ) : null}
       </div>
+      <RunFocus run={last} compact />
       {full.length >= 2 && (
         <div className="p-splits" aria-label="Pace for each kilometre">
           {full.map((x, i) => {
