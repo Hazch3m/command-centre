@@ -5280,3 +5280,89 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .accent-swatch.on {
   border-color: var(--text);
 }
+
+/* ---- Pacelife look (desktop) ---------------------------------------------------------
+   The phone app's brand on the big screen: the logo, the condensed display face for
+   headings and big numbers, the logo's greens, and softer, rounder cards. */
+:root {
+  --display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --bg: #1d2326;
+  --card: #283034;
+  --card-2: #30393e;
+  --line: #3a454a;
+  --line-2: #4a565c;
+  --accent: #3fdcab;
+  --accent-dim: rgba(63, 220, 171, 0.14);
+  --on-accent: #052019;
+  --track: #3b464b;
+  --radius: 16px;
+}
+:root[data-theme="light"] {
+  --bg: #eef0ec;
+  --card: #fbfcfa;
+  --card-2: #f1f4f0;
+  --line: #dde2dc;
+  --line-2: #c9d0c8;
+  --accent: #0e8a62;
+  --accent-dim: rgba(14, 138, 98, 0.1);
+  --track: #e1e6df;
+  --tile-shadow: 0 1px 2px rgba(20, 40, 30, 0.06), 0 4px 14px rgba(20, 40, 30, 0.05);
+}
+:root:not(.phone-root) .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: 0.3rem;
+}
+:root:not(.phone-root) .brand img {
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 10px rgba(63, 220, 171, 0.25);
+}
+:root:not(.phone-root) .brand b {
+  font-family: var(--display);
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+:root:not(.phone-root) .page-head h1,
+:root:not(.phone-root) .head-time,
+:root:not(.phone-root) .fit-big,
+:root:not(.phone-root) .big,
+:root:not(.phone-root) .tile-value,
+:root:not(.phone-root) .rd-score {
+  font-family: var(--display);
+  font-weight: 700;
+  letter-spacing: 0.005em;
+}
+:root:not(.phone-root) .page-head h1 {
+  font-size: 2rem;
+}
+:root:not(.phone-root) .head-time {
+  font-size: 1.6rem;
+}
+:root:not(.phone-root) .card-header h2 {
+  font-family: var(--display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+}
+:root:not(.phone-root) .card {
+  border-radius: var(--radius);
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+:root:not(.phone-root) .card:hover {
+  box-shadow: var(--tile-shadow), 0 6px 24px rgba(0, 0, 0, 0.08);
+}
+:root:not(.phone-root) .tab-ind {
+  background: linear-gradient(90deg, #2fe0b0, #b8f25a);
+}
+:root:not(.phone-root) .tab.on {
+  color: #052019;
+}
+:root:not(.phone-root) .btn-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
