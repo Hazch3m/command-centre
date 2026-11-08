@@ -4479,3 +4479,49 @@ svg.effort {
   font-size: 0.86rem;
   font-weight: 600;
 }
+/* Load focus rows, Garmin-style: amount, target range, and in/below/above for each */
+.lf-row2 {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 14px;
+  background: var(--card-2);
+}
+.lf-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.lf-st {
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.lf-st-in {
+  background: color-mix(in srgb, var(--z-easy) 16%, transparent);
+  color: var(--z-easy);
+}
+.lf-st-below,
+.lf-st-above {
+  background: color-mix(in srgb, var(--z-threshold) 16%, transparent);
+  color: var(--z-threshold);
+}
+.lf-row2 .lf-track {
+  height: 0.9rem;
+  background: var(--card);
+}
+.lf-nums {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+.lf-nums b {
+  color: var(--text);
+}
