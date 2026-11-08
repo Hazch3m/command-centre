@@ -231,6 +231,7 @@ try:
         pp.evaluate(END, [".p-main", 150])
         pp.wait_for_timeout(800)
         y1 = pp.evaluate("document.querySelector('[data-pane=planner]').getBoundingClientRect().top")
+        print("chain:", pp.evaluate("""() => ['html','body','.p-app','.p-head','.p-ptr','.p-main','[data-pane=planner]','[data-pane=planner] .p-title','[data-pane=today]'].map(q => { const e = document.querySelector(q); if (!e) return q + ': none'; const r = e.getBoundingClientRect(); const c = getComputedStyle(e); return `${q}: top ${Math.round(r.top)} h ${Math.round(r.height)} scrollTop ${e.scrollTop} pos ${c.position} tf ${c.transform} ov ${c.overflowY} mt ${c.marginTop}`; }).join(' || ') + ' || vv ' + (visualViewport ? visualViewport.offsetTop + '/' + visualViewport.pageTop : '') + ' || se ' + document.scrollingElement.scrollTop"""))
         print("after landing:", pp.evaluate("""() => { const p = document.querySelector('[data-pane=planner]'); const m = document.querySelector('.p-main'); return { scrollY: window.scrollY, mainTop: m.getBoundingClientRect().top, cls: p.className, style: p.getAttribute('style'), docH: document.documentElement.scrollHeight, act: document.activeElement && document.activeElement.className }; }"""))
         print("planner top during/after swipe:", y0, y1)
         check(abs(y0 - y1) < 3, f"no jump when the swipe lands ({y0} -> {y1})")
