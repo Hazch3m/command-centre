@@ -5298,15 +5298,19 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
   --radius: 16px;
 }
 :root[data-theme="light"] {
-  --bg: #eef0ec;
-  --card: #fbfcfa;
-  --card-2: #f1f4f0;
-  --line: #dde2dc;
-  --line-2: #c9d0c8;
+  /* The phone app's light look */
+  --bg: #eef1f6;
+  --card: #ffffff;
+  --card-2: #f2f4f8;
+  --line: #dfe4ec;
+  --line-2: #cfd6e1;
+  --text: #131a25;
+  --text-2: #374355;
+  --muted: #687488;
   --accent: #0e8a62;
   --accent-dim: rgba(14, 138, 98, 0.1);
-  --track: #e1e6df;
-  --tile-shadow: 0 1px 2px rgba(20, 40, 30, 0.06), 0 4px 14px rgba(20, 40, 30, 0.05);
+  --track: #dfe4ec;
+  --tile-shadow: 0 1px 2px rgba(30, 45, 70, 0.05), 0 10px 30px rgba(30, 45, 70, 0.08);
 }
 :root:not(.phone-root) .brand {
   display: inline-flex;
@@ -5357,12 +5361,139 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
   box-shadow: var(--tile-shadow), 0 6px 24px rgba(0, 0, 0, 0.08);
 }
 :root:not(.phone-root) .tab-ind {
-  background: linear-gradient(90deg, #2fe0b0, #b8f25a);
+  background: var(--accent);
 }
 :root:not(.phone-root) .tab.on {
-  color: #052019;
+  color: #fff;
 }
 :root:not(.phone-root) .btn-primary {
   background: var(--accent);
   color: var(--on-accent);
+}
+.run-photo {
+  display: block;
+  width: 100%;
+  max-height: 22rem;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+/* Phone views shown on the desktop (training load, goals, Runalyze): the tokens they draw with. */
+.pl-embed {
+  --p-pad: 1rem;
+  --p-radius: var(--radius, 16px);
+  --p-surface: var(--card);
+  --p-surface-2: var(--card-2);
+  --display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --shadow: var(--tile-shadow, 0 4px 18px rgba(0, 0, 0, 0.12));
+  --z-easy: #3fd1aa;
+  --z-long: #5aa9ff;
+  --z-threshold: #ffb23e;
+  --z-vo2: #ff6a55;
+  --z-race: #b88cff;
+  --z-rest: #5b687c;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  min-width: 0;
+}
+:root[data-theme="light"] .pl-embed {
+  --z-easy: #0b9673;
+  --z-long: #2c70d4;
+  --z-threshold: #c27500;
+  --z-vo2: #d6432d;
+  --z-race: #7449dc;
+  --z-rest: #a2acbc;
+}
+.pl-embed .p-group {
+  border: 1px solid var(--line);
+  border-radius: var(--p-radius);
+  background: var(--card);
+  overflow: hidden;
+}
+.pl-embed .p-padded > .p-group {
+  padding: 0.95rem 1.05rem;
+}
+.pl-embed .p-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 0.2rem 0.45rem;
+}
+.pl-embed .p-section-head h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 1.35rem;
+}
+.pl-embed .p-hint {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.pl-embed .p-seg {
+  display: inline-flex;
+  gap: 0.2rem;
+  padding: 0.2rem;
+  border-radius: 999px;
+  background: var(--card-2);
+}
+.pl-embed .p-seg button {
+  padding: 0.35rem 0.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.pl-embed .p-seg button.on {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+.pl-embed .gc-strip {
+  margin: 0;
+  padding: 0.2rem 0 0.4rem;
+}
+.pl-embed .gc-card {
+  flex-basis: 100%;
+  cursor: pointer;
+}
+.pl-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 1.4rem;
+  align-items: start;
+  flex-direction: row;
+}
+.pl-cols > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  min-width: 0;
+}
+.plan-focus {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(19rem, 25rem);
+  gap: 1.4rem;
+  align-items: start;
+}
+.plan-focus-main {
+  min-width: 0;
+}
+.plan-focus-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  position: sticky;
+  top: 1rem;
+}
+@media (max-width: 1100px) {
+  .plan-focus,
+  .pl-cols {
+    grid-template-columns: 1fr;
+  }
+  .plan-focus-side {
+    position: static;
+  }
 }

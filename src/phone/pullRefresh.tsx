@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { pageScrollTop } from "./scroll";
 
-const PULL = 72;
+const PULL = 76;
 
 /**
- * Pull down from the top of a page to refresh: a spinner follows your finger,
- * let go past the line and `onRefresh` runs (the spinner keeps turning until it's done).
+ * Pull down from the top of a page to refresh. The page follows your finger smoothly
+ * (drawn every frame, no re-render per pixel); let go past the line and `onRefresh` runs while
+ * the Pacelife heartbeat line beats.
  */
-export function usePullRefresh(ref: RefObject<HTMLElement | null>, onRefresh: () => Promise<unknown> | void, enabled = true) {
-  const [pull, setPull] = useState(0);
+export function usePullRefresh(ref: RefObject<HTMLElement | null>, indicator: RefObject<HTMLElement | null>, onRefresh: () => Promise<unknown> | void, enabled = true) {
   const [busy, setBusy] = useState(false);
   const cb = useRef(onRefresh);
   cb.current = onRefresh;
@@ -16,61 +16,88 @@ export function usePullRefresh(ref: RefObject<HTMLElement | null>, onRefresh: ()
     const el = ref.current;
     if (!el || !enabled) return;
     let s: { y: number; x: number; axis: "x" | "y" | null; d: number } | null = null;
+    let raf = 0;
+    let target = 0;
+    let shown = 0;
+    let spinning = false;
+    const paint = () => {
+      // Ease towards where the finger is, so it never stutters.
+      shown += (target - shown) * 0.35;
+      if (Math.abs(target - shown) < 0.3) shown = target;
+      const ind = indicator.current;
+      const f = Math.min(1, shown / PULL);
+      el.style.transform = shown ? `translate3d(0, ${shown}px, 0)` : "";
+      if (ind) {
+        ind.style.height = `${shown}px`;
+        ind.style.opacity = String(spinning ? 1 : f);
+        ind.style.setProperty("--f", String(f));
+        ind.classList.toggle("ready", f >= 1);
+      }
+      raf = shown !== target ? requestAnimationFrame(paint) : 0;
+    };
+    const go = (t: number) => {
+      target = t;
+      if (!raf) raf = requestAnimationFrame(paint);
+    };
     const down = (e: TouchEvent) => {
-      s = pageScrollTop() <= 0 && e.touches.length === 1 ? { y: e.touches[0].clientY, x: e.touches[0].clientX, axis: null, d: 0 } : null;
+      s = !spinning && pageScrollTop() <= 0 && e.touches.length === 1 ? { y: e.touches[0].clientY, x: e.touches[0].clientX, axis: null, d: 0 } : null;
     };
     const move = (e: TouchEvent) => {
       if (!s) return;
       const dy = e.touches[0].clientY - s.y;
       const dx = e.touches[0].clientX - s.x;
       if (!s.axis) {
-        if (Math.abs(dy) < 8 && Math.abs(dx) < 8) return;
+        if (Math.abs(dy) < 6 && Math.abs(dx) < 6) return;
         s.axis = dy > 0 && Math.abs(dy) > Math.abs(dx) * 1.2 ? "y" : "x";
         if (s.axis === "x") return void (s = null);
       }
-      if (pageScrollTop() > 0 || dy <= 0) return void setPull(0);
+      if (pageScrollTop() > 0 || dy <= 0) return go((s.d = 0));
       e.preventDefault();
-      // Resistance: the further you pull, the slower it follows.
-      s.d = Math.min(PULL * 1.6, dy * 0.5);
-      setPull(s.d);
+      // Rubber band: easy at first, firmer the further you pull.
+      s.d = PULL * 1.7 * (1 - Math.exp(-dy / (PULL * 2.2)));
+      go(s.d);
     };
     const up = async () => {
       const d = s?.d ?? 0;
       s = null;
       if (d >= PULL) {
+        spinning = true;
         setBusy(true);
-        setPull(PULL * 0.8);
+        go(PULL * 0.85);
         try {
-          await cb.current();
+          await Promise.all([cb.current(), new Promise((r) => setTimeout(r, 900))]);
         } finally {
+          spinning = false;
           setBusy(false);
-          setPull(0);
+          go(0);
         }
-      } else setPull(0);
+      } else go(0);
     };
     el.addEventListener("touchstart", down, { passive: true });
     el.addEventListener("touchmove", move, { passive: false });
     el.addEventListener("touchend", up, { passive: true });
     el.addEventListener("touchcancel", up, { passive: true });
     return () => {
+      cancelAnimationFrame(raf);
+      el.style.transform = "";
       el.removeEventListener("touchstart", down);
       el.removeEventListener("touchmove", move);
       el.removeEventListener("touchend", up);
       el.removeEventListener("touchcancel", up);
     };
-  }, [ref, enabled]);
-  return { pull, busy };
+  }, [ref, indicator, enabled]);
+  return { busy };
 }
 
-export function PullSpinner({ pull, busy }: { pull: number; busy: boolean }) {
-  if (!pull && !busy) return null;
-  const f = Math.min(1, pull / PULL);
+/** The Pacelife heartbeat line: draws itself as you pull, then beats while refreshing. */
+export function PullBeat({ busy, innerRef }: { busy: boolean; innerRef: RefObject<HTMLDivElement | null> }) {
   return (
-    <div className="p-ptr" style={{ height: pull, opacity: busy ? 1 : f }} aria-hidden={!busy} role={busy ? "status" : undefined} aria-label={busy ? "Refreshing" : undefined}>
-      <svg viewBox="0 0 24 24" className={busy ? "spin" : ""} style={busy ? undefined : { transform: `rotate(${f * 300}deg)` }}>
-        <circle cx="12" cy="12" r="9" strokeDasharray={`${f * 50} 60`} />
+    <div ref={innerRef} className={"p-ptr" + (busy ? " busy" : "")} aria-hidden={!busy} role={busy ? "status" : undefined} aria-label={busy ? "Refreshing" : undefined}>
+      <svg viewBox="0 0 120 40" className="p-beat">
+        <path pathLength={100} d="M4 22H34L41 12L50 34L59 6L66 22H104" />
+        <circle cx="111" cy="22" r="4.5" />
       </svg>
-      {!busy && <small>{f >= 1 ? "Let go to refresh" : "Pull to refresh"}</small>}
+      <small>{busy ? "Refreshing" : ""}</small>
     </div>
   );
 }

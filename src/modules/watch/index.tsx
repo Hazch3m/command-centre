@@ -671,7 +671,7 @@ export function WatchSetting() {
 // ---------------------------------------------------------------------------
 // The page and the tile
 
-function WatchPage() {
+export function WatchPage() {
   const today = useToday();
   const [tick, setTick] = useState(0);
   const refresh = useCallback(() => setTick((t) => t + 1), []);
@@ -827,5 +827,5 @@ export const watchModule: DashboardModule = {
   minW: 3,
   minH: 3,
   Card: WatchTile,
-  page: { label: "Watch", order: 1.5, Page: WatchPage },
+  page: { label: "Watch", order: 1.5, Page: WatchPage, inTraining: true },
 };

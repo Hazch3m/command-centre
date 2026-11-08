@@ -14,16 +14,16 @@ import type { Run } from "../modules/running/strava";
 import { predictTime } from "../modules/running/vo2";
 import { Section } from "./common";
 
-const STANDARD = [
+export const STANDARD = [
   { id: "5k", name: "5K", km: 5 },
   { id: "10k", name: "10K", km: 10 },
   { id: "half", name: "Half marathon", km: 21.0975 },
   { id: "marathon", name: "Marathon", km: 42.195 },
 ] as const;
-const short = (name: string) => name.replace(/marathon/i, "Mara.").replace(/half Mara\./i, "Half");
+export const short = (name: string) => name.replace(/marathon/i, "Mara.").replace(/half Mara\./i, "Half");
 
 /** Goals you set here for a distance (seconds), when a plan race doesn't give one. */
-const loadGoals = () => kvGet<Record<string, number>>("running.paceGoals", {});
+export const loadGoals = () => kvGet<Record<string, number>>("running.paceGoals", {});
 
 /** "3:05:00", "1:25", "19:30" → seconds (h:mm:ss, or mm:ss under an hour for short races). */
 function parseTime(s: string, km: number): number | null {
@@ -33,10 +33,35 @@ function parseTime(s: string, km: number): number | null {
   if (p.length === 2) return km >= 21 ? p[0] * 3600 + p[1] * 60 : p[0] * 60 + p[1];
   return null;
 }
-const perKm = (secs: number, km: number) => {
+export const perKm = (secs: number, km: number) => {
   const s = Math.round(secs / km);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 };
+
+export interface GoalOption {
+  id: string;
+  label: string;
+  race: ReturnType<typeof upcomingRaces>[number] | null;
+  km: number;
+}
+/** Your next races, then the standard distances. */
+export function goalOptions(plan: Plan, today: string): { options: GoalOption[]; main: ReturnType<typeof upcomingRaces>[number] | undefined } {
+  const races = upcomingRaces(plan, today);
+  const main = races.find((r) => r.priority === "A") ?? races[0];
+  return {
+    main,
+    options: [
+      ...races.slice(0, 4).map((r) => ({ id: `race:${r.date}:${r.name}`, label: short(r.name), race: r, km: raceDistance(r) })),
+      ...STANDARD.map((s) => ({ id: s.id, label: s.name === "Half marathon" ? "Half" : s.name, race: null, km: s.km })),
+    ],
+  };
+}
+/** The race to judge an option on: a plan race as it is, a standard distance on your main race's date (or 12 weeks out). */
+export function raceFor(opt: GoalOption, mainDate: string | null | undefined, goals: Record<string, number>, today: string) {
+  if (opt.race) return opt.race;
+  const goal = goals[opt.id];
+  return { date: mainDate ?? addDays(today, 84), name: STANDARD.find((s) => s.id === opt.id)!.name, km: opt.km, target: goal ? fmtTime(goal) : "", elevation: undefined };
+}
 
 /**
  * Like Runna's pace insights: where your fitness is now, where it's heading by race day and the
@@ -47,22 +72,15 @@ export function PaceOnTrack({ plan, runs }: { plan: Plan; runs: Run[] }) {
   const f = useFitness(plan);
   const rv = useDataVersion("running");
   const goals = useQuery(loadGoals, [rv]).data ?? {};
-  const races = upcomingRaces(plan, today);
-  const main = races.find((r) => r.priority === "A") ?? races[0];
-  const options = [
-    ...races.slice(0, 4).map((r) => ({ id: `race:${r.date}:${r.name}`, label: short(r.name), race: r, km: raceDistance(r) })),
-    ...STANDARD.map((s) => ({ id: s.id, label: s.name === "Half marathon" ? "Half" : s.name, race: null, km: s.km })),
-  ];
+  const { options, main } = goalOptions(plan, today);
   const [pick, setPick] = useState(options[0]?.id ?? "marathon");
   const opt = options.find((o) => o.id === pick) ?? options[0];
   // A standard distance is judged on the main race's date (or 12 weeks out).
-  const race = useMemo(() => {
-    if (opt.race) return opt.race;
-    const name = STANDARD.find((s) => s.id === opt.id)!.name;
-    const goal = goals[opt.id];
-    return { date: main?.date ?? addDays(today, 84), name, km: opt.km, target: goal ? fmtTime(goal) : "", elevation: undefined };
+  const race = useMemo(
+    () => raceFor(opt, main?.date, goals, today),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opt.id, main?.date, goals[opt.id], today]);
+    [opt.id, main?.date, goals[opt.id], today],
+  );
   const r = useReadiness(plan, race);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -158,6 +176,7 @@ export function PaceOnTrack({ plan, runs }: { plan: Plan; runs: Run[] }) {
             </div>
           </div>
 
+          <AimFor km={km} predicted={r.predicted} range={r.range} goal={goal} />
           <TrackBar now={r.now} range={r.range} predicted={r.predicted} goal={goal} />
           <ProgressChart history={history} now={r.now} predicted={r.predicted} range={r.range} goal={goal} raceDate={race.date!} today={today} />
           <p className="p-hint">
@@ -191,9 +210,9 @@ function TrackBar({ now, range, predicted, goal }: { now: number | null; range: 
   // Labels: Now above, Race day below, Goal above; one that would overlap moves to the other side,
   // and two at the same spot share a label.
   const want: { id: string; text: string; x: number; slot: "up" | "down"; cls: string }[] = [];
-  if (now) want.push({ id: "now", text: "Now", x: pos(now), slot: "up", cls: "now" });
-  if (predicted) want.push({ id: "day", text: "Race day", x: pos(predicted), slot: "down", cls: "day" });
-  if (goal) want.push({ id: "goal", text: "Goal", x: pos(goal), slot: "up", cls: "goal" });
+  if (now) want.push({ id: "now", text: "Now", x: pos(now), slot: "up", cls: "lbl-now" });
+  if (predicted) want.push({ id: "day", text: "Race day", x: pos(predicted), slot: "down", cls: "lbl-day" });
+  if (goal) want.push({ id: "goal", text: "Goal", x: pos(goal), slot: "up", cls: "lbl-goal" });
   const placed: typeof want = [];
   const near = (a: number, b: number) => Math.abs(a - b) < 20;
   for (const l of want) {
@@ -310,5 +329,32 @@ function PaceChecks({ plan, runs }: { plan: Plan; runs: Run[] }) {
         {!p.rows.length && <p className="p-hint">Runs on planned days appear here once the plan starts.</p>}
       </div>
     </Section>
+  );
+}
+
+/**
+ * The pace to run on race day: the goal's pace when the race-day range reaches it, otherwise the
+ * predicted pace (a little under the middle of the range, so you finish strong).
+ */
+function AimFor({ km, predicted, range, goal }: { km: number; predicted: number | null; range: [number, number] | null; goal: number | null }) {
+  if (!predicted) return null;
+  const reach = goal && range ? goal >= range[0] : goal ? goal >= predicted : false;
+  const aim = reach && goal ? goal : range ? range[0] + (range[1] - range[0]) * 0.55 : predicted;
+  const why = reach ? "your goal is within reach: run its pace" : goal ? "the goal looks a step too far today: aim here and finish strong" : "from where the plan should take you";
+  return (
+    <div className="pt-aim">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" />
+        <circle cx="12" cy="12" r="4.5" />
+        <circle cx="12" cy="12" r="1" />
+      </svg>
+      <span>
+        <small>Race-day pace to aim for</small>
+        <b className="num">
+          {perKm(aim, km)}/km <i>· {fmtTime(aim)}</i>
+        </b>
+        <em>{why}</em>
+      </span>
+    </div>
   );
 }

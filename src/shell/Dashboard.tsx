@@ -86,7 +86,7 @@ function useTabs() {
     () => [
       { id: "overview", label: "Overview" },
       ...modules
-        .filter((m) => m.page)
+        .filter((m) => m.page && !m.page.inTraining)
         .sort((a, b) => a.page!.order - b.page!.order)
         .map((m) => ({ id: m.id, label: m.page!.label })),
     ],

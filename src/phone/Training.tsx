@@ -4,7 +4,7 @@ import { useDataVersion } from "../core/events";
 import { addDays, parseKey, useToday } from "../core/time";
 import { useQuery } from "../core/useQuery";
 import { forecastRange, forecastWeek } from "../modules/running/forecast";
-import { mondayOf, upcomingRaces, type Plan } from "../modules/running/plan";
+import { mondayOf, type Plan } from "../modules/running/plan";
 import { openRun } from "../modules/running/RunView";
 import { plannedKinds, RUN_TYPE_LABEL, typeOfDay, typeOfRun } from "../modules/running/runType";
 import { km, pace } from "../modules/running/stats";
@@ -23,8 +23,7 @@ import { isEmptyPlan } from "../core/account";
 import { PlanList } from "../modules/running/PlanList";
 import { PaceOnTrack } from "./PaceOnTrack";
 import { RaceManager } from "../modules/running/RaceManager";
-import { useReadiness } from "../modules/running/ReadinessCard";
-import { RaceReady } from "./RaceReady";
+import { FitnessPredictor, GoalCarousel, PlanWeeksChart } from "./PlanGoals";
 
 type View = "week" | "calendar" | "pace" | "progress";
 const VIEWS: { id: View; label: string; icon: string }[] = [
@@ -102,6 +101,11 @@ export function Training() {
           </button>
         ))}
       </nav>
+      {view === "calendar" && (
+        <Section title="Every week" className="p-padded">
+          <PlanWeeksChart plan={plan} first={range.first} last={range.last} />
+        </Section>
+      )}
       {view === "calendar" && (
         <div className="p-embed">
           <PlanList plan={plan} runs={runs} single />
@@ -253,57 +257,13 @@ export function Training() {
 
 /** How the plan's going: readiness for the next race, and every week's km, planned against done. */
 function PlanProgress({ plan, first, last }: { plan: Plan; first: string; last: string }) {
-  const today = useToday();
   const nav = usePhoneNav();
-  const { runs = [] } = useRunningData();
-  const rv = useDataVersion("running");
-  const overrides = useQuery(loadOverrides, [rv]).data;
-  const race = upcomingRaces(plan, today)[0] ?? null;
-  const ready = useReadiness(plan, race);
-  const weeks = useMemo(() => {
-    const out: { monday: string; planned: number; done: number; label: string }[] = [];
-    for (let m = first; m <= last; m = addDays(m, 7)) {
-      const w = forecastWeek(plan, m, runs, overrides);
-      out.push({ monday: m, planned: w.plannedKm ?? 0, done: w.actualKm, label: w.week ? `W${w.week.week}` : fmt(m) });
-    }
-    return out;
-  }, [plan, first, last, runs, overrides]);
-  const max = Math.max(1, ...weeks.map((w) => Math.max(w.planned, w.done)));
-  const thisMonday = mondayOf(today);
-  const past = weeks.filter((w) => w.monday < thisMonday && w.planned > 0);
-  const hit = past.filter((w) => w.done >= w.planned * 0.9).length;
   return (
     <>
-      {race && (
-        <Section title={`${race.name} · ${race.days} days`} className="p-padded">
-          {ready ? <RaceReady r={ready} /> : <div className="p-hint">Working out your readiness…</div>}
-        </Section>
-      )}
+      <GoalCarousel plan={plan} />
+      <FitnessPredictor plan={plan} />
       <Section title="Week by week" className="p-padded">
-        {past.length > 0 && (
-          <p className="p-hint">
-            {hit} of {past.length} weeks so far within 10% of the plan.
-          </p>
-        )}
-        <div className="pp-weeks">
-          {weeks.map((w) => (
-            <div key={w.monday} className={"pp-week" + (w.monday === thisMonday ? " now" : "") + (w.monday > thisMonday ? " future" : "")} title={`${w.label}: ${w.done.toFixed(0)} of ${w.planned} km`}>
-              <span className="pp-bars">
-                <i className="pp-plan" style={{ height: `${(w.planned / max) * 100}%` }} />
-                <i className={"pp-done" + (w.planned && w.done >= w.planned * 0.9 ? " hit" : "")} style={{ height: `${(w.done / max) * 100}%` }} />
-              </span>
-              <small>{w.label}</small>
-            </div>
-          ))}
-        </div>
-        <div className="pp-key">
-          <span>
-            <i className="pp-plan" /> Planned
-          </span>
-          <span>
-            <i className="pp-done hit" /> Done
-          </span>
-        </div>
+        <PlanWeeksChart plan={plan} first={first} last={last} />
       </Section>
       <Section title="Races" className="p-padded">
         <div className="p-embed">

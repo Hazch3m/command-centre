@@ -3,6 +3,7 @@ import { ModulePage } from "../shell/Dashboard";
 import { FitnessFrom } from "../modules/running/BuildPlan";
 import { Section, usePhoneNav, useReadiness } from "./common";
 import { TrainingLoad } from "./TrainingLoad";
+import { RunalyzeMore } from "./RunalyzeMore";
 
 /** Stats, Runalyze and Garmin style: fitness, fatigue, predictions and health in one place. */
 export function Stats() {
@@ -28,6 +29,7 @@ export function Stats() {
         </button>
       </Section>
       <TrainingLoad />
+      <RunalyzeMore />
       <Section title="Race fitness">
         <div className="p-row p-fitfrom">
           <FitnessFrom />
