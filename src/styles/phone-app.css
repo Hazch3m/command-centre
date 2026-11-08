@@ -3527,3 +3527,6 @@ svg.effort {
   object-fit: cover;
   animation: fade-in 0.4s ease-out;
 }
+:root.phone-root body {
+  overflow-anchor: none;
+}

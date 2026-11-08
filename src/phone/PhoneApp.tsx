@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { kvGet, kvSet } from "../core/db";
 import { notifyChanged } from "../core/events";
 import { REFRESHED_KEY, REFRESH_KEY } from "../core/sync";
@@ -107,8 +107,11 @@ export function PhoneApp() {
     setPushed(null);
     setTabState(t);
     sessionStorage.setItem("cc-phone-tab", t);
-    window.scrollTo({ top: 0 });
   };
+  // A new page starts at the top: done after it's laid out and before it's drawn, so nothing jumps.
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
+  }, [tab, pushed]);
   const push = (p: Pushed) => {
     setDir(swiped.current ? 0 : p ? 1 : -1);
     swiped.current = false;
