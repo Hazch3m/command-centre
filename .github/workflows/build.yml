@@ -124,9 +124,25 @@ jobs:
         shell: bash
         run: ci/run.sh "Backend tests" cargo test --manifest-path src-tauri/Cargo.toml
 
+      # Tauri fetches its NSIS packager from GitHub releases, which sometimes times out (504):
+      # fetch it ahead with retries into Tauri's own cache, then build (and retry the build once).
+      - name: Fetch the NSIS packager
+        shell: bash
+        run: |
+          dir="$LOCALAPPDATA/tauri"
+          mkdir -p "$dir"
+          for i in 1 2 3 4 5 6; do
+            curl -fsSL --retry 5 --retry-all-errors -o /tmp/nsis.zip https://github.com/tauri-apps/binary-releases/releases/download/nsis-3.13/nsis-3.13.zip && break
+            echo "retry $i"; sleep $((i * 15))
+          done
+          if [ -f /tmp/nsis.zip ]; then
+            rm -rf "$dir/NSIS" && mkdir -p /tmp/nsis && unzip -qo /tmp/nsis.zip -d /tmp/nsis && mv /tmp/nsis/nsis-3.13 "$dir/NSIS" || mv /tmp/nsis/* "$dir/NSIS"
+            ls "$dir/NSIS" | head
+          fi
+
       - name: Build installer
         shell: bash
-        run: ci/run.sh "Installer build" npx tauri build
+        run: ci/run.sh "Installer build" npx tauri build || (sleep 60 && ci/run.sh "Installer build (again)" npx tauri build)
 
       - uses: actions/upload-artifact@v4
         with:
