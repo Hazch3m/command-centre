@@ -38,3 +38,15 @@ describe("training focus", () => {
     expect(f.over).toBe("low");
   });
 });
+
+describe("planned week focus", () => {
+  it("counts a planned day from its session, else its km at easy pace, and skips rest", async () => {
+    const { plannedDaySeconds } = await import("./trainingFocus");
+    expect(plannedDaySeconds({ text: "Rest", km: null, kind: "rest" }, cuts)).toBeNull();
+    const easy = plannedDaySeconds({ text: "", km: 10, kind: "easy" }, cuts)!;
+    expect(easy.low).toBeGreaterThan(0);
+    expect(easy.high + easy.anaerobic).toBe(0);
+    const t = plannedDaySeconds({ text: "12 km with 3 km warm-up, Threshold: 4 × 2 km at 3:58–4:02, 90 s jog, 2 km cool-down", km: 12, kind: "key" }, cuts)!;
+    expect(t.high).toBeGreaterThan(0);
+  });
+});

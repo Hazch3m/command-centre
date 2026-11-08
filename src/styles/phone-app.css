@@ -4510,9 +4510,211 @@ svg.effort {
   background: color-mix(in srgb, var(--z-threshold) 16%, transparent);
   color: var(--z-threshold);
 }
+.lf-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.lf-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+.lf-legend i {
+  width: 1.1rem;
+  height: 0.7rem;
+  border-radius: 3px;
+  border: 2px solid var(--muted);
+  background: color-mix(in srgb, var(--muted) 22%, transparent);
+}
+.lf-top .lf-name {
+  flex: 1;
+}
+.lf-big {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--k, var(--text));
+}
+.lf-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
 .lf-row2 .lf-track {
-  height: 0.9rem;
+  height: 1.5rem;
+  border-radius: 8px;
   background: var(--card);
+  overflow: visible;
+}
+.lf-row2 .lf-range {
+  top: 0;
+  bottom: 0;
+  border-left: 2px solid var(--k, var(--text));
+  border-right: 2px solid var(--k, var(--text));
+  background: color-mix(in srgb, var(--k, var(--text)) 24%, transparent);
+}
+.lf-row2 .lf-track i {
+  top: 0.5rem;
+  bottom: 0.5rem;
+  opacity: 0.95;
+}
+.lf-mark {
+  position: absolute;
+  top: -0.15rem;
+  bottom: -0.15rem;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--text);
+  box-shadow: 0 0 0 2px var(--card-2);
+}
+.lf-scale {
+  position: relative;
+  height: 0.9rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--k, var(--muted));
+}
+.lf-scale span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+/* Load focus per week on the Plan */
+.lfw-strip,
+.lfw-next {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.5rem 0 0.2rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 14px;
+  background: var(--card-2);
+}
+.lfw-title {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.lfw-stack {
+  display: flex;
+  height: 1.1rem;
+  border-radius: 6px;
+  overflow: hidden;
+  gap: 2px;
+}
+.lfw-stack i {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3px;
+  color: #fff;
+  font-size: 0.66rem;
+  font-style: normal;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.lfw-nums {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+.lfw-n {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 650;
+}
+.lfw-n i,
+.lfw-col i {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 3px;
+}
+.lfw-n b {
+  font-weight: 800;
+}
+.lfw-n em {
+  font-style: normal;
+}
+.lfw {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.lfw-head,
+.lfw-row {
+  display: grid;
+  grid-template-columns: 5.2rem repeat(3, 1fr);
+  align-items: center;
+  gap: 0.3rem;
+}
+.lfw-head {
+  margin-top: 0.4rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+.lfw-col {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  text-align: center;
+}
+.lfw-col small {
+  width: 100%;
+  font-size: 0.64rem;
+  font-weight: 500;
+}
+.lfw-row {
+  padding: 0.4rem 0.3rem 0.45rem;
+  border-radius: 12px;
+  row-gap: 0.3rem;
+}
+.lfw-row:nth-of-type(odd) {
+  background: var(--card-2);
+}
+.lfw-row.now {
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.lfw-row .lfw-stack {
+  grid-column: 1 / -1;
+  height: 0.45rem;
+}
+.lfw-row .lfw-stack i {
+  font-size: 0;
+}
+.lfw-wk {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+.lfw-wk b {
+  font-size: 0.82rem;
+}
+.lfw-wk small {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+.lfw-cell {
+  justify-self: center;
+  min-width: 3.2rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 0.86rem;
 }
 .lf-nums {
   display: flex;
