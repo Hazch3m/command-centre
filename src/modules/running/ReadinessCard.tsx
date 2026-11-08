@@ -1,15 +1,23 @@
 import { useMemo } from "react";
-import { useToday } from "../../core/time";
+import { addDays, useToday } from "../../core/time";
 import { useFitness } from "./fitness";
 import { fmtTime } from "./pbs";
 import type { Plan, PlanRace } from "./plan";
-import { raceReadiness, readinessTone, type Readiness } from "./readiness";
+import { garminTimeAt, raceReadiness, readinessTone, type Readiness, type VdotAt } from "./readiness";
+import { useDataVersion } from "../../core/events";
+import { useQuery } from "../../core/useQuery";
+import { latestPredictions } from "../health/data";
 import { useRunningData } from "./useRunning";
 
 /** Fitness on a date and the km you ran each day: what readiness needs. */
 export function useReadinessInputs(plan: Plan | undefined) {
   const f = useFitness(plan);
   const { runs = [] } = useRunningData();
+  const today = useToday();
+  const hv = useDataVersion("health");
+  const gq = useQuery(latestPredictions, [hv]);
+  const garmin = gq.data;
+  const gLoading = gq.loading;
   return useMemo(() => {
     const actual = new Map<string, number>();
     for (const r of runs) actual.set(r.date, (actual.get(r.date) ?? 0) + r.distance / 1000);
@@ -17,14 +25,16 @@ export function useReadinessInputs(plan: Plan | undefined) {
     // (form estimates dip after a marathon or in an easy block; a race you've run is proof of what you can do).
     const basis = f?.predictionBasis;
     const floor = basis?.source === "race" ? basis.vdot : null;
-    const vdotAt = (d: string) => {
+    const vdotAt: VdotAt = (d: string) => {
       // A result you entered is your fitness, as you said.
       if (basis?.source === "manual") return basis.vdot;
       const v = f ? (f.project(d) ?? f.current) : null;
       return v == null ? floor : floor == null ? v : Math.max(v, floor);
     };
-    return { actual, vdotAt, ready: !!f };
-  }, [f, runs]);
+    // Garmin's race predictor, when synced in the last two weeks, sets "now" (it tracks racing well).
+    if (garmin && garmin.date >= addDays(today, -14)) vdotAt.garmin = (m: number) => garminTimeAt(garmin.values, m);
+    return { actual, vdotAt, ready: !!f && !(gLoading && garmin === undefined) };
+  }, [f, runs, garmin, gLoading, today]);
 }
 
 export function useReadiness(plan: Plan | undefined, race: Pick<PlanRace, "date" | "name" | "km" | "target" | "elevation"> | null): Readiness | null {

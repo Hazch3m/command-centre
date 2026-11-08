@@ -117,6 +117,8 @@ export function FitnessPredictor({ plan }: { plan: Plan }) {
   const hv = useDataVersion("health");
   const garmin = useQuery(latestPredictions, [hv]).data;
   if (!f?.current) return null;
+  // Garmin's race predictor leads when synced: it tracks race results well.
+  const useG = !!garmin && Object.keys(garmin.values).length > 0;
   const shown = f.current + f.shift;
   const pts = f.weekly.filter((w) => w.smooth != null).slice(-16);
   const lo = Math.min(...pts.map((p) => p.smooth!)) - 0.5;
@@ -148,23 +150,24 @@ export function FitnessPredictor({ plan }: { plan: Plan }) {
       </div>
       <div className="fp-table">
         <span className="fp-th">Distance</span>
-        <span className="fp-th">From your runs</span>
+        <span className="fp-th">{useG ? "Garmin" : "From your runs"}</span>
         <span className="fp-th">Pace</span>
-        <span className="fp-th">{garmin ? "Garmin" : ""}</span>
+        <span className="fp-th">{useG ? "Your runs" : ""}</span>
         {rows.map((r) => {
-          const t = predictTime(r.m, f.current!);
+          const own = predictTime(r.m, f.current!);
           const g = garmin?.values[r.key];
+          const t = useG && g ? g : own;
           return (
             <span key={r.name} className="fp-row">
               <b>{r.name}</b>
               <span className="num">{fmtTime(t)}</span>
               <span className="num muted">{perKm(t, r.m / 1000)}/km</span>
-              <span className="num muted">{g ? fmtTime(g) : ""}</span>
+              <span className="num muted">{useG && g ? fmtTime(own) : ""}</span>
             </span>
           );
         })}
       </div>
-      <p className="p-hint">VO2 max from your runs' pace and heart rate, lined up with your races. Times are for a flat course on a good day.</p>
+      <p className="p-hint">{useG ? "Race times are Garmin's predictor (it tracks race results well); \"Your runs\" is the VO2 max worked out from your runs' pace and heart rate. " : "VO2 max from your runs' pace and heart rate, lined up with your races. "}Times are for a flat course on a good day. Pace on point and race readiness use the same times for "now".</p>
     </Section>
   );
 }

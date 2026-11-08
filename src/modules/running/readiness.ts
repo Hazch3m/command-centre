@@ -69,11 +69,37 @@ interface WeekLook {
   days: ForecastDay[];
 }
 
+/** Fitness (VDOT) on a date; may carry Garmin's predicted time for a distance, which then sets "now". */
+export type VdotAt = ((date: string) => number | null) & { garmin?: (meters: number) => number | null };
+
+/**
+ * Garmin's predicted time at any distance, from its 5K / 10K / half / marathon predictions:
+ * between two of them along their own curve (time ∝ distance^k), beyond them along the nearest pair's.
+ */
+export function garminTimeAt(values: Record<string, number>, meters: number): number | null {
+  const pts = (
+    [
+      [5000, values["5k"]],
+      [10000, values["10k"]],
+      [21097.5, values["Half"]],
+      [42195, values["Marathon"]],
+    ] as [number, number | undefined][]
+  ).filter((p): p is [number, number] => !!p[1] && p[1] > 0);
+  if (!pts.length) return null;
+  if (pts.length === 1) return pts[0][1] * Math.pow(meters / pts[0][0], 1.06);
+  let i = pts.findIndex((p) => p[0] >= meters);
+  if (i <= 0) i = i === 0 ? 1 : pts.length - 1;
+  const [d1, t1] = pts[i - 1];
+  const [d2, t2] = pts[i];
+  const k = Math.log(t2 / t1) / Math.log(d2 / d1);
+  return t1 * Math.pow(meters / d1, k);
+}
+
 export function raceReadiness(
   plan: Plan,
   race: Pick<PlanRace, "date" | "name" | "km" | "target" | "elevation">,
   today: string,
-  vdotAt: (date: string) => number | null,
+  vdotAt: VdotAt,
   actual: Map<string, number> = new Map(),
 ): Readiness | null {
   if (!race.date) return null;
@@ -201,8 +227,8 @@ export function raceReadiness(
   const scale = (sh: number) => (km >= 40 ? sh : km >= 20 ? sh * 0.43 : km >= 9 ? sh * 0.17 : sh * 0.07);
   // A hilly course costs time; a flat one nothing.
   const hills = race.elevation ? elevationCost(race.elevation.gain, race.elevation.loss) : 0;
-  const predicted = predictTime(meters, likely) * shapeFactor(meters, scaled) + hills;
-  const range: [number, number] | null = gain > 0 ? [predictTime(meters, base + gain * 1.15) * shapeFactor(meters, scale(Math.max(1, shape))) + hills, predictTime(meters, base + gain * 0.4) * shapeFactor(meters, scaled) + hills] : null;
+  let predicted = predictTime(meters, likely) * shapeFactor(meters, scaled) + hills;
+  let range: [number, number] | null = gain > 0 ? [predictTime(meters, base + gain * 1.15) * shapeFactor(meters, scale(Math.max(1, shape))) + hills, predictTime(meters, base + gain * 0.4) * shapeFactor(meters, scaled) + hills] : null;
   // Today: your actual last 8 weeks against what the race needs.
   // Your best 8-week stretch of the last 16: a taper and recovery after a race don't make you unfit overnight.
   const wkKm: number[] = [];
@@ -227,7 +253,17 @@ export function raceReadiness(
   }
   const needNow = needsFor(km, vNow);
   const shapeNow = (2 / 3) * Math.min(1.5, nowKm / needNow.km) + (1 / 3) * Math.min(1, nowLong / needNow.long);
-  const now = actual.size ? predictTime(meters, vNow) * shapeFactor(meters, scale(shapeNow)) + hills : null;
+  let now = actual.size ? predictTime(meters, vNow) * shapeFactor(meters, scale(shapeNow)) + hills : null;
+  // Garmin's prediction (when synced) is "now": it already allows for your endurance at this
+  // distance. Race day keeps the same gain from training as above, on top of Garmin's time.
+  const g = vdotAt.garmin?.(meters);
+  if (g) {
+    const nowOwn = predictTime(meters, vNow) * shapeFactor(meters, scale(shapeNow));
+    const r = (t: number) => ((t - hills) / nowOwn) * g + hills;
+    now = g + hills;
+    predicted = r(predicted);
+    if (range) range = [r(range[0]), r(range[1])];
+  }
   const goal = race.target ? targetSeconds(race.target, meters) : null;
   return { score, parts, predicted, range, now, goal, distanceKm: km, today: { score: todayScore, parts: todayParts } };
 }
