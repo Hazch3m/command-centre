@@ -196,7 +196,8 @@ export function sessionToWorkout(text: string, zones: Zones = {}): Omit<Draft, "
   const km = /(\d+(?:\.\d+)?)\s*km/i.exec(s);
   const min = /(\d+)\s*min/i.exec(s);
   const recovery = /recovery|very easy/i.test(s);
-  const zone = recovery ? "hr zone 1" : "hr zone 2";
+  // Recovery runs are easy runs kept short and gentle: zone 2 like the rest (zone 1 is barely running for most people).
+  const zone = "hr zone 2";
   const kind = recovery ? "Recovery" : /long/i.test(s) || (km && +km[1] >= 18) ? "Long" : /medium/i.test(s) ? "Medium-long" : "Easy";
   const st = strides(s);
   if (km || min) {
