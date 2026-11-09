@@ -113,6 +113,7 @@ try:
         pp.locator(".p-dash-edit .p-link", has_text="Done").click()
         pp.wait_for_timeout(400)
         pp.screenshot(path=f"{out}/03-today.png", full_page=True)
+        check(pp.locator(".p-pane.on .wa").count() == 1, "Today: week ahead card")
 
         # The run: notes, then the map.
         pp.locator(".p-tabs").get_by_role("tab", name="Runs", exact=True).click()
@@ -266,6 +267,8 @@ try:
             sw = pp.evaluate("document.documentElement.scrollWidth")
             check(sw <= 392, f"Plan/{name}: no sideways scroll ({sw})")
             if name == "Week":
+                check(pp.locator(".p-pane.on .wa").count() == 1, "Plan week: the build to your race")
+                print("week ahead:", pp.locator(".p-pane.on .wa").inner_text().replace("\n", " | ")[:300] if pp.locator(".p-pane.on .wa").count() else None)
                 check(pp.locator(".p-pane.on .lfw-strip").count() == 1, "Plan week: load focus % for the week")
                 check(pp.locator(".p-pane.on .lf-row2").count() == 3, "Plan week: 4-week load focus card")
                 print("week focus:", pp.locator(".p-pane.on .lfw-strip").inner_text().replace("\n", " ") if pp.locator(".p-pane.on .lfw-strip").count() else None)
@@ -397,6 +400,7 @@ try:
         check(pp.locator(".rz-paces .rz-pace").count() == 8, "Stats: training paces")
         print("load focus:", pp.locator(".p-pane.on .lf").inner_text().replace("\n", " ")[:300] if pp.locator(".p-pane.on .lf").count() else None)
         check(pp.locator(".p-pane.on .lf-row2").count() == 3 and pp.locator(".p-pane.on .lf-st").count() == 3, "Stats: load focus, each with in/below/above")
+        check(pp.locator(".p-pane.on .lf-src").count() == 1 and "Short of anaerobic" in pp.locator(".p-pane.on .lf").inner_text(), "Stats: Garmin's own load focus (620 / 742 / 33)")
         pp.locator(".p-pane.on .lf").scroll_into_view_if_needed()
         pp.screenshot(path=f"{out}/12-load-focus.png")
         pp.locator(".xp-btn").first.click()
