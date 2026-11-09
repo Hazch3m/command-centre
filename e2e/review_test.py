@@ -113,7 +113,6 @@ try:
         pp.locator(".p-dash-edit .p-link", has_text="Done").click()
         pp.wait_for_timeout(400)
         pp.screenshot(path=f"{out}/03-today.png", full_page=True)
-        check(pp.locator(".p-pane.on .wa").count() == 1, "Today: week ahead card")
 
         # The run: notes, then the map.
         pp.locator(".p-tabs").get_by_role("tab", name="Runs", exact=True).click()
@@ -391,6 +390,13 @@ try:
         pp.wait_for_timeout(800)
         pp.screenshot(path=f"{out}/03h-health-3.png")
         # Stats: training load.
+        pp.locator(".p-tabs").get_by_role("tab", name="Today", exact=True).click()
+        pp.wait_for_timeout(1500)
+        check(pp.locator(".p-pane.on .wa").count() == 1, "Today: week ahead card")
+        if pp.locator(".p-pane.on .wa").count():
+            pp.locator(".p-pane.on .wa").scroll_into_view_if_needed()
+            pp.locator(".p-pane.on .wa").screenshot(path=f"{out}/03d-week-ahead.png")
+        pp.evaluate("window.scrollTo(0,0)")
         pp.locator(".p-tabs").get_by_role("tab", name="Stats", exact=True).click()
         pp.wait_for_timeout(2500)
         check(pp.locator(".tl-chart").count() == 1, "Stats: training load chart")
