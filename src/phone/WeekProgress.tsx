@@ -59,7 +59,8 @@ function cheer(fw: ForecastWeek, today: string, doneRuns: number, planned: numbe
 /** This week at a glance: how much of it you've trained, each day, and your streaks. */
 export function WeekProgress({ plan, fw, runs, today, overrides }: { plan: Plan; fw: ForecastWeek; runs: Run[]; today: string; overrides?: Map<string, string> }) {
   const planned = fw.days.filter(isRun);
-  const doneRuns = planned.filter((d) => d.runs.length > 0).length;
+  // Runs done this week: planned ones, plus any extra day you ran.
+  const doneRuns = fw.days.filter((d) => d.runs.length > 0 && d.date <= today).length;
   const left = planned.filter((d) => d.date > today || (d.date === today && !d.runs.length));
   const missed = planned.filter((d) => d.date < today && !d.runs.length).length;
   const km = fw.actualKm;
@@ -108,11 +109,11 @@ export function WeekProgress({ plan, fw, runs, today, overrides }: { plan: Plan;
       <div className="wp-streaks">
         <span>
           <b className="num">🔥 {streak}</b>
-          <small>{streak === 1 ? "session" : "sessions"} in a row</small>
+          <small>{streak ? (streak === 1 ? "planned run in a row" : "planned runs in a row") : "start a streak today"}</small>
         </span>
         <span>
           <b className="num">{onPlan}</b>
-          <small>{onPlan === 1 ? "week" : "weeks"} on plan</small>
+          <small>{onPlan === 1 ? "week" : "weeks"} on plan (80%+)</small>
         </span>
       </div>
     </section>
