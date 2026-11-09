@@ -5,6 +5,8 @@ import { loadPlan, mondayOf, type Plan } from "../running/plan";
 import * as coach from "./coach";
 import { toGarmin } from "./garminWorkouts";
 import { sessionToWorkout, type Zones } from "./importWeek";
+import type { Step, Workout } from "./steps";
+import { loadGarminZones, loadZoneSettings, resolveZones } from "../running/hrZones";
 
 /**
  * Watch sync, like Runna's: with it on, the next days of your plan are kept
@@ -21,6 +23,20 @@ export interface AutoSyncSettings {
   on: boolean;
   /** How many days ahead to keep on the watch. */
   days: number;
+  /**
+   * Easy running (easy, recovery and long runs, warm-ups, cool-downs, jogs) on the watch:
+   * "off" no target, so no beeping (the default); "ceiling" an alert only if your heart rate
+   * goes above the top of zone 2; "zone" the heart-rate zone, alerts both ways.
+   */
+  easy?: "off" | "ceiling" | "zone";
+}
+
+/** Easy steps' heart-rate targets as you chose: none, an upper limit only, or the zone. */
+export function easyTargets(w: Workout, mode: AutoSyncSettings["easy"], ceiling: number | null): Workout {
+  const m = mode ?? "off";
+  if (m === "zone") return w;
+  const fix = (st: Step): Step => (/^hr\s+zone\s+[12]$/i.test(st.target) ? { ...st, target: m === "ceiling" && ceiling ? `hr 60-${ceiling}` : "open" } : st);
+  return { ...w, steps: w.steps.map((it) => (it.kind === "repeat" ? { ...it, steps: it.steps.map(fix) } : fix(it))) };
 }
 export const AUTOSYNC_SETTINGS = "watch.autosync.settings";
 export const AUTOSYNC_STATE = "watch.autosync";
@@ -53,7 +69,7 @@ const zonesOf = (plan: Plan): Zones => {
 };
 
 /** The workouts the plan wants on the watch, by date. */
-export function wanted(plan: Plan, from: string, days: number) {
+export function wanted(plan: Plan, from: string, days: number, easy?: { mode: AutoSyncSettings["easy"]; ceiling: number | null }) {
   const out = new Map<string, { w: NonNullable<ReturnType<typeof sessionToWorkout>>; hash: string }>() as Map<string, { w: NonNullable<ReturnType<typeof sessionToWorkout>>; hash: string }> & { ran: Set<string> };
   out.ran = new Set<string>();
   const zones = zonesOf(plan);
@@ -63,8 +79,9 @@ export function wanted(plan: Plan, from: string, days: number) {
       // Rest days, races and days already run have nothing to send.
       if (d.runs.length) out.ran.add(d.date);
       if (d.kind === "rest" || d.race || d.kind === "race" || !(d.km ?? 0) || d.runs.length) continue;
-      const w = sessionToWorkout(d.text, zones);
-      if (!w) continue;
+      const w0 = sessionToWorkout(d.text, zones);
+      if (!w0) continue;
+      const w = easyTargets(w0, easy?.mode, easy?.ceiling ?? null);
       try {
         out.set(d.date, { w, hash: JSON.stringify(toGarmin(w)) });
       } catch {
@@ -93,7 +110,12 @@ async function doRun({ force }: { force?: boolean }): Promise<AutoSyncState> {
   const done: string[] = [];
   try {
     const { plan } = await loadPlan();
-    const want = wanted(plan, today, Math.max(1, Math.min(28, settings.days)));
+    // Top of zone 2 (Garmin's zones, else yours) for the "too high" alert.
+    const gz = await loadGarminZones().catch(() => null);
+    const zs = await loadZoneSettings().catch(() => null);
+    const floors = gz || zs?.hrMax ? resolveZones(zs, gz, { hrMax: zs?.hrMax ?? gz?.max ?? 190, hrRest: zs?.hrRest ?? gz?.rest ?? 50 }).floors : null;
+    const ceiling = floors && floors[2] ? floors[2] - 1 : null;
+    const want = wanted(plan, today, Math.max(1, Math.min(28, settings.days)), { mode: settings.easy, ceiling });
     // Workouts already on those days (to adopt one with the same name rather than add a twin).
     let onGarmin: coach.Scheduled[] | null = null;
     const garminDay = async (date: string) => {

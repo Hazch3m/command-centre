@@ -120,6 +120,31 @@ export function AutoSyncSetting() {
       )}
       {s.on && (
         <div className="autosync-row">
+          <span className="label">Easy-run alerts</span>
+          <span className="segmented small-seg">
+            {(
+              [
+                ["off", "None"],
+                ["ceiling", "If too high"],
+                ["zone", "HR zone"],
+              ] as const
+            ).map(([v, l]) => (
+              <button key={v} className={(s.easy ?? "off") === v ? "on" : ""} onClick={() => save({ ...s, easy: v })}>
+                {l}
+              </button>
+            ))}
+          </span>
+          <span className="muted small autosync-note">
+            {(s.easy ?? "off") === "off"
+              ? "Easy runs, long runs, warm-ups and cool-downs have no target: no beeping. Sessions keep their pace targets."
+              : s.easy === "ceiling"
+                ? "A beep only if your heart rate goes above the top of zone 2. Going slower never beeps."
+                : "Heart-rate zone 2 as the target: it beeps when you're above or below it."}
+          </span>
+        </div>
+      )}
+      {s.on && (
+        <div className="autosync-row">
           <span className="label">Days ahead</span>
           <span className="segmented small-seg">
             {DAYS.map((d) => (

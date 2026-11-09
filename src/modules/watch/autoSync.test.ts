@@ -87,3 +87,19 @@ describe("watch sync", () => {
     expect(Object.keys((await getAutoSyncState()).days)).toHaveLength(0);
   });
 });
+
+describe("easy-run alerts", () => {
+  it("drops heart-rate targets on easy steps (no beeping), or keeps only an upper limit, and leaves paces alone", async () => {
+    const { easyTargets } = await import("./autoSync");
+    const { sessionToWorkout } = await import("./importWeek");
+    const w = sessionToWorkout("12 km with 3 km warm-up, Threshold: 4 × 2 km at 3:58–4:02, 90 s jog, 2 km cool-down")!;
+    const all = (x: typeof w) => JSON.stringify(x);
+    const off = easyTargets(w, "off", 150);
+    expect(all(off)).not.toMatch(/hr zone/);
+    expect(all(off)).toMatch(/pace 3:58/);
+    expect(all(easyTargets(w, "ceiling", 150))).toMatch(/hr 60-150/);
+    expect(all(easyTargets(w, "zone", 150))).toMatch(/hr zone 2/);
+    const rec = sessionToWorkout("5 km recovery")!;
+    expect(all(rec)).not.toMatch(/hr zone 1/);
+  });
+});
