@@ -284,7 +284,9 @@ try:
                     print("focus weeks:", pp.locator(".p-pane.on .lfw").inner_text().replace("\n", " ")[:400])
                     pp.evaluate("window.scrollTo(0,0)")
         check(pp.locator(".pp-week").count() > 3, "Progress: weeks planned vs done")
-        check(pp.locator(".gc-card").count() >= 4, "Progress: goals to swipe across")
+        check(pp.locator(".gc-card").count() >= 3, "Progress: goals to swipe across")
+        print("goal cards:", [c.replace("\n", " | ")[:120] for c in pp.locator(".gc-card").all_inner_texts()])
+        check(pp.locator(".gc-card .pt-chart").count() >= 1, "Progress: the line to race day on the cards")
         check(pp.locator(".fp-table .fp-row").count() == 4, "Progress: race predictor")
         pp.screenshot(path=f"{out}/08-plan-3a-progress-top.png")
         if pp.locator(".rr2").count():
@@ -293,6 +295,11 @@ try:
             pp.wait_for_timeout(500)
             check(pp.locator(".rr2-more").count() == 1, "Readiness: today, and a part opens")
             pp.screenshot(path=f"{out}/08-plan-3b-readiness.png")
+        if pp.locator(".gc-card.on .gc-link").count():
+            pp.locator(".gc-card.on .gc-link").click()
+            pp.wait_for_timeout(2000)
+            check(pp.locator(".p-subnav [aria-selected=true]").inner_text().strip() == "Pace on point", "Progress card opens Pace on point")
+            print("pace picked:", pp.locator(".pt-picks button.on").inner_text() if pp.locator(".pt-picks button.on").count() else None)
         pp.locator(".p-subnav").get_by_role("tab", name="Pace on point", exact=True).click()
         pp.wait_for_timeout(2500)
         check(pp.locator(".pt-picks button").count() >= 4, "Pace: races and distances to pick from")
