@@ -5070,3 +5070,18 @@ svg.effort {
 .wa-key {
   grid-template-columns: 2.6rem auto 1fr auto auto;
 }
+/* The tap-to-type value is a button too: not one of the round − / + buttons. */
+.wc-step .wc-val {
+  width: auto;
+  min-width: 6.5rem;
+  height: auto;
+  padding: 0.15rem 0.3rem;
+  border: 0;
+  border-bottom: 1.5px dashed color-mix(in srgb, var(--z, var(--accent)) 50%, transparent);
+  border-radius: 4px;
+  background: none;
+  box-shadow: none;
+  color: var(--text);
+  font-size: 1.3rem;
+  white-space: nowrap;
+}
