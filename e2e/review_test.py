@@ -267,6 +267,19 @@ try:
             check(sw <= 392, f"Plan/{name}: no sideways scroll ({sw})")
             if name == "Week":
                 check(pp.locator(".p-pane.on .wa").count() == 1, "Plan week: the build to your race")
+                if pp.locator(".p-pane.on .p-adjust-btn").count():
+                    pp.locator(".p-pane.on .p-adjust-btn").click()
+                    pp.wait_for_timeout(1500)
+                    bu = pp.locator(".ps-card", has_text="Build-up")
+                    check(bu.count() == 1, "Adjust plan opens on Adjust, with build-up")
+                    if bu.count():
+                        bu.get_by_role("button", name="3 wk").click()
+                        pp.wait_for_timeout(1200)
+                        print("build-up:", bu.inner_text().replace("\n", " | ")[:160])
+                        bu.scroll_into_view_if_needed()
+                        pp.screenshot(path=f"{out}/08-plan-0d-adjust.png")
+                    pp.locator(".p-back").click()
+                    pp.wait_for_timeout(1200)
                 print("week ahead:", pp.locator(".p-pane.on .wa").inner_text().replace("\n", " | ")[:300] if pp.locator(".p-pane.on .wa").count() else None)
                 check(pp.locator(".p-pane.on .lfw-strip").count() == 1, "Plan week: load focus % for the week")
                 check(pp.locator(".p-pane.on .lf-row2").count() == 3, "Plan week: 4-week load focus card")
