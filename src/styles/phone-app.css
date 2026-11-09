@@ -5105,6 +5105,7 @@ svg.effort {
   opacity: 0.85;
 }
 .wa-tunes i {
+  flex: none;
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 1px;

@@ -65,14 +65,14 @@ export function WeekAhead({ plan, monday: given, onDay }: { plan: Plan; monday?:
   if (tuneUp && race?.date) {
     const raceMon = mondayOf(race.date);
     const prev = plan.races
-      .filter((r) => r.date && !r.approx && r.date < race.date! && r !== race)
+      // A block runs from the race before it that mattered (A or B); time trials don't split it.
+      .filter((r) => r.date && !r.approx && r.date < race.date! && r !== race && priorityOf(r) !== "C")
       .map((r) => r.date!)
       .sort()
       .pop();
     const first = plan.weeks[0]?.start ?? raceMon;
     let from = prev && addDays(mondayOf(prev), 7) > first ? addDays(mondayOf(prev), 7) : first;
     if (diffDays(from, raceMon) / 7 > 15) from = addDays(raceMon, -15 * 7);
-    if (from > mondayOf(today)) from = from > raceMon ? raceMon : from;
     const n0 = Math.max(1, diffDays(from, raceMon) / 7 + 1);
     weeks = Array.from({ length: n0 }, (_, i) => {
       const start = addDays(from, i * 7);
@@ -118,7 +118,7 @@ export function WeekAhead({ plan, monday: given, onDay }: { plan: Plan; monday?:
     <section className="wa" aria-label="Week ahead">
       <div className="wa-top">
         <span className="wa-eyebrow">
-          {idx >= 0 ? `Week ${idx + 1} of ${weeks.length}` : isThis ? "This week" : "Week"}
+          {idx >= 0 ? `Week ${idx + 1} of ${weeks.length}` : tuneUp && weeks[0] && weeks[0].start > monday ? `Block starts ${parseKey(weeks[0].start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : isThis ? "This week" : "Week"}
           {cur ? ` · ${cur.name}` : ""}
         </span>
         {race && (
