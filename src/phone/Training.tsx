@@ -26,6 +26,7 @@ import { PaceOnTrack } from "./PaceOnTrack";
 import { RaceManager } from "../modules/running/RaceManager";
 import { FitnessPredictor, GoalCarousel, PlanWeeksChart } from "./PlanGoals";
 import { LoadFocusCard, PlanFocusWeeks, WeekFocusStrip } from "./Focus";
+import { WeekAhead } from "./WeekAhead";
 
 type View = "week" | "calendar" | "pace" | "progress";
 const VIEWS: { id: View; label: string; icon: string }[] = [
@@ -120,6 +121,7 @@ export function Training() {
       {view === "progress" && <PlanProgress plan={plan} first={range.first} last={range.last} />}
       {view === "week" && (
       <>
+      <WeekAhead plan={plan} monday={monday} onDay={setSel} />
       <div ref={weekRef} data-noswipe className="p-weekswipe">
       <div className="p-weekbar">
         <button className="p-round" onClick={() => go(-1)} disabled={monday <= range.first} aria-label="Previous week">

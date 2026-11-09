@@ -311,6 +311,10 @@ async function doSync(): Promise<HealthSync> {
     const z = parseGarminZones(await get("/biometric-service/heartRateZones"));
     if (z) await kvSet("health.hrZones", z);
   });
+  await step("load focus", async () => {
+    const lf = parseLoadFocus(await get(`/metrics-service/metrics/trainingstatus/aggregated/${today}`));
+    if (lf) await kvSet(LOAD_FOCUS_KEY, lf);
+  });
   await step("VO2 max", async () => {
     for (const [a, b] of chunks(from, today, 60)) parseVo2(await get(`/metrics-service/metrics/maxmet/daily/${a}/${b}`), patch);
   });
@@ -424,6 +428,51 @@ async function doSync(): Promise<HealthSync> {
   await notifyChanged("health");
   if (vo2.length) await notifyChanged("running");
   return state;
+}
+
+/** Garmin's own 4-week load focus (the watch's "Load Focus" page): load and optimal range for each. */
+export interface GarminLoadFocus {
+  date: string;
+  low: number;
+  high: number;
+  anaerobic: number;
+  target: { low: [number, number]; high: [number, number]; anaerobic: [number, number] };
+  /** Garmin's verdict, e.g. "ANAEROBIC_SHORTAGE", "BALANCED". */
+  phrase: string | null;
+}
+export const LOAD_FOCUS_KEY = "health.loadFocus";
+
+/** Finds the training load balance in Garmin's training status (one entry per device; the primary one wins). */
+export function parseLoadFocus(body: unknown, fallbackDate = todayKey()): GarminLoadFocus | null {
+  const found: Record<string, unknown>[] = [];
+  const walk = (o: unknown, depth: number) => {
+    if (!isObj(o) || depth > 6) return;
+    if (typeof o.monthlyLoadAerobicLow === "number") found.push(o);
+    for (const v of Object.values(o)) walk(v, depth + 1);
+  };
+  walk(body, 0);
+  const e = found.find((x) => x.primaryTrainingDevice === true) ?? found[0];
+  if (!e) return null;
+  const n = (k: string) => (typeof e[k] === "number" && Number.isFinite(e[k]) ? (e[k] as number) : null);
+  const low = n("monthlyLoadAerobicLow");
+  const high = n("monthlyLoadAerobicHigh");
+  const an = n("monthlyLoadAnaerobic");
+  const t = (k: string): [number, number] | null => {
+    const a = n(`${k}TargetMin`);
+    const b = n(`${k}TargetMax`);
+    return a != null && b != null && b > 0 ? [a, b] : null;
+  };
+  const tl = t("monthlyLoadAerobicLow");
+  const th = t("monthlyLoadAerobicHigh");
+  const ta = t("monthlyLoadAnaerobic");
+  if (low == null || high == null || an == null || !tl || !th || !ta) return null;
+  const d = typeof e.calendarDate === "string" && /^\d{4}-\d{2}-\d{2}/.test(e.calendarDate) ? e.calendarDate.slice(0, 10) : fallbackDate;
+  const phrase = typeof e.trainingBalanceFeedbackPhrase === "string" ? e.trainingBalanceFeedbackPhrase : null;
+  return { date: d, low, high, anaerobic: an, target: { low: tl, high: th, anaerobic: ta }, phrase };
+}
+
+export async function loadGarminLoadFocus(): Promise<GarminLoadFocus | null> {
+  return kvGet<GarminLoadFocus | null>(LOAD_FOCUS_KEY, null);
 }
 
 export async function loadHealth(days = 120): Promise<HealthDay[]> {
