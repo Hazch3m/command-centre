@@ -104,10 +104,10 @@ describe("plan builder: goals, speed work and tweaks", () => {
   });
 
   it("sharpens for a B race in the two weeks before it, unless you turn it off", () => {
-    const tune = { date: "2027-03-14", approx: false, when: "", name: "Spring 10k", target: "", role: "tune-up", priority: "B" as const, km: 10 };
+    const tune = { date: "2027-07-18", approx: false, when: "", name: "Summer 10k", target: "", role: "tune-up", priority: "B" as const, km: 10 };
     const o = { ...base, extraRaces: [tune] };
     const r = bp(BUNDLED_PLAN, o, h, "2026-11-06");
-    const before = r.plan.weeks.filter((w) => w.start >= "2027-02-28" && w.start <= "2027-03-07").flatMap((w) => Object.values(w.sessions) as string[]);
+    const before = r.plan.weeks.filter((w) => w.start >= "2027-06-28" && w.start <= "2027-07-05").flatMap((w) => Object.values(w.sessions) as string[]);
     expect(before.some((x) => /^.*10K pace: /.test(x))).toBe(true);
     const off = bp(BUNDLED_PLAN, { ...o, tune: { sharpen: false } }, h, "2026-11-06");
     expect(off.plan.weeks.flatMap((w) => Object.values(w.sessions) as string[]).some((x) => /10K pace: /.test(x))).toBe(false);
