@@ -155,7 +155,7 @@ function stepUp(days: ForecastDay[], s: PlanWeek["sessions"], p: Progress, t: st
     }
   }
   if (p.extraSession && !cut && t) {
-    const cands = days.map((d, i) => i).filter((i) => days[i].kind === "easy" && isRun(i) && !/PM:/.test(s[WEEK_KEYS[i]] ?? ""));
+    const cands = days.map((_, i) => i).filter((i) => days[i].kind === "easy" && isRun(i) && !/PM:/.test(s[WEEK_KEYS[i]] ?? ""));
     const pick = cands.find((i) => far(i, 2)) ?? null;
     if (pick != null) {
       const reps = weekNo % 2 ? "5 × 1 km" : "3 × 2 km";
