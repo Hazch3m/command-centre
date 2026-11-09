@@ -96,6 +96,8 @@ export interface Tune {
   hillSprints?: boolean;
   /** Strides after an easy run. */
   strides?: boolean;
+  /** Periodise around tune-up races: the two weeks before a B race sharpen for it (default on). */
+  sharpen?: boolean;
   /** Doubles a week: a second short easy run on the same day (0: none). */
   doubles?: 0 | 1 | 2 | 3 | 4;
 }
@@ -234,6 +236,7 @@ export function tuneDefaults(h: History, o: BuildOptions): Required<Omit<Tune, "
     kinds: ALL_KINDS,
     hillSprints: false,
     strides: true,
+    sharpen: true,
     doubles: 0,
     longest: L.longCap[o.dist],
     quality: (o.goal === "mileage" || o.goal === "base" ? 1 : L.quality >= 2 ? 2 : 1) as 1 | 2 | 3,
@@ -764,6 +767,17 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
     let picks = pickSessions(nQ, qPhase, i, kinds, o, t, p, rp, seen);
     // Before the race-specific weeks, a tune-up week keeps a short threshold session rather than race-pace work.
     if (tune && (b.phase === "base" || b.phase === "build") && picks.length) picks = [{ ...reps(4, 1, p.threshold, "90 s jog", 90), kind: "threshold" as const }].map((q) => ({ ...q, text: `Threshold: ${q.text}` }));
+    // Periodised around tune-ups: the two weeks before a B race sharpen for it, one session at its pace.
+    const nextTune = T.sharpen === false ? null : tuneUps.find((r) => priorityOf(r) === "B" && r.date! > addDays(b.monday, 6) && r.date! <= addDays(b.monday, 20));
+    let sharpenFor: string | null = null;
+    if (nextTune && (b.phase === "base" || b.phase === "build") && !b.cut && picks.length) {
+      const k = nextTune.km ?? raceKm(nextTune.name) ?? 10;
+      const q = k <= 6 ? { ...reps(5, 1, p.fivek, "2 min jog", 120), label: "5K pace" } : k <= 12 ? { ...reps(4, 2, p.tenk, "90 s jog", 90), label: "10K pace" } : k <= 25 ? { ...hmp(reps(3, 4, p.hmp, "2 min jog", 120)), label: "Half pace" } : null;
+      if (q) {
+        picks[0] = { km: q.km, text: `${q.label}: ${q.text}`, kind: "racepace" };
+        sharpenFor = nextTune.name;
+      }
+    }
     // Quality days: Tuesday and Thursday (shifted for a Saturday long run); a third on the day before the long run.
     const qDays = [q1, q2, o.days >= 6 ? shift(longDay, -1) : null];
     picks.forEach((q, j) => {
@@ -838,6 +852,8 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
           ? "Easier week: less volume, same sessions, to absorb the last few weeks."
           : raceHere.length
             ? `Tune-up race: ${raceHere.map((r) => r.name).join(", ")}. Lighter week around it.`
+            : sharpenFor
+              ? `Sharpening for ${sharpenFor}: one session at its pace, the rest as planned.`
             : isRace && b.phase === "specific" && (() => {
                   const el = courseElevation(o.terrain, DIST_M[o.dist] / 1000);
                   return el.loss - el.gain > 150;
@@ -941,7 +957,7 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
  * (short reps at speed), fartlek, hills. Null for easy and long runs, and when the text already says.
  */
 export function sessionKindOf(text: string): string | null {
-  if (/\b(VO2 max|Threshold|Threshold tempo|Hill strength|Race pace):/i.test(text) || /fartlek/i.test(text)) return null;
+  if (/\b(VO2 max|Threshold|Threshold tempo|Hill strength|Race pace|5K pace|10K pace|Half pace):/i.test(text) || /fartlek/i.test(text)) return null;
   if (/hill (?:reps|repeats)/i.test(text)) return "Hill strength";
   if (/\bT\b|threshold|tempo|cruise/i.test(text)) return "Threshold";
   const rep = /(\d+)\s*×\s*(\d+(?:\.\d+)?)\s*(km|m|min|s)\b[^,]*\bat\s+(?!MP|HMP)/i.exec(text);

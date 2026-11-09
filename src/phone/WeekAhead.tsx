@@ -3,7 +3,7 @@ import { addDays, diffDays, parseKey, useToday } from "../core/time";
 import { notifyChanged, useDataVersion } from "../core/events";
 import { kvGet, kvSet } from "../core/db";
 import { useQuery } from "../core/useQuery";
-import { forecastWeek } from "../modules/running/forecast";
+import { forecastWeek, raceKm } from "../modules/running/forecast";
 import { mondayOf, priorityOf, upcomingRaces, type Plan } from "../modules/running/plan";
 import { sessionKindOf } from "../modules/running/planBuilder";
 import { loadOverrides } from "../modules/running/strava";
@@ -34,6 +34,7 @@ export function openPlanDay(nav: { setTab: (t: Tab) => void }, date: string) {
   nav.setTab("training");
   window.dispatchEvent(new CustomEvent("cc:plan-day", { detail: date }));
 }
+const BLOCK_COLOURS: Record<string, string> = { Base: "#3d9be9", Build: "#22b07d", Sharpen: "#f2913d", "Race week": "#e8344e" };
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 /**
@@ -55,28 +56,63 @@ export function WeekAhead({ plan, monday: given, onDay }: { plan: Plan; monday?:
   const picked = useQuery(() => kvGet<string>(HIGHLIGHT_KEY, ""), [uv]).data ?? "";
   const race = races.find((r) => raceKey(r) === picked) ?? races.find((r) => priorityOf(r) === "A") ?? races[0] ?? null;
 
-  // The plan's weeks up to the race, as phases along a line.
-  const weeks = plan.weeks.filter((w) => !race?.date || w.start <= race.date);
+  // The plan's weeks up to the race, as phases along a line. A tune-up race (B or C) gets its own
+  // block, periodised to it: build, then sharpen for the last two weeks, then race week. The goal
+  // race shows the plan's phases, with the tune-ups on the line.
+  const tuneUp = !!race && priorityOf(race) !== "A";
+  const goal = races.find((r) => priorityOf(r) === "A") ?? null;
+  let weeks: { start: string; end: string; phase: string }[] = plan.weeks.filter((w) => !race?.date || w.start <= race.date);
+  if (tuneUp && race?.date) {
+    const raceMon = mondayOf(race.date);
+    const prev = plan.races
+      .filter((r) => r.date && !r.approx && r.date < race.date! && r !== race)
+      .map((r) => r.date!)
+      .sort()
+      .pop();
+    const first = plan.weeks[0]?.start ?? raceMon;
+    let from = prev && addDays(mondayOf(prev), 7) > first ? addDays(mondayOf(prev), 7) : first;
+    if (diffDays(from, raceMon) / 7 > 15) from = addDays(raceMon, -15 * 7);
+    if (from > mondayOf(today)) from = from > raceMon ? raceMon : from;
+    const n0 = Math.max(1, diffDays(from, raceMon) / 7 + 1);
+    weeks = Array.from({ length: n0 }, (_, i) => {
+      const start = addDays(from, i * 7);
+      const out = n0 - 1 - i;
+      const phase = out === 0 ? "Race week" : out <= 2 ? "Sharpen" : n0 > 8 && out >= 7 ? "Base" : "Build";
+      return { start, end: addDays(start, 6), phase };
+    });
+  }
   const idx = weeks.findIndex((w) => w.start <= addDays(monday, 6) && w.end >= monday);
   const segs: { name: string; from: number; to: number; colour: string }[] = [];
   for (const [i, w] of weeks.entries()) {
     const name = phaseName(w.phase || "");
     const last = segs[segs.length - 1];
     if (last && last.name === name) last.to = i;
-    else segs.push({ name, from: i, to: i, colour: PHASE_COLOURS[segs.length % PHASE_COLOURS.length] });
+    else segs.push({ name, from: i, to: i, colour: tuneUp ? BLOCK_COLOURS[name] ?? PHASE_COLOURS[segs.length % PHASE_COLOURS.length] : PHASE_COLOURS[segs.length % PHASE_COLOURS.length] });
   }
   const n = Math.max(1, weeks.length);
   const at = (i: number) => ((i + 0.5) / n) * 100;
   const cur = idx >= 0 ? segs.find((s) => s.from <= idx && idx <= s.to) : null;
   const phaseLeft = cur && idx >= 0 ? cur.to - idx : null;
-  const summary = cur ? plan.phases.find((p) => phaseName(p.name) === cur.name || p.name.includes(cur.name))?.summary : null;
+  const dist = race ? (race.km ?? raceKm(race.name)) : null;
+  const distWord = dist == null ? "race" : dist <= 6 ? "5K" : dist <= 12 ? "10K" : dist <= 25 ? "half" : "race";
+  const summary = tuneUp
+    ? cur?.name === "Race week"
+      ? `Race week: a short mini taper, a few strides, then race the ${distWord}.`
+      : cur?.name === "Sharpen"
+        ? `Sharpening for the ${distWord}: a session at ${distWord} pace each week, the rest as planned, so you arrive sharp but not tired.`
+        : `Building for the ${distWord}${goal && goal !== race ? ` on the way to ${goal.name}` : ""}: mileage and the usual sessions; the last two weeks sharpen for it.`
+    : cur
+      ? plan.phases.find((p) => phaseName(p.name) === cur.name || p.name.includes(cur.name))?.summary
+      : null;
+  // Tune-ups along the goal race's line.
+  const marks = tuneUp || !race?.date ? [] : races.filter((r) => r !== race && r.date! < race.date!).map((r) => ({ r, i: weeks.findIndex((w) => w.start <= r.date! && w.end >= r.date!) })).filter((m) => m.i >= 0);
 
   const key = fw.days.filter((d) => d.kind === "key" || d.kind === "long" || d.kind === "race");
   const runsPlanned = fw.days.filter((d) => d.kind !== "rest" && !/^rest\b/i.test(d.text) && (d.km || d.text)).length;
   const daysTo = race?.date ? diffDays(today, race.date) : null;
   const done = fw.actualKm;
   const isThis = monday === mondayOf(today);
-  const label = (text: string, kind: string) => (kind === "long" ? "Long run" : kind === "race" ? "Race" : sessionKindOf(text) ?? (/hill/i.test(text) ? "Hills" : /fartlek/i.test(text) ? "Fartlek" : /stride/i.test(text) ? "Strides" : /tempo/i.test(text) ? "Tempo" : "Session"));
+  const label = (text: string, kind: string) => (kind === "long" ? "Long run" : kind === "race" ? "Race" : /^([A-Z0-9][\w\s-]{1,18}):/.exec(text)?.[1] ?? sessionKindOf(text) ?? (/hill/i.test(text) ? "Hills" : /fartlek/i.test(text) ? "Fartlek" : /stride/i.test(text) ? "Strides" : /tempo/i.test(text) ? "Tempo" : "Session"));
 
   return (
     <section className="wa" aria-label="Week ahead">
@@ -92,7 +128,7 @@ export function WeekAhead({ plan, monday: given, onDay }: { plan: Plan; monday?:
           </button>
         )}
       </div>
-      <h3 className="wa-title">{race ? <>Building to {race.name}</> : isThis ? "Your week ahead" : "The week"}</h3>
+      <h3 className="wa-title">{race ? <>{tuneUp ? "Sharpening for" : "Building to"} {race.name}</> : isThis ? "Your week ahead" : "The week"}</h3>
       {race && (
         <span className="wa-sub">
           {race.target ? `Goal ${race.target} · ` : ""}
@@ -131,6 +167,9 @@ export function WeekAhead({ plan, monday: given, onDay }: { plan: Plan; monday?:
             {idx >= 0 && <span className="wa-done" style={{ width: `${(idx / n) * 100}%` }} />}
             {idx >= 0 && <span className="wa-you" style={{ left: `${at(idx)}%` }} />}
             {race && <b className="wa-flag">⚑</b>}
+            {marks.map((m) => (
+              <span key={raceKey(m.r)} className="wa-tune" style={{ left: `${at(m.i)}%` }} title={m.r.name} />
+            ))}
           </span>
           <span className="wa-phases">
             {segs.map((s) => (
@@ -139,6 +178,11 @@ export function WeekAhead({ plan, monday: given, onDay }: { plan: Plan; monday?:
               </span>
             ))}
           </span>
+          {marks.length > 0 && (
+            <span className="wa-tunes">
+              <i /> Tune-ups: {marks.map((m) => `${shortName(m.r.name)} ${parseKey(m.r.date!).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`).join(" · ")}
+            </span>
+          )}
         </div>
       )}
 

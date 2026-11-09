@@ -1,7 +1,7 @@
 import { addDays } from "../../core/time";
 import { shapeFactor } from "./fitness";
 import { forecastWeek, raceKm, type ForecastDay } from "./forecast";
-import { mondayOf, type Plan, type PlanRace } from "./plan";
+import { mondayOf, priorityOf, type Plan, type PlanRace } from "./plan";
 import { elevationCost, expectedGain } from "./planBuilder";
 import { predictTime } from "./vo2";
 
@@ -97,7 +97,7 @@ export function garminTimeAt(values: Record<string, number>, meters: number): nu
 
 export function raceReadiness(
   plan: Plan,
-  race: Pick<PlanRace, "date" | "name" | "km" | "target" | "elevation">,
+  race: Pick<PlanRace, "date" | "name" | "km" | "target" | "elevation"> & Partial<Pick<PlanRace, "priority" | "role">>,
   today: string,
   vdotAt: VdotAt,
   actual: Map<string, number> = new Map(),
@@ -134,14 +134,18 @@ export function raceReadiness(
   const long = pct((longest / need.long) * 100);
   const re = SPECIFIC.find(([k]) => km >= k)![1];
   // Marathon: long runs with a faster section ("33 km, 16 at 3:58") count as race-specific too.
-  const isSpecific = (d: ForecastDay) => re.test(d.text) || (km >= 40 && d.kind === "long" && /\bat\s+\d:\d\d/.test(d.text));
+  // A B or C race is a tune-up inside another build: any quality session sharpens you for it,
+  // and it gets a short taper at most, so it isn't judged like a goal race.
+  // (A standard distance you're looking at, not one of your races, has no role: judged as a goal race.)
+  const tuneUp = race.role !== undefined || race.priority ? priorityOf(race as PlanRace) !== "A" : false;
+  const isSpecific = (d: ForecastDay) => re.test(d.text) || (km >= 40 && d.kind === "long" && /\bat\s+\d:\d\d/.test(d.text)) || (tuneUp && d.kind === "key" && /\bat\s+\d:\d\d|\bT\b|threshold|tempo|×/i.test(d.text));
   const specificDays = weeks.slice(-10, -1).flatMap((w) => w.days.filter((d) => (d.kind === "key" || d.kind === "long") && isSpecific(d)));
-  const wantSpecific = km >= 20 ? 5 : 6;
+  const wantSpecific = tuneUp ? 4 : km >= 20 ? 5 : 6;
   const specific = pct((specificDays.length / wantSpecific) * 100);
   const peak = Math.max(...build.slice(-6).map((w) => w.km), 1);
   const raceWeek = weeks[weeks.length - 1].km / peak;
   const prevWeek = weeks[weeks.length - 2].km / peak;
-  const [rwOk, pwOk] = km >= 40 ? [0.6, 0.85] : km >= 20 ? [0.75, 0.95] : [0.85, 1.05];
+  const [rwOk, pwOk] = (km >= 40 ? [0.6, 0.85] : km >= 20 ? [0.75, 0.95] : [0.85, 1.05]).map((x) => (tuneUp ? x + 0.2 : x));
   const taper = pct(100 - Math.max(0, raceWeek - rwOk) * 200 - Math.max(0, prevWeek - pwOk) * 150);
   let jump = 0;
   for (let i = 1; i < build.length; i++) {
@@ -160,7 +164,9 @@ export function raceReadiness(
       key: "specific",
       label: "Race-specific work",
       pct: specific,
-      note: `${specificDays.length} session${specificDays.length === 1 ? "" : "s"} at or around race pace in the last 9 weeks (${wantSpecific}+ is ideal).`,
+      note: tuneUp
+        ? `${specificDays.length} quality session${specificDays.length === 1 ? "" : "s"} in the last 9 weeks (${wantSpecific}+ is plenty). It's a tune-up, so the speed work for your main race counts.`
+        : `${specificDays.length} session${specificDays.length === 1 ? "" : "s"} at or around race pace in the last 9 weeks (${wantSpecific}+ is ideal).`,
     },
     {
       key: "taper",
@@ -203,7 +209,7 @@ export function raceReadiness(
   const todayParts: ReadinessPart[] = [
     { key: "volume", label: "Weekly volume", pct: pct((tAvg / need.km) * 100), note: `${Math.round(tAvg)} km a week over your last 8 weeks; this race needs about ${Math.round(need.km)}.` },
     { key: "long", label: "Long runs", pct: pct((tLong / need.long) * 100), note: `Longest ${Math.round(tLong)} km in the last 8 weeks; about ${Math.round(need.long)} km is what this distance asks for.` },
-    { key: "specific", label: "Race-specific work", pct: pct((tSpecific / wantSpecific) * 100), note: `${tSpecific} race-pace session${tSpecific === 1 ? "" : "s"} done in the last 8 weeks (${wantSpecific}+ is ideal).` },
+    { key: "specific", label: "Race-specific work", pct: pct((tSpecific / wantSpecific) * 100), note: tuneUp ? `${tSpecific} quality session${tSpecific === 1 ? "" : "s"} done in the last 8 weeks (${wantSpecific}+ is plenty for a tune-up).` : `${tSpecific} race-pace session${tSpecific === 1 ? "" : "s"} done in the last 8 weeks (${wantSpecific}+ is ideal).` },
     {
       key: "ramp",
       label: "Safe build",
