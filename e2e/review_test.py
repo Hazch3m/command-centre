@@ -406,6 +406,7 @@ try:
                 print("highlight:", before, "->", after)
                 check(before != after, "Week ahead: pick another race to highlight")
                 pp.locator(".p-pane.on .wa").screenshot(path=f"{out}/03e-week-ahead-other.png")
+                print("block:", pp.locator(".p-pane.on .wa").inner_text().replace("\n", " | ")[:240])
                 pp.locator(".p-pane.on .wa-picks button").nth(0).click()
                 pp.wait_for_timeout(800)
             keys = pp.locator(".p-pane.on .wa-key")
