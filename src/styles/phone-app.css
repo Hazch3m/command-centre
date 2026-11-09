@@ -5129,3 +5129,8 @@ svg.effort {
   font-weight: 750;
   cursor: pointer;
 }
+.p-adjust-btn {
+  margin-top: 0.6rem;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 9%, var(--card));
+}

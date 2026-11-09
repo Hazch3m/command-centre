@@ -16,7 +16,17 @@ const VIEWS = [
 /** Training → More → Your plan: build a new plan, adjust this one, or read how it's put together. */
 export function PlanAdjustPage() {
   const { plan } = useRunningData();
-  const [view, setView] = useState<(typeof VIEWS)[number]["id"]>("build");
+  const [view, setView] = useState<(typeof VIEWS)[number]["id"]>(() => {
+    try {
+      const v = sessionStorage.getItem("cc-adjust-view");
+      sessionStorage.removeItem("cc-adjust-view");
+      if (v && VIEWS.some((x) => x.id === v)) return v as (typeof VIEWS)[number]["id"];
+    } catch {
+      /* private mode */
+    }
+    // With a plan in place, adjusting it is the likelier wish; a new build without one.
+    return "build";
+  });
   if (!plan) return <p className="p-empty">The plan hasn't arrived from the PC yet.</p>;
   return (
     <div className="p-adjust">

@@ -106,6 +106,16 @@ export function PlanSettings({ plan, compact }: { plan: Plan; compact?: boolean 
         </section>
 
         <section className="ps-card">
+          <h4>Build-up</h4>
+          <div className="ps-value num">
+            {(a.ramp ?? 0) > 0 ? `${a.ramp} weeks sooner` : "As planned"}
+            <small> · peak {now.peak} km</small>
+          </div>
+          <Choice value={a.ramp ?? 0} options={[0, 1, 2, 3, 4, 6].map((v) => ({ v, l: v === 0 ? "As planned" : `${v} wk` }))} onChange={(v) => set({ ramp: v || undefined })} />
+          <div className="ps-sub">Reach the plan's weekly mileage sooner: for when you're coming off a higher-mileage block. Easier weeks still dip, the taper and race weeks are untouched, and nothing goes above the plan's peak.</div>
+        </section>
+
+        <section className="ps-card">
           <h4>Long runs</h4>
           <div className="ps-value num">
             {a.longExtra > 0 ? "+" : ""}

@@ -21,6 +21,8 @@ export interface PlanAdjust {
   longDay: DayKey | null;
   /** First Monday the settings apply to (earlier weeks stay as they were). */
   from: string;
+  /** Reach the plan's weekly mileage this many weeks sooner (0 or missing = as planned). */
+  ramp?: number;
 }
 
 export const ADJUST_DEFAULTS: Omit<PlanAdjust, "from"> = {
@@ -48,7 +50,7 @@ export function planDefaults(plan: Plan, from: string): { runDays: DayKey[]; lon
   return { runDays: runDays.length >= 3 ? runDays : FALLBACK_DAYS, longDay };
 }
 
-export const isAdjusted = (a: PlanAdjust | undefined | null) => !!a && (a.volume !== 1 || a.longExtra !== 0 || a.longMax != null || a.longDay != null || a.runDays != null);
+export const isAdjusted = (a: PlanAdjust | undefined | null) => !!a && (a.volume !== 1 || a.longExtra !== 0 || a.longMax != null || a.longDay != null || a.runDays != null || (a.ramp ?? 0) > 0);
 
 const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x));
 const IDX = (k: DayKey) => WEEK_KEYS.indexOf(k);
@@ -59,8 +61,9 @@ function withKm(text: string, km: number, fallback: string): string {
 }
 
 /** One week reshaped by the settings. */
-export function adjustWeek(plan: Plan, week: PlanWeek, a: PlanAdjust): PlanWeek {
-  if (week.start < a.from) return week;
+export function adjustWeek(plan: Plan, week: PlanWeek, a0: PlanAdjust, ramp = 1): PlanWeek {
+  if (week.start < a0.from) return week;
+  const a = ramp !== 1 ? { ...a0, volume: a0.volume * ramp } : a0;
   const days = forecastWeek(plan, week.start).days;
   if (!days.some((d) => (d.km ?? 0) > 0)) return week;
   const race = days.findIndex((d) => d.race || d.kind === "race");
@@ -153,7 +156,43 @@ export function applyAdjust(plan: Plan): Plan {
   if (!a) return plan;
   // Days written out first, so every day has a session to move or resize.
   const full: Plan = { ...plan, weeks: plan.weeks.map((w) => (w.start >= a.from ? { ...w, sessions: fullWeekSessions(plan, w) } : w)) };
-  return { ...plan, baseWeeks: plan.weeks, weeks: full.weeks.map((w) => adjustWeek(full, w, a)) };
+  const ramp = rampFactors(full, a);
+  return { ...plan, baseWeeks: plan.weeks, weeks: full.weeks.map((w) => adjustWeek(full, w, a, ramp.get(w.start) ?? 1)) };
+}
+
+/**
+ * Building up sooner: each week from `from` is lifted towards the mileage the plan reaches
+ * `ramp` weeks later (never above the plan's own peak). Easier weeks keep their dip (they're lifted
+ * by the same share as the week before), and race weeks and the taper are left alone.
+ */
+export function rampFactors(plan: Plan, a: PlanAdjust): Map<string, number> {
+  const out = new Map<string, number>();
+  const n = Math.round(a.ramp ?? 0);
+  if (n <= 0) return out;
+  const ws = plan.weeks.map((w) => {
+    const f = forecastWeek(plan, w.start);
+    const race = f.days.some((d) => d.race || d.kind === "race");
+    return { start: w.start, km: f.plannedKm ?? 0, frozen: race || /taper|race/i.test(w.phase) };
+  });
+  // The usual level each week: an easier week takes the level of the week before it.
+  const level: number[] = [];
+  ws.forEach((w, i) => {
+    const prev = i ? level[i - 1] : w.km;
+    level.push(i && w.km < prev * 0.92 ? prev : w.km);
+  });
+  let last = 1;
+  ws.forEach((w, i) => {
+    if (w.start < a.from || w.frozen || !w.km) {
+      if (w.frozen) last = 1;
+      return;
+    }
+    const ahead = Math.max(level[i], ...level.slice(i + 1, i + 1 + n).filter((_, j) => !ws[i + 1 + j].frozen));
+    const easier = i > 0 && w.km < level[i - 1] * 0.92;
+    const f = easier ? last : Math.min(1.3, ahead / Math.max(1, level[i]));
+    out.set(w.start, f);
+    last = f;
+  });
+  return out;
 }
 
 /** Summary of a stretch of the plan, for the before/after preview. */

@@ -238,6 +238,24 @@ export function Training() {
         <div className="p-coach">
           <PlanCoach plan={plan} monday={monday} compact />
         </div>
+        <button
+          type="button"
+          className="p-row p-row-btn p-adjust-btn"
+          onClick={() => {
+            try {
+              sessionStorage.setItem("cc-adjust-view", "adjust");
+            } catch {
+              /* private mode */
+            }
+            nav.push("adjust");
+          }}
+        >
+          <span className="p-row-main">
+            <span className="p-row-title">Adjust plan</span>
+            <span className="p-row-sub">Mileage, build-up, long runs and run days, without starting a new plan</span>
+          </span>
+          <span className="p-chev">›</span>
+        </button>
       </Section>
 
       <LoadFocusCard plan={plan} />
