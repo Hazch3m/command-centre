@@ -40,7 +40,7 @@ export function useReadinessInputs(plan: Plan | undefined) {
 export function useReadiness(plan: Plan | undefined, race: Pick<PlanRace, "date" | "name" | "km" | "target" | "elevation"> | null): Readiness | null {
   const today = useToday();
   const { actual, vdotAt, ready } = useReadinessInputs(plan);
-  return useMemo(() => (plan && race && ready ? raceReadiness(plan, race, today, vdotAt, actual) : null), [plan, race?.date, race?.name, race?.km, race?.target, today, vdotAt, actual, ready]);
+  return useMemo(() => (plan && race && ready ? raceReadiness(plan, race, today, vdotAt, actual) : null), [plan, race?.date, race?.name, race?.km, race?.target, (race as { priority?: string } | null)?.priority, today, vdotAt, actual, ready]);
 }
 
 /** Score, the five parts as bars, and the predicted time against the goal. */
