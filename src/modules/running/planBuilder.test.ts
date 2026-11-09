@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { forecastWeek } from "./forecast";
 import { sessionToWorkout } from "../watch/importWeek";
 import { BUNDLED_PLAN, WEEK_KEYS } from "./plan";
-import { buildPlan, LEVELS, pacesFor, recommend, type BuildOptions, type History } from "./planBuilder";
+import { buildPlan, doublesAdvice, LEVELS, pacesFor, recommend, type BuildOptions, type History } from "./planBuilder";
 
 const H: History = { recent4: 40, recent12: 55, peak12: 80, runsPerWeek: 4.5, longest8: 25, weeksRun12: 12, vdot: 55 };
 const TODAY = "2026-11-03";
@@ -84,6 +84,23 @@ describe("plan builder: goals, speed work and tweaks", () => {
     expect(s.some((x) => /hill sprints/.test(x))).toBe(false);
     for (const re of [/fartlek/, /progression run/, /× 2 km at|× 3 km at|× 1 km at/, /km at MP/]) expect(s.some((x) => re.test(x))).toBe(true);
     expect(all({ ...base, tune: { hillSprints: true } }).some((x) => /hill sprints/.test(x))).toBe(true);
+  });
+
+  it("adds doubles only when asked, as a short easy PM run counted in the week, never sent to the watch", () => {
+    expect(all(base).some((x) => /PM:/.test(x))).toBe(false);
+    const r = bp(BUNDLED_PLAN, { ...base, tune: { doubles: 2, peakKm: 115 } }, h, "2026-11-06");
+    const ws = r.plan.weeks.filter((w) => w.start >= r.weeks[0].monday && w.start <= "2027-10-24");
+    const build = ws.filter((w) => /build|specific/i.test(w.phase));
+    expect(build.some((w) => Object.values(w.sessions).filter((x) => /· PM: \d/.test(x ?? "")).length === 2)).toBe(true);
+    // Never in the taper or race week.
+    expect(ws.slice(-2).some((w) => Object.values(w.sessions).some((x) => /PM:/.test(x ?? "")))).toBe(false);
+    const d = build.flatMap((w) => Object.values(w.sessions) as string[]).find((x) => /PM:/.test(x))!;
+    const wk = sessionToWorkout(d)!;
+    expect(JSON.stringify(wk)).not.toMatch(/PM/);
+    expect(doublesAdvice(70, 6, "advanced").suggest).toBe(0);
+    expect(doublesAdvice(120, 6, "advanced").suggest).toBe(2);
+    expect(doublesAdvice(120, 5, "advanced").suggest).toBe(0);
+    expect(doublesAdvice(120, 7, "beginner").suggest).toBe(0);
   });
 
   it("only uses the kinds you pick", () => {

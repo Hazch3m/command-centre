@@ -98,7 +98,19 @@ function repsKm(text: string, defaultPace: number): number | null {
  * Estimated km for a session's text, or null when the text gives no distance
  * ("Easy + strides"), so the day is sized from the week's target instead.
  */
+/** "10 km easy · PM: 6 km easy" → the main run and the second run of a double (null when it isn't one). */
+export function splitDouble(text: string): { am: string; pm: string | null } {
+  const m = /^(.*?)\s*·\s*PM:\s*(.+)$/i.exec(text);
+  return m ? { am: m[1].trim(), pm: m[2].trim() } : { am: text, pm: null };
+}
+
 export function sessionKm(text: string, thresholdPace = 227): number | null {
+  const dbl = splitDouble(text);
+  if (dbl.pm) {
+    const a = sessionKm(dbl.am, thresholdPace);
+    const b = sessionKm(dbl.pm, thresholdPace);
+    return a == null && b == null ? null : Math.round(((a ?? 0) + (b ?? 0)) * 10) / 10;
+  }
   const t = text.trim();
   if (!t || /^(rest|none)\b/i.test(t)) return 0;
   const about = /about\s+([\d.]+)\s*km/i.exec(t);

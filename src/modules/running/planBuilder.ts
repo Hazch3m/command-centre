@@ -96,6 +96,26 @@ export interface Tune {
   hillSprints?: boolean;
   /** Strides after an easy run. */
   strides?: boolean;
+  /** Doubles a week: a second short easy run on the same day (0: none). */
+  doubles?: 0 | 1 | 2 | 3 | 4;
+}
+
+/**
+ * When doubles (a second, short, easy run on the same day) make sense: they add volume without
+ * making single runs longer or adding a hard day. Worth it from roughly 90–100 km a week, once you
+ * already run six or seven days and the easy runs are getting long; not for beginners, and not
+ * while rebuilding consistency. More of them the higher the mileage.
+ */
+export function doublesAdvice(peakKm: number, days: number, level: Level, weeksRun12 = 12): { suggest: 0 | 1 | 2 | 3 | 4; why: string } {
+  if (level === "beginner") return { suggest: 0, why: "Not yet: one run a day is plenty while you build the habit and the mileage." };
+  if (weeksRun12 < 8) return { suggest: 0, why: "Not yet: get back to running most weeks first; doubles are for adding volume on top of consistency." };
+  if (days < 6) return { suggest: 0, why: `Not needed on ${days} days a week: add a running day before a second run in a day.` };
+  if (peakKm < 90) return { suggest: 0, why: `Not needed at ${peakKm} km a week: single runs cover it comfortably. Worth it from about 90–100 km a week.` };
+  const suggest = (peakKm < 110 ? 1 : peakKm < 130 ? 2 : peakKm < 150 ? 3 : 4) as 1 | 2 | 3 | 4;
+  return {
+    suggest,
+    why: `At ${peakKm} km a week, ${suggest} double${suggest > 1 ? "s" : ""} a week keeps the easy runs a sensible length: more volume with less strain than longer single runs.`,
+  };
 }
 
 /** The longest build the builder makes. */
@@ -214,6 +234,7 @@ export function tuneDefaults(h: History, o: BuildOptions): Required<Omit<Tune, "
     kinds: ALL_KINDS,
     hillSprints: false,
     strides: true,
+    doubles: 0,
     longest: L.longCap[o.dist],
     quality: (o.goal === "mileage" || o.goal === "base" ? 1 : L.quality >= 2 ? 2 : 1) as 1 | 2 | 3,
     cutEvery: L.cutEvery as 3 | 4 | 5,
@@ -307,6 +328,8 @@ export function recommend(
   }
   const hs = atStart(weeks);
   why.push(`${LEVELS[level].label}: from ${startKmFor(hs)} km a week to about ${peakFor(hs, { dist, level, days, weeks })} km${h.recent12 > 0 ? `; your 12-week average is ${Math.round(h.recent12)} km` : ""}.`);
+  const dAdv = doublesAdvice(peakFor(hs, { dist, level, days, weeks }), days, level, h.weeksRun12);
+  if (dAdv.suggest > 0) why.push(`Doubles: ${dAdv.why} Turn them on under Fine-tune.`);
   if (hs !== h && weeksAvailable > weeks) why.push(`It starts from where your current plan has you by then (${Math.round(hs.recent4)} km weeks, long runs to ${Math.round(hs.longest8)} km).`);
   else if (h.recent12 > 0 && h.recent4 < h.recent12 * 0.75)
     why.push(`Your last 4 weeks (${Math.round(h.recent4)} km a week) are well below the 12-week average, so it starts from ${startKmFor(h)} km rather than where you were.`);
@@ -772,9 +795,18 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
         sized[at] = k;
       }
     }
+    // Doubles: a short easy second run on easy days (then quality days), not around the long run or a race.
+    const pm: Partial<Record<DayKey, number>> = {};
+    const nD = b.phase === "base" || b.phase === "build" || b.phase === "specific" ? (b.cut ? Math.min(1, T.doubles ?? 0) : (T.doubles ?? 0)) : 0;
+    if (nD > 0) {
+      const pmKm = r1(Math.max(5, Math.min(8, km * 0.065)));
+      const bad = (k: DayKey) => raceDays.has(k) || near(k) || k === longAt || (longAt != null && Math.min(Math.abs(IDX(k) - IDX(longAt)), 7 - Math.abs(IDX(k) - IDX(longAt))) === 1) || !run.includes(k);
+      const easyFirst = [...run.filter((k) => !s[k]), q1, q2].filter((k): k is DayKey => !!k && !bad(k));
+      for (const k of [...new Set(easyFirst)].slice(0, nD)) pm[k] = pmKm;
+    }
     // Easy days take what's left of the week.
     const easy = run.filter((k) => !s[k]);
-    const used = Object.values(sized).reduce((a, x) => a + (x ?? 0), 0);
+    const used = Object.values(sized).reduce((a, x) => a + (x ?? 0), 0) + Object.values(pm).reduce((a, x) => a + (x ?? 0), 0);
     const left = Math.max(0, km - used);
     const each = easy.length ? left / easy.length : 0;
     let strides = T.strides !== false && (b.phase !== "base" || o.level !== "beginner") && b.phase !== "recover";
@@ -791,6 +823,11 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
       }
       s[k] = text;
       sized[k] = kk;
+    }
+    for (const [k, v] of Object.entries(pm) as [DayKey, number][]) {
+      if (!s[k]) continue;
+      s[k] = `${s[k]} · PM: ${v} km easy`;
+      sized[k] = (sized[k] ?? 0) + v;
     }
     for (const k of WEEK_KEYS) if (!s[k]) s[k] = "Rest";
     const total = Object.values(sized).reduce((a, x) => a + (x ?? 0), 0);

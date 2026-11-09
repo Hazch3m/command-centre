@@ -78,7 +78,8 @@ function strides(s: string): Item[] {
 
 /** One session's text → steps, name and cues; null for rest days. */
 export function sessionToWorkout(text: string, zones: Zones = {}): Omit<Draft, "key" | "date" | "source"> | null {
-  const raw = norm(text);
+  // A double: the watch gets the main run; the second (" · PM: 6 km easy") is its own easy run.
+  const raw = norm(text.replace(/\s*·\s*PM:.*$/i, ""));
   if (!raw || /^(rest|none|off|day off)\b/i.test(raw)) return null;
   const strength = /strength\s+([AB])\b/i.exec(raw);
   const s = raw.replace(/\s*\+\s*strength\s+[AB]\b/i, "").trim();

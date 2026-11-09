@@ -6,7 +6,7 @@ import { fitnessConfigChanged, loadFitnessConfig, marathonShape, saveFitnessConf
 import { plannedRuns } from "./FitnessPlan";
 import { raceKm } from "./forecast";
 import { mondayOf, priorityOf, restorePreviousPlan, savePlan, WEEK_KEYS, type Plan, type PlanRace } from "./plan";
-import { buildPlan, courseElevation, elevationCost, DEFAULT_WEEKS, DIST_LABEL, GOALS, LEVELS, MAX_WEEKS, pacesFor, recommend, SESSION_KINDS, summarizeHistory, tuneDefaults, type BuildOptions, type Goal, type History, type Level, type RaceDist, type SessionKind, type Tune } from "./planBuilder";
+import { buildPlan, doublesAdvice, courseElevation, elevationCost, DEFAULT_WEEKS, DIST_LABEL, GOALS, LEVELS, MAX_WEEKS, pacesFor, recommend, SESSION_KINDS, summarizeHistory, tuneDefaults, type BuildOptions, type Goal, type History, type Level, type RaceDist, type SessionKind, type Tune } from "./planBuilder";
 import { raceReadiness } from "./readiness";
 import { ReadinessView, useReadinessInputs } from "./ReadinessCard";
 import { useRunningData } from "./useRunning";
@@ -682,6 +682,27 @@ function FineTune({ o, h, onChange }: { o: BuildOptions; h: History; onChange: (
         <span className="ft-label">Hill sprints on easy days</span>
         <Chips value={(t.hillSprints ?? d.hillSprints) ? "on" : "off"} options={[{ v: "on", l: "Yes" }, { v: "off", l: "No" }]} onChange={(v) => put({ hillSprints: v === "on" ? true : undefined })} />
       </div>
+      {(() => {
+        const adv = doublesAdvice(t.peakKm ?? d.peakKm, o.days, o.level, h.weeksRun12);
+        const v = t.doubles ?? 0;
+        return (
+          <div className="ft-row ft-doubles">
+            <span className="ft-label">
+              Doubles a week
+              {adv.suggest > 0 && v !== adv.suggest && (
+                <button type="button" className="link-btn small" onClick={() => put({ doubles: adv.suggest })}>
+                  use {adv.suggest}
+                </button>
+              )}
+            </span>
+            <Chips value={String(v)} options={[0, 1, 2, 3, 4].map((n) => ({ v: String(n), l: n === 0 ? "None" : String(n) }))} onChange={(x) => put({ doubles: +x ? (+x as 1 | 2 | 3 | 4) : undefined })} />
+            <span className="ps-note">
+              A second short easy run (5–8 km) on the same day, on easy days first. {adv.suggest > 0 ? `Suggested: ${adv.suggest}. ` : ""}
+              {adv.why} Keep them easy and at least 4–6 hours apart; none in easier weeks, the taper or race week. Your watch gets the main run; the second is a plain easy run.
+            </span>
+          </div>
+        );
+      })()}
       <div className="ft-row">
         <span className="ft-label">Strides after easy runs</span>
         <Chips value={(t.strides ?? d.strides) ? "on" : "off"} options={[{ v: "on", l: "Yes" }, { v: "off", l: "No" }]} onChange={(v) => put({ strides: v === "on" ? undefined : false })} />
