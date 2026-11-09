@@ -152,6 +152,25 @@ describe("following the plan: changes and advice", () => {
     const after = rec.weeks.find((x) => x.start > w.start && x.start >= "2026-12-21")!;
     expect(after).toEqual(BUNDLED_PLAN.weeks.find((x) => x.start === after.start));
   });
+  it("steps a week up when you choose to: a second session, an extra day, doubles, double threshold", async () => {
+    const { applyChanges } = await import("./planChanges");
+    const w = BUNDLED_PLAN.weeks.find((x) => x.start >= "2026-12-07" && !/taper|race/i.test(x.phase))!;
+    const sess = (p: typeof BUNDLED_PLAN) => Object.values(p.weeks.find((x) => x.start === w.start)!.sessions) as string[];
+    const total = (p: typeof BUNDLED_PLAN) => forecastWeek(p, w.start).days.reduce((a, d) => a + (d.km ?? 0), 0);
+    const count = (p: typeof BUNDLED_PLAN, re: RegExp) => sess(p).filter((x) => re.test(x ?? "")).length;
+    const up = applyChanges({ ...BUNDLED_PLAN, changes: { progress: { from: w.start, extraSession: true } } });
+    expect(count(up, /Threshold:/)).toBeGreaterThan(count(BUNDLED_PLAN, /Threshold:/));
+    const day = applyChanges({ ...BUNDLED_PLAN, changes: { progress: { from: w.start, extraDay: true } } });
+    expect(count(day, /^Rest/)).toBeLessThan(count(BUNDLED_PLAN, /^Rest/));
+    expect(total(day)).toBeGreaterThan(total(BUNDLED_PLAN));
+    const dbl = applyChanges({ ...BUNDLED_PLAN, changes: { progress: { from: w.start, doubles: 2 } } });
+    expect(count(dbl, /· PM: 6 km easy/)).toBeGreaterThanOrEqual(1);
+    const dt = applyChanges({ ...BUNDLED_PLAN, changes: { progress: { from: w.start, doubleThreshold: true } } });
+    expect(count(dt, /Threshold: .* · PM: .*Threshold:/)).toBe(1);
+    // Weeks before it are untouched.
+    const before = BUNDLED_PLAN.weeks.find((x) => x.start < w.start && x.start >= "2026-11-30");
+    if (before) expect(up.weeks.find((x) => x.start === before.start)).toEqual(before);
+  });
   it("moves pace targets, never clock times", async () => {
     const { shiftPaces } = await import("./planChanges");
     expect(shiftPaces("12 km with 3 × 3 km at 3:42–3:46, 2 min jog", 5)).toBe("12 km with 3 × 3 km at 3:47–3:51, 2 min jog");

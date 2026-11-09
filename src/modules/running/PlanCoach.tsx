@@ -4,7 +4,8 @@ import { addDays, useToday } from "../../core/time";
 import { useQuery } from "../../core/useQuery";
 import { mondayOf, savePlanAdjust, savePlanChanges, type Plan } from "./plan";
 import { ADJUST_DEFAULTS, nextMonday } from "./planAdjust";
-import { planAdvice, RECOVERY_LABEL, type Advice, type RecoveryMode } from "./planChanges";
+import { planAdvice, PROGRESS_LABEL, RECOVERY_LABEL, type Advice, type RecoveryMode } from "./planChanges";
+import { useFitness } from "./fitness";
 import { usePaceChecks } from "./PaceOnPoint";
 import { loadOverrides } from "./strava";
 import { useRunningData } from "./useRunning";
@@ -22,7 +23,9 @@ export function PlanCoach({ plan, monday, compact }: { plan: Plan; monday?: stri
   const rv = useDataVersion("running");
   const overrides = useQuery(loadOverrides, [rv]).data;
   const checks = usePaceChecks(plan, runs, 4);
-  const advice = useMemo(() => (checks ? planAdvice(plan, runs, checks.rows, today, overrides) : []), [plan, runs, checks, today, overrides]);
+  const f = useFitness(plan);
+  const fit = useMemo(() => ({ slope: f?.slope ?? null, level: plan.built?.level }), [f?.slope, plan.built?.level]);
+  const advice = useMemo(() => (checks ? planAdvice(plan, runs, checks.rows, today, overrides, fit) : []), [plan, runs, checks, today, overrides, fit]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const run = async (fn: () => Promise<unknown>) => {
@@ -71,6 +74,14 @@ export function PlanCoach({ plan, monday, compact }: { plan: Plan; monday?: stri
           Pace targets {shift < 0 ? `${-shift} s/km faster` : `${shift} s/km slower`} than planned since {fmt(plan.changes!.pace!.from)}.{" "}
           <button type="button" className="link-btn" disabled={busy} onClick={() => run(() => savePlanChanges({ pace: null }))}>
             Back to the plan's paces
+          </button>
+        </div>
+      )}
+      {plan.changes?.progress && (
+        <div className="pc-note small">
+          Stepped up since {fmt(plan.changes.progress.from)}: {PROGRESS_LABEL(plan.changes.progress)}.{" "}
+          <button type="button" className="link-btn" disabled={busy} onClick={() => run(() => savePlanChanges({ progress: null }))}>
+            Back to the plan
           </button>
         </div>
       )}
