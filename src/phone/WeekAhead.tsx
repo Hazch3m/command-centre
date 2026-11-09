@@ -12,7 +12,12 @@ import { ZoneIcon } from "./icons";
 import { usePhoneNav } from "./common";
 
 const PHASE_COLOURS = ["#3d9be9", "#22b07d", "#f2913d", "#e8344e", "#9b5cf0", "#14a3a3"];
-const phaseName = (p: string) => p.replace(/\s*\(.*\)\s*$/, "").replace(/^Phase\s*\d+\s*[:·-]\s*/i, "").trim() || p;
+const phaseName = (p: string) =>
+  p
+    .replace(/\s*\(.*\)\s*$/, "")
+    .replace(/^Recovery and /i, "")
+    .replace(/^Phase\s*\d+\s*[:·-]\s*/i, "")
+    .trim() || p;
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 /**
@@ -53,7 +58,7 @@ export function WeekAhead({ plan, monday: given, onDay }: { plan: Plan; monday?:
   const daysTo = race?.date ? diffDays(today, race.date) : null;
   const done = fw.actualKm;
   const isThis = monday === mondayOf(today);
-  const label = (text: string, kind: string) => (kind === "long" ? "Long run" : kind === "race" ? "Race" : sessionKindOf(text) ?? "Session");
+  const label = (text: string, kind: string) => (kind === "long" ? "Long run" : kind === "race" ? "Race" : sessionKindOf(text) ?? (/hill/i.test(text) ? "Hills" : /fartlek/i.test(text) ? "Fartlek" : /stride/i.test(text) ? "Strides" : /tempo/i.test(text) ? "Tempo" : "Session"));
 
   return (
     <section className="wa" aria-label="Week ahead">
