@@ -312,8 +312,25 @@ async function doSync(): Promise<HealthSync> {
     if (z) await kvSet("health.hrZones", z);
   });
   await step("load focus", async () => {
-    const lf = parseLoadFocus(await get(`/metrics-service/metrics/trainingstatus/aggregated/${today}`));
-    if (lf) await kvSet(LOAD_FOCUS_KEY, lf);
+    // Garmin's training status holds the load focus; today's can be empty early on, so yesterday's too.
+    const tried: string[] = [];
+    for (const d of [today, addDays(today, -1)]) {
+      let body: unknown;
+      try {
+        body = await get(`/metrics-service/metrics/trainingstatus/aggregated/${d}`);
+      } catch (e) {
+        tried.push(`${d}: ${String((e as Error)?.message ?? e).slice(0, 60)}`);
+        continue;
+      }
+      const lf = parseLoadFocus(body, d);
+      if (lf) {
+        await kvSet(LOAD_FOCUS_KEY, lf);
+        await kvSet(LOAD_FOCUS_DEBUG_KEY, { at: new Date().toISOString(), ok: true, note: `read for ${lf.date}` });
+        return;
+      }
+      tried.push(`${d}: ${body == null ? "empty" : `no load focus in it (${isObj(body) ? Object.keys(body).slice(0, 6).join(", ") : typeof body})`}`);
+    }
+    await kvSet(LOAD_FOCUS_DEBUG_KEY, { at: new Date().toISOString(), ok: false, note: tried.join("; ") });
   });
   await step("VO2 max", async () => {
     for (const [a, b] of chunks(from, today, 60)) parseVo2(await get(`/metrics-service/metrics/maxmet/daily/${a}/${b}`), patch);
@@ -441,19 +458,28 @@ export interface GarminLoadFocus {
   phrase: string | null;
 }
 export const LOAD_FOCUS_KEY = "health.loadFocus";
+export const LOAD_FOCUS_DEBUG_KEY = "health.loadFocusDebug";
+
+export async function loadGarminLoadFocusDebug(): Promise<{ at: string; ok: boolean; note: string } | null> {
+  return kvGet<{ at: string; ok: boolean; note: string } | null>(LOAD_FOCUS_DEBUG_KEY, null);
+}
 
 /** Finds the training load balance in Garmin's training status (one entry per device; the primary one wins). */
 export function parseLoadFocus(body: unknown, fallbackDate = todayKey()): GarminLoadFocus | null {
   const found: Record<string, unknown>[] = [];
   const walk = (o: unknown, depth: number) => {
     if (!isObj(o) || depth > 6) return;
-    if (typeof o.monthlyLoadAerobicLow === "number") found.push(o);
+    if (Object.keys(o).some((k) => /^monthlyLoadAerobicLow$/i.test(k))) found.push(o);
     for (const v of Object.values(o)) walk(v, depth + 1);
   };
   walk(body, 0);
   const e = found.find((x) => x.primaryTrainingDevice === true) ?? found[0];
   if (!e) return null;
-  const n = (k: string) => (typeof e[k] === "number" && Number.isFinite(e[k]) ? (e[k] as number) : null);
+  const n = (k: string) => {
+    const key = Object.keys(e).find((x) => x.toLowerCase() === k.toLowerCase());
+    const v = key ? e[key] : null;
+    return typeof v === "number" && Number.isFinite(v) ? v : null;
+  };
   const low = n("monthlyLoadAerobicLow");
   const high = n("monthlyLoadAerobicHigh");
   const an = n("monthlyLoadAnaerobic");

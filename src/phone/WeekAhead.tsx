@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { addDays, diffDays, parseKey, useToday } from "../core/time";
-import { useDataVersion } from "../core/events";
+import { notifyChanged, useDataVersion } from "../core/events";
+import { kvGet, kvSet } from "../core/db";
 import { useQuery } from "../core/useQuery";
 import { forecastWeek } from "../modules/running/forecast";
 import { mondayOf, priorityOf, upcomingRaces, type Plan } from "../modules/running/plan";
@@ -9,10 +10,30 @@ import { loadOverrides } from "../modules/running/strava";
 import { useRunningData } from "../modules/running/useRunning";
 import { zoneOf } from "./EffortProfile";
 import { ZoneIcon } from "./icons";
-import { usePhoneNav } from "./common";
+import { usePhoneNav, type Tab } from "./common";
 
 const PHASE_COLOURS = ["#3d9be9", "#22b07d", "#f2913d", "#e8344e", "#9b5cf0", "#14a3a3"];
-const phaseName = (p: string) => p.replace(/\s*\(.*\)\s*$/, "").replace(/^Phase\s*\d+\s*[:·-]\s*/i, "").trim() || p;
+const phaseName = (p: string) =>
+  p
+    .replace(/\s*\(.*\)\s*$/, "")
+    .replace(/^Recovery and /i, "")
+    .replace(/^Phase\s*\d+\s*[:·-]\s*/i, "")
+    .trim() || p;
+const HIGHLIGHT_KEY = "plan.highlight";
+const raceKey = (r: { name: string; date: string | null }) => `${r.date}|${r.name}`;
+const shortName = (n: string) => (n.length > 22 ? n.slice(0, 21) + "…" : n);
+
+/** Opens the Plan on that day's session (the Plan listens for this). */
+export function openPlanDay(nav: { setTab: (t: Tab) => void }, date: string) {
+  try {
+    sessionStorage.setItem("cc-plan-view", "week");
+    sessionStorage.setItem("cc-plan-day", date);
+  } catch {
+    /* private mode */
+  }
+  nav.setTab("training");
+  window.dispatchEvent(new CustomEvent("cc:plan-day", { detail: date }));
+}
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 /**
@@ -28,9 +49,11 @@ export function WeekAhead({ plan, monday: given, onDay }: { plan: Plan; monday?:
   const monday = given ?? mondayOf(today);
   const fw = useMemo(() => forecastWeek(plan, monday, runs, overrides), [plan, monday, runs, overrides]);
 
-  // The race this build is for: the next A race, else the next race.
+  // The race this build is for: the one you picked, else the next A race, else the next race.
   const races = upcomingRaces(plan, today);
-  const race = races.find((r) => priorityOf(r) === "A") ?? races[0] ?? null;
+  const uv = useDataVersion("ui");
+  const picked = useQuery(() => kvGet<string>(HIGHLIGHT_KEY, ""), [uv]).data ?? "";
+  const race = races.find((r) => raceKey(r) === picked) ?? races.find((r) => priorityOf(r) === "A") ?? races[0] ?? null;
 
   // The plan's weeks up to the race, as phases along a line.
   const weeks = plan.weeks.filter((w) => !race?.date || w.start <= race.date);
@@ -53,7 +76,7 @@ export function WeekAhead({ plan, monday: given, onDay }: { plan: Plan; monday?:
   const daysTo = race?.date ? diffDays(today, race.date) : null;
   const done = fw.actualKm;
   const isThis = monday === mondayOf(today);
-  const label = (text: string, kind: string) => (kind === "long" ? "Long run" : kind === "race" ? "Race" : sessionKindOf(text) ?? "Session");
+  const label = (text: string, kind: string) => (kind === "long" ? "Long run" : kind === "race" ? "Race" : sessionKindOf(text) ?? (/hill/i.test(text) ? "Hills" : /fartlek/i.test(text) ? "Fartlek" : /stride/i.test(text) ? "Strides" : /tempo/i.test(text) ? "Tempo" : "Session"));
 
   return (
     <section className="wa" aria-label="Week ahead">
@@ -76,6 +99,27 @@ export function WeekAhead({ plan, monday: given, onDay }: { plan: Plan; monday?:
           {parseKey(race.date!).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
           {phaseLeft != null && cur ? ` · ${phaseLeft === 0 ? `last week of ${cur.name.toLowerCase()}` : `${phaseLeft + 1} weeks of ${cur.name.toLowerCase()} left`}` : ""}
         </span>
+      )}
+
+      {races.length > 1 && (
+        <div className="wa-picks" data-noswipe role="tablist" aria-label="Race to highlight">
+          {races.map((r) => (
+            <button
+              key={raceKey(r)}
+              type="button"
+              role="tab"
+              aria-selected={r === race}
+              className={r === race ? "on" : ""}
+              onClick={async () => {
+                await kvSet(HIGHLIGHT_KEY, raceKey(r));
+                notifyChanged("ui");
+              }}
+            >
+              {shortName(r.name)}
+              <small>{parseKey(r.date!).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</small>
+            </button>
+          ))}
+        </div>
       )}
 
       {weeks.length > 1 && (
@@ -126,7 +170,7 @@ export function WeekAhead({ plan, monday: given, onDay }: { plan: Plan; monday?:
             const past = d.date < today;
             const ran = d.runs.length > 0;
             return (
-              <button type="button" key={d.date} className={"wa-key" + (ran ? " ran" : past ? " past" : "") + (d.date === today ? " today" : "")} onClick={() => (onDay ? onDay(d.date) : nav.setTab("training"))}>
+              <button type="button" key={d.date} className={"wa-key" + (ran ? " ran" : past ? " past" : "") + (d.date === today ? " today" : "")} onClick={() => (onDay ? onDay(d.date) : openPlanDay(nav, d.date))}>
                 <span className="wa-dow">{d.date === today ? "Today" : DOW[i]}</span>
                 <ZoneIcon zone={d.race ? "race" : zoneOf(d.text, d.kind)} title={d.text} size={16} />
                 <span className="wa-what">

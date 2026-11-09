@@ -1,5 +1,6 @@
 import { useMemo, type CSSProperties } from "react";
-import { useDataVersion } from "../core/events";
+import { notifyChanged, useDataVersion } from "../core/events";
+import { kvGet, kvSet } from "../core/db";
 import { addDays, useToday } from "../core/time";
 import { useQuery } from "../core/useQuery";
 import { useFitness } from "../modules/running/fitness";
@@ -12,7 +13,7 @@ import { mondayOf } from "../modules/running/plan";
 import { loadOverrides } from "../modules/running/strava";
 import { addMix, cutsFrom, FILL, FOCUS_KINDS, loadFocus, loadOf, plannedDaySeconds, plannedFocus, runFocus, shareOf, statusOf, TARGET, type FocusKind, type FocusMix } from "../modules/running/trainingFocus";
 import { useRunningData } from "../modules/running/useRunning";
-import { loadGarminLoadFocus, type GarminLoadFocus } from "../modules/health/data";
+import { loadGarminLoadFocus, loadGarminLoadFocusDebug, type GarminLoadFocus } from "../modules/health/data";
 import { Section, usePhoneNav } from "./common";
 
 /** Your paces, heart-rate zones and recent run details: what the focus is worked out from. */
@@ -74,12 +75,25 @@ export function RunFocus({ run, compact, label }: { run: Run; compact?: boolean;
 type Targets = Record<FocusKind, [number, number]>;
 const GKEY: Record<FocusKind, "low" | "high" | "anaerobic"> = { low: "low", high: "high", anaerobic: "anaerobic" };
 
-/** Garmin's own load focus when it's synced in the last few days (it's what your watch shows). */
+export type FocusSource = "garmin" | "own";
+export const FOCUS_SOURCE_KEY = "running.focusSource";
+export const loadFocusSource = async (): Promise<FocusSource> => ((await kvGet<string>(FOCUS_SOURCE_KEY, "garmin")) === "own" ? "own" : "garmin");
+export async function saveFocusSource(v: FocusSource) {
+  await kvSet(FOCUS_SOURCE_KEY, v);
+  notifyChanged("ui");
+}
+export function useFocusSource(): FocusSource {
+  const uv = useDataVersion("ui");
+  return useQuery(loadFocusSource, [uv]).data ?? "garmin";
+}
+
+/** Garmin's own load focus when it's synced in the last few days (it's what your watch shows), unless you chose Pacelife's. */
 export function useGarminLoadFocus(): GarminLoadFocus | null {
   const today = useToday();
   const hv = useDataVersion("health");
+  const src = useFocusSource();
   const g = useQuery(loadGarminLoadFocus, [hv]).data;
-  return g && g.date >= addDays(today, -4) ? g : null;
+  return src === "garmin" && g && g.date >= addDays(today, -10) ? g : null;
 }
 
 /** Healthy share of load for each: from Garmin's optimal ranges when synced, else typical ones. */
@@ -114,6 +128,10 @@ export function LoadFocusCard({ plan }: { plan?: Plan | null }) {
   const b = useFocusBasis();
   const g = useGarminLoadFocus();
   const targets = useShareTargets();
+  const hv = useDataVersion("health");
+  const src = useFocusSource();
+  const dbg = useQuery(loadGarminLoadFocusDebug, [hv]).data;
+  const raw = useQuery(loadGarminLoadFocus, [hv]).data;
   const lf = useMemo(() => (b.ready ? loadFocus(runs, b.details, b.zones, b.cuts, today) : null), [b, runs, today]);
   if (!plan) return null;
   type Row = { k: (typeof FOCUS_KINDS)[number]; v: number; lo: number; hi: number; big: string; share: number; zone: string; amount: string };
@@ -189,8 +207,14 @@ export function LoadFocusCard({ plan }: { plan?: Plan | null }) {
         <p className="p-hint">
           {g
             ? "Garmin's own numbers, as on your watch: the load from each kind of training over four weeks, against the optimal range for your fitness. The tinted band is that range and the upright line is where you are. All three in range means balanced training."
-            : "Load is each run's minutes, weighted by how hard each kilometre was (harder minutes count for more), over the last four weeks. The tinted band on each bar is its target zone, and the upright line is where you are. Sync Garmin to see your watch's own numbers here."}
+            : "Load is each run's minutes, weighted by how hard each kilometre was (harder minutes count for more), over the last four weeks. The tinted band on each bar is its target zone, and the upright line is where you are. This is Pacelife's own estimate, so it won't match your watch" + (src === "own" ? " (you can switch to Garmin's in Settings)." : ".")}
         </p>
+        {!g && src === "garmin" && (
+          <p className="lf-why">
+            Garmin's load focus:{" "}
+            {raw ? `last read for ${raw.date}, too old to show` : dbg ? (dbg.ok ? dbg.note : `not read yet (${dbg.note})`) : "not read yet: it comes with the next Garmin sync (pull down to refresh)"}
+          </p>
+        )}
         {fill && (
           <button
             type="button"

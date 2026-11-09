@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { saveFocusSource, useFocusSource } from "./Focus";
 import { kvGet, kvSet } from "../core/db";
 import { notifyChanged } from "../core/events";
 import { REFRESHED_KEY, REFRESH_KEY } from "../core/sync";
@@ -306,6 +307,37 @@ export function PhoneApp() {
 }
 
 /** Dark or light, and your accent colour (this phone only). */
+function TrainingSettings() {
+  const src = useFocusSource();
+  return (
+    <section className="p-section">
+      <div className="p-section-head">
+        <h2>Training</h2>
+      </div>
+      <div className="p-group p-look">
+        <span className="p-row-title">Load focus values</span>
+        <div className="p-seg">
+          {(
+            [
+              ["garmin", "Garmin's"],
+              ["own", "Pacelife's"],
+            ] as const
+          ).map(([m, l]) => (
+            <button key={m} className={src === m ? "on" : ""} onClick={() => saveFocusSource(m)}>
+              {l}
+            </button>
+          ))}
+        </div>
+        <span className="p-row-sub">
+          {src === "garmin"
+            ? "The same numbers and optimal ranges as your watch (when Garmin is connected). Planned weeks use Garmin's ranges too."
+            : "Pacelife's own estimate from each run's pace and heart rate, against typical ranges. It won't match your watch."}
+        </span>
+      </div>
+    </section>
+  );
+}
+
 function Appearance() {
   const [look, setLook] = useState(phoneLook);
   const put = (l: Partial<PhoneLook>) => {
@@ -380,6 +412,7 @@ function More({ push }: { push: (p: Pushed) => void }) {
           ))}
         </div>
       </section>
+      <TrainingSettings />
       <Appearance />
       <AccountSection />
       {!hasAccount() && <PhoneFooter />}
