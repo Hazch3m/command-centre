@@ -782,6 +782,11 @@ function FineTune({ o, h, onChange }: { o: BuildOptions; h: History; onChange: (
         );
       })()}
       <div className="ft-row">
+        <span className="ft-label">Sharpen for tune-up races</span>
+        <Chips value={(t.sharpen ?? d.sharpen) ? "on" : "off"} options={[{ v: "on", l: "Yes" }, { v: "off", l: "No" }]} onChange={(v) => put({ sharpen: v === "on" ? undefined : false })} />
+        <span className="ps-note">The two weeks before each B race swap one session for one at that race's pace, so the long build comes in blocks that each peak for a race.</span>
+      </div>
+      <div className="ft-row">
         <span className="ft-label">Strides after easy runs</span>
         <Chips value={(t.strides ?? d.strides) ? "on" : "off"} options={[{ v: "on", l: "Yes" }, { v: "off", l: "No" }]} onChange={(v) => put({ strides: v === "on" ? undefined : false })} />
       </div>
