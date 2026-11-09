@@ -5112,3 +5112,20 @@ svg.effort {
   background: #fff;
   transform: rotate(45deg);
 }
+/* Progress cards: the line to race day, and a way into Pace on point */
+.gc-chart {
+  display: block;
+  margin: 0.2rem -0.2rem 0;
+}
+.gc-chart .pt-chart {
+  width: 100%;
+  height: auto;
+  max-height: 6.5rem;
+}
+.gc-link {
+  align-self: flex-end;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 750;
+  cursor: pointer;
+}

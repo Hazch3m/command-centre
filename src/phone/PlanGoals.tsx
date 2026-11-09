@@ -13,7 +13,7 @@ import { loadOverrides } from "../modules/running/strava";
 import { useRunningData } from "../modules/running/useRunning";
 import { predictTime } from "../modules/running/vo2";
 import { Section } from "./common";
-import { goalOptions, loadGoals, perKm, raceFor, type GoalOption } from "./PaceOnTrack";
+import { goalOptions, loadGoals, perKm, ProgressChart, raceFor, useTimeHistory, type GoalOption } from "./PaceOnTrack";
 import { RaceReady } from "./RaceReady";
 
 /**
@@ -24,7 +24,11 @@ export function GoalCarousel({ plan }: { plan: Plan }) {
   const today = useToday();
   const rv = useDataVersion("running");
   const goals = useQuery(loadGoals, [rv]).data ?? {};
-  const { options, main } = goalOptions(plan, today);
+  const all = goalOptions(plan, today);
+  const main = all.main;
+  // Your races, and a standard distance only once you've given it a goal (with no race or goal it says nothing).
+  const mine = all.options.filter((o) => o.race || goals[o.id]);
+  const options = mine.length ? mine : all.options;
   const [i, setI] = useState(0);
   const strip = useRef<HTMLDivElement | null>(null);
   const opt = options[Math.min(i, options.length - 1)];
@@ -87,6 +91,20 @@ function GoalCard({ opt, mainDate, goals, active, onTap }: { opt: GoalOption; ma
       ) : (
         <span className="p-hint">Working it out…</span>
       )}
+      {r && <GoalChart plan={plan} km={opt.km} now={r.now} predicted={r.predicted} range={r.range} goal={goal} raceDate={race.date!} />}
+      {r && active && (
+        <span
+          role="link"
+          tabIndex={0}
+          className="gc-link"
+          onClick={(e) => {
+            e.stopPropagation();
+            openPace(opt.id);
+          }}
+        >
+          Pace on point ›
+        </span>
+      )}
       {r && (
         <span className="gc-ready">
           <i className={readinessTone(r.today.score)} style={{ width: `${r.today.score}%` }} />
@@ -98,6 +116,28 @@ function GoalCard({ opt, mainDate, goals, active, onTap }: { opt: GoalOption; ma
       )}
     </button>
   );
+}
+
+/** The little line from your recent weeks to now and on to race day, as on Pace on point. */
+function GoalChart(p: { plan: Plan | null | undefined; km: number; now: number | null; predicted: number | null; range: [number, number] | null; goal: number | null; raceDate: string }) {
+  const today = useToday();
+  const history = useTimeHistory(p.plan, p.km, p.now);
+  return (
+    <span className="gc-chart">
+      <ProgressChart history={history} now={p.now} predicted={p.predicted} range={p.range} goal={p.goal} raceDate={p.raceDate} today={today} />
+    </span>
+  );
+}
+
+/** Opens Plan → Pace on point on that race or distance. */
+function openPace(id: string) {
+  try {
+    sessionStorage.setItem("cc-pace-pick", id);
+  } catch {
+    /* private mode */
+  }
+  window.dispatchEvent(new CustomEvent("cc:plan-view", { detail: "pace" }));
+  window.dispatchEvent(new CustomEvent("cc:pace-pick", { detail: id }));
 }
 
 function GoalReadiness({ plan, opt, mainDate, goals }: { plan: Plan; opt: GoalOption; mainDate?: string | null; goals: Record<string, number> }) {

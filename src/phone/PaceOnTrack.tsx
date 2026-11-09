@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { kvGet, kvSet } from "../core/db";
 import { notifyChanged, useDataVersion } from "../core/events";
 import { addDays, parseKey, useToday } from "../core/time";
@@ -67,13 +67,42 @@ export function raceFor(opt: GoalOption, mainDate: string | null | undefined, go
  * Like Runna's pace insights: where your fitness is now, where it's heading by race day and the
  * goal, for any of your races or a standard distance; then how close the runs were to their paces.
  */
+/** Your fitness week by week, as a time for this distance (lined up to "now" so the line ends where the card says). */
+export function useTimeHistory(plan: Plan | null | undefined, km: number, now: number | null) {
+  const today = useToday();
+  const f = useFitness(plan ?? undefined);
+  return useMemo(() => {
+    if (!f || !now) return [];
+    const pts = f.weekly.filter((w) => w.smooth != null && w.week >= addDays(today, -7 * 20)).map((w) => ({ date: w.week, t: predictTime(km * 1000, w.smooth!) }));
+    if (!pts.length) return [];
+    const k = now / pts[pts.length - 1].t;
+    return pts.map((p) => ({ ...p, t: p.t * k }));
+  }, [f, now, km, today]);
+}
+
 export function PaceOnTrack({ plan, runs }: { plan: Plan; runs: Run[] }) {
   const today = useToday();
   const f = useFitness(plan);
   const rv = useDataVersion("running");
   const goals = useQuery(loadGoals, [rv]).data ?? {};
   const { options, main } = goalOptions(plan, today);
-  const [pick, setPick] = useState(options[0]?.id ?? "marathon");
+  const [pick, setPick] = useState(() => {
+    try {
+      const want = sessionStorage.getItem("cc-pace-pick");
+      if (want) {
+        sessionStorage.removeItem("cc-pace-pick");
+        return want;
+      }
+    } catch {
+      /* private mode */
+    }
+    return options[0]?.id ?? "marathon";
+  });
+  useEffect(() => {
+    const on = (e: Event) => setPick((e as CustomEvent<string>).detail);
+    window.addEventListener("cc:pace-pick", on);
+    return () => window.removeEventListener("cc:pace-pick", on);
+  }, []);
   const opt = options.find((o) => o.id === pick) ?? options[0];
   // A standard distance is judged on the main race's date (or 12 weeks out).
   const race = useMemo(
@@ -87,14 +116,7 @@ export function PaceOnTrack({ plan, runs }: { plan: Plan; runs: Run[] }) {
   const km = opt.km;
   const goal = r?.goal ?? (goals[opt.id] || null);
 
-  // Your fitness week by week, as a time for this distance (lined up to "now" so the line ends where the card says).
-  const history = useMemo(() => {
-    if (!f || !r?.now) return [];
-    const pts = f.weekly.filter((w) => w.smooth != null && w.week >= addDays(today, -7 * 20)).map((w) => ({ date: w.week, t: predictTime(km * 1000, w.smooth!) }));
-    if (!pts.length) return [];
-    const k = r.now / pts[pts.length - 1].t;
-    return pts.map((p) => ({ ...p, t: p.t * k }));
-  }, [f, r?.now, km, today]);
+  const history = useTimeHistory(plan, km, r?.now ?? null);
 
   const saveGoal = async () => {
     const s = parseTime(draft, km);
@@ -245,7 +267,7 @@ function TrackBar({ now, range, predicted, goal }: { now: number | null; range: 
 }
 
 /** Your time for the distance over the last weeks, then the plan's path to race day and the goal line. Faster is up. */
-function ProgressChart(p: { history: { date: string; t: number }[]; now: number | null; predicted: number | null; range: [number, number] | null; goal: number | null; raceDate: string; today: string }) {
+export function ProgressChart(p: { history: { date: string; t: number }[]; now: number | null; predicted: number | null; range: [number, number] | null; goal: number | null; raceDate: string; today: string }) {
   if (p.history.length < 2 || !p.now) return null;
   const W = 320;
   const H = 120;

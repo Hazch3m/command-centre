@@ -100,7 +100,16 @@ export function Training() {
     };
     on();
     window.addEventListener("cc:plan-day", on);
-    return () => window.removeEventListener("cc:plan-day", on);
+    const onView = (e: Event) => {
+      const v = (e as CustomEvent<View>).detail;
+      if (v) pickView(v);
+      window.scrollTo({ top: 0 });
+    };
+    window.addEventListener("cc:plan-view", onView);
+    return () => {
+      window.removeEventListener("cc:plan-day", on);
+      window.removeEventListener("cc:plan-view", onView);
+    };
   }, [monday]);
   const kinds = useMemo(() => (plan ? plannedKinds(plan, addDays(today, -70), today, overrides) : new Map()), [plan, today, overrides]);
   if (!plan || !fw || !range) return <div className="p-screen" />;

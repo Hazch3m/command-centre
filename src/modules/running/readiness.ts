@@ -1,4 +1,4 @@
-import { addDays } from "../../core/time";
+import { addDays, diffDays } from "../../core/time";
 import { shapeFactor } from "./fitness";
 import { forecastWeek, raceKm, type ForecastDay } from "./forecast";
 import { mondayOf, priorityOf, type Plan, type PlanRace } from "./plan";
@@ -225,7 +225,11 @@ export function raceReadiness(
   const b = plan.built;
   const isThisPlan = !!b && b.raceDate === race.date;
   // (The plan's own paces may stop at your goal; the prediction uses what training that long can add.)
-  const gain = isThisPlan ? expectedGain(b!.weeks, b!.level) : 0;
+  // Any other race ahead (a tune-up, or one without a plan built for it): the weeks of training
+  // between now and then add fitness too, less the further it is (and none for one that's this week).
+  const weeksTo = Math.max(0, diffDays(mondayOf(today), mondayOf(race.date!)) / 7);
+  const level = b?.level ?? "intermediate";
+  const gain = isThisPlan ? expectedGain(b!.weeks, b!.level) : weeksTo >= 2 ? expectedGain(weeksTo, level) : 0;
   const vNow = vdotAt(today) ?? v;
   // From today's fitness: the plan's gain, scaled by how well it prepares you.
   const base = Math.max(v, vNow);
