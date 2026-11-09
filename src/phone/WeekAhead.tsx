@@ -128,7 +128,7 @@ export function WeekAhead({ plan, monday: given, onDay }: { plan: Plan; monday?:
           </button>
         )}
       </div>
-      <h3 className="wa-title">{race ? <>{tuneUp ? "Sharpening for" : "Building to"} {race.name}</> : isThis ? "Your week ahead" : "The week"}</h3>
+      <h3 className="wa-title">{race ? <>{tuneUp && (cur?.name === "Sharpen" || cur?.name === "Race week") ? "Sharpening for" : "Building to"} {race.name}</> : isThis ? "Your week ahead" : "The week"}</h3>
       {race && (
         <span className="wa-sub">
           {race.target ? `Goal ${race.target} · ` : ""}
