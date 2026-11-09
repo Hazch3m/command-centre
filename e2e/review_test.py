@@ -413,6 +413,12 @@ try:
         pp.locator(".p-tabs").get_by_role("tab", name="Today", exact=True).click()
         pp.wait_for_timeout(1500)
         check(pp.locator(".p-pane.on .wa").count() == 1, "Today: week ahead card")
+        check(pp.locator(".p-pane.on .wp").count() == 1, "Today: week progress")
+        if pp.locator(".p-pane.on .wp").count():
+            pp.locator(".p-pane.on .wp").scroll_into_view_if_needed()
+            pp.wait_for_timeout(1300)
+            pp.locator(".p-pane.on .wp").screenshot(path=f"{out}/03c-week-progress.png")
+            print("week progress:", pp.locator(".p-pane.on .wp").inner_text().replace("\n", " | ")[:300])
         if pp.locator(".p-pane.on .wa").count():
             pp.locator(".p-pane.on .wa").scroll_into_view_if_needed()
             pp.locator(".p-pane.on .wa").screenshot(path=f"{out}/03d-week-ahead.png")
