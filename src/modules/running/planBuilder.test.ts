@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { forecastWeek } from "./forecast";
 import { sessionToWorkout } from "../watch/importWeek";
 import { BUNDLED_PLAN, WEEK_KEYS } from "./plan";
-import { buildPlan, LEVELS, pacesFor, recommend, type BuildOptions, type History } from "./planBuilder";
+import { buildPlan, doublesAdvice, LEVELS, pacesFor, recommend, type BuildOptions, type History } from "./planBuilder";
 
 const H: History = { recent4: 40, recent12: 55, peak12: 80, runsPerWeek: 4.5, longest8: 25, weeksRun12: 12, vdot: 55 };
 const TODAY = "2026-11-03";
@@ -86,6 +86,23 @@ describe("plan builder: goals, speed work and tweaks", () => {
     expect(all({ ...base, tune: { hillSprints: true } }).some((x) => /hill sprints/.test(x))).toBe(true);
   });
 
+  it("adds doubles only when asked, as a short easy PM run counted in the week, never sent to the watch", () => {
+    expect(all(base).some((x) => /PM:/.test(x))).toBe(false);
+    const r = bp(BUNDLED_PLAN, { ...base, tune: { doubles: 2, peakKm: 115 } }, h, "2026-11-06");
+    const ws = r.plan.weeks.filter((w) => w.start >= r.weeks[0].monday && w.start <= "2027-10-24");
+    const build = ws.filter((w) => /build|specific/i.test(w.phase));
+    expect(build.some((w) => Object.values(w.sessions).filter((x) => /· PM: \d/.test(x ?? "")).length === 2)).toBe(true);
+    // Never in the taper or race week.
+    expect(ws.slice(-2).some((w) => Object.values(w.sessions).some((x) => /PM:/.test(x ?? "")))).toBe(false);
+    const d = build.flatMap((w) => Object.values(w.sessions) as string[]).find((x) => /PM:/.test(x))!;
+    const wk = sessionToWorkout(d)!;
+    expect(JSON.stringify(wk)).not.toMatch(/PM/);
+    expect(doublesAdvice(70, 6, "advanced").suggest).toBe(0);
+    expect(doublesAdvice(120, 6, "advanced").suggest).toBe(2);
+    expect(doublesAdvice(120, 5, "advanced").suggest).toBe(0);
+    expect(doublesAdvice(120, 7, "beginner").suggest).toBe(0);
+  });
+
   it("only uses the kinds you pick", () => {
     const s = all({ ...base, tune: { kinds: ["fartlek", "racepace"] } });
     expect(s.some((x) => /fartlek/.test(x))).toBe(true);
@@ -134,6 +151,30 @@ describe("following the plan: changes and advice", () => {
     expect(Object.values(rec.weeks.find((x) => x.start === w.start)!.sessions).some((x) => /Cross-train/.test(x ?? ""))).toBe(true);
     const after = rec.weeks.find((x) => x.start > w.start && x.start >= "2026-12-21")!;
     expect(after).toEqual(BUNDLED_PLAN.weeks.find((x) => x.start === after.start));
+  });
+  it("steps a week up when you choose to: a second session, an extra day, doubles, double threshold", async () => {
+    const { applyChanges } = await import("./planChanges");
+    const w0 = BUNDLED_PLAN.weeks.find((x) => x.start >= "2026-12-07" && !/taper|race/i.test(x.phase))!;
+    // A week with one session (Tuesday) and the long run, so there's room for a second.
+    const P = { ...BUNDLED_PLAN, weeks: BUNDLED_PLAN.weeks.map((x) => (x.start === w0.start ? { ...x, sessions: { ...x.sessions, thu: "10 km easy" } } : x)) };
+    const w = P.weeks.find((x) => x.start === w0.start)!;
+    const sess = (p: typeof BUNDLED_PLAN) => Object.values(p.weeks.find((x) => x.start === w.start)!.sessions) as string[];
+    const total = (p: typeof BUNDLED_PLAN) => forecastWeek(p, w.start).days.reduce((a, d) => a + (d.km ?? 0), 0);
+    const count = (p: typeof BUNDLED_PLAN, re: RegExp) => sess(p).filter((x) => re.test(x ?? "")).length;
+    const up = applyChanges({ ...P, changes: { progress: { from: w.start, extraSession: true } } });
+    expect(count(up, /Threshold:/)).toBeGreaterThan(count(P, /Threshold:/));
+    const day = applyChanges({ ...P, changes: { progress: { from: w.start, extraDay: true } } });
+    if (count(P, /^Rest/) > 0) {
+      expect(count(day, /^Rest/)).toBeLessThan(count(P, /^Rest/));
+      expect(total(day)).toBeGreaterThan(total(P));
+    }
+    const dbl = applyChanges({ ...P, changes: { progress: { from: w.start, doubles: 2 } } });
+    expect(count(dbl, /· PM: 6 km easy/)).toBeGreaterThanOrEqual(1);
+    const dt = applyChanges({ ...P, changes: { progress: { from: w.start, doubleThreshold: true } } });
+    expect(count(dt, /Threshold: .* · PM: .*Threshold:/)).toBe(1);
+    // Weeks before it are untouched.
+    const before = P.weeks.find((x) => x.start < w.start && x.start >= "2026-11-30");
+    if (before) expect(up.weeks.find((x) => x.start === before.start)).toEqual(before);
   });
   it("moves pace targets, never clock times", async () => {
     const { shiftPaces } = await import("./planChanges");

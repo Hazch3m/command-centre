@@ -51,7 +51,7 @@ export function goalOptions(plan: Plan, today: string): { options: GoalOption[];
   return {
     main,
     options: [
-      ...races.slice(0, 4).map((r) => ({ id: `race:${r.date}:${r.name}`, label: short(r.name), race: r, km: raceDistance(r) })),
+      ...races.map((r) => ({ id: `race:${r.date}:${r.name}`, label: short(r.name), race: r, km: raceDistance(r) })),
       ...STANDARD.map((s) => ({ id: s.id, label: s.name === "Half marathon" ? "Half" : s.name, race: null, km: s.km })),
     ],
   };

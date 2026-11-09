@@ -6,11 +6,11 @@ import { fitnessConfigChanged, loadFitnessConfig, marathonShape, saveFitnessConf
 import { plannedRuns } from "./FitnessPlan";
 import { raceKm } from "./forecast";
 import { mondayOf, priorityOf, restorePreviousPlan, savePlan, WEEK_KEYS, type Plan, type PlanRace } from "./plan";
-import { buildPlan, courseElevation, elevationCost, DEFAULT_WEEKS, DIST_LABEL, GOALS, LEVELS, MAX_WEEKS, pacesFor, recommend, SESSION_KINDS, summarizeHistory, tuneDefaults, type BuildOptions, type Goal, type History, type Level, type RaceDist, type SessionKind, type Tune } from "./planBuilder";
+import { buildPlan, doublesAdvice, DIST_M, expectedGain, courseElevation, elevationCost, DEFAULT_WEEKS, DIST_LABEL, GOALS, LEVELS, MAX_WEEKS, pacesFor, recommend, SESSION_KINDS, summarizeHistory, tuneDefaults, type BuildOptions, type Goal, type History, type Level, type RaceDist, type SessionKind, type Tune } from "./planBuilder";
 import { raceReadiness } from "./readiness";
 import { ReadinessView, useReadinessInputs } from "./ReadinessCard";
 import { useRunningData } from "./useRunning";
-import { predictTime } from "./vo2";
+import { predictTime, vdot } from "./vo2";
 import { PracticeTag } from "./PracticeTag";
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -55,7 +55,10 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
   const firstMonday = mondayOf(today) < today ? addDays(mondayOf(today), 7) : mondayOf(today);
   // Paces start from your fitness now: current form, or your best race of the last year if that's higher.
   const fitNow = f ? (f.predictionBasis?.source === "manual" ? f.predictionBasis.vdot : Math.max(f.current ?? 0, f.predictionBasis?.vdot ?? 0) || null) : null;
-  const history = useMemo(() => summarizeHistory(runs, today, fitNow), [runs, today, fitNow]);
+  // No runs yet (a new account): a recent race or time trial, or a guess, sets the paces.
+  const [manualV, setManualV] = useState<number | null>(null);
+  const fitUse = fitNow ?? manualV;
+  const history = useMemo(() => summarizeHistory(runs, today, fitUse), [runs, today, fitUse]);
   // A plan that starts later builds on the weeks of your current plan before it: your training as it will be then.
   const atStartFor = useMemo(() => {
     const cache = new Map<string, ReturnType<typeof summarizeHistory>>();
@@ -66,11 +69,11 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
       if (!cache.has(start)) {
         const done = runs.filter((r) => r.date <= today);
         const planned = plannedRuns(base, today, addDays(start, -1));
-        cache.set(start, summarizeHistory([...done, ...planned], start, fitNow));
+        cache.set(start, summarizeHistory([...done, ...planned], start, fitUse));
       }
       return cache.get(start)!;
     };
-  }, [history, runs, base, today, firstMonday, fitNow]);
+  }, [history, runs, base, today, firstMonday, fitUse]);
   const races = useMemo(() => base.races.filter((r) => r.date && r.date > addDays(today, 21)), [base, today]);
 
   const [o, setO] = useState<BuildOptions | null>(null);
@@ -85,7 +88,8 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
   const rec = useMemo(() => (o ? recommend(history, o.dist, available, firstMonday, needKm, atStartFor(o.raceDate)) : null), [history, o?.dist, o?.raceDate, available, firstMonday, needKm, atStartFor]);
   // Start from the plan's own settings if it was built here, else from the next big race and the recommendation.
   useEffect(() => {
-    if (o || !runs.length || !f) return;
+    // Wait for your fitness to load; with no runs at all, start from the defaults.
+    if (o || (!f && runs.length)) return;
     if (plan.built && plan.built.raceDate > today) {
       setO({ ...plan.built });
       return;
@@ -208,6 +212,45 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
 
       {step === 0 && (
         <section className="ps-card pb-step">
+          <h3>Suggested for you</h3>
+          <p className="ps-note">{history.weeksRun12 > 0 ? "From your recent running: how long each would take, and where it could get you." : "From the fitness you give on the next step (or a beginner's start). Tap one to set it up; you can change the date."}</p>
+          <div className="pb-suggest" data-noswipe>
+            {(["5k", "10k", "half", "marathon"] as RaceDist[]).map((dist) => {
+              const r = recommend(history, dist, 40, firstMonday);
+              const date = addDays(firstMonday, r.weeks * 7 - 1);
+              const v0 = fitUse;
+              const then = v0 ? predictTime(DIST_M[dist], v0 + expectedGain(r.weeks, r.level)) : null;
+              const now = v0 ? predictTime(DIST_M[dist], v0) : null;
+              const early = (dist === "marathon" && history.recent12 < 25) || (dist === "half" && history.recent12 < 12);
+              const on = isRace && o.dist === dist && o.raceDate === date;
+              return (
+                <button
+                  key={dist}
+                  type="button"
+                  className={"pb-sug" + (on ? " on" : "") + (early ? " early" : "")}
+                  onClick={() => {
+                    setOther(true);
+                    setTouched(true);
+                    set({ goal: "race", raceName: `${DIST_LABEL[dist]} goal`, raceDate: date, dist, target: then ? fmtT(then) : "", weeks: r.weeks, level: r.level, days: r.days, tune: undefined }, false);
+                  }}
+                >
+                  <b>{DIST_LABEL[dist]}</b>
+                  <span>
+                    {r.weeks} weeks · {r.days} days a week
+                  </span>
+                  <span className="muted">{LEVELS[r.level].label}</span>
+                  {then && now ? (
+                    <span className="pb-sug-t">
+                      <b className="num">{fmtT(then)}</b>
+                      <small className="num">now ~{fmtT(now)}</small>
+                    </span>
+                  ) : null}
+                  {early && <small className="tone-warn">Build up regular running first</small>}
+                  <small className="muted">Race day {fmt(date)}</small>
+                </button>
+              );
+            })}
+          </div>
           <h3>What's this block for?</h3>
           <div className="pb-goals">
             {GOALS.map((g) => (
@@ -310,6 +353,7 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
       {step === 1 && (
         <section className="ps-card pb-step pb-history">
           <h3>Where you are now</h3>
+          {fitNow == null && <ManualFitness value={manualV} onChange={setManualV} />}
           <div className="ps-stats">
             <div>
               <span className="label">Last 4 weeks</span>
@@ -589,6 +633,40 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
 }
 
 /** Your own numbers on top of the level: peak and first week, longest run, sessions, easier weeks, taper, long-run style. */
+const fmtT = (sec: number) => {
+  const r = Math.round(sec);
+  const h = Math.floor(r / 3600);
+  const m = Math.floor((r % 3600) / 60);
+  const x = String(r % 60).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${x}` : `${m}:${x}`;
+};
+const parseT = (t: string): number | null => {
+  const p = t.trim().split(":").map((x) => +x);
+  if (!p.length || p.some((x) => !Number.isFinite(x))) return null;
+  return p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p.length === 2 ? p[0] * 60 + p[1] : p[0] * 60;
+};
+
+/** No runs to go on yet: a recent race or time trial (or a fair guess) sets the paces. */
+function ManualFitness({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) {
+  const [dist, setDist] = useState<RaceDist>("5k");
+  const [t, setT] = useState("");
+  const apply = (d: RaceDist, txt: string) => {
+    const sec = parseT(txt);
+    onChange(sec && sec > DIST_M[d] / 1000 * 150 ? Math.round(vdot(DIST_M[d], sec) * 10) / 10 : null);
+  };
+  return (
+    <div className="pb-manual">
+      <b>No runs yet to go on</b>
+      <span className="ps-note">Connect Garmin or Strava and your runs set this. For now: a recent race or time trial, or your best guess. Leave it empty to start as a beginner.</span>
+      <div className="inline">
+        <Chips value={dist} options={(["5k", "10k", "half"] as RaceDist[]).map((d) => ({ v: d, l: DIST_LABEL[d] }))} onChange={(d) => (setDist(d), apply(d, t))} />
+        <input value={t} inputMode="numeric" placeholder={dist === "half" ? "1:55:00" : dist === "10k" ? "52:00" : "25:00"} onChange={(e) => (setT(e.target.value), apply(dist, e.target.value))} />
+      </div>
+      {value ? <span className="ps-note">That's a VDOT of about {value}: your paces start from there.</span> : null}
+    </div>
+  );
+}
+
 function FineTune({ o, h, onChange }: { o: BuildOptions; h: History; onChange: (t: Tune | undefined) => void }) {
   const d = tuneDefaults(h, o);
   const t = o.tune ?? {};
@@ -682,6 +760,27 @@ function FineTune({ o, h, onChange }: { o: BuildOptions; h: History; onChange: (
         <span className="ft-label">Hill sprints on easy days</span>
         <Chips value={(t.hillSprints ?? d.hillSprints) ? "on" : "off"} options={[{ v: "on", l: "Yes" }, { v: "off", l: "No" }]} onChange={(v) => put({ hillSprints: v === "on" ? true : undefined })} />
       </div>
+      {(() => {
+        const adv = doublesAdvice(t.peakKm ?? d.peakKm, o.days, o.level, h.weeksRun12);
+        const v = t.doubles ?? 0;
+        return (
+          <div className="ft-row ft-doubles">
+            <span className="ft-label">
+              Doubles a week
+              {adv.suggest > 0 && v !== adv.suggest && (
+                <button type="button" className="link-btn small" onClick={() => put({ doubles: adv.suggest })}>
+                  use {adv.suggest}
+                </button>
+              )}
+            </span>
+            <Chips value={String(v)} options={[0, 1, 2, 3, 4].map((n) => ({ v: String(n), l: n === 0 ? "None" : String(n) }))} onChange={(x) => put({ doubles: +x ? (+x as 1 | 2 | 3 | 4) : undefined })} />
+            <span className="ps-note">
+              A second short easy run (5–8 km) on the same day, on easy days first. {adv.suggest > 0 ? `Suggested: ${adv.suggest}. ` : ""}
+              {adv.why} Keep them easy and at least 4–6 hours apart; none in easier weeks, the taper or race week. Your watch gets the main run; the second is a plain easy run.
+            </span>
+          </div>
+        );
+      })()}
       <div className="ft-row">
         <span className="ft-label">Strides after easy runs</span>
         <Chips value={(t.strides ?? d.strides) ? "on" : "off"} options={[{ v: "on", l: "Yes" }, { v: "off", l: "No" }]} onChange={(v) => put({ strides: v === "on" ? undefined : false })} />

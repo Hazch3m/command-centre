@@ -129,3 +129,9 @@ describe("plan settings", () => {
     for (const w of plan.weeks.slice(0, 30)) for (const d of forecastWeek(plan, w.start).days) if (d.kind === "long") expect(d.km!).toBeLessThanOrEqual(24);
   });
 });
+
+describe("doubles", () => {
+  it("counts both runs of a double", () => {
+    expect(sessionKm("10 km easy · PM: 6 km easy")).toBe(16);
+  });
+});
