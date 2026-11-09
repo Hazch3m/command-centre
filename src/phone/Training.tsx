@@ -64,8 +64,37 @@ export function Training() {
   const weekRef = useRef<HTMLDivElement | null>(null);
   const can = (d: number) => !!range && addDays(monday, 7 * d) >= range.first && addDays(monday, 7 * d) <= range.last;
   useSwipe(weekRef, (d) => can(d) && setMonday(addDays(monday, 7 * d)), can);
+  // A day asked for from elsewhere (a key session on Today): its week, that day, the session in view.
+  const want = useRef<string | null>(null);
   useEffect(() => {
+    if (want.current && mondayOf(want.current) === monday) {
+      setSel(want.current);
+      want.current = null;
+      return;
+    }
     setSel(monday === thisMonday ? today : monday);
+  }, [monday]);
+  useEffect(() => {
+    const on = (e?: Event) => {
+      let date = (e as CustomEvent<string> | undefined)?.detail ?? null;
+      try {
+        date ??= sessionStorage.getItem("cc-plan-day");
+        sessionStorage.removeItem("cc-plan-day");
+      } catch {
+        /* private mode */
+      }
+      if (!date) return;
+      setView("week");
+      want.current = date;
+      if (mondayOf(date) === monday) {
+        setSel(date);
+        want.current = null;
+      } else setMonday(mondayOf(date));
+      window.setTimeout(() => document.querySelector(".p-pane.on .p-weekdays")?.scrollIntoView({ behavior: "smooth", block: "start" }), 450);
+    };
+    on();
+    window.addEventListener("cc:plan-day", on);
+    return () => window.removeEventListener("cc:plan-day", on);
   }, [monday]);
   const kinds = useMemo(() => (plan ? plannedKinds(plan, addDays(today, -70), today, overrides) : new Map()), [plan, today, overrides]);
   if (!plan || !fw || !range) return <div className="p-screen" />;
@@ -121,7 +150,14 @@ export function Training() {
       {view === "progress" && <PlanProgress plan={plan} first={range.first} last={range.last} />}
       {view === "week" && (
       <>
-      <WeekAhead plan={plan} monday={monday} onDay={setSel} />
+      <WeekAhead
+        plan={plan}
+        monday={monday}
+        onDay={(d) => {
+          setSel(d);
+          window.setTimeout(() => document.querySelector(".p-pane.on .p-weekdays")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+        }}
+      />
       <div ref={weekRef} data-noswipe className="p-weekswipe">
       <div className="p-weekbar">
         <button className="p-round" onClick={() => go(-1)} disabled={monday <= range.first} aria-label="Previous week">
