@@ -40,6 +40,12 @@ const DOW1 = ["M", "T", "W", "T", "F", "S", "S"];
 const fmt = (d: string) => `${parseKey(d).getDate()} ${MON[parseKey(d).getMonth()]}`;
 const phase = (p: string) => p.replace(/\s*\(.*\)\s*$/, "").replace(/^Recovery and /, "");
 
+/** Scrolls so the week's days sit just under the header, with the picked session below. */
+function showWeekdays() {
+  const el = document.querySelector(".p-pane.on .p-weekdays");
+  if (el) window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - 110), behavior: "smooth" });
+}
+
 export function Training() {
   const today = useToday();
   const nav = usePhoneNav();
@@ -90,7 +96,7 @@ export function Training() {
         setSel(date);
         want.current = null;
       } else setMonday(mondayOf(date));
-      window.setTimeout(() => document.querySelector(".p-pane.on .p-weekdays")?.scrollIntoView({ behavior: "smooth", block: "start" }), 450);
+      window.setTimeout(() => showWeekdays(), 450);
     };
     on();
     window.addEventListener("cc:plan-day", on);
@@ -155,7 +161,7 @@ export function Training() {
         monday={monday}
         onDay={(d) => {
           setSel(d);
-          window.setTimeout(() => document.querySelector(".p-pane.on .p-weekdays")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+          window.setTimeout(() => showWeekdays(), 60);
         }}
       />
       <div ref={weekRef} data-noswipe className="p-weekswipe">
