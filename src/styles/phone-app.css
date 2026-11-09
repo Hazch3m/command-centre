@@ -4773,3 +4773,243 @@ svg.effort {
   font-size: 0.7rem;
   white-space: nowrap;
 }
+/* Garmin's own load focus */
+.lf-src {
+  margin-top: -0.2rem;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+/* Week ahead: the build to your race */
+.wa {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0 0 0.9rem;
+  padding: 1rem 1rem 0.95rem;
+  border-radius: 22px;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--accent) 70%, #ffb36b) 0%, transparent 55%),
+    linear-gradient(150deg, #0f3b46 0%, #135a5e 55%, #0f4a52 100%);
+  box-shadow: 0 10px 28px -14px rgba(10, 40, 50, 0.55);
+  animation: wa-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+@keyframes wa-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+}
+.wa-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.wa-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.wa-race {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  line-height: 1;
+}
+.wa-days {
+  font-size: 2.1rem;
+  font-weight: 850;
+  letter-spacing: -0.02em;
+}
+.wa-race small {
+  font-size: 0.7rem;
+  font-weight: 700;
+  opacity: 0.85;
+}
+.wa-title {
+  margin: -0.6rem 0 0;
+  max-width: 78%;
+  font-size: 1.35rem;
+  font-weight: 850;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+.wa-sub {
+  margin-top: -0.3rem;
+  font-size: 0.82rem;
+  opacity: 0.85;
+}
+.wa-line {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.2rem;
+}
+.wa-track {
+  position: relative;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+.wa-track i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-right: 2px solid rgba(15, 59, 70, 0.9);
+  transform-origin: left;
+  animation: grow-x 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.wa-track i:first-child {
+  border-radius: 999px 0 0 999px;
+}
+.wa-track i:last-of-type {
+  border-right: 0;
+  border-radius: 0 999px 999px 0;
+}
+.wa-done {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 999px 0 0 999px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.wa-you {
+  position: absolute;
+  top: 50%;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: -0.525rem 0 0 -0.525rem;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.6);
+  animation: wa-pulse 2.2s ease-out infinite;
+}
+@keyframes wa-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.55);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+  }
+}
+.wa-flag {
+  position: absolute;
+  right: -0.15rem;
+  top: -1.2rem;
+  font-size: 1rem;
+}
+.wa-phases {
+  position: relative;
+  height: 0.95rem;
+}
+.wa-phases span {
+  position: absolute;
+  overflow: hidden;
+  font-size: 0.64rem;
+  font-weight: 750;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  filter: brightness(1.35);
+}
+.wa-phases span.on {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.wa-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  grid-auto-flow: column;
+  gap: 0.4rem;
+}
+.wa-stats span {
+  display: flex;
+  flex-direction: column;
+  padding: 0.45rem 0.5rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+}
+.wa-stats b {
+  font-size: 1.15rem;
+  font-weight: 850;
+}
+.wa-stats small {
+  font-size: 0.66rem;
+  opacity: 0.8;
+}
+.wa-keys {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.wa-key {
+  display: grid;
+  grid-template-columns: 2.6rem auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #11262c;
+  font: inherit;
+  text-align: left;
+}
+.wa-key.past:not(.ran) {
+  opacity: 0.6;
+}
+.wa-key.today {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.wa-key .zone-icon {
+  fill: none;
+  stroke: currentColor;
+}
+.wa-dow {
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #3b5a61;
+}
+.wa-what {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.wa-what b {
+  font-size: 0.86rem;
+}
+.wa-what small {
+  overflow: hidden;
+  color: #4d6a70;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.wa-km {
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+.wa-tick {
+  color: #14946a;
+  font-weight: 900;
+}
+.wa-note {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  opacity: 0.88;
+}

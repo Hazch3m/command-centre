@@ -101,14 +101,14 @@ export function runFocus(run: Pick<Run, "moving_time" | "distance" | "avg_hr">, 
 
 /** Weights for load (harder minutes count for more, like EPOC). */
 const WEIGHT: FocusMix = { low: 1, high: 2.3, anaerobic: 3.6 };
-/** Healthy share of load in each, over four weeks (roughly Garmin's optimal ranges). */
-export const TARGET: Record<FocusKind, [number, number]> = { low: [0.45, 0.68], high: [0.22, 0.42], anaerobic: [0.06, 0.18] };
+/** Healthy share of load in each, over four weeks (roughly Garmin's optimal ranges; Garmin's own are used when synced). */
+export const TARGET: Record<FocusKind, [number, number]> = { low: [0.33, 0.55], high: [0.28, 0.5], anaerobic: [0.1, 0.28] };
 
 /** Load (weighted minutes) from seconds in each focus. */
 export const loadOf = (secs: FocusMix): FocusMix => ({ low: (secs.low / 60) * WEIGHT.low, high: (secs.high / 60) * WEIGHT.high, anaerobic: (secs.anaerobic / 60) * WEIGHT.anaerobic });
 export const addMix = (a: FocusMix, b: FocusMix): FocusMix => ({ low: a.low + b.low, high: a.high + b.high, anaerobic: a.anaerobic + b.anaerobic });
 export const shareOf = share;
-export const statusOf = (k: FocusKind, v: number): "in" | "below" | "above" => (v < TARGET[k][0] ? "below" : v > TARGET[k][1] ? "above" : "in");
+export const statusOf = (k: FocusKind, v: number, t: Record<FocusKind, [number, number]> = TARGET): "in" | "below" | "above" => (v < t[k][0] ? "below" : v > t[k][1] ? "above" : "in");
 
 /** A planned day as seconds by focus: its session's steps, else its km at easy pace. */
 export function plannedDaySeconds(d: { text: string; km: number | null; flex?: [number, number]; optional?: boolean; kind: string }, cuts: Cuts, zones: Zones = {}): FocusMix | null {

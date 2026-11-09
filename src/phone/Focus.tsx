@@ -12,6 +12,7 @@ import { mondayOf } from "../modules/running/plan";
 import { loadOverrides } from "../modules/running/strava";
 import { addMix, cutsFrom, FILL, FOCUS_KINDS, loadFocus, loadOf, plannedDaySeconds, plannedFocus, runFocus, shareOf, statusOf, TARGET, type FocusKind, type FocusMix } from "../modules/running/trainingFocus";
 import { useRunningData } from "../modules/running/useRunning";
+import { loadGarminLoadFocus, type GarminLoadFocus } from "../modules/health/data";
 import { Section, usePhoneNav } from "./common";
 
 /** Your paces, heart-rate zones and recent run details: what the focus is worked out from. */
@@ -70,56 +71,125 @@ export function RunFocus({ run, compact, label }: { run: Run; compact?: boolean;
   return <FocusBar mix={runFocus(run, b.details.get(run.id), b.zones, b.cuts)} compact={compact} label={label} />;
 }
 
-/** Garmin-style load focus: four weeks of load by kind against its healthy range, and what to run next. */
+type Targets = Record<FocusKind, [number, number]>;
+const GKEY: Record<FocusKind, "low" | "high" | "anaerobic"> = { low: "low", high: "high", anaerobic: "anaerobic" };
+
+/** Garmin's own load focus when it's synced in the last few days (it's what your watch shows). */
+export function useGarminLoadFocus(): GarminLoadFocus | null {
+  const today = useToday();
+  const hv = useDataVersion("health");
+  const g = useQuery(loadGarminLoadFocus, [hv]).data;
+  return g && g.date >= addDays(today, -4) ? g : null;
+}
+
+/** Healthy share of load for each: from Garmin's optimal ranges when synced, else typical ones. */
+export function useShareTargets(): Targets {
+  const g = useGarminLoadFocus();
+  return useMemo(() => {
+    if (!g) return TARGET;
+    const mid = FOCUS_KINDS.reduce((s, k) => s + (g.target[GKEY[k.id]][0] + g.target[GKEY[k.id]][1]) / 2, 0) || 1;
+    const t = {} as Targets;
+    for (const k of FOCUS_KINDS) t[k.id] = [g.target[GKEY[k.id]][0] / mid, g.target[GKEY[k.id]][1] / mid];
+    return t;
+  }, [g]);
+}
+
+/** "ANAEROBIC_SHORTAGE" → "Short of anaerobic". */
+function phraseText(p: string): string {
+  const what = (x: string) => x.replace(/AEROBIC_LOW/g, "low aerobic").replace(/AEROBIC_HIGH/g, "high aerobic").replace(/ANAEROBIC/g, "anaerobic").replace(/_/g, " ").toLowerCase().trim();
+  if (/^BALANCED/i.test(p)) return "Balanced";
+  let m = /^(.*)_SHORTAGE$/i.exec(p);
+  if (m) return `Short of ${what(m[1])}`;
+  m = /^(.*)_FOCUS$/i.exec(p);
+  if (m) return `Focused on ${what(m[1])}`;
+  const t = what(p);
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+/** Garmin-style load focus: four weeks of load by kind against its optimal range, and what to run next. */
 export function LoadFocusCard({ plan }: { plan?: Plan | null }) {
   const today = useToday();
   const nav = usePhoneNav();
   const { runs = [] } = useRunningData();
   const b = useFocusBasis();
+  const g = useGarminLoadFocus();
+  const targets = useShareTargets();
   const lf = useMemo(() => (b.ready ? loadFocus(runs, b.details, b.zones, b.cuts, today) : null), [b, runs, today]);
-  if (!lf || !lf.total || !plan) return null;
-  const max = Math.max(...FOCUS_KINDS.map((k) => Math.max(lf.share[k.id], TARGET[k.id][1]))) * 1.08;
-  const fill = lf.short ? FILL[lf.short][0] : null;
-  const verdict = lf.short ? `Short of ${FOCUS_KINDS.find((k) => k.id === lf.short)!.label.toLowerCase()}` : lf.over ? `Heavy on ${FOCUS_KINDS.find((k) => k.id === lf.over)!.label.toLowerCase()}` : "Balanced";
+  if (!plan) return null;
+  type Row = { k: (typeof FOCUS_KINDS)[number]; v: number; lo: number; hi: number; big: string; share: number; zone: string; amount: string };
+  let rows: Row[];
+  let short: FocusKind | null = null;
+  let verdict: string;
+  let tone: "ok" | "short" | "over";
+  if (g) {
+    const total = g.low + g.high + g.anaerobic || 1;
+    rows = FOCUS_KINDS.map((k) => {
+      const v = g[GKEY[k.id]];
+      const [lo, hi] = g.target[GKEY[k.id]];
+      return { k, v, lo, hi, big: `${Math.round(v)}`, share: v / total, zone: `optimal ${Math.round(lo)}–${Math.round(hi)}`, amount: `${pct(v / total)}% of your load` };
+    });
+    let gap = 0;
+    for (const r of rows)
+      if (r.v < r.lo && (r.lo - r.v) / r.lo > gap) {
+        gap = (r.lo - r.v) / r.lo;
+        short = r.k.id;
+      }
+    const over = rows.find((r) => r.v > r.hi);
+    verdict = g.phrase ? phraseText(g.phrase) : short ? `Short of ${FOCUS_KINDS.find((k) => k.id === short)!.label.toLowerCase()}` : "Balanced";
+    tone = short ? "short" : over ? "over" : "ok";
+  } else {
+    if (!lf || !lf.total) return null;
+    rows = FOCUS_KINDS.map((k) => {
+      const [lo, hi] = targets[k.id];
+      const v = lf.share[k.id];
+      return { k, v, lo, hi, big: `${pct(v)}%`, share: v, zone: `zone ${pct(lo)}–${pct(hi)}%`, amount: `load ${Math.round(lf.load[k.id] / 10)}` };
+    });
+    short = lf.short;
+    verdict = lf.short ? `Short of ${FOCUS_KINDS.find((k) => k.id === lf.short)!.label.toLowerCase()}` : lf.over ? `Heavy on ${FOCUS_KINDS.find((k) => k.id === lf.over)!.label.toLowerCase()}` : "Balanced";
+    tone = lf.short ? "short" : lf.over ? "over" : "ok";
+  }
+  const max = Math.max(...rows.map((r) => Math.max(r.v, r.hi))) * 1.08;
+  const fill = short ? FILL[short][0] : null;
+  const fmtD = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  const fmtZ = g ? (x: number) => `${Math.round(x)}` : (x: number) => `${pct(x)}%`;
   return (
     <Section title="Load focus · 4 weeks" className="p-padded">
       <div className="lf">
         <div className="lf-head">
-          <span className={"lf-verdict" + (lf.short ? " short" : lf.over ? " over" : " ok")}>{verdict}</span>
+          <span className={"lf-verdict " + tone}>{verdict}</span>
           <span className="lf-legend">
-            <i /> Target zone
+            <i /> {g ? "Optimal" : "Target zone"}
           </span>
         </div>
-        {FOCUS_KINDS.map((k) => {
-          const [lo, hi] = TARGET[k.id];
-          const v = lf.share[k.id];
-          const amount = Math.round(lf.load[k.id] / 10);
-          const range = [Math.round((lf.total * lo) / 10), Math.round((lf.total * hi) / 10)];
-          const st = statusOf(k.id, v);
+        {g && (
+          <span className="lf-src">
+            From your Garmin · {fmtD(addDays(g.date, -27))} – {fmtD(g.date)}
+          </span>
+        )}
+        {rows.map((r) => {
+          const st: "in" | "below" | "above" = r.v < r.lo ? "below" : r.v > r.hi ? "above" : "in";
           return (
-            <div key={k.id} className={`lf-row2 lf-${st}`} style={{ "--k": KCOL[k.id] } as CSSProperties}>
+            <div key={r.k.id} className={`lf-row2 lf-${st}`} style={{ "--k": KCOL[r.k.id] } as CSSProperties}>
               <div className="lf-top">
                 <span className="lf-name">
-                  <i className={`fo-${k.id}`} />
-                  {k.label}
+                  <i className={`fo-${r.k.id}`} />
+                  {r.k.label}
                 </span>
-                <span className="lf-big num">{pct(v)}%</span>
+                <span className="lf-big num">{r.big}</span>
                 <span className={`lf-st lf-st-${st}`}>{st === "in" ? "✓ In zone" : st === "below" ? "↓ Below zone" : "↑ Above zone"}</span>
               </div>
-              <ZoneTrack v={v} lo={lo} hi={hi} max={max} kind={k.id} />
+              <ZoneTrack v={r.v} lo={r.lo} hi={r.hi} max={max} kind={r.k.id} fmt={fmtZ} />
               <div className="lf-nums">
-                <span>
-                  load <b className="num">{amount}</b>
-                </span>
-                <span className="num">
-                  zone {pct(lo)}–{pct(hi)}% · {range[0]}–{range[1]}
-                </span>
+                <span className="num">{r.amount}</span>
+                <span className="num">{r.zone}</span>
               </div>
             </div>
           );
         })}
         <p className="p-hint">
-          Load is each run's minutes, weighted by how hard each kilometre was (harder minutes count for more), over the last four weeks. The tinted band on each bar is its target zone (the % at each edge), and the upright line is where you are. Like Garmin's load focus, all three in their zone means balanced training.
+          {g
+            ? "Garmin's own numbers, as on your watch: the load from each kind of training over four weeks, against the optimal range for your fitness. The tinted band is that range and the upright line is where you are. All three in range means balanced training."
+            : "Load is each run's minutes, weighted by how hard each kilometre was (harder minutes count for more), over the last four weeks. The tinted band on each bar is its target zone, and the upright line is where you are. Sync Garmin to see your watch's own numbers here."}
         </p>
         {fill && (
           <button
@@ -148,8 +218,8 @@ export function LoadFocusCard({ plan }: { plan?: Plan | null }) {
 
 const KCOL: Record<FocusKind, string> = { low: "#3d9be9", high: "#f2913d", anaerobic: "#9b5cf0" };
 
-/** A bar with the target zone drawn on it (tinted band with solid edges and its % at each edge) and a marker where you are. */
-function ZoneTrack({ v, lo, hi, max, kind }: { v: number; lo: number; hi: number; max: number; kind: FocusKind }) {
+/** A bar with the target zone drawn on it (tinted band with solid edges and its value at each edge) and a marker where you are. */
+function ZoneTrack({ v, lo, hi, max, kind, fmt }: { v: number; lo: number; hi: number; max: number; kind: FocusKind; fmt: (x: number) => string }) {
   const at = (x: number) => `${Math.min(100, (x / max) * 100)}%`;
   return (
     <span className="lf-zone" aria-hidden="true">
@@ -159,8 +229,8 @@ function ZoneTrack({ v, lo, hi, max, kind }: { v: number; lo: number; hi: number
         <span className="lf-mark" style={{ left: at(v) }} />
       </span>
       <span className="lf-scale">
-        <span style={{ left: at(lo) }}>{pct(lo)}%</span>
-        <span style={{ left: at(hi) }}>{pct(hi)}%</span>
+        <span style={{ left: at(lo) }}>{fmt(lo)}</span>
+        <span style={{ left: at(hi) }}>{fmt(hi)}</span>
       </span>
     </span>
   );
@@ -205,6 +275,7 @@ function FocusStack({ share }: { share: FocusMix }) {
 /** This week's load focus on the Plan's week: the % of each and whether it's in its zone. */
 export function WeekFocusStrip({ fw }: { fw: ForecastWeek }) {
   const today = useToday();
+  const targets = useShareTargets();
   const b = useFocusBasis();
   const w = useMemo(() => (b.ready ? weekFocus(fw, today, b) : null), [fw, today, b]);
   if (!w) return null;
@@ -215,7 +286,7 @@ export function WeekFocusStrip({ fw }: { fw: ForecastWeek }) {
       <FocusStack share={w.share} />
       <span className="lfw-nums">
         {FOCUS_KINDS.map((k) => {
-          const st = statusOf(k.id, w.share[k.id]);
+          const st = statusOf(k.id, w.share[k.id], targets);
           return (
             <span key={k.id} className={`lfw-n lf-st-${st}`}>
               <i className={`fo-${k.id}`} />
@@ -232,6 +303,7 @@ export function WeekFocusStrip({ fw }: { fw: ForecastWeek }) {
 /** Every week from this one to the end of the plan, with the planned % of each focus. */
 export function PlanFocusWeeks({ plan, first, last }: { plan: Plan; first: string; last: string }) {
   const today = useToday();
+  const targets = useShareTargets();
   const { runs = [] } = useRunningData();
   const rv = useDataVersion("running");
   const overrides = useQuery(loadOverrides, [rv]).data;
@@ -259,7 +331,7 @@ export function PlanFocusWeeks({ plan, first, last }: { plan: Plan; first: strin
           <span className="lfw-title">Next 4 weeks as planned</span>
           <span className="lfw-nums">
             {FOCUS_KINDS.map((k) => {
-              const st = statusOf(k.id, s4[k.id]);
+              const st = statusOf(k.id, s4[k.id], targets);
               return (
                 <span key={k.id} className={`lfw-n lf-st-${st}`}>
                   <i className={`fo-${k.id}`} />
@@ -277,7 +349,7 @@ export function PlanFocusWeeks({ plan, first, last }: { plan: Plan; first: strin
               <i className={`fo-${k.id}`} />
               {k.short}
               <small>
-                {pct(TARGET[k.id][0])}–{pct(TARGET[k.id][1])}%
+                {pct(targets[k.id][0])}–{pct(targets[k.id][1])}%
               </small>
             </span>
           ))}
@@ -289,7 +361,7 @@ export function PlanFocusWeeks({ plan, first, last }: { plan: Plan; first: strin
               <small>{fmtD(r.monday)}</small>
             </span>
             {FOCUS_KINDS.map((k) => {
-              const st = statusOf(k.id, r.w.share[k.id]);
+              const st = statusOf(k.id, r.w.share[k.id], targets);
               return (
                 <span key={k.id} className={`lfw-cell lf-st-${st}`}>
                   <b className="num">{pct(r.w.share[k.id])}%</b>
