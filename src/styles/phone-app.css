@@ -5134,3 +5134,157 @@ svg.effort {
   border-radius: 14px;
   background: color-mix(in srgb, var(--accent) 9%, var(--card));
 }
+/* Week progress: % of the week, the days, streaks */
+.wp {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin: 0 0 0.9rem;
+  padding: 0.95rem 1rem;
+  border-radius: 22px;
+  background: var(--card);
+  box-shadow: var(--shadow, 0 6px 20px -14px rgba(0, 0, 0, 0.35));
+}
+.wp-top {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 1rem;
+  position: relative;
+}
+.wp-ring {
+  grid-row: 1 / 3;
+}
+.wp-track {
+  fill: none;
+  stroke: var(--card-2);
+  stroke-width: 10;
+}
+.wp-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1.1s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: wp-fill 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+@keyframes wp-fill {
+  from {
+    stroke-dashoffset: 999;
+  }
+}
+.wp-pct {
+  position: absolute;
+  left: 0;
+  width: 92px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.05;
+}
+.wp-pct b {
+  font-size: 1.45rem;
+  font-weight: 850;
+}
+.wp-pct small {
+  font-size: 0.62rem;
+  color: var(--muted);
+}
+.wp-nums {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+.wp-nums b {
+  color: var(--text);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+.wp-missed {
+  color: var(--warn, #c2410c);
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+.wp-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.3rem;
+}
+.wp-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+.wp-day i {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  font-style: normal;
+  font-weight: 900;
+  font-size: 0.95rem;
+}
+.wp-day small {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+.wp-day.rest i {
+  transform: scale(0.45);
+  background: var(--line);
+  border-color: transparent;
+}
+.wp-day.todo i {
+  border-style: dashed;
+}
+.wp-day.today i {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+.wp-day.done i {
+  border-color: transparent;
+  background: var(--accent);
+  color: #fff;
+  animation: wp-pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) backwards;
+}
+.wp-day.missed i {
+  border-color: color-mix(in srgb, var(--warn, #c2410c) 50%, transparent);
+  color: var(--warn, #c2410c);
+}
+@keyframes wp-pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
+.wp-cheer {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+.wp-streaks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.wp-streaks span {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 12px;
+  background: var(--card-2);
+}
+.wp-streaks b {
+  font-size: 1.1rem;
+  font-weight: 850;
+}
+.wp-streaks small {
+  color: var(--muted);
+  font-size: 0.74rem;
+}

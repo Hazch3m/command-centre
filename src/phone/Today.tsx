@@ -1,5 +1,6 @@
 import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { WeekAhead } from "./WeekAhead";
+import { WeekProgress } from "./WeekProgress";
 import { kvGet, kvSet } from "../core/db";
 import { notifyChanged } from "../core/events";
 import { useDataVersion } from "../core/events";
@@ -225,6 +226,7 @@ export function Today() {
 
   const blocks: Record<BlockId, ReactNode> = {
     session: todayRun && !isEmptyPlan(plan) && (done && !openDone ? <DoneToday d={todayRun} next={tomorrowRun} onOpen={() => setOpenDone(true)} /> : <Session d={todayRun} label={dayGreeting(now)} next={tomorrowRun} />),
+    progress: plan && week && !isEmptyPlan(plan) && <WeekProgress plan={plan} fw={week} runs={runs} today={today} overrides={overrides} />,
     ahead: plan && !isEmptyPlan(plan) && <WeekAhead plan={plan} />,
     lastrun: <LastRun />,
     tiles: (
@@ -468,9 +470,10 @@ function DoneToday({ d, next, onOpen }: { d: ForecastDay; next?: ForecastDay; on
 
 // ---- Your Today page: which blocks, in what order ------------------------------------------
 
-type BlockId = "session" | "ahead" | "lastrun" | "tiles" | "workout" | "habits" | "todo" | "coming" | "weather" | "race";
+type BlockId = "session" | "progress" | "ahead" | "lastrun" | "tiles" | "workout" | "habits" | "todo" | "coming" | "weather" | "race";
 const BLOCKS: { id: BlockId; label: string; hint: string }[] = [
   { id: "session", label: "Today's session", hint: "The run of the day, or a small tile once it's done" },
+  { id: "progress", label: "Week progress", hint: "How much of the week you've trained, each day, and your streaks" },
   { id: "ahead", label: "Week ahead", hint: "This week's key sessions and the build to your race" },
   { id: "lastrun", label: "Last run", hint: "Distance, pace and splits" },
   { id: "tiles", label: "Health & this week", hint: "Readiness, sleep, HRV, training load, trends; km so far" },
