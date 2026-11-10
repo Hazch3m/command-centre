@@ -170,7 +170,7 @@ try:
         pg = pcx.new_page()
         pg.on("pageerror", lambda e: errors.append("pc: " + str(e)))
         pg.goto(pc + "/index.html")
-        pg.wait_for_selector(".card-fitness .fit-big", timeout=60000)
+        pg.wait_for_selector(".home-kpis, .home-wait", timeout=60000)
         pg.wait_for_timeout(2000)
         pg.keyboard.press("Control+,")
         pg.wait_for_timeout(600)
