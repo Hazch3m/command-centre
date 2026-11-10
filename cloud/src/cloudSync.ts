@@ -7,7 +7,7 @@ import type { SqlJsStatic } from "sql.js";
 import { cloudMayWrite, gunzip, gzip, linkKeys, packSnapshot, PHONE_FILES, phoneMayWrite, seal, unpackSnapshot, unseal, type CloudOp, type PhoneOp, type SnapshotHeader } from "../../src/core/sync";
 import { setContext, type Creds } from "./appBackend";
 import { syncGarminRuns } from "../../src/modules/running/garminRuns";
-import { syncStrava } from "../../src/modules/running/strava";
+import { RUN_EXTRA_SQL, syncStrava } from "../../src/modules/running/strava";
 import { syncHealth } from "../../src/modules/health/data";
 import { syncCalendar } from "../../src/modules/calendar/data";
 import { runAutoSync } from "../../src/modules/watch/autoSync";
@@ -95,6 +95,8 @@ export async function runCloudSync(io: CloudIO, only?: ("runs" | "health" | "cal
     const before = runCount();
     const writes: CloudOp["stmts"] = [];
     const ctx = { db, writes, files: header2.files, creds: io.creds, saveCreds: async (c: Creds) => ((io.creds = c), await io.saveCreds(c)) };
+    // Tables newer than this copy of your data (the apps make them too).
+    db.run(RUN_EXTRA_SQL);
     setContext(ctx);
     const errors: SyncResult["errors"] = {};
     const want = (k: "runs" | "health" | "calendar" | "watch") => !only || only.includes(k);
