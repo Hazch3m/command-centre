@@ -35,7 +35,7 @@ import { RaceManager } from "./RaceManager";
 import { ImportPlan } from "./ImportPlan";
 import { PlanEditor } from "./PlanEditor";
 import { PlanList } from "./PlanList";
-import { PlanWeekView } from "./PlanWeekView";
+import { PlanWeekView, PlanWeeksChart } from "./PlanWeekView";
 import { WatchPage } from "../watch";
 import { TrainingLoad } from "../../phone/TrainingLoad";
 import { RunalyzeMore } from "../../phone/RunalyzeMore";
@@ -238,12 +238,17 @@ export function RunningPage() {
             {view === "week" ? (
               /* The week across the top; under it how it's going, what's coming, and the goal. */
               <div className="plan-home">
+                <div className="plan-home-chart">
+                  <PlanWeeksChart plan={plan} runs={runs} />
+                </div>
+                <div className="plan-home-coach">
+                  <PlanCoach plan={plan} />
+                </div>
                 <div className="plan-home-week">
-                  <PlanWeekView plan={plan} runs={runs} />
+                  <PlanWeekView plan={plan} runs={runs} hideStrip />
                 </div>
                 <div className="plan-home-col">
                   <WeekProgressCard plan={plan} runs={runs} />
-                  <PlanCoach plan={plan} />
                 </div>
                 <div className="plan-home-col pl-embed">
                   <WeekAhead plan={plan} onDay={(d) => window.dispatchEvent(new CustomEvent("cc:plan-day", { detail: d }))} />

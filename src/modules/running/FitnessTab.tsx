@@ -158,7 +158,7 @@ export function FitnessTab({ f }: { f: Fitness }) {
   const recentKey = f.estimates.filter((e) => e.date >= addDays(today, -12 * 7)).reverse();
   const loadFrom = f.loadSeries[0]?.date ?? today;
   return (
-    <>
+    <div className="fit-dash">
       <div className="tiles">
         <div className="tile">
           <div className="label">VO2 max now</div>
@@ -189,24 +189,153 @@ export function FitnessTab({ f }: { f: Fitness }) {
         </div>
       </div>
 
+      <div className="fit-grid">
+        <section className="fit-card fit-vo2">
       <h3>VO2 max: last year and the plan to your goals</h3>
       <Legend garmin={f.readings.length > 0} />
       <LineChart
         series={vo2Series(f, from, lastMs)}
         from={from}
         to={lastMs}
-        height={260}
+        height={230}
         today={today}
         markers={f.config.projection.milestones.map((m) => ({ x: m.date, label: m.label }))}
       />
-      <p className="muted small">
+      <details className="fit-why">
+        <summary>How it's worked out</summary>
+        <p className="muted small">
         Each dot is one key run: a run with at least three steady kilometres above 80% of max heart rate (the first 30 km only, before heart-rate drift). Its estimate uses Daniels' oxygen cost of your grade-adjusted pace and
         your heart-rate reserve, then shifted onto the scale of your race results (VDOT), which is what the goals and predictions use. The trend is a 4-week rolling median. Diamonds are your races converted to VDOT. A single run can be off by ±2 (heat, hills, fatigue); the
         trend is what to watch.
       </p>
+      </details>
+        </section>
+        <section className="fit-card fit-pred">
+      <h3>Race predictor</h3>
+      <table className="table">
+        <thead>
+          <tr>
+            <th>Distance</th>
+            <th className="num-col">{f.predictions.some((p) => p.source === "garmin") ? "Garmin" : "Prediction"}</th>
+            <th className="num-col">Your curve</th>
+            <th className="num-col">Equal endurance (VDOT)</th>
+            <th className="num-col">Current form</th>
+            <th>Next target</th>
+          </tr>
+        </thead>
+        <tbody>
+          {f.predictions.map((p) => (
+            <tr key={p.name}>
+              <td>{p.name}</td>
+              <td className="num-col">
+                <b>{p.seconds ? duration(p.seconds) : "–"}</b>
+              </td>
+              <td className="num-col">{p.ownSeconds ? duration(p.ownSeconds) : "–"}</td>
+              <td className="num-col muted">{p.vdotSeconds ? duration(p.vdotSeconds) : "–"}</td>
+              <td className="num-col muted">{p.formSeconds ? duration(p.formSeconds) : "–"}</td>
+              <td>{p.target ?? "–"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <details className="fit-why">
+        <summary>Chart and how the predictions work</summary>
+        <PredictionChart f={f} />
+      <p className="muted small">
+        {f.endurance && (
+          <>
+            {f.predictions.some((p) => p.source === "garmin") ? <>The main column is Garmin's own predictor. </> : null}
+            <b>Your curve</b> is your own speed–endurance fit: time grows with distance to the power of <b>{f.endurance.k.toFixed(3)}</b>
+            {f.endurance.fitted ? `, fitted to your best recent races (${f.endurance.used.join(", ")})` : " (a typical value; it's fitted once you have races at two distances in the last 9 months)"}, and
+            anchored on {f.endurance.anchor === "current form" ? "your current form" : f.endurance.anchor} ({duration(f.endurance.ten)} for 10 km). That's the same idea as
+            Garmin's predictor, which also learns how well you hold pace over longer races; plain VDOT assumes everyone's endurance is the same, which flatters the marathon
+            for most people and undersells the 5k.{" "}
+          </>
+        )}
+        {f.garminPredictionsDate && <>Garmin's column is synced from Garmin Connect ({f.garminPredictionsDate}). </>}
+        {f.shape && (
+          <>
+            <b>Marathon shape {Math.round(f.shape.total * 100)}%</b> (as in Runalyze): {f.shape.kmPerWeek.toFixed(0)} km/week over the last 6 months against the ~
+            {f.shape.targetKm.toFixed(0)} a marathon at this level needs, and long runs over the last 10 weeks against ~{f.shape.targetLong.toFixed(0)} km. It rises as the plan's
+            volume builds.
+          </>
+        )}
+      </p>
+      </details>
+        </section>
+        <section className="fit-card fit-load">
+      <h3>Training load</h3>
+      <LineChart
+        from={loadFrom}
+        to={today}
+        height={150}
+        digits={0}
+        yMin={0}
+        series={[
+          { name: "Chronic (28-day)", kind: "area", className: "s-chronic", points: f.loadSeries.map((d) => ({ x: d.date, y: d.chronic })) },
+          { name: "Chronic (28-day)", kind: "line", className: "s-chronic", points: f.loadSeries.map((d) => ({ x: d.date, y: d.chronic })) },
+          { name: "Acute (7-day)", kind: "line", className: "s-acute", points: f.loadSeries.map((d) => ({ x: d.date, y: d.acute })) },
+        ]}
+      />
+      <p className="muted small">
+        Load is heart-rate based (TRIMP: minutes weighted by intensity). An acute:chronic ratio of 0.8–1.3 is the productive range; above 1.5 is where injuries cluster — the same
+        idea as the plan's "never add more than 25 km in a week" rule.
+      </p>
 
-      <details className="fold">
-      <summary><h3>Key runs, last 12 weeks</h3><span className="muted small">{recentKey.length} runs · the dots on the chart above</span></summary>
+        </section>
+        <section className="fit-card fit-eff">
+      <h3>Aerobic efficiency</h3>
+      <LineChart
+        from={from}
+        to={today}
+        height={150}
+        digits={2}
+        unit=" m/beat"
+        series={[
+          { name: "Efficiency", kind: "line", className: "s-eff", points: f.efficiency.map((e) => ({ x: addDays(e.week, 3), y: e.value })) },
+          { name: "Efficiency", kind: "dots", className: "s-eff", points: f.efficiency.map((e) => ({ x: addDays(e.week, 3), y: e.value })) },
+        ]}
+      />
+      <p className="muted small">Metres covered per heartbeat on easy runs (under 78% of max heart rate, 6 km+). It rises as your aerobic base grows: more speed for the same heart rate.</p>
+
+        </section>
+        <section className="fit-card fit-shoes">
+      <h3>Shoes</h3>
+      <table className="table">
+        <thead>
+          <tr>
+            <th>Shoe</th>
+            <th className="num-col">km</th>
+            <th>Wear</th>
+          </tr>
+        </thead>
+        <tbody>
+          {f.shoes.map((s) => {
+            const pct = s.km / s.limit;
+            return (
+              <tr key={s.id}>
+                <td>
+                  {s.name}
+                  {s.racing ? <span className="muted small"> · racing</span> : null}
+                  {s.primary ? <span className="muted small"> · default</span> : null}
+                </td>
+                <td className="num-col">{Math.round(s.km)}</td>
+                <td style={{ width: "40%" }}>
+                  <div className={"wear" + (pct >= 1 ? " over" : pct >= 0.8 ? " warn" : "")}>
+                    <span style={{ width: `${Math.min(1, pct) * 100}%` }} />
+                  </div>
+                  <span className="small muted">{pct >= 1 ? `Past ${s.limit} km — time to replace` : `${Math.round(s.limit - s.km)} km left of ~${s.limit}`}</span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+        </section>
+        <section className="fit-card fit-keys">
+      <h3>Key runs, last 12 weeks <span className="muted small">{recentKey.length} runs · the dots on the chart</span></h3>
+      <div className="fit-scroll">
       <table className="table">
         <thead>
           <tr>
@@ -244,123 +373,10 @@ export function FitnessTab({ f }: { f: Fitness }) {
           )}
         </tbody>
       </table>
-      </details>
+      </div>
 
-      <h3>Race predictor</h3>
-      <PredictionChart f={f} />
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Distance</th>
-            <th className="num-col">{f.predictions.some((p) => p.source === "garmin") ? "Garmin" : "Prediction"}</th>
-            <th className="num-col">Your curve</th>
-            <th className="num-col">Equal endurance (VDOT)</th>
-            <th className="num-col">Current form</th>
-            <th>Next target</th>
-          </tr>
-        </thead>
-        <tbody>
-          {f.predictions.map((p) => (
-            <tr key={p.name}>
-              <td>{p.name}</td>
-              <td className="num-col">
-                <b>{p.seconds ? duration(p.seconds) : "–"}</b>
-              </td>
-              <td className="num-col">{p.ownSeconds ? duration(p.ownSeconds) : "–"}</td>
-              <td className="num-col muted">{p.vdotSeconds ? duration(p.vdotSeconds) : "–"}</td>
-              <td className="num-col muted">{p.formSeconds ? duration(p.formSeconds) : "–"}</td>
-              <td>{p.target ?? "–"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="muted small">
-        {f.endurance && (
-          <>
-            {f.predictions.some((p) => p.source === "garmin") ? <>The main column is Garmin's own predictor. </> : null}
-            <b>Your curve</b> is your own speed–endurance fit: time grows with distance to the power of <b>{f.endurance.k.toFixed(3)}</b>
-            {f.endurance.fitted ? `, fitted to your best recent races (${f.endurance.used.join(", ")})` : " (a typical value; it's fitted once you have races at two distances in the last 9 months)"}, and
-            anchored on {f.endurance.anchor === "current form" ? "your current form" : f.endurance.anchor} ({duration(f.endurance.ten)} for 10 km). That's the same idea as
-            Garmin's predictor, which also learns how well you hold pace over longer races; plain VDOT assumes everyone's endurance is the same, which flatters the marathon
-            for most people and undersells the 5k.{" "}
-          </>
-        )}
-        {f.garminPredictionsDate && <>Garmin's column is synced from Garmin Connect ({f.garminPredictionsDate}). </>}
-        {f.shape && (
-          <>
-            <b>Marathon shape {Math.round(f.shape.total * 100)}%</b> (as in Runalyze): {f.shape.kmPerWeek.toFixed(0)} km/week over the last 6 months against the ~
-            {f.shape.targetKm.toFixed(0)} a marathon at this level needs, and long runs over the last 10 weeks against ~{f.shape.targetLong.toFixed(0)} km. It rises as the plan's
-            volume builds.
-          </>
-        )}
-      </p>
-
-      <h3>Training load (Garmin-style acute vs chronic)</h3>
-      <LineChart
-        from={loadFrom}
-        to={today}
-        height={170}
-        digits={0}
-        yMin={0}
-        series={[
-          { name: "Chronic (28-day)", kind: "area", className: "s-chronic", points: f.loadSeries.map((d) => ({ x: d.date, y: d.chronic })) },
-          { name: "Chronic (28-day)", kind: "line", className: "s-chronic", points: f.loadSeries.map((d) => ({ x: d.date, y: d.chronic })) },
-          { name: "Acute (7-day)", kind: "line", className: "s-acute", points: f.loadSeries.map((d) => ({ x: d.date, y: d.acute })) },
-        ]}
-      />
-      <p className="muted small">
-        Load is heart-rate based (TRIMP: minutes weighted by intensity). An acute:chronic ratio of 0.8–1.3 is the productive range; above 1.5 is where injuries cluster — the same
-        idea as the plan's "never add more than 25 km in a week" rule.
-      </p>
-
-      <details className="fold">
-      <summary><h3>Aerobic efficiency on easy runs</h3><span className="muted small">metres per heartbeat on easy runs</span></summary>
-      <LineChart
-        from={from}
-        to={today}
-        height={140}
-        digits={2}
-        unit=" m/beat"
-        series={[
-          { name: "Efficiency", kind: "line", className: "s-eff", points: f.efficiency.map((e) => ({ x: addDays(e.week, 3), y: e.value })) },
-          { name: "Efficiency", kind: "dots", className: "s-eff", points: f.efficiency.map((e) => ({ x: addDays(e.week, 3), y: e.value })) },
-        ]}
-      />
-      <p className="muted small">Metres covered per heartbeat on easy runs (under 78% of max heart rate, 6 km+). It rises as your aerobic base grows: more speed for the same heart rate.</p>
-      </details>
-
-      <h3>Shoes</h3>
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Shoe</th>
-            <th className="num-col">km</th>
-            <th>Wear</th>
-          </tr>
-        </thead>
-        <tbody>
-          {f.shoes.map((s) => {
-            const pct = s.km / s.limit;
-            return (
-              <tr key={s.id}>
-                <td>
-                  {s.name}
-                  {s.racing ? <span className="muted small"> · racing</span> : null}
-                  {s.primary ? <span className="muted small"> · default</span> : null}
-                </td>
-                <td className="num-col">{Math.round(s.km)}</td>
-                <td style={{ width: "40%" }}>
-                  <div className={"wear" + (pct >= 1 ? " over" : pct >= 0.8 ? " warn" : "")}>
-                    <span style={{ width: `${Math.min(1, pct) * 100}%` }} />
-                  </div>
-                  <span className="small muted">{pct >= 1 ? `Past ${s.limit} km — time to replace` : `${Math.round(s.limit - s.km)} km left of ~${s.limit}`}</span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-
+        </section>
+        <section className="fit-card fit-set">
       <details className="fold">
         <summary><h3>Garmin VO2 max readings and settings</h3><span className="muted small">heart-rate settings, manual readings</span></summary>
         <div className="two-col">
@@ -374,7 +390,9 @@ export function FitnessTab({ f }: { f: Fitness }) {
           </div>
         </div>
       </details>
-    </>
+        </section>
+      </div>
+    </div>
   );
 }
 

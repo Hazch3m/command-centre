@@ -1,10 +1,10 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { db } from "../../core/db";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { db, kvGet, kvSet } from "../../core/db";
 import { useDataVersion } from "../../core/events";
 import { addDays, parseKey, useToday } from "../../core/time";
 import { useQuery } from "../../core/useQuery";
 import { latest as latestHealth, loadHealth } from "../health/data";
-import { shapeFactor, useFitness, type Fitness } from "./fitness";
+import { fitnessConfigChanged, loadFitnessConfig, pickShape, saveFitnessConfig, SHAPE_DEFAULTS, shapeFactor, useFitness, type Fitness, type ShapeOptions } from "./fitness";
 import { loadGarminZones, loadZoneSettings, resolveZones, zoneOf, type Zones } from "./hrZones";
 import { mondayOf } from "./plan";
 import { pacesFor, type Paces } from "./planBuilder";
@@ -15,7 +15,7 @@ import { loadDetails, type Run, type RunDetail } from "./strava";
 import { useRunningData } from "./useRunning";
 import { AnalysisChart, type ChartKey } from "./AnalysisCharts";
 import { distanceGaps, gapSummary, VERDICT_TEXT, type DistanceGap } from "./distanceGaps";
-import { predictTime, trimp, type Vo2Config } from "./vo2";
+import { predictTime, trimp, type Vo2Calc, type Vo2Config } from "./vo2";
 
 /**
  * Runalyze-style analysis for a big screen: the week run by run (pace and heart-rate zones,
@@ -150,6 +150,7 @@ export function Analysis() {
   const [month, setMonth] = useState<string | null>(null);
   const [chart, setChart] = useState<ChartKey | null>(null);
   const pick = (k: ChartKey) => setChart((c) => (c === k ? null : k));
+  const [tweak, setTweak] = useState(false);
 
   const model = useMemo(() => {
     if (!f || !q) return null;
@@ -385,7 +386,15 @@ export function Analysis() {
             </small>
           </div>
         </Panel>
-        <Panel title="Calculations">
+        <Panel
+          title="Calculations"
+          action={
+            <button type="button" className={"ana-gear" + (tweak ? " on" : "")} onClick={() => setTweak(!tweak)} title="How effective VO2max and marathon shape are worked out" aria-label="Calculation settings">
+              ⚙
+            </button>
+          }
+        >
+          {tweak && <CalcSettings f={f} onClose={() => setTweak(false)} />}
           <Calc on={() => pick("vo2")} sel={chart === "vo2"} label="Effective VO2max" value={show(f.current)} bar={f.current ? (f.current - 30) / 40 : 0} />
           <Calc on={() => pick("shape")} sel={chart === "shape"} label="Marathon shape" value={f.shape ? `${Math.round(f.shape.total * 100)} %` : "–"} bar={f.shape?.total ?? 0} />
           <Calc on={() => pick("atl")} sel={chart === "atl"} label="Fatigue (ATL)" value={now ? `${Math.round((now.atl / maxAtl) * 100)} %` : "–"} bar={now ? now.atl / maxAtl : 0} />
@@ -523,6 +532,93 @@ function Gaps({ gaps, biggestWeek }: { gaps: DistanceGap[]; biggestWeek: number 
   );
 }
 
+/** Runalyze-style tweaks: how effective VO2 max and marathon shape are worked out. Saved to your account. */
+function CalcSettings({ f, onClose }: { f: Fitness; onClose: () => void }) {
+  const [calc, setCalc] = useState<Vo2Calc>(f.config.calc ?? {});
+  const [shape, setShape] = useState<Partial<ShapeOptions>>({});
+  const [manual, setManual] = useState(typeof f.config.calc?.correction === "number" ? String(f.config.calc.correction) : "0");
+  useEffect(() => {
+    void kvGet<Partial<ShapeOptions> | null>("shape.settings", null).then((v) => setShape(v ?? {}));
+  }, []);
+  const so = { ...SHAPE_DEFAULTS, ...pickShape(shape) };
+  const saveCalc = async (next: Vo2Calc) => {
+    setCalc(next);
+    const raw = await loadFitnessConfig();
+    await saveFitnessConfig({ ...raw, calc: next });
+    fitnessConfigChanged();
+  };
+  const saveShape = async (patch: Partial<ShapeOptions>) => {
+    const cur = (await kvGet<Record<string, unknown> | null>("shape.settings", null)) ?? {};
+    const next = { ...cur, ...patch };
+    setShape(next as Partial<ShapeOptions>);
+    await kvSet("shape.settings", next);
+    fitnessConfigChanged();
+  };
+  const corr = calc.correction ?? "auto";
+  const Seg = <T extends string | number | boolean>({ value, options, on }: { value: T; options: [T, string][]; on: (v: T) => void }) => (
+    <span className="segmented small-seg">
+      {options.map(([v, l]) => (
+        <button key={String(v)} type="button" className={v === value ? "on" : ""} onClick={() => on(v)}>
+          {l}
+        </button>
+      ))}
+    </span>
+  );
+  return (
+    <div className="ana-calc-set">
+      <b>Effective VO2max</b>
+      <label>
+        <span>Smoothing</span>
+        <Seg value={calc.smoothDays ?? 28} options={[[21, "3 wk"], [28, "4 wk"], [42, "6 wk"], [56, "8 wk"]]} on={(v) => saveCalc({ ...calc, smoothDays: v })} />
+      </label>
+      <label>
+        <span>Splits count from</span>
+        <Seg value={calc.minHr ?? 0.8} options={[[0.75, "75%"], [0.8, "80%"], [0.85, "85%"]]} on={(v) => saveCalc({ ...calc, minHr: v })} />
+        <small>of max HR</small>
+      </label>
+      <label>
+        <span>Hills</span>
+        <Seg value={calc.gap ?? true} options={[[true, "Grade-adjusted"], [false, "Actual pace"]]} on={(v) => saveCalc({ ...calc, gap: v })} />
+      </label>
+      <label>
+        <span>Correction</span>
+        <Seg value={typeof corr === "number" ? "manual" : corr} options={[["auto", "From races"], ["off", "Off"], ["manual", "Manual"]]} on={(v) => saveCalc({ ...calc, correction: v === "manual" ? Number(manual) || 0 : (v as "auto" | "off") })} />
+        {typeof corr === "number" && (
+          <input type="number" step="0.5" value={manual} onChange={(e) => setManual(e.target.value)} onBlur={() => saveCalc({ ...calc, correction: Number(manual) || 0 })} aria-label="Correction (added to each run's value)" />
+        )}
+      </label>
+      <small className="muted">
+        Now: {f.calibration === "races" ? `${f.offset >= 0 ? "+" : ""}${f.offset.toFixed(1)} from your races` : f.calibration === "manual" ? `${f.offset >= 0 ? "+" : ""}${f.offset.toFixed(1)}, your own` : "no correction"} · {f.estimates.length} runs with a value
+      </small>
+      <b>Marathon shape</b>
+      <label>
+        <span>Weekly km over</span>
+        <Seg value={so.weeklyWeeks} options={[[13, "13 wk"], [26, "26 wk"], [39, "39 wk"]]} on={(v) => saveShape({ weeklyWeeks: v })} />
+      </label>
+      <label>
+        <span>Long runs over</span>
+        <Seg value={so.longWeeks} options={[[6, "6 wk"], [10, "10 wk"], [16, "16 wk"]]} on={(v) => saveShape({ longWeeks: v })} />
+      </label>
+      <label>
+        <span>Long runs from</span>
+        <Seg value={so.longMin} options={[[13, "13 km"], [16, "16 km"], [20, "20 km"]]} on={(v) => saveShape({ longMin: v })} />
+      </label>
+      <label>
+        <span>Weekly km weight</span>
+        <Seg value={Math.round(so.weeklyShare * 100) / 100} options={[[0.5, "50%"], [0.67, "67%"], [0.8, "80%"]]} on={(v) => saveShape({ weeklyShare: v })} />
+      </label>
+      <span className="ana-calc-foot">
+        <button type="button" className="ana-link" onClick={() => (saveCalc({}), saveShape({ weeklyWeeks: 26, longWeeks: 10, longMin: 13, weeklyShare: 2 / 3 }))}>
+          Back to defaults
+        </button>
+        <button type="button" className="ana-link" onClick={onClose}>
+          Done
+        </button>
+      </span>
+    </div>
+  );
+}
+
 /** Back to the top of the page (the opened month or chart is there). */
 const scrollTop = () => document.querySelector(".ana")?.scrollIntoView({ behavior: "smooth", block: "start" });
 
@@ -625,10 +721,13 @@ function SumCellsShort({ s, ch }: { s: Sum; ch: number | null }) {
   );
 }
 
-function Panel({ title, children }: { title: string; children: ReactNode }) {
+function Panel({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   return (
     <section className="ana-panel">
-      <h4>{title}</h4>
+      <h4>
+        {title}
+        {action}
+      </h4>
       {children}
     </section>
   );
