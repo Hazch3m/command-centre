@@ -6276,3 +6276,7 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .ana-side { min-height: 0; overflow-y: auto; scrollbar-width: thin; }
 .ana-chart { flex: none; }
 @media (max-width: 1100px) { .tab-page-analysis { overflow-y: auto; } .ana-main, .ana-sec, .ana-side { overflow: visible; } }
+.home-equiv .equiv-bar i { max-width: 45%; }
+.home-equiv .equiv-bar b { flex: none; }
+.ph-main .pwv { display: flex; flex-direction: column; }
+.ph-main .pwv-days { flex: 1; min-height: 9rem; max-height: 22rem; }
