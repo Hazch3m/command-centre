@@ -46,6 +46,11 @@ jobs:
         env:
           FIX: /tmp/fix
         run: python e2e/review_test.py /tmp/pv /tmp/ppv e2e-out
+      - name: A brand-new user, end to end
+        if: always()
+        env:
+          FIX: /tmp/fix
+        run: python e2e/newuser_test.py /tmp/pv /tmp/ppv e2e-out/new
       - name: Screenshots to the e2e-shots branch
         if: always()
         run: |
