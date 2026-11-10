@@ -249,7 +249,7 @@ export function RunningPage() {
                   <WeekAhead plan={plan} onDay={(d) => window.dispatchEvent(new CustomEvent("cc:plan-day", { detail: d }))} />
                 </div>
                 <div className="plan-home-goal pl-embed">
-                  <GoalCarousel plan={plan} />
+                  <GoalCarousel plan={plan} split />
                 </div>
               </div>
             ) : (
