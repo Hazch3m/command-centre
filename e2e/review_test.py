@@ -503,12 +503,15 @@ try:
             tabs = [t.strip() for t in wp.get_by_role("tab").all_inner_texts() if t.strip()]
             print("web tabs:", tabs[:20])
             check(any(t == "Training" for t in tabs), "web: the desktop view opens with your account")
+            print("viewport:", wp.viewport_size)
             for name in ["Training", "Runs", "Stats", "Health"]:
                 t = wp.get_by_role("tab", name=name, exact=True)
                 if t.count():
                     t.first.click(force=True)
                     wp.wait_for_timeout(2500)
                     wp.screenshot(path=f"{out}/31-web-{name.lower()}.png")
+                    if name == "Training":
+                        print("training scroll:", wp.locator(".subpage").first.evaluate("e => [e.scrollHeight, e.clientHeight]"))
             if wp.locator(".page-tabs").get_by_role("tab", name="Trends & load", exact=True).count():
                 wp.get_by_role("tab", name="Training", exact=True).first.click(force=True)
                 wp.wait_for_timeout(1500)
@@ -522,6 +525,9 @@ try:
             check(wp.locator(".home-kpis .kpi").count() == 6, "web: home page numbers across the top")
             check(wp.locator(".hw-day").count() == 7, "web: home page week")
             check(wp.locator(".home-runs tbody tr").count() >= 3, "web: home page recent runs")
+            check(wp.locator(".home-build svg rect").count() > 10, "web: home building chart")
+            check(wp.locator(".home-equiv tbody tr").count() == 4, "web: home races against your best")
+            print("build:", wp.locator(".home-build header").inner_text().replace("\n", " "), "|", wp.locator(".home-equiv").inner_text().replace("\n", " | ")[:400])
             wp.screenshot(path=f"{out}/30-web-overview.png")
             wp.screenshot(path=f"{out}/30b-web-home-full.png", full_page=True)
             bv = wp.get_by_role("button", name="Board view")
