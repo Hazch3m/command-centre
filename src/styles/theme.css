@@ -6318,3 +6318,6 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .home-equiv .equiv-bar-cell { width: auto; }
 .hw-day svg.effort { height: 44px; }
 .hw-km { font-size: 18px; }
+/* The week's days take the spare height; the next run sits under them at its own size. */
+.ph-main .pwv-days { flex: 1 1 auto; min-height: 9rem; }
+.ph-next { flex: none; max-height: 40%; }
