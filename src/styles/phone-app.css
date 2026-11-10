@@ -5288,3 +5288,13 @@ svg.effort {
   color: var(--muted);
   font-size: 0.74rem;
 }
+.wp-streaks b {
+  white-space: nowrap;
+}
+.wp-streaks span {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+.wp-streaks small {
+  line-height: 1.2;
+}
