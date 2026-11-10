@@ -23,6 +23,20 @@ export interface Vo2Config {
   /** Garmin calibration: added to every estimate (median Garmin − estimate). Computed, not edited. */
   offset?: number;
   projection: { start: { date: string; vo2: number | null }; milestones: { date: string; vo2: number; label: string }[] };
+  /** How effective VO2 max is worked out (like Runalyze's settings). */
+  calc?: Vo2Calc;
+}
+
+/** Your own tweaks to the effective VO2 max: all optional, the defaults are as before. */
+export interface Vo2Calc {
+  /** Days of runs in the smoothed value (default 28). */
+  smoothDays?: number;
+  /** Splits count from this share of max heart rate (default 0.8). */
+  minHr?: number;
+  /** Use grade-adjusted pace when there is one (default true). */
+  gap?: boolean;
+  /** "auto": put estimates on your race results' scale; "off": raw; a number: add it yourself. */
+  correction?: "auto" | "off" | number;
 }
 
 export const MIN_SPLITS = 3;
@@ -77,7 +91,7 @@ export function estimateRun(splits: Split[], cfg: Vo2Config): { vo2: number; n: 
     // would read as lower fitness; steady-state methods like Garmin's skip it.
     if (covered + s.distance > 30000) break;
     if (!s.hr || !p.hr || s.distance < 900 || s.moving_time < 150 || s.speed <= 0) continue;
-    if (s.hr < 0.8 * cfg.hrMax || s.hr >= cfg.hrMax) continue;
+    if (s.hr < (cfg.calc?.minHr ?? 0.8) * cfg.hrMax || s.hr >= cfg.hrMax) continue;
     if (Math.abs(s.hr - p.hr) > 7 || p.distance < 900) continue;
     if (Math.abs(s.speed - p.speed) / s.speed > 0.06) continue;
     const e = splitEstimate(s, cfg);
@@ -131,11 +145,11 @@ const mondayOf = (d: string) => {
   return addDays(d, -((dow + 6) % 7));
 };
 
-export function weeklySeries(estimates: RunEstimate[], fromMonday: string, toMonday: string): WeekPoint[] {
+export function weeklySeries(estimates: RunEstimate[], fromMonday: string, toMonday: string, smoothDays = 28): WeekPoint[] {
   const out: WeekPoint[] = [];
   for (let w = fromMonday; w <= toMonday; w = addDays(w, 7)) {
     const runs = estimates.filter((e) => mondayOf(e.date) === w);
-    const window = estimates.filter((e) => e.date > addDays(w, -21) && e.date <= addDays(w, 6)).map((e) => e.vo2);
+    const window = estimates.filter((e) => e.date > addDays(w, 7 - smoothDays) && e.date <= addDays(w, 6)).map((e) => e.vo2);
     out.push({ week: w, value: median(runs.map((r) => r.vo2)), smooth: window.length >= 2 ? median(window) : null, runs });
   }
   return out;

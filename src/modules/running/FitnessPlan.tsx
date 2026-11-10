@@ -5,7 +5,7 @@ import { addDays, parseKey, useToday } from "../../core/time";
 import { useQuery } from "../../core/useQuery";
 import { BarChart, LineChart } from "../../shell/charts";
 import { loadHealth, type HealthDay } from "../health/data";
-import { marathonShape, SHAPE_DEFAULTS, showVo2, type Fitness, type ShapeOptions } from "./fitness";
+import { marathonShape, SHAPE_DEFAULTS, showVo2, type Fitness, type ShapeOptions, fitnessConfigChanged } from "./fitness";
 import { forecastWeek } from "./forecast";
 import { mondayOf, type Plan } from "./plan";
 import { ShapeBar } from "./Predictions";
@@ -307,7 +307,7 @@ export function ShapeView({ f, plan, overrides }: { f: Fitness; plan: Plan; over
   const update = (patch: Partial<ShapeSettings>) => {
     const next = { ...set, ...patch };
     setSet(next);
-    kvSet("shape.settings", next);
+    void kvSet("shape.settings", next).then(fitnessConfigChanged);
   };
   const final = [...f.config.projection.milestones].sort((a, b) => b.date.localeCompare(a.date))[0];
   const need = SHAPE_DISTS.find((d) => d.name === set.dist)!.need;

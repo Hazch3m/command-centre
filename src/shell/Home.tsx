@@ -180,7 +180,7 @@ export function Home() {
                         <small> km</small>
                       </span>
                       <span className="hw-title">{d.race ? d.race.name : sessionTitle(d.text, d.kind)}</span>
-                      {!d.race && <EffortProfile text={d.text} kind={d.kind} plan={plan} height={20} />}
+                      {!d.race && <EffortProfile text={d.text} kind={d.kind} plan={plan} height={48} />}
                       {segs.length > 0 && (
                         <span className="hw-segs">
                           {segs.map((s, j) => (
@@ -228,7 +228,51 @@ export function Home() {
 
         {/* Are you building: km by intensity with VO2 max over it, and what it adds up to. */}
         {f && details && <BuildingCard f={f} runs={runs} details={details} today={today} />}
-        {f && <RaceEquivalence f={f} runs={runs} plan={plan} today={today} />}
+        <div className="home-side">
+          {f && <RaceEquivalence f={f} runs={runs} plan={plan} today={today} />}
+          {/* Health: last night and this morning, small. */}
+          <section className="home-card home-health2">
+            <header>
+              <h3>Health</h3>
+              <span className="muted small">{h.dates?.rhr ? `from ${fmt(h.dates.rhr)}` : ""}</span>
+              <button type="button" className="home-link" onClick={() => go("health")}>
+                Health ›
+              </button>
+            </header>
+            <div className="hh-grid">
+              <span>
+                <small>Resting HR</small>
+                <b className="num">{h.rhr ? Math.round(h.rhr) : "–"}</b>
+                <i>bpm</i>
+              </span>
+              <span>
+                <small>HRV</small>
+                <b className="num">{h.hrv ? Math.round(h.hrv) : "–"}</b>
+                <i>{h.hrv_status ? h.hrv_status.toLowerCase() : "ms"}</i>
+              </span>
+              <span>
+                <small>Sleep</small>
+                <b className="num">{h.sleep_secs ? duration(h.sleep_secs).replace(/:\d\d$/, "") : "–"}</b>
+                <i>{h.sleep_score ? `score ${h.sleep_score}` : "h"}</i>
+              </span>
+              <span>
+                <small>Body battery</small>
+                <b className="num">{h.bb_high ?? "–"}</b>
+                <i>{h.bb_low != null ? `low ${h.bb_low}` : ""}</i>
+              </span>
+              <span>
+                <small>Readiness</small>
+                <b className="num">{h.readiness ?? "–"}</b>
+                <i>{h.readiness_level ? h.readiness_level.toLowerCase() : ""}</i>
+              </span>
+              <span>
+                <small>VO2 max (Garmin)</small>
+                <b className="num">{h.vo2 ?? "–"}</b>
+                <i />
+              </span>
+            </div>
+          </section>
+        </div>
 
         {/* Volume: what you ran, and what the plan has ahead. */}
         <section className="home-card home-volume">
@@ -314,27 +358,6 @@ export function Home() {
         </section>
       </div>
 
-      {/* Health, one line. */}
-      <button type="button" className="home-health" onClick={() => go("health")}>
-        <span>
-          Resting HR <b className="num">{h.rhr ? Math.round(h.rhr) : "–"}</b>
-        </span>
-        <span>
-          HRV <b className="num">{h.hrv ? `${Math.round(h.hrv)} ms` : "–"}</b>
-          {h.hrv_status ? <small> {h.hrv_status.toLowerCase()}</small> : null}
-        </span>
-        <span>
-          Sleep <b className="num">{h.sleep_secs ? duration(h.sleep_secs).replace(/:\d\d$/, "") + " h" : "–"}</b>
-          {h.sleep_score ? <small> score {h.sleep_score}</small> : null}
-        </span>
-        <span>
-          Body battery <b className="num">{h.bb_high ?? "–"}</b>
-        </span>
-        <span>
-          Readiness <b className="num">{h.readiness ?? "–"}</b>
-        </span>
-        <span className="home-link">Health ›</span>
-      </button>
     </div>
   );
 }

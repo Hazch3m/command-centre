@@ -55,10 +55,20 @@ export function GoalCarousel({ plan, split }: { plan: Plan; split?: boolean }) {
   );
   const ready = opt && <GoalReadiness key={opt.id} plan={plan} opt={opt} mainDate={main?.date} goals={goals} />;
   // On the PC's plan page: the cards and the readiness side by side.
+  // There, a row of goal chips picks the one card shown (no swiping, no dots).
   if (split)
     return (
       <div className="gc-wrap">
-        <div className="gc-cards">{cards}</div>
+        <div className="gc-cards">
+          <div className="gc-chips" role="tablist" aria-label="Goals">
+            {options.map((o, k) => (
+              <button key={o.id} type="button" role="tab" aria-selected={k === i} className={k === i ? "on" : ""} onClick={() => setI(k)}>
+                {o.label}
+              </button>
+            ))}
+          </div>
+          {opt && <GoalCard key={opt.id} opt={opt} mainDate={main?.date} goals={goals} active onTap={() => {}} />}
+        </div>
         <div className="gc-ready">{ready}</div>
       </div>
     );

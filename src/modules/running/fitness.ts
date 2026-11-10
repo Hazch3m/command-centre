@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { backend } from "@backend";
+import { kvGet } from "../../core/db";
 import { useDataVersion } from "../../core/events";
 import { addDays, useToday } from "../../core/time";
 import { useQuery } from "../../core/useQuery";
@@ -108,15 +109,15 @@ export function targetTime(text: string, distance: number): number | null {
 }
 
 /** Detail splits → estimator input, preferring Strava's grade-adjusted speed. */
-export function splitsFor(d: RunDetail) {
-  return d.splits.map((s) => ({ distance: s.distance, moving_time: s.moving_time, speed: s.gap ?? s.speed, hr: s.hr }));
+export function splitsFor(d: RunDetail, gap = true) {
+  return d.splits.map((s) => ({ distance: s.distance, moving_time: s.moving_time, speed: (gap ? s.gap : null) ?? s.speed, hr: s.hr }));
 }
 
 export interface Fitness {
   config: FitnessConfig;
   runs: Run[];
   offset: number;
-  calibration: "races" | "none";
+  calibration: "races" | "none" | "manual";
   /** Garmin's VO2 max runs on its own scale: how far above the race scale your readings sit. */
   garmin: { offset: number; latest: { date: string; vo2: number }; equivalent: number | null } | null;
   /** Added to VO2 max numbers when they're shown (Garmin scale), 0 on the race scale. */
@@ -316,6 +317,7 @@ export function computeFitness(
   plan: Plan | undefined,
   today: string,
   garminPredictions: { values: Record<string, number>; date: string; monthAgo?: Record<string, number> | null } | null = null,
+  shapeOpts: ShapeOptions = SHAPE_DEFAULTS,
 ): Fitness {
   config = withAutoHeartRate(config, runs, today);
   config = withPlanGoals(config, plan, today);
@@ -324,7 +326,7 @@ export function computeFitness(
   for (const r of runs) {
     const d = details.get(r.id);
     if (!d) continue;
-    const e = estimateRun(splitsFor(d), config);
+    const e = estimateRun(splitsFor(d, config.calc?.gap ?? true), config);
     if (e) raw.push({ id: r.id, date: r.date, name: r.name, vo2: e.vo2, n: e.n });
   }
   // Calibrate: to Garmin readings when there are any, otherwise to race results
@@ -336,7 +338,11 @@ export function computeFitness(
   // race prediction too fast. They're compared separately below.
   let calibration: Fitness["calibration"] = "none";
   let offset = 0;
-  if (config.calibrate && recentRaces.length) {
+  const corr = config.calc?.correction ?? "auto";
+  if (typeof corr === "number") {
+    offset = corr;
+    calibration = "manual";
+  } else if (corr === "auto" && config.calibrate && recentRaces.length) {
     const o = garminOffset(recentRaces, raw, 21);
     if (o != null) {
       offset = o;
@@ -349,7 +355,7 @@ export function computeFitness(
   const gOff = latestReading ? garminOffset(readings, estimates, 28) : null;
 
   const thisMonday = mondayOf(today);
-  const weekly = weeklySeries(estimates, addDays(thisMonday, -51 * 7), thisMonday);
+  const weekly = weeklySeries(estimates, addDays(thisMonday, -51 * 7), thisMonday, config.calc?.smoothDays ?? 28);
   const current = [...weekly].reverse().find((w) => w.smooth != null)?.smooth ?? null;
 
   // Projection start: the fixed value, else the smoothed estimate around the start date.
@@ -402,7 +408,7 @@ export function computeFitness(
       : current != null
         ? { vdot: current, source: "form" }
         : null;
-  const shape = predictionBasis ? marathonShape(runs, today, predictionBasis.vdot) : null;
+  const shape = predictionBasis ? marathonShape(runs, today, predictionBasis.vdot, shapeOpts) : null;
   // Main prediction: your own speed–endurance curve from your recent races (like
   // Garmin's, it lets your marathon be relatively slower or faster than your 10k).
   const raceRows = plan ? raceHistory(runs, plan) : [];
@@ -526,12 +532,21 @@ export function useFitness(plan: Plan | undefined): Fitness | undefined {
   }, []);
   const from = addDays(today, -430);
   const { data } = useQuery(
-    () => Promise.all([loadRuns("2024-01-01"), loadDetails(from), loadReadings(), loadShoes(), loadFitnessConfig(), latestPredictions()]),
+    () => Promise.all([loadRuns("2024-01-01"), loadDetails(from), loadReadings(), loadShoes(), loadFitnessConfig(), latestPredictions(), kvGet<Partial<ShapeOptions> | null>("shape.settings", null)]),
     [version, healthVersion, today, cfgTick],
   );
   if (!data) return undefined;
-  const [runs, details, readings, shoes, config, garminPred] = data;
-  return computeFitness(runs, details, readings, shoes, config, plan, today, garminPred);
+  const [runs, details, readings, shoes, config, garminPred, shapeSet] = data;
+  const so: ShapeOptions = { ...SHAPE_DEFAULTS, ...pickShape(shapeSet) };
+  return computeFitness(runs, details, readings, shoes, config, plan, today, garminPred, so);
+}
+
+/** The marathon-shape settings you chose (Fitness → shape, or Analysis). */
+export function pickShape(v: Partial<ShapeOptions> | null | undefined): Partial<ShapeOptions> {
+  if (!v) return {};
+  const out: Partial<ShapeOptions> = {};
+  for (const k of ["weeklyWeeks", "longWeeks", "longMin", "weeklyShare"] as const) if (typeof v[k] === "number") out[k] = v[k];
+  return out;
 }
 
 export function fitnessConfigChanged() {

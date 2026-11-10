@@ -13,6 +13,7 @@ import { RUN_TYPE_LABEL, typeOfDay, typeOfRun, type RunType } from "./runType";
 import { km, pace } from "./stats";
 import { loadDetails, loadOverrides, type Run } from "./strava";
 import { DayEditor } from "./WeekCalendar";
+import { ScrollBars } from "../../shell/charts";
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DOW_LONG = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -24,12 +25,27 @@ const phaseName = (p: string) => p.replace(/\s*\(.*\)\s*$/, "").replace(/^Recove
  * The plan one week at a time, days side by side as tiles (like Runna's week
  * view). ‹ › or the arrow keys move between weeks; click a day to change it.
  */
-export function PlanWeekView({ plan, runs }: { plan: Plan; runs: Run[] }) {
+export function PlanWeekView({ plan, runs, hideStrip }: { plan: Plan; runs: Run[]; hideStrip?: boolean }) {
   const today = useToday();
   const thisMonday = mondayOf(today);
   const range = useMemo(() => forecastRange(plan, today), [plan, today]);
   const [monday, setMonday] = useState(thisMonday);
   useEffect(() => setMonday(thisMonday), [thisMonday]);
+  // Tell the weeks chart which week is showing; and follow it when a week is picked there.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("cc:plan-week", { detail: monday }));
+  }, [monday]);
+  useEffect(() => {
+    const on = (e: Event) => {
+      const m = (e as CustomEvent<string>).detail;
+      setMonday((cur) => {
+        setDir(m > cur ? 1 : m < cur ? -1 : 0);
+        return m;
+      });
+    };
+    window.addEventListener("cc:plan-week-go", on);
+    return () => window.removeEventListener("cc:plan-week-go", on);
+  }, []);
   const [dir, setDir] = useState<0 | 1 | -1>(0);
   const version = useDataVersion("running");
   const { data: overrides } = useQuery(loadOverrides, [version]);
@@ -193,7 +209,7 @@ export function PlanWeekView({ plan, runs }: { plan: Plan; runs: Run[] }) {
           This week's runs in detail ›
         </button>
       </div>
-      <div className="pwv-strip" ref={strip}>
+      <div className="pwv-strip" ref={strip} hidden={hideStrip}>
         {weeks.map((w) => (
           <button
             key={w.monday}
@@ -207,5 +223,59 @@ export function PlanWeekView({ plan, runs }: { plan: Plan; runs: Run[] }) {
       </div>
       {editing && createPortal(<DayEditor d={editing.d} week={editing.week} plan={plan} onClose={() => setEditing(null)} />, document.body)}
     </div>
+  );
+}
+
+/**
+ * Weekly km across the plan: what you ran, then what's planned (faint). Click a week to show it in the
+ * week view; the week showing there is highlighted.
+ */
+export function PlanWeeksChart({ plan, runs }: { plan: Plan; runs: Run[] }) {
+  const today = useToday();
+  const thisMonday = mondayOf(today);
+  const range = useMemo(() => forecastRange(plan, today), [plan, today]);
+  const version = useDataVersion("running");
+  const { data: overrides } = useQuery(loadOverrides, [version]);
+  const [sel, setSel] = useState(thisMonday);
+  useEffect(() => {
+    const on = (e: Event) => setSel((e as CustomEvent<string>).detail);
+    window.addEventListener("cc:plan-week", on);
+    return () => window.removeEventListener("cc:plan-week", on);
+  }, []);
+  const weeks = useMemo(() => {
+    const out: { monday: string; km: number; planned: number | null; label: string; phase: string; race: boolean; min: number | null; max: number | null }[] = [];
+    for (let m = range.first; m <= range.last; m = addDays(m, 7)) {
+      const f = forecastWeek(plan, m, runs, overrides);
+      const w = plan.weeks.find((x) => x.start <= m && m <= x.end);
+      out.push({ monday: m, km: f.actualKm, planned: f.plannedKm, label: w ? w.week : "", phase: w?.phase ?? f.block?.name ?? "", race: plan.races.some((r) => r.date && r.date >= m && r.date <= addDays(m, 6)), min: w?.kmMin ?? null, max: w?.kmMax ?? null });
+    }
+    return out;
+  }, [plan, runs, overrides, range]);
+  const i = Math.max(0, weeks.findIndex((w) => w.monday === sel));
+  const s = weeks[i];
+  const bars = weeks.map((w) => {
+    const past = w.monday < thisMonday;
+    const now = w.monday === thisMonday;
+    const v = past ? w.km : now ? Math.max(w.km, w.planned ?? 0) : (w.planned ?? 0);
+    return {
+      label: w.label ? (w.race ? `${w.label}🏁` : w.label) : "",
+      value: v,
+      target: w.min,
+      targetMax: w.max,
+      highlight: w.monday === sel,
+      planned: !past && !(now && w.km >= (w.planned ?? 0)),
+      title: `Week ${w.label || "–"} · ${fmt(w.monday)}${w.phase ? ` · ${phaseName(w.phase)}` : ""}: ${past || now ? `ran ${w.km.toFixed(0)} km` : ""}${w.planned != null ? `${past || now ? " of " : "planned "}${Math.round(w.planned)} km` : ""}${w.race ? " · race week" : ""}`,
+    };
+  });
+  return (
+    <section className="pwc">
+      <header>
+        <b>Weekly km</b>
+        <span className="muted small">
+          {s ? `Week ${s.label || "–"} · ${fmt(s.monday)}${s.phase ? ` · ${phaseName(s.phase)}` : ""} · ${s.monday < thisMonday ? `ran ${s.km.toFixed(0)} of ${Math.round(s.planned ?? 0)}` : `${Math.round(s.planned ?? 0)} planned`} km` : ""} · click a week to open it
+        </span>
+      </header>
+      <ScrollBars bars={bars} height={120} perBar={22} focus={Math.min(weeks.length - 1, i + 6)} unit=" km" axis showValues={false} onBar={(k) => window.dispatchEvent(new CustomEvent("cc:plan-week-go", { detail: weeks[k].monday }))} />
+    </section>
   );
 }

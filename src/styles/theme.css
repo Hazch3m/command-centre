@@ -6031,3 +6031,72 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
   .tab-page-running .subpage:has(.plan-home) { display: block; overflow-y: auto; }
   .plan-home > .plan-home-col, .plan-home > .plan-home-goal { max-height: none; overflow: visible; }
 }
+
+.ana-panel h4 { display: flex; align-items: center; justify-content: space-between; }
+.ana-gear { border: 0; background: none; color: var(--text-2); cursor: pointer; font-size: 15px; padding: 0 2px; border-radius: 6px; }
+.ana-gear:hover, .ana-gear.on { color: var(--c-running); }
+.ana-calc-set { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 10px; padding: 10px; border-radius: 10px; background: var(--card-2); border: 1px solid var(--line); font-size: 12px; }
+.ana-calc-set > b { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2); margin-top: 4px; }
+.ana-calc-set label { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ana-calc-set label > span:first-child { min-width: 7.5rem; color: var(--text-2); }
+.ana-calc-set .small-seg button { font-size: 11px; padding: 2px 7px; }
+.ana-calc-set input { width: 4.5rem; font: inherit; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); color: var(--text); }
+.ana-calc-foot { display: flex; justify-content: space-between; margin-top: 4px; }
+
+/* Home v3: health under races; a taller week with session shapes that have height. */
+.home-side { grid-column: span 4; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.home-side > .home-card { grid-column: auto; }
+@media (max-width: 1300px) { .home-side { grid-column: span 12; display: grid; grid-template-columns: 1fr 1fr; } }
+.hh-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.hh-grid > span { display: flex; flex-direction: column; padding: 6px 9px; border-radius: 9px; background: var(--card-2); border: 1px solid var(--line); min-width: 0; }
+.hh-grid small { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hh-grid b { font-size: 18px; font-weight: 700; line-height: 1.2; }
+.hh-grid i { font-style: normal; font-size: 11px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 1em; }
+.hw-day { min-height: 13.5rem; padding: 9px 10px 10px; gap: 5px; }
+.hw-day svg.effort { height: 48px; margin: 4px 0 2px; }
+.hw-km { font-size: 21px; }
+.hw-title { font-size: 12.5px; }
+.hw-segs { font-size: 11px; gap: 2px; }
+
+/* Training → Plan v3: weekly km chart (picks the week) and plan check on top, the week, then four equal-height panels. */
+.plan-home { grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); align-items: stretch; }
+.plan-home-chart { grid-column: 1 / 4; min-width: 0; }
+.plan-home-coach { grid-column: 4; min-width: 0; max-height: 13rem; overflow-y: auto; scrollbar-width: thin; font-size: 0.9em; }
+.plan-home-week { grid-column: 1 / -1; }
+.plan-home-goal { grid-column: 3 / 5; }
+.plan-home-col > .pl-embed:only-child, .plan-home-col > .pl-embed:only-child > .wp { height: 100%; box-sizing: border-box; }
+.plan-home-col.pl-embed > .wa { min-height: 100%; box-sizing: border-box; }
+.plan-home-goal .gc-wrap { height: 100%; align-items: stretch; }
+.plan-home-goal .gc-cards { display: flex; flex-direction: column; gap: 0.5rem; min-height: 0; }
+.plan-home-goal .gc-cards > .gc-card { flex: 1; width: 100%; max-width: none; }
+.plan-home-goal .gc-ready { height: 100%; }
+.gc-chips { display: flex; gap: 0.3rem; overflow-x: auto; scrollbar-width: none; flex: none; }
+.gc-chips button { flex: none; font: inherit; font-size: 0.78rem; padding: 0.25rem 0.6rem; border-radius: 999px; border: 1px solid var(--line); background: var(--card-2); color: var(--text-2); cursor: pointer; white-space: nowrap; }
+.gc-chips button.on { background: color-mix(in srgb, var(--c-running) 18%, var(--card-2)); border-color: color-mix(in srgb, var(--c-running) 55%, var(--line)); color: var(--text); font-weight: 650; }
+.pwc { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.5rem 0.7rem 0.3rem; border-radius: 12px; background: var(--card-2); border: 1px solid var(--line); height: 100%; box-sizing: border-box; }
+.pwc header { display: flex; gap: 0.6rem; align-items: baseline; flex-wrap: wrap; font-size: 0.85rem; }
+.pwc .chart { background: none; border: 0; padding: 0; }
+.pwc .chart-bar.hl { fill: var(--c-running); opacity: 1; }
+@media (max-width: 1250px) { .plan-home-chart, .plan-home-coach, .plan-home-goal { grid-column: 1 / -1; } .plan-home-coach { max-height: none; } }
+
+/* Fitness overview as a grid of cards (less scrolling). */
+.fit-dash { display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
+.fit-dash .tiles { margin: 0; gap: 8px; }
+.fit-dash .tile { padding: 8px 12px; }
+.fit-dash .tile-value { font-size: 1.35rem; }
+.fit-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 10px; align-items: stretch; }
+.fit-card { background: var(--card-2); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px 10px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.fit-card h3 { margin: 0 !important; font-size: 13px; }
+.fit-card .chart { background: var(--card); }
+.fit-card .table { font-size: 12.5px; }
+.fit-card .table td, .fit-card .table th { padding-top: 4px; padding-bottom: 4px; }
+.fit-card > p.small, .fit-card p.muted.small { margin: 0; font-size: 11.5px; line-height: 1.4; }
+.fit-vo2 { grid-column: span 7; }
+.fit-pred { grid-column: span 5; }
+.fit-load, .fit-eff, .fit-shoes { grid-column: span 4; }
+.fit-keys, .fit-set { grid-column: span 6; }
+.fit-scroll { max-height: 14rem; overflow-y: auto; scrollbar-width: thin; }
+.fit-why summary { cursor: pointer; font-size: 11.5px; color: var(--text-2); }
+.fit-why[open] summary { margin-bottom: 4px; }
+.fit-set > details > summary h3 { display: inline; }
+@media (max-width: 1200px) { .fit-vo2, .fit-pred, .fit-keys, .fit-set { grid-column: span 12; } .fit-load, .fit-eff, .fit-shoes { grid-column: span 6; } }

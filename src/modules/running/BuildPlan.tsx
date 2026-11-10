@@ -226,8 +226,12 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
               const r = recommend(history, dist, 40, firstMonday);
               const date = addDays(firstMonday, r.weeks * 7 - 1);
               const v0 = fitUse;
-              const then = v0 ? predictTime(DIST_M[dist], v0 + expectedGain(r.weeks, r.level)) : null;
-              const now = v0 ? predictTime(DIST_M[dist], v0) : null;
+              // "Now" is the same prediction shown everywhere else (Garmin's when synced, else your curve);
+              // "then" moves it by what the block's expected gain is worth.
+              const shown = f?.predictions.find((p) => Math.abs(p.distance - DIST_M[dist]) < 300)?.seconds ?? null;
+              const vNow = v0 ? predictTime(DIST_M[dist], v0) : null;
+              const now = shown ?? vNow;
+              const then = v0 && now && vNow ? now * (predictTime(DIST_M[dist], v0 + expectedGain(r.weeks, r.level)) / vNow) : null;
               const early = (dist === "marathon" && history.recent12 < 25) || (dist === "half" && history.recent12 < 12);
               const on = isRace && o.dist === dist && o.raceDate === date;
               return (
