@@ -51,7 +51,7 @@ const mid = (a: number, b: number) => (a + b) / 2;
 
 /** "3:46–3:50" → seconds per km (middle of the range), or null. */
 function paceIn(text: string): number | null {
-  const m = /(\d:\d{2})(?:\s*[–-]\s*(\d:\d{2}))?/.exec(text);
+  const m = /(\d{1,2}:\d{2})(?:\s*[–-]\s*(\d{1,2}:\d{2}))?/.exec(text);
   if (!m) return null;
   const a = parseTime(m[1])!;
   return m[2] ? mid(a, parseTime(m[2])!) : a;
@@ -152,7 +152,7 @@ function rangeIn(text: string): [number, number] | null {
 const LONG_RUN = /(?<!medium-)\blong run\b/i;
 
 function classify(text: string): DayKind {
-  if (/at \d:\d\d|\bT\b|\bMP\b|HMP|fartlek|hill|\d\s*×\s*[\d.,]+\s*(km|m|min)\b/i.test(text)) return "key";
+  if (/at \d{1,2}:\d\d|\bT\b|\bMP\b|HMP|fartlek|hill|\d\s*×\s*[\d.,]+\s*(km|m|min)\b/i.test(text)) return "key";
   return "easy";
 }
 
@@ -164,7 +164,7 @@ function classify(text: string): DayKind {
 function paceFor(plan: Plan, text: string, kind: DayKind): string | null {
   if (kind === "rest") return null;
   const zone = (re: RegExp) => plan.paces.find((p) => re.test(p.zone)) ?? null;
-  const explicit = /(\d:\d{2}(?:\s*[–-]\s*\d:\d{2})?)/.exec(text)?.[1] ?? null;
+  const explicit = /(\d{1,2}:\d{2}(?:\s*[–-]\s*\d{1,2}:\d{2})?)/.exec(text)?.[1] ?? null;
   let z: Plan["paces"][number] | null = null;
   let easyish = false;
   if (/\bHMP\b/.test(text)) z = zone(/^Half/i);

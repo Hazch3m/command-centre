@@ -50,7 +50,7 @@ const TOLERANCE = 3; // s/km either side of the range still counts as on point
 /** "3:46–3:50" → [226, 230]; "4:05" → [222, 248]? no: a single pace gets ±3 s. */
 export function paceRange(text: string | null): [number, number] | null {
   if (!text) return null;
-  const m = /(\d:\d{2})(?:\s*[–-]\s*(\d:\d{2}))?/.exec(text);
+  const m = /(\d{1,2}:\d{2})(?:\s*[–-]\s*(\d{1,2}:\d{2}))?/.exec(text);
   if (!m) return null;
   const a = parseTime(m[1])!;
   const b = m[2] ? parseTime(m[2])! : a;
@@ -83,7 +83,7 @@ const offBy = (actual: number, [lo, hi]: [number, number]) => (actual < lo - TOL
 
 export function checkRun(day: ForecastDay, run: Run, detail: RunDetail | null): PaceCheck | null {
   if (day.kind === "rest" || day.kind === "race") return null;
-  const easy = day.kind === "easy" || day.kind === "optional" || (day.kind === "long" && !/\bat\s+\d:\d\d/.test(day.text));
+  const easy = day.kind === "easy" || day.kind === "optional" || (day.kind === "long" && !/\bat\s+\d{1,2}:\d\d/.test(day.text));
   // Your setting: no verdicts on easy, long and recovery runs.
   if (easy && day.noEasyCheck) return null;
   const hr = hrRange(day.pace);

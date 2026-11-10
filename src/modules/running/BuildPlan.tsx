@@ -360,7 +360,7 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
       {step === 1 && (
         <section className="ps-card pb-step pb-history">
           <h3>Where you are now</h3>
-          {fitNow == null && <ManualFitness value={manualV} onChange={(v, r) => (setManualV(v), setManualRace(r))} />}
+          {fitNow == null && <ManualFitness value={manualV} start={o.dist === "marathon" ? "half" : o.dist} onChange={(v, r) => (setManualV(v), setManualRace(r))} />}
           <div className="ps-stats">
             <div>
               <span className="label">Last 4 weeks</span>
@@ -654,8 +654,8 @@ const parseT = (t: string): number | null => {
 };
 
 /** No runs to go on yet: a recent race or time trial (or a fair guess) sets the paces. */
-function ManualFitness({ value, onChange }: { value: number | null; onChange: (v: number | null, race: { km: number; seconds: number } | null) => void }) {
-  const [dist, setDist] = useState<RaceDist>("5k");
+function ManualFitness({ value, onChange, start = "5k" }: { value: number | null; start?: RaceDist; onChange: (v: number | null, race: { km: number; seconds: number } | null) => void }) {
+  const [dist, setDist] = useState<RaceDist>(start);
   const [t, setT] = useState("");
   const apply = (d: RaceDist, txt: string) => {
     const sec = parseT(txt);

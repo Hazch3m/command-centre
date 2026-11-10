@@ -43,7 +43,7 @@ const norm = (s: string) =>
     .trim();
 
 const paceIn = (s: string): [string, string] | null => {
-  const m = /(\d:\d{2})(?:\s*[-–—]\s*(\d:\d{2}))?/.exec(s);
+  const m = /(\d{1,2}:\d{2})(?:\s*[-–—]\s*(\d{1,2}:\d{2}))?/.exec(s);
   return m ? [m[1], m[2] ?? ""] : null;
 };
 const pace = (p: [string, string]) => `pace ${p[0]}${p[1] ? `-${p[1]}` : ""}/km`;
@@ -87,7 +87,7 @@ export function sessionToWorkout(text: string, zones: Zones = {}): Omit<Draft, "
   const total = /^(?:easy\s+)?(\d+(?:\.\d+)?)\s*km\b/i.exec(s);
 
   // Over-unders: "Threshold over-unders: 3 × (4 × 2 min at 3:58-4:02 + 1 min at 3:38-3:42), 2 min jog".
-  const ou = /over-unders?:\s*(\d+)\s*×\s*\(\s*(\d+)\s*×\s*(\d+(?:\.\d+)?)\s*(min|s)\s*at\s*(\d:\d{2}(?:\s*[-–]\s*\d:\d{2})?)\s*\+\s*(\d+(?:\.\d+)?)\s*(min|s)\s*at\s*(\d:\d{2}(?:\s*[-–]\s*\d:\d{2})?)\s*\)(?:\s*,\s*(\d+(?:\.\d+)?)\s*(min|s)\s*jog)?/i.exec(s);
+  const ou = /over-unders?:\s*(\d+)\s*×\s*\(\s*(\d+)\s*×\s*(\d+(?:\.\d+)?)\s*(min|s)\s*at\s*(\d{1,2}:\d{2}(?:\s*[-–]\s*\d{1,2}:\d{2})?)\s*\+\s*(\d+(?:\.\d+)?)\s*(min|s)\s*at\s*(\d{1,2}:\d{2}(?:\s*[-–]\s*\d{1,2}:\d{2})?)\s*\)(?:\s*,\s*(\d+(?:\.\d+)?)\s*(min|s)\s*jog)?/i.exec(s);
   if (ou) {
     const under = paceIn(ou[5])!;
     const over = paceIn(ou[8])!;
@@ -114,7 +114,7 @@ export function sessionToWorkout(text: string, zones: Zones = {}): Omit<Draft, "
       const p = targetPace(after.split(",")[0] + " " + (reps.length > 1 ? "" : s), zones) ?? (reps.length > 1 ? targetPace(s, zones) : null);
       const rec = /(?:,|\+)\s*(\d+(?::\d{2})?(?:\.\d+)?)\s*(min|s|m)?\s*(?:jog|walk|rest|easy|off|recovery)/i.exec(after) ?? /(\d+(?::\d{2})?)\s*(min|s)?\s*(?:jog|off)/i.exec(after);
       // A float: the recovery at a pace ("1 min float at 4:28-4:34"), not a jog.
-      const fl = /(\d+(?:\.\d+)?)\s*(min|s)\s*float(?:\s*at\s*(\d:\d{2}(?:\s*[-–]\s*\d:\d{2})?))?/i.exec(after);
+      const fl = /(\d+(?:\.\d+)?)\s*(min|s)\s*float(?:\s*at\s*(\d{1,2}:\d{2}(?:\s*[-–]\s*\d{1,2}:\d{2})?))?/i.exec(after);
       const recDur = fl ? dur(fl[1], fl[2]) : rec ? (rec[1].includes(":") ? rec[1] : dur(rec[1], rec[2] ?? "min")) : hills ? "90s" : "2:00";
       const fp = fl?.[3] ? paceIn(fl[3]) : null;
       const work = step("interval", dur(rep[2], rep[3]), p ? pace(p) : "open", hills ? "Hill sprint: fast, tall, relaxed" : p ? `${paceText(p)}/km` : "Hard but controlled");
@@ -141,7 +141,7 @@ export function sessionToWorkout(text: string, zones: Zones = {}): Omit<Draft, "
   // A run in steps: "15 km progression run: 5 km easy, 4 km at 4:40-4:46, 4 km at 4:25-4:31, 2 km at 4:10-4:16".
   const stepped = /^(\d+(?:\.\d+)?)\s*km\s+(progression|long)(?:\s+run)?\s*:\s*(\d+(?:\.\d+)?)\s*km easy\s*,(.+)$/i.exec(s);
   if (stepped) {
-    const blocks = [...stepped[4].matchAll(/(\d+(?:\.\d+)?)\s*km at\s*((?:HMP|MP|T)\b|\d:\d{2}(?:\s*[-–]\s*\d:\d{2})?)/gi)];
+    const blocks = [...stepped[4].matchAll(/(\d+(?:\.\d+)?)\s*km at\s*((?:HMP|MP|T)\b|\d{1,2}:\d{2}(?:\s*[-–]\s*\d{1,2}:\d{2})?)/gi)];
     if (blocks.length) {
       const steps: Item[] = [step("interval", `${stepped[3]}km`, "hr zone 2", "Easy start")];
       for (const b of blocks) {
@@ -176,7 +176,7 @@ export function sessionToWorkout(text: string, zones: Zones = {}): Omit<Draft, "
   }
 
   // A continuous block at pace: "25 min T at 3:43-3:46", "10 km with 6 km at 3:58", "16 km with 10 km at MP".
-  const block = /(\d+(?:\.\d+)?)\s*(km|min)\s*(?:T\s*)?(?:at|@)\s*(?:(?:HMP|MP|T)\b\s*)?(\d:\d{2})?/i.exec(total ? s.slice(total[0].length) : s);
+  const block = /(\d+(?:\.\d+)?)\s*(km|min)\s*(?:T\s*)?(?:at|@)\s*(?:(?:HMP|MP|T)\b\s*)?(\d{1,2}:\d{2})?/i.exec(total ? s.slice(total[0].length) : s);
   if (block && (block[3] || /\bat\s*(HMP|MP|T)\b/i.test(s))) {
     const p = targetPace(s.slice(s.indexOf(block[0])), zones);
     const kind = /\bHMP\b/.test(s) ? "HMP" : /\bMP\b/.test(s) ? "MP" : /\bT\b|threshold|tempo/i.test(s) ? "Tempo" : "Steady";
