@@ -89,16 +89,15 @@ const fmtDate = (d: string) => {
   return `${x.getDate()} ${MON[x.getMonth()]}`;
 };
 
-/** Under the week: how it's going (progress, streaks) and what's coming (the build to your race). */
-function WeekCards({ plan, runs }: { plan: Plan; runs: Run[] }) {
+/** How the week's going: progress, streaks. */
+function WeekProgressCard({ plan, runs }: { plan: Plan; runs: Run[] }) {
   const today = useToday();
   const version = useDataVersion("running");
   const { data: overrides } = useQuery(loadOverrides, [version]);
   const fw = useMemo(() => forecastWeek(plan, mondayOf(today), runs, overrides), [plan, today, runs, overrides]);
   return (
-    <div className="pl-embed week-cards">
+    <div className="pl-embed">
       <WeekProgress plan={plan} fw={fw} runs={runs} today={today} overrides={overrides} />
-      <WeekAhead plan={plan} onDay={(d) => window.dispatchEvent(new CustomEvent("cc:plan-day", { detail: d }))} />
     </div>
   );
 }
@@ -242,13 +241,16 @@ export function RunningPage() {
                 <div className="plan-home-week">
                   <PlanWeekView plan={plan} runs={runs} />
                 </div>
-                <WeekCards plan={plan} runs={runs} />
-                <aside className="plan-home-goal">
+                <div className="plan-home-col">
+                  <WeekProgressCard plan={plan} runs={runs} />
                   <PlanCoach plan={plan} />
-                  <div className="pl-embed">
-                    <GoalCarousel plan={plan} />
-                  </div>
-                </aside>
+                </div>
+                <div className="plan-home-col pl-embed">
+                  <WeekAhead plan={plan} onDay={(d) => window.dispatchEvent(new CustomEvent("cc:plan-day", { detail: d }))} />
+                </div>
+                <div className="plan-home-goal pl-embed">
+                  <GoalCarousel plan={plan} />
+                </div>
               </div>
             ) : (
               <div className="plan-focus">

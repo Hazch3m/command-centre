@@ -5967,3 +5967,55 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .hw-day .effort .effort-b { fill: var(--hz); }
 .hw-day .effort .effort-b.z-easy:not(:only-child) { fill: color-mix(in srgb, var(--text) 20%, transparent); }
 .home-preds h4 { margin-top: 8px; }
+
+/* Home v2: full width; building + race equivalence; km chart with an axis. */
+.home { max-width: none; margin: 0; }
+.home-build { grid-column: span 8; }
+.home-equiv { grid-column: span 4; }
+.home-volume { grid-column: span 4; }
+.home-runs { grid-column: span 5; }
+.home-preds { grid-column: span 3; }
+@media (max-width: 1300px) {
+  .home-build, .home-runs { grid-column: span 12; }
+  .home-equiv, .home-volume, .home-preds { grid-column: span 6; }
+}
+.build-pill { font-size: 11px; font-weight: 750; padding: 2px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.05em; }
+.b-productive { background: color-mix(in srgb, #2e9e5b 20%, transparent); color: #2e9e5b; }
+.b-peaking { background: color-mix(in srgb, #7c5cff 20%, transparent); color: #7c5cff; }
+.b-maintaining { background: color-mix(in srgb, #4f8bd9 18%, transparent); color: #4f8bd9; }
+.b-recovery { background: color-mix(in srgb, #4fb3d9 18%, transparent); color: #3a9fc4; }
+.b-unproductive { background: color-mix(in srgb, #e8a23d 22%, transparent); color: #d58a1f; }
+.b-detraining, .b-overreaching { background: color-mix(in srgb, #e8504e 18%, transparent); color: #e8504e; }
+.build-facts { display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: 12.5px; color: var(--text-2); }
+.build-facts b { color: var(--text); font-weight: 700; }
+.build-chart { background: var(--card-2); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px 2px; }
+.build-vo2 { fill: none; stroke: #9b6bff; stroke-width: 2.2; stroke-linejoin: round; }
+.build-vo2-dot { fill: #9b6bff; stroke: var(--card-2); stroke-width: 1.5; }
+.build-vlabel { fill: #9b6bff; }
+.build-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 11.5px; color: var(--text-2); }
+.build-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.build-legend i.build-legend-line { height: 3px; width: 14px; border-radius: 2px; background: #9b6bff; vertical-align: 2px; }
+.equiv-bar-cell { width: 34%; }
+.equiv-bar { display: flex; align-items: center; gap: 6px; }
+.equiv-bar i { display: block; height: 8px; border-radius: 4px; flex: none; max-width: 75%; }
+.equiv-bar i.best { background: #2e9e5b; }
+.equiv-bar i.near { background: #e8a23d; }
+.equiv-bar i.far { background: #e8504e; }
+.equiv-bar b { font-size: 12px; }
+
+/* Training → Plan, one screen: the week, then four columns (progress + plan check, the build, goal card, readiness). */
+.gc-wrap, .gc-cards, .gc-ready { display: contents; }
+.plan-home { grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.15fr) minmax(0, 2fr); gap: 0.8rem; }
+.plan-home-col { display: flex; flex-direction: column; gap: 0.7rem; min-width: 0; }
+.plan-home-goal { min-width: 0; font-size: 0.92em; }
+.plan-home-goal .gc-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.8rem; align-items: start; }
+.plan-home-goal .gc-cards, .plan-home-goal .gc-ready { display: block; min-width: 0; }
+.plan-home .pwv-days { gap: 0.4rem; }
+.plan-home .pwv-day { padding: 0.5rem 0.55rem 0.45rem; gap: 0.22rem; }
+.plan-home .pwv-km-big { font-size: 1.3rem; }
+.plan-home .pwv-strip { margin-top: 0.1rem; }
+.plan-home .wp { padding: 0.8rem 0.9rem; gap: 0.6rem; }
+.plan-home .wp-ring { width: 76px; height: 76px; }
+.plan-home .wa { font-size: 0.92em; }
+@media (max-width: 1250px) { .plan-home { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .plan-home-goal { grid-column: 1 / -1; } }
+@media (max-width: 800px) { .plan-home { display: flex; flex-direction: column; } .plan-home-goal .gc-wrap { grid-template-columns: 1fr; } }

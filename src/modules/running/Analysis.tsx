@@ -476,7 +476,7 @@ function Gaps({ gaps, biggestWeek }: { gaps: DistanceGap[]; biggestWeek: number 
               <th className="r" title="Your fastest stretch this long in a run, last 12 weeks">Best stretch</th>
               <th className="r">Gap</th>
               <th>Longest run (needs)</th>
-              <th>Near that pace, 6 weeks (needs)</th>
+              <th title="5K and 10K: km near that pace in 6 weeks. Half and marathon: the longest unbroken stretch at that pace in one run, 8 weeks">At that pace (needs)</th>
               <th>What's missing</th>
             </tr>
           </thead>
@@ -503,7 +503,7 @@ function Gaps({ gaps, biggestWeek }: { gaps: DistanceGap[]; biggestWeek: number 
                   <span className="ana-meter-row">
                     {meter(g.paceKm, g.needPaceKm)}
                     <span className="num">
-                      {n1(g.paceKm)} <small>/ {g.needPaceKm} km</small>
+                      {n1(g.paceKm)} <small>/ {g.needPaceKm} km{g.paceMode === "block" ? " in one go" : " in 6 wk"}</small>
                     </span>
                   </span>
                 </td>
@@ -516,7 +516,7 @@ function Gaps({ gaps, biggestWeek }: { gaps: DistanceGap[]; biggestWeek: number 
         </table>
       </div>
       <p className="ana-note">
-        Fitness says: the pace your VO2 max is worth over the distance. Best stretch: your fastest piece that long inside a run. Mileage is missing when your longest run is well short of what the distance needs; pace work when you've run little near that pace, or your best stretch is more than 5 %
+        Fitness says: the pace your VO2 max is worth over the distance. Best stretch: your fastest piece that long inside a run. Mileage is missing when your longest run is well short of what the distance needs; pace work when you've run little near that pace (for the half and marathon: not held for long in one run), or your best stretch is more than 5 %
         slower than your fitness says.
       </p>
     </>

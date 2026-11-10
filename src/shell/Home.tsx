@@ -3,7 +3,6 @@ import { useDataVersion } from "../core/events";
 import { addDays, parseKey, useToday } from "../core/time";
 import { useQuery } from "../core/useQuery";
 import { latest as latestHealth, loadHealth } from "../modules/health/data";
-import { distanceGaps, gapSummary, VERDICT_TEXT } from "../modules/running/distanceGaps";
 import { useFitness } from "../modules/running/fitness";
 import { forecastWeek, type ForecastDay } from "../modules/running/forecast";
 import { mondayOf, priorityOf, upcomingRaces, weekFor, type PlanRace } from "../modules/running/plan";
@@ -13,7 +12,8 @@ import { loadDetails, loadOverrides } from "../modules/running/strava";
 import { useRunningData } from "../modules/running/useRunning";
 import { EffortProfile, segmentsOf, zoneOf } from "../phone/EffortProfile";
 import { sessionTitle } from "../phone/Today";
-import { LineChart, ScrollBars } from "./charts";
+import { BarChart } from "./charts";
+import { BuildingCard, RaceEquivalence } from "./HomeCharts";
 import { useNav } from "./nav";
 
 /**
@@ -47,20 +47,16 @@ export function Home() {
   const rv = useDataVersion("running");
   const hv = useDataVersion("health");
   const overrides = useQuery(loadOverrides, [rv]).data;
-  const details = useQuery(() => loadDetails(addDays(today, -90)), [rv, today]).data;
+  const details = useQuery(() => loadDetails(addDays(today, -120)), [rv, today]).data;
   const health = useQuery(() => loadHealth(14), [hv]).data ?? [];
 
   const monday = mondayOf(today);
   const weeks = useMemo(() => (plan ? [forecastWeek(plan, monday, runs, overrides), forecastWeek(plan, addDays(monday, 7), runs, overrides)] : null), [plan, monday, runs, overrides]);
-  const gaps = useMemo(() => {
-    const vd = f?.predictionBasis?.vdot ?? f?.current;
-    return f && details && vd ? distanceGaps(runs, details, vd, today) : [];
-  }, [f, details, runs, today]);
   const bars = useMemo(() => {
     if (!plan) return { bars: [], focus: 0, weeks: [] as string[] };
-    const past = Array.from({ length: 16 }, (_, i) => addDays(monday, (i - 15) * 7));
+    const past = Array.from({ length: 12 }, (_, i) => addDays(monday, (i - 11) * 7));
     const tot = new Map(weeklyTotals(runs, past[0], monday).map((w) => [w.week, w]));
-    const ahead = plan.weeks.filter((w) => w.start > monday).slice(0, 16).map((w) => w.start);
+    const ahead = plan.weeks.filter((w) => w.start > monday).slice(0, 8).map((w) => w.start);
     const label = (w: string, i: number) => (parseKey(w).getDate() <= 7 || i === 0 ? MON[parseKey(w).getMonth()] : "");
     return {
       weeks: past,
@@ -97,7 +93,6 @@ export function Home() {
   const h = latestHealth(health);
   const gk = goal ? raceKm(goal) : null;
   const goalPred = gk != null && f ? f.predictions.find((p) => Math.abs(p.distance / 1000 - gk) < 0.6) : null;
-  const loadSer = (f?.loadSeries ?? []).filter((p) => p.date >= addDays(today, -120));
 
   return (
     <div className="home">
@@ -231,82 +226,17 @@ export function Home() {
           </ul>
         </section>
 
-        {/* Volume: what you ran, and what the plan has ahead (scroll right). */}
+        {/* Are you building: km by intensity with VO2 max over it, and what it adds up to. */}
+        {f && details && <BuildingCard f={f} runs={runs} details={details} today={today} />}
+        {f && <RaceEquivalence f={f} runs={runs} plan={plan} today={today} />}
+
+        {/* Volume: what you ran, and what the plan has ahead. */}
         <section className="home-card home-volume">
           <header>
             <h3>Kilometres per week</h3>
-            <span className="muted small">last 16 weeks · faint: planned, scroll right</span>
+            <span className="muted small">last 12 weeks · faint: the plan's next 8</span>
           </header>
-          <ScrollBars bars={bars.bars} height={170} perBar={26} focus={bars.focus} unit=" km" showValues={false} onBar={(i) => i < bars.weeks.length && openWeek(bars.weeks[i])} />
-        </section>
-
-        <section className="home-card home-load">
-          <header>
-            <h3>Load</h3>
-            <span className="muted small">short-term (fatigue) against long-term (fitness), last 4 months</span>
-            <button type="button" className="home-link" onClick={() => go("analysis")}>
-              Analysis ›
-            </button>
-          </header>
-          {loadSer.length > 1 ? (
-            <LineChart
-              from={addDays(today, -120)}
-              to={today}
-              today={today}
-              height={170}
-              digits={0}
-              yMin={0}
-              series={[
-                { name: "Fitness", kind: "line", className: "s-ctl", points: loadSer.map((p) => ({ x: p.date, y: p.chronic })) },
-                { name: "Fatigue", kind: "line", className: "s-atl", points: loadSer.map((p) => ({ x: p.date, y: p.acute })) },
-              ]}
-            />
-          ) : (
-            <p className="muted small">Needs a few weeks of runs.</p>
-          )}
-        </section>
-
-        {/* Per distance: endurance or pace? */}
-        <section className="home-card home-gaps">
-          <header>
-            <h3>Mileage or pace?</h3>
-            <button type="button" className="home-link" onClick={() => go("analysis")}>
-              Details ›
-            </button>
-          </header>
-          {gaps.length ? (
-            <>
-              <table className="home-table">
-                <thead>
-                  <tr>
-                    <th />
-                    <th className="r">Fitness</th>
-                    <th className="r">Best</th>
-                    <th className="r">Long</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {gaps.map((g) => (
-                    <tr key={g.name}>
-                      <td>{g.name.replace("Half marathon", "Half")}</td>
-                      <td className="r num">{pace(1000, g.eqPace)}</td>
-                      <td className="r num">{g.bestPace != null ? pace(1000, g.bestPace) : "–"}</td>
-                      <td className="r num">
-                        {g.longestKm.toFixed(0)}/{g.needLongKm}
-                      </td>
-                      <td>
-                        <span className={`ana-verdict v-${g.verdict}`}>{VERDICT_TEXT[g.verdict].replace("Needs ", "")}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p className="muted small home-sum">{gapSummary(gaps)}</p>
-            </>
-          ) : (
-            <p className="muted small">Needs runs with heart rate, or a race result.</p>
-          )}
+          <BarChart bars={bars.bars} height={190} unit=" km" axis showValues={false} onBar={(i) => (i < bars.weeks.length ? openWeek(bars.weeks[i]) : undefined)} />
         </section>
 
         <section className="home-card home-runs">

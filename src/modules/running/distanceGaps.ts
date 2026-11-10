@@ -19,18 +19,34 @@ export interface DistanceGap {
   gap: number | null;
   longestKm: number;
   needLongKm: number;
-  /** km within a few % of the equivalent pace in the last 6 weeks. */
+  /** 5K/10K: km within a few % of the equivalent pace in the last 6 weeks. Half/marathon: the longest
+   * unbroken stretch at that pace in one run (8 weeks): long races need it held, not just touched. */
   paceKm: number;
   needPaceKm: number;
+  paceMode: "total" | "block";
   verdict: "ok" | "mileage" | "pace" | "both";
 }
 
-const DISTANCES: { name: string; meters: number; long: number; pace: number }[] = [
-  { name: "5K", meters: 5000, long: 10, pace: 12 },
-  { name: "10K", meters: 10000, long: 15, pace: 20 },
-  { name: "Half marathon", meters: 21097.5, long: 20, pace: 30 },
-  { name: "Marathon", meters: 42195, long: 32, pace: 40 },
+const DISTANCES: { name: string; meters: number; long: number; pace: number; mode: "total" | "block" }[] = [
+  { name: "5K", meters: 5000, long: 10, pace: 12, mode: "total" },
+  { name: "10K", meters: 10000, long: 15, pace: 20, mode: "total" },
+  { name: "Half marathon", meters: 21097.5, long: 20, pace: 8, mode: "block" },
+  { name: "Marathon", meters: 42195, long: 32, pace: 16, mode: "block" },
 ];
+
+/** Longest run of consecutive splits inside the pace band, in km. */
+function longestBlock(splits: RunDetail["splits"], lo: number, hi: number): number {
+  let best = 0;
+  let cur = 0;
+  for (const x of splits) {
+    if (x.distance < 200 || !x.moving_time) continue;
+    const p = x.moving_time / (x.distance / 1000);
+    if (p >= lo && p <= hi) cur += x.distance / 1000;
+    else cur = 0;
+    best = Math.max(best, cur);
+  }
+  return best;
+}
 
 /** Fastest stretch of at least `meters` from a run's km splits, as s/km. */
 export function bestStretch(splits: RunDetail["splits"], meters: number): number | null {
@@ -55,6 +71,7 @@ export function bestStretch(splits: RunDetail["splits"], meters: number): number
 export function distanceGaps(runs: Run[], details: Map<string, RunDetail>, vdot: number, today: string): DistanceGap[] {
   const since12 = addDays(today, -84);
   const since6 = addDays(today, -42);
+  const since8 = addDays(today, -56);
   const recent = runs.filter((r) => r.date >= since12 && r.date <= today);
   const longestKm = recent.reduce((a, r) => Math.max(a, r.distance / 1000), 0);
   return DISTANCES.map((D) => {
@@ -68,7 +85,9 @@ export function distanceGaps(runs: Run[], details: Map<string, RunDetail>, vdot:
         const p = sp.length ? bestStretch(sp, D.meters) : r.moving_time / (r.distance / 1000);
         if (p != null && (bestPace == null || p < bestPace)) [bestPace, bestDate] = [p, r.date];
       }
-      if (r.date >= since6)
+      if (D.mode === "block") {
+        if (r.date >= since8) paceKm = Math.max(paceKm, longestBlock(sp, eqPace * 0.95, eqPace * 1.03));
+      } else if (r.date >= since6)
         for (const x of sp) {
           if (x.distance < 200 || !x.moving_time) continue;
           const p = x.moving_time / (x.distance / 1000);
@@ -77,9 +96,9 @@ export function distanceGaps(runs: Run[], details: Map<string, RunDetail>, vdot:
     }
     const gap = bestPace != null ? bestPace - eqPace : null;
     const shortLong = longestKm < D.long * 0.9;
-    const shortPace = paceKm < D.pace * 0.5 || (gap != null && gap / eqPace > 0.05);
+    const shortPace = paceKm < D.pace * (D.mode === "block" ? 0.75 : 0.5) || (gap != null && gap / eqPace > 0.05);
     const verdict = shortLong && shortPace ? "both" : shortLong ? "mileage" : shortPace ? "pace" : "ok";
-    return { name: D.name, meters: D.meters, eqPace, bestPace, bestDate, gap, longestKm, needLongKm: D.long, paceKm, needPaceKm: D.pace, verdict };
+    return { name: D.name, meters: D.meters, eqPace, bestPace, bestDate, gap, longestKm, needLongKm: D.long, paceKm, needPaceKm: D.pace, paceMode: D.mode, verdict };
   });
 }
 
