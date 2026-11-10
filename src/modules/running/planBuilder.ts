@@ -435,6 +435,20 @@ export const ALL_KINDS: SessionKind[] = SESSION_KINDS.map((k) => k.id);
 type Phase = "base" | "build" | "specific" | "taper" | "race" | "recover";
 const PHASE_NAME: Record<Phase, string> = { base: "Base", build: "Build", specific: "Race-specific", taper: "Taper", race: "Race week", recover: "Recovery" };
 
+/**
+ * Marathon and half: like Pfitzinger's or Hansons' plans, threshold work leads the build (with VO2 max
+ * reps every so often, never the main thing), race pace takes over late, and the base is strides,
+ * hills and progression runs rather than lots of speed.
+ */
+const PREFS_LONG: Record<Phase, SessionKind[]> = {
+  base: ["progression", "hills", "threshold", "fartlek", "tempo"],
+  build: ["threshold", "tempo", "intervals", "progression", "hills", "fartlek"],
+  specific: ["racepace", "threshold", "tempo", "progression", "intervals"],
+  taper: ["racepace", "threshold", "intervals"],
+  race: ["racepace"],
+  recover: ["progression", "fartlek"],
+};
+
 /** Which kinds suit each phase, best first; a week takes the next ones round, so they vary week to week. */
 const PREFS: Record<Phase, SessionKind[]> = {
   base: ["fartlek", "progression", "threshold", "hills", "tempo"],
@@ -464,6 +478,17 @@ function session(kind: SessionKind, v: number, o: BuildOptions, phase: Phase, t:
   switch (kind) {
     case "intervals":
       if (short) return q(reps(4, 1, p.interval, "2 min jog", 120));
+      // Marathon VO2 max work is 800 m–1.2 km or 3–4 min at 5K pace with equal-ish jogs, not 200s and 400s.
+      if (o.dist === "marathon")
+        return q(
+          pick([
+            () => reps(n(5, 6), 1, p.fivek, "2 min jog", 120),
+            () => reps(n(5, 7), 0.8, p.fivek, "90 s jog", 90),
+            () => reps(n(4, 5), 1.2, p.fivek, "2:30 jog", 150),
+            () => timed(n(4, 5), 3, p.fivek, "", "2 min jog", 120),
+            () => reps(n(3, 4), 1.6, p.fivek + 4, "3 min jog", 180),
+          ])(),
+        );
       return q(
         pick([
           () => reps(n(4, 6), 1, p.interval, "2 min jog", 120),
@@ -510,7 +535,10 @@ function session(kind: SessionKind, v: number, o: BuildOptions, phase: Phase, t:
       const fast = Math.max(2, r1(lerp(3, 6, t)));
       // Finishing at steady (a little slower than marathon pace), marathon pace or threshold, in turn.
       const at = phase === "base" || phase === "recover" ? pick([p.mp + 10, p.mp]) : pick([p.mp + 10, T, p.mp]);
-      return q({ km: total, text: `${total} km progression run, last ${fast} at ${around(at, 3)}` }, true);
+      // Easy, then the faster block, then a short easy cool-down to finish.
+      const cd = total >= 12 ? 2 : 1.5;
+      const easy = r1(Math.max(3, total - fast - cd));
+      return q({ km: total, text: `${total} km progression run: ${easy} km easy, ${fast} km at ${around(at, 3)}, ${cd} km easy cool-down` }, true);
     }
     case "hills": {
       const [k, sec] = short ? [6, 60] : pick([[n(6, 10), 60], [n(8, 12), 45], [n(5, 7), 90], [n(5, 6), 120]] as [number, number][]);
@@ -539,7 +567,7 @@ function timed(n: number, min: number, pace: number, tag: string, jog: string, j
 
 /** The week's quality sessions: race pace first late in the plan, otherwise the phase's kinds in turn (no repeats in a week). */
 function pickSessions(count: number, phase: Phase, week: number, kinds: Set<SessionKind>, o: BuildOptions, t: number, p: Paces, race: number, seen: Map<SessionKind, number> = new Map()): Q[] {
-  let prefs = PREFS[phase].filter((k) => kinds.has(k));
+  let prefs = (o.dist === "marathon" || o.dist === "half" ? PREFS_LONG : PREFS)[phase].filter((k) => kinds.has(k));
   // A hilly race: hill reps come round more often in the build and race-specific weeks.
   const el = courseElevation(o.terrain, DIST_M[o.dist] / 1000);
   if (el.gain / (DIST_M[o.dist] / 1000) >= 8 && (phase === "build" || phase === "specific") && prefs.includes("hills")) prefs = (["hills", ...prefs.filter((k) => k !== "hills")] as SessionKind[]).slice(0, 4);

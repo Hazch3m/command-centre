@@ -153,6 +153,8 @@ export function sessionToWorkout(text: string, zones: Zones = {}): Omit<Draft, "
         const p = targetPace(b[2], zones);
         steps.push(step("interval", `${b[1]}km`, p ? pace(p) : "open", p ? `${paceText(p)}/km` : `${b[2]} effort`));
       }
+      const cd = /(\d+(?:\.\d+)?)\s*km easy cool-?down/i.exec(stepped[4]);
+      if (cd) steps.push(step("cooldown", `${cd[1]}km`, "hr zone 2", "Easy cool-down"));
       return {
         name: `${/progression/i.test(stepped[2]) ? "Progression" : "Long"} ${stepped[1]} km: ${blocks.map((b) => b[1]).join("/")} km faster`,
         sport: "running",
@@ -169,7 +171,11 @@ export function sessionToWorkout(text: string, zones: Zones = {}): Omit<Draft, "
     const fast = +lng[3];
     const p = targetPace(s.slice(lng.index + lng[0].length) + " " + s, zones);
     const t = p ? pace(p) : "open";
-    const steps: Item[] = lng[2]
+    // A progression run ends with a short easy cool-down after the fast block.
+    const prog = /progression/i.test(s) && lng[2] && tot - fast >= 5;
+    const steps: Item[] = prog
+      ? [step("interval", `${tot - fast - 1.5}km`, "hr zone 2", "Easy"), step("interval", `${fast}km`, t, p ? `${paceText(p)}/km` : "Marathon effort"), step("cooldown", "1.5km", "hr zone 2", "Easy cool-down")]
+      : lng[2]
       ? [step("interval", `${tot - fast}km`, "hr zone 2", "Easy"), step("interval", `${fast}km`, t, p ? `${paceText(p)}/km: smooth, not a race` : "Marathon effort")]
       : [step("warmup", "4km", "hr zone 2", "Easy"), step("interval", `${fast}km`, t, p ? `${paceText(p)}/km` : "Marathon effort"), step("cooldown", `${Math.max(1, tot - fast - 4)}km`, "hr zone 2", "Easy")];
     return {

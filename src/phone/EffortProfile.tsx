@@ -15,6 +15,7 @@ export function zoneOf(text: string, kind?: string): Zone {
   if (/\b(?:MP|HMP)\b|race pace|time trial/i.test(text)) return "race";
   if (/threshold|\bT\b|tempo|cruise/i.test(text)) return "threshold";
   if (/× [\d.]+ km at|× \d+ min at/i.test(text)) return "threshold";
+  if (/progression/i.test(text)) return "threshold";
   if (/long run/i.test(text) || kind === "long") return "long";
   return "easy";
 }
@@ -70,10 +71,12 @@ export function profileOf(text: string, kind: string | undefined, plan?: Plan): 
   }
   return flat.map((s) => {
     const p = paceOf(s.target);
-    const hard = s.kind === "interval";
+    // The easy part of a progression or long run is an "interval" with an easy heart-rate target: not hard.
+    const hard = s.kind === "interval" && !(!p && /zone [12]\b/i.test(s.target));
     // 6:30/km easy … 3:00/km very fast.
     const h = hard ? (p ? Math.max(0.5, Math.min(1, 0.5 + (390 - p) / 380)) : 0.75) : s.kind === "recovery" || s.kind === "rest" ? 0.16 : 0.3;
-    return { w: secondsOf(s), h, zone: hard ? (zone === "long" ? "race" : zone) : "easy" };
+    // A progression's faster block shows like a session (threshold colour); a long run's like race pace.
+    return { w: secondsOf(s), h, zone: hard ? (zone === "long" ? "race" : zone === "easy" ? "threshold" : zone) : "easy" };
   });
 }
 
