@@ -5844,3 +5844,11 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .plan-home-goal { display: flex; flex-direction: column; gap: 0.8rem; min-width: 0; font-size: 0.92em; }
 @media (max-width: 1250px) { .plan-home { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .plan-home-goal { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; } }
 @media (max-width: 800px) { .plan-home, .plan-home-goal { grid-template-columns: 1fr; display: flex; flex-direction: column; } }
+
+/* Latest run on a wide tile: map and numbers on the left, the km splits beside them. */
+.card-latest-run { container-type: inline-size; }
+@container (min-width: 50rem) {
+  .card-latest-run .card-body { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); column-gap: 1.1rem; }
+  .card-latest-run .card-body > :first-child { grid-column: 1 / -1; }
+  .card-latest-run .lr-splits { margin-top: 0; align-self: center; }
+}
