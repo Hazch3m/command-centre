@@ -22,7 +22,7 @@ describe("importing a week", () => {
       { kind: "warmup", duration: "15:00", target: "hr zone 2", notes: "Easy, build to steady" },
       { kind: "repeat", times: 4, steps: [
         { kind: "interval", duration: "6:00", target: "pace 3:46-3:50/km", notes: "3:46–3:50/km" },
-        { kind: "recovery", duration: "1:00", target: "open", notes: "Easy jog" },
+        { kind: "recovery", duration: "1:00", target: "open", notes: "Easy jog: as slow as you like" },
       ] },
       { kind: "cooldown", duration: "10:00", target: "hr zone 2", notes: "Easy" },
     ]);
@@ -77,6 +77,9 @@ describe("floats and over-unders", () => {
     expect(reps.steps[1].duration).toBe("1:00");
     expect(reps.steps[1].target).toContain("4:25");
     expect(reps.steps[0].target).toContain("3:50");
+    // Two easy minutes after the last float, before the cool-down; and the floats say they're not a jog.
+    expect(w.steps[2]).toMatchObject({ kind: "recovery", duration: "2:00" });
+    expect((reps.steps[1] as { notes?: string }).notes).toMatch(/not a jog/);
   });
   it("reads over-unders as blocks of under/over pairs with jogs between", () => {
     const w = sessionToWorkout("12 km with 3 km warm-up, Threshold over-unders: 3 × (4 × 2 min at 3:58–4:02 + 1 min at 3:38–3:42), 2 min jog, 2 km cool-down")!;

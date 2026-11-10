@@ -13,7 +13,7 @@ import { RUN_TYPE_LABEL, typeOfDay, typeOfRun, type RunType } from "./runType";
 import { km, pace } from "./stats";
 import { loadDetails, loadOverrides, type Run } from "./strava";
 import { DayEditor } from "./WeekCalendar";
-import { ScrollBars } from "../../shell/charts";
+import { BarChart } from "../../shell/charts";
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DOW_LONG = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -253,7 +253,15 @@ export function PlanWeeksChart({ plan, runs }: { plan: Plan; runs: Run[] }) {
   }, [plan, runs, overrides, range]);
   const i = Math.max(0, weeks.findIndex((w) => w.monday === sel));
   const s = weeks[i];
-  const bars = weeks.map((w) => {
+  // 16 weeks at a time; ‹ › move it, and it follows the week you're looking at.
+  const SPAN = 16;
+  const [start, setStart] = useState(() => Math.max(0, i - 3));
+  useEffect(() => {
+    setStart((st) => (i < st || i >= st + SPAN ? Math.max(0, Math.min(weeks.length - SPAN, i - 3)) : st));
+  }, [i, weeks.length]);
+  const lo = Math.max(0, Math.min(start, weeks.length - SPAN));
+  const shown = weeks.slice(lo, lo + SPAN);
+  const bars = shown.map((w) => {
     const past = w.monday < thisMonday;
     const now = w.monday === thisMonday;
     const v = past ? w.km : now ? Math.max(w.km, w.planned ?? 0) : (w.planned ?? 0);
@@ -275,7 +283,17 @@ export function PlanWeeksChart({ plan, runs }: { plan: Plan; runs: Run[] }) {
           {s ? `Week ${s.label || "–"} · ${fmt(s.monday)}${s.phase ? ` · ${phaseName(s.phase)}` : ""} · ${s.monday < thisMonday ? `ran ${s.km.toFixed(0)} of ${Math.round(s.planned ?? 0)}` : `${Math.round(s.planned ?? 0)} planned`} km` : ""} · click a week to open it
         </span>
       </header>
-      <ScrollBars bars={bars} height={95} perBar={22} focus={Math.min(weeks.length - 1, i + 6)} unit=" km" axis showValues={false} onBar={(k) => window.dispatchEvent(new CustomEvent("cc:plan-week-go", { detail: weeks[k].monday }))} />
+      <div className="pwc-body">
+        <button type="button" className="pwc-nav" onClick={() => setStart(Math.max(0, lo - 8))} disabled={lo === 0} aria-label="Earlier weeks">
+          ‹
+        </button>
+        <div className="pwc-chart">
+          <BarChart bars={bars} height={95} unit=" km" axis showValues={false} onBar={(k) => window.dispatchEvent(new CustomEvent("cc:plan-week-go", { detail: shown[k].monday }))} />
+        </div>
+        <button type="button" className="pwc-nav" onClick={() => setStart(Math.min(weeks.length - SPAN, lo + 8))} disabled={lo + SPAN >= weeks.length} aria-label="Later weeks">
+          ›
+        </button>
+      </div>
     </section>
   );
 }

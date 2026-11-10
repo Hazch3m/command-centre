@@ -5323,3 +5323,27 @@ svg.effort {
 .seg-total { border-bottom: 0; grid-template-columns: minmax(0, 1fr) auto; color: var(--text-2); font-size: 0.8rem; }
 .seg-total .seg-km { color: var(--text-2); font-weight: 600; }
 .day-editor .segs { margin: 0.2rem 0 0.4rem; padding: 0.4rem 0.7rem; border-radius: 10px; background: var(--card-2); }
+
+/* Goal times: what changed since they last moved. */
+.gc-trend { display: block; font-style: normal; font-size: 0.7rem; font-weight: 700; margin-top: 1px; }
+.gc-trend.up, .gc-trend-line.up { color: #2e9e5b; }
+.gc-trend.down, .gc-trend-line.down { color: #e8634e; }
+.gc-trend-line { display: block; font-size: 0.78rem; font-weight: 600; margin: 0.15rem 0 0.1rem; }
+
+/* Change a run's distance: this one, or every one after; added to the week or balanced. */
+.bump-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin: 0.4rem 0; }
+.bump-open { font: inherit; font-size: 0.85rem; font-weight: 600; padding: 0.35rem 0.8rem; border-radius: 999px; border: 1px dashed color-mix(in srgb, var(--text) 30%, transparent); background: none; color: var(--text); cursor: pointer; }
+.bump-done { font-size: 0.8rem; color: #2e9e5b; font-weight: 600; }
+.bump { display: flex; flex-direction: column; gap: 0.45rem; margin: 0.5rem 0; padding: 0.7rem 0.8rem; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--text) 14%, transparent); background: color-mix(in srgb, var(--text) 4%, transparent); font-size: 0.85rem; }
+.bump-line { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.bump-line > span:first-child { min-width: 4.5rem; color: var(--text-2, inherit); opacity: 0.8; }
+.bump .small-seg button { font-size: 0.78rem; padding: 0.2rem 0.55rem; }
+.bump-preview { display: flex; flex-direction: column; gap: 0.2rem; }
+.bump-preview > span:first-child { display: flex; flex-wrap: wrap; gap: 0.2rem 0.8rem; }
+.bump-run s { opacity: 0.55; }
+.bump-run b { color: #2e9e5b; }
+.bump-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
+/* Header icon buttons: no default button padding, so the icons sit dead centre. */
+.p-gear, .p-refresh { padding: 0; line-height: 0; -webkit-appearance: none; appearance: none; flex: none; }
+.p-gear svg, .p-refresh svg { display: block; margin: 0; }
+.p-refresh svg { transform-origin: 50% 50%; }

@@ -1,3 +1,4 @@
+import { SessionBump } from "./SessionBump";
 import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSwipe } from "./swipe";
@@ -219,7 +220,10 @@ export function Training() {
         })}
       </div>
       {fw.week || day.km || day.runs.length || day.race ? (
-        <Session d={day} label={dayName(day.date, today)} />
+        <>
+          <Session d={day} label={dayName(day.date, today)} />
+          {fw.week && day.date >= today && !day.runs.length && <SessionBump plan={plan} d={day} week={fw} />}
+        </>
       ) : fw.block ? (
         <div className="p-hint center">{`${fw.block.key}. No day-by-day sessions this far out yet.`}</div>
       ) : plan.weeks[0] && plan.weeks[0].start > monday ? (

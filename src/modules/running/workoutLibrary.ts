@@ -227,10 +227,10 @@ export function suggestions(focus: Focus, p: Paces, raceDist: "marathon" | "half
       // Floats, not jogs: the recoveries stay brisk (around marathon pace), so the whole run keeps moving.
       return each((s) =>
         s === "short"
-          ? { name: "10 × 1 min, 1 min float", reps: 10, size: 60, timed: true, pace: Math.round(p.fivek), rec: 60, float: Math.round(p.mp + 15) }
+          ? { name: "10 × 1 min, 1 min float", reps: 10, size: 60, timed: true, pace: Math.round(p.fivek), rec: 60, float: Math.round(p.mp + 40) }
           : s === "classic"
-            ? { name: "8 × 2 min, 1 min float", reps: 8, size: 120, timed: true, pace: Math.round(p.tenk), rec: 60, float: Math.round(p.mp + 10) }
-            : { name: "6 × 4 min, 2 min float", reps: 6, size: 240, timed: true, pace: Math.round(p.threshold + 3), rec: 120, float: Math.round(p.mp + 5) },
+            ? { name: "8 × 2 min, 1 min float", reps: 8, size: 120, timed: true, pace: Math.round(p.tenk), rec: 60, float: Math.round(p.mp + 35) }
+            : { name: "6 × 4 min, 2 min float", reps: 6, size: 240, timed: true, pace: Math.round(p.threshold + 3), rec: 120, float: Math.round(p.mp + 30) },
       );
     case "overunder": {
       const ou = (pairs: number, under: number, over: number): OverUnder => ({ pairs, under, over, underPace: Math.round(p.threshold + 6), overPace: Math.round(p.threshold - 8) });

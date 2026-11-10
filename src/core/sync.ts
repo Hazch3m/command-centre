@@ -145,7 +145,7 @@ export const PHONE_TABLES = new Set(["tasks", "projects", "checklist_items", "ch
 /** Runs the phone itself reads (Apple Health, ids starting "hk"): only those, never Garmin or Strava rows. */
 const PHONE_RUN_TABLES = new Set(["strava_activities", "strava_details", "strava_full"]);
 /** kv keys the phone may change: view choices and settings, never sync state. */
-const KV_ALLOWED = [/^calendar\.view\./, /^shape\.settings$/, /^checklist\./, /^tasks\.(view|filter|sort)/, /^phone\.refresh$/, /^running\.prefs$/, /^watch\.autosync\.settings$/, /^run\.meta\./, /^gear\.shoes$/, /^hr\.zones$/, /^running\.paceGoals$/, /^phone\.today$/, /^running\.focusSource$/, /^plan\.highlight$/, /^apple\.health$/];
+const KV_ALLOWED = [/^calendar\.view\./, /^shape\.settings$/, /^checklist\./, /^tasks\.(view|filter|sort)/, /^phone\.refresh$/, /^running\.prefs$/, /^watch\.autosync\.settings$/, /^run\.meta\./, /^gear\.shoes$/, /^hr\.zones$/, /^running\.paceGoals$/, /^phone\.today$/, /^running\.focusSource$/, /^plan\.highlight$/, /^apple\.health$/, /^goals\.snap$/];
 /** The phone's "refresh" button: asks the PC to sync Strava, Garmin and the calendar now and send a fresh copy. */
 export const REFRESH_KEY = "phone.refresh";
 /** Set by the PC (never the phone) to the request it has just answered. */

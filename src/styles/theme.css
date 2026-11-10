@@ -6112,3 +6112,92 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .pwc .chart-readout { display: none; }
 .plan-home .pwv-day { min-height: 0; }
 .plan-home .pwv-notes { padding: 0.2rem 0.7rem; }
+.plan-home-goal .gc-ready .p-section-head { position: static; background: none; -webkit-mask: none; mask: none; padding: 0 0.3rem 0.4rem; border-radius: 0; }
+.plan-home-goal .gc-ready .p-section-head h2 { font-size: 1.1rem; }
+.plan-home-goal .gc-ready > .p-section, .plan-home-goal .gc-ready section { overflow: visible; }
+.gc-trend { display: block; font-style: normal; font-size: 0.7rem; font-weight: 700; margin-top: 1px; }
+.gc-trend.up, .gc-trend-line.up { color: #2e9e5b; }
+.gc-trend.down, .gc-trend-line.down { color: #e8634e; }
+.gc-trend-line { display: block; font-size: 0.78rem; font-weight: 600; margin: 0.15rem 0 0.1rem; }
+/* After a run: Garmin's race predictions before → after. */
+.run-pred { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; padding: 8px 12px; margin: 6px 0; border-radius: 10px; border: 1px solid var(--line); background: color-mix(in srgb, #2e9e5b 8%, var(--card-2)); }
+.run-pred.down { background: color-mix(in srgb, #e8634e 7%, var(--card-2)); }
+.run-pred > b { color: #2e9e5b; }
+.run-pred.down > b { color: #e8634e; }
+.run-pred-item { font-size: 0.86rem; }
+.run-pred em { font-style: normal; font-weight: 700; }
+.run-pred em.up { color: #2e9e5b; }
+.run-pred em.down { color: #e8634e; }
+
+/* A run's workout: laps named by step. */
+.wl { margin: 10px 0; }
+.wl h3 { margin: 0 0 4px; }
+.wl-sum { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 0.88rem; margin-bottom: 6px; }
+.wl-sum small { color: var(--text-2); }
+.wl-table-wrap { max-height: 22rem; overflow-y: auto; scrollbar-width: thin; border-radius: 10px; border: 1px solid var(--line); }
+.wl-table { margin: 0; font-size: 0.84rem; }
+.wl-table tr.wl-work td:first-child { font-weight: 700; color: var(--c-running); }
+.wl-table tr.wl-work { background: color-mix(in srgb, var(--c-running) 6%, transparent); }
+.wl-table tr.wl-recovery td, .wl-table tr.wl-warmup td, .wl-table tr.wl-cooldown td { color: var(--text-2); }
+.wl-table tr.wl-float td:first-child { color: #4f8bd9; font-weight: 600; }
+.wl-on b { color: #2e9e5b; }
+.wl-fast b { color: #4f8bd9; }
+.wl-slow b { color: #e8634e; }
+
+/* ---- Laptop sizes (about 1280–1600 wide, 700–850 high): keep the columns, smaller type ---- */
+.kpi { padding: 7px 10px; gap: 2px; }
+.kpi-v { font-size: 20px; }
+.kpi-v small { font-size: 11px; }
+.kpi-l { font-size: 10px; }
+.kpi-s { font-size: 11px; }
+@media (max-width: 1300px) {
+  .home-kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .home-week { grid-column: span 8; }
+  .home-next { grid-column: span 4; }
+  .home-build { grid-column: span 8; }
+  .home-side { grid-column: span 4; display: flex; }
+  .home-volume { grid-column: span 4; }
+  .home-runs { grid-column: span 5; }
+  .home-preds { grid-column: span 3; }
+}
+@media (max-width: 1000px) {
+  .home-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .home-grid > * { grid-column: span 12 !important; }
+}
+@media (max-height: 860px) {
+  .home { gap: 9px; font-size: 12.5px; }
+  .home-grid { gap: 9px; }
+  .home-card { padding: 8px 12px 10px; gap: 6px; }
+  .hw-day { min-height: 11rem; }
+  .hw-day svg.effort { height: 40px; }
+}
+.home-pred-news { display: block; width: 100%; text-align: left; font: inherit; font-size: 12px; padding: 5px 9px; border-radius: 8px; border: 0; cursor: pointer; }
+.home-pred-news.up { background: color-mix(in srgb, #2e9e5b 14%, transparent); color: #1f7d45; }
+.home-pred-news.down { background: color-mix(in srgb, #e8634e 12%, transparent); color: #c0473a; }
+:root[data-theme="dark"] .home-pred-news.up { color: #5fd08f; }
+
+/* Plan: the four bottom panels stay side by side on a laptop. */
+@media (max-width: 1250px) {
+  .plan-home { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr); }
+  .plan-home-chart, .plan-home-week { grid-column: 1 / -1; }
+  .plan-home-goal { grid-column: 3 / 5; }
+  .tab-page-running .subpage:has(.plan-home) { display: flex; overflow: hidden; }
+  .plan-home > .plan-home-col, .plan-home > .plan-home-goal { max-height: 100%; overflow-y: auto; }
+}
+@media (max-width: 1000px), (max-height: 600px) {
+  .plan-home { grid-template-columns: 1fr 1fr; }
+  .plan-home-goal { grid-column: 1 / -1; }
+  .tab-page-running .subpage:has(.plan-home) { display: block; overflow-y: auto; }
+  .plan-home > .plan-home-col, .plan-home > .plan-home-goal { max-height: none; overflow: visible; }
+}
+.plan-home-goal .gc-wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.plan-home-goal .gc-cards, .plan-home-goal .gc-ready { overflow-y: auto; scrollbar-width: thin; min-height: 0; }
+.plan-home-goal .gc-card { min-width: 0; }
+.pwc-body { display: flex; align-items: stretch; gap: 4px; }
+.pwc-chart { flex: 1; min-width: 0; }
+.pwc-nav { flex: none; width: 1.6rem; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); font-size: 1.1rem; cursor: pointer; }
+.pwc-nav:disabled { opacity: 0.35; cursor: default; }
+
+/* Analysis: never cut off at the bottom. */
+.tab-page-analysis { overflow-y: auto; }
+.tab-page-analysis > * { flex: none; }

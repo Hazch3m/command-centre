@@ -10,6 +10,7 @@ import { openRun, openWeek } from "../modules/running/RunView";
 import { duration, pace, weeklyTotals } from "../modules/running/stats";
 import { loadDetails, loadOverrides } from "../modules/running/strava";
 import { useRunningData } from "../modules/running/useRunning";
+import { predictionChange } from "../modules/running/goalTrend";
 import { EffortProfile, segmentsOf, zoneOf } from "../phone/EffortProfile";
 import { sessionTitle } from "../phone/Today";
 import { BarChart } from "./charts";
@@ -37,6 +38,33 @@ function openDay(go: (t: string) => void, date: string) {
   }
   go("running");
   window.setTimeout(() => window.dispatchEvent(new CustomEvent("cc:plan-day", { detail: date })), 350);
+}
+
+/** "Faster after Tuesday's run: 5K −9 s, 10K −21 s" – the last run that moved Garmin's predictions (last 7 days). */
+function PredictionNews({ runs, today }: { runs: { date: string; id: string; name: string }[]; today: string }) {
+  const hv = useDataVersion("health");
+  const dates = useMemo(() => [...new Set(runs.filter((r) => r.date >= addDays(today, -7)).map((r) => r.date))].sort().reverse(), [runs, today]);
+  const { data } = useQuery(async () => {
+    for (const d of dates) {
+      const ch = await predictionChange(d);
+      if (ch.length) return { date: d, ch };
+    }
+    return null;
+  }, [dates.join(","), hv]);
+  if (!data) return null;
+  const better = data.ch.filter((x) => x.after < x.before);
+  const run = runs.find((r) => r.date === data.date);
+  const day = data.date === today ? "today's run" : `${DOW[(parseKey(data.date).getDay() + 6) % 7]}'s run`;
+  const sec = (v: number) => {
+    const a = Math.abs(Math.round(v));
+    return a >= 60 ? `${Math.floor(a / 60)}:${String(a % 60).padStart(2, "0")}` : `${a} s`;
+  };
+  return (
+    <button type="button" className={"home-pred-news " + (better.length >= data.ch.length / 2 ? "up" : "down")} onClick={() => run && openRun(run.id)}>
+      <b>{better.length === data.ch.length ? "▲ Faster" : better.length ? "Moved" : "▼ Slower"}</b> after {day}:{" "}
+      {data.ch.map((x) => `${x.name} ${x.after < x.before ? "−" : "+"}${sec(x.after - x.before)}`).join(" · ")}
+    </button>
+  );
 }
 
 export function Home() {
@@ -323,6 +351,7 @@ export function Home() {
             <h3>Races</h3>
             <span className="muted small">{f?.predictions[0]?.source === "garmin" ? "Garmin" : "from your runs"} · change in 30 days</span>
           </header>
+          <PredictionNews runs={runs} today={today} />
           <table className="home-table">
             <tbody>
               {(f?.predictions ?? []).map((p) => {

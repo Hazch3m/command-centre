@@ -23,6 +23,12 @@ export interface PlanAdjust {
   from: string;
   /** Reach the plan's weekly mileage this many weeks sooner (0 or missing = as planned). */
   ramp?: number;
+  /** Long-run change taken off the week's easy runs instead of added to the week. */
+  longBalance?: boolean;
+  /** km added to the run on a weekday from `from` on ("tue": +2), capped like the plan's own runs. */
+  dayExtra?: Partial<Record<DayKey, number>>;
+  /** The weekday change taken off the week's other easy runs instead of added to the week. */
+  dayBalance?: boolean;
 }
 
 export const ADJUST_DEFAULTS: Omit<PlanAdjust, "from"> = {
@@ -50,13 +56,14 @@ export function planDefaults(plan: Plan, from: string): { runDays: DayKey[]; lon
   return { runDays: runDays.length >= 3 ? runDays : FALLBACK_DAYS, longDay };
 }
 
-export const isAdjusted = (a: PlanAdjust | undefined | null) => !!a && (a.volume !== 1 || a.longExtra !== 0 || a.longMax != null || a.longDay != null || a.runDays != null || (a.ramp ?? 0) > 0);
+const hasDayExtra = (a: PlanAdjust) => Object.values(a.dayExtra ?? {}).some((x) => !!x);
+export const isAdjusted = (a: PlanAdjust | undefined | null) => !!a && (a.volume !== 1 || a.longExtra !== 0 || a.longMax != null || a.longDay != null || a.runDays != null || (a.ramp ?? 0) > 0 || hasDayExtra(a));
 
 const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x));
 const IDX = (k: DayKey) => WEEK_KEYS.indexOf(k);
 
 /** Replaces the leading distance of a session ("32 km, last 15 at…" → "34 km, last 15 at…"). */
-function withKm(text: string, km: number, fallback: string): string {
+export function withKm(text: string, km: number, fallback: string): string {
   return /^\d+(?:\.\d+)?\s*km\b/i.test(text.trim()) ? text.trim().replace(/^\d+(?:\.\d+)?/, String(km)) : `${km} km ${fallback}`;
 }
 
@@ -83,11 +90,13 @@ export function adjustWeek(plan: Plan, week: PlanWeek, a0: PlanAdjust, ramp = 1)
 
   // The long run: scaled with the mileage (at half the rate), then your change and cap.
   let longKm = 0;
+  let longDelta = 0;
   if (longI >= 0) {
     const base = days[longI].km ?? 0;
     longKm = Math.round(base * (1 + (a.volume - 1) * 0.5) + a.longExtra);
     if (a.longMax != null) longKm = Math.min(longKm, a.longMax);
     longKm = Math.max(10, longKm);
+    longDelta = longKm - Math.round(base * (1 + (a.volume - 1) * 0.5));
     // Race weeks keep the long run where the plan put it.
     const at = race >= 0 ? longI : IDX(longDay);
     const slot = out[at] ? longI : at;
@@ -102,7 +111,11 @@ export function adjustWeek(plan: Plan, week: PlanWeek, a0: PlanAdjust, ramp = 1)
     let at = free(i) && !nearLong(i) ? i : -1;
     for (let r = 1; at < 0 && r < 7; r++) for (const j of [i - r, i + r]) if (at < 0 && free(j) && !nearLong(j)) at = j;
     for (let r = 0; at < 0 && r < 7; r++) for (const j of [i - r, i + r]) if (at < 0 && free(j)) at = j;
-    if (at >= 0) out[at] = { text: d.text, km: d.km ?? 0, kind: "key" };
+    if (at >= 0) {
+      const extra = Math.round(a.dayExtra?.[WEEK_KEYS[at]] ?? 0);
+      const km = extra ? clamp((d.km ?? 0) + extra, 5, 30) : d.km ?? 0;
+      out[at] = { text: extra && km !== d.km ? withKm(d.text, km, "run") : d.text, km, kind: "key" };
+    }
   }
 
   // Easy days fill what's left of the week's target. The plan's easy runs keep their sizes relative to
@@ -121,12 +134,21 @@ export function adjustWeek(plan: Plan, week: PlanWeek, a0: PlanAdjust, ramp = 1)
   const biggest = sizes[0] ?? 0;
   const nextToLong = Math.max(0, ...easy.filter((x) => longI >= 0 && Math.abs(x.i - longI) === 1).map((x) => x.d.km ?? 0));
   const capFor = (i: number) => Math.round(longSlot >= 0 && Math.abs(i - longSlot) === 1 ? Math.max(12, nextToLong * a.volume) : Math.max(22, biggest * a.volume));
-  const left = Math.max(0, target - fixed);
+  // Your changes: a longer long run (or weekday run) either comes out of the week's other easy runs
+  // ("balance": the week's km stay the same) or goes on top of the week.
+  const bumpOf = (i: number) => Math.round(a.dayExtra?.[WEEK_KEYS[i]] ?? 0);
+  const keyBump = out.reduce((s, x, i) => s + (x?.kind === "key" ? bumpOf(i) : 0), 0);
+  const easyBumps = slots.reduce((s, i) => s + bumpOf(i), 0);
+  const longAdd = a.longBalance === false;
+  const dayAdd = !a.dayBalance;
+  const target2 = target + (longAdd ? longDelta : 0) + (dayAdd ? keyBump + easyBumps : 0);
+  const left = Math.max(0, target2 - fixed);
+  const pool = Math.max(0, left - easyBumps);
   const wsum = slots.reduce((s, i) => s + (weight.get(i) ?? 8), 0) || 1;
   const hadMedium = easy.some((x) => /medium/i.test(x.d.text) || (x.d.km ?? 0) >= 16);
   let strides = easy.some((x) => /strides/i.test(x.d.text));
   for (const i of order) {
-    const k = clamp(Math.round((left * (weight.get(i) ?? 8)) / wsum), 5, capFor(i));
+    const k = clamp(Math.round((pool * (weight.get(i) ?? 8)) / wsum) + bumpOf(i), 5, capFor(i) + Math.max(0, bumpOf(i)));
     const recovery = longSlot >= 0 && i === longSlot + 1;
     const medium = hadMedium && (sameDays ? /medium/i.test(days[i].text) : i === order[0]) && k >= 16;
     let text = `${k} km ${recovery ? "recovery" : medium ? "medium-long" : "easy"}`;

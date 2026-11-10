@@ -22,3 +22,28 @@ describe("building up sooner", () => {
     if (before) expect(km(after, before.start)).toBe(km(BUNDLED_PLAN, before.start));
   });
 });
+
+describe("changing one run's distance from a week on", () => {
+  const from = BUNDLED_PLAN.weeks.find((w) => w.start >= "2026-12-07")!.start;
+  const week = (p: typeof BUNDLED_PLAN) => forecastWeek(p, from);
+  const base = applyAdjust({ ...BUNDLED_PLAN, adjust: { ...ADJUST_DEFAULTS, from } });
+  const easyDay = week(base).days.findIndex((d) => d.kind === "easy" && (d.km ?? 0) >= 8);
+  const key = (["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const)[easyDay];
+
+  it("adds to that weekday's run and the week, or keeps the week's km", () => {
+    const add = applyAdjust({ ...BUNDLED_PLAN, adjust: { ...ADJUST_DEFAULTS, from, dayExtra: { [key]: 2 } } });
+    const bal = applyAdjust({ ...BUNDLED_PLAN, adjust: { ...ADJUST_DEFAULTS, from, dayExtra: { [key]: 2 }, dayBalance: true } });
+    expect(week(add).days[easyDay].km).toBe((week(base).days[easyDay].km ?? 0) + 2);
+    expect(Math.abs((week(add).plannedKm ?? 0) - (week(base).plannedKm ?? 0) - 2)).toBeLessThanOrEqual(1);
+    expect(Math.abs((week(bal).plannedKm ?? 0) - (week(base).plannedKm ?? 0))).toBeLessThanOrEqual(1);
+  });
+
+  it("longer long runs never pass the cap, and can go on top of the week", () => {
+    const cap = 30;
+    const p = applyAdjust({ ...BUNDLED_PLAN, adjust: { ...ADJUST_DEFAULTS, from, longExtra: 6, longMax: cap, longBalance: false } });
+    for (const w of p.weeks.filter((x) => x.start >= from)) for (const d of forecastWeek(p, w.start).days) if (d.kind === "long") expect(d.km ?? 0).toBeLessThanOrEqual(cap);
+    const l0 = week(base).days.find((d) => d.kind === "long")?.km ?? 0;
+    const l1 = week(p).days.find((d) => d.kind === "long")?.km ?? 0;
+    if (l0 + 6 <= cap) expect((week(p).plannedKm ?? 0) - (week(base).plannedKm ?? 0)).toBeGreaterThanOrEqual(l1 - l0 - 1);
+  });
+});

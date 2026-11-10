@@ -1,3 +1,5 @@
+import { predictionChange } from "./goalTrend";
+import { workoutLaps } from "../../phone/EffortProfile";
 import { useEffect, useMemo, useState, type ReactNode, useRef } from "react";
 import { useSwipe } from "../../phone/swipe";
 import { RunMap, RunMapThumb } from "./RunMap";
@@ -13,7 +15,7 @@ import { XYChart } from "../../shell/charts";
 import { ErrorNote } from "../../shell/ui";
 import { forecastWeek } from "./forecast";
 import { checkRun, fmtPace, fmtVal, verdictLabel } from "./pace";
-import { loadPlan } from "./plan";
+import { loadPlan, type Plan } from "./plan";
 import { MedalBadges } from "./Medals";
 import { collectEfforts, medalsByRun } from "./pbs";
 import { RunTypeDot, typeOfDay, typeOfRun } from "./runType";
@@ -208,6 +210,102 @@ function thin(xs: number[], ys: number[], n = 400): [number, number][] {
   return out;
 }
 
+/** A workout's laps by name: each rep with its time, pace against the target, heart rate; and the reps on average. */
+function WorkoutLapsView({ laps, planned, plan }: { laps: FullRun["laps"]; planned?: string | null; plan: Plan }) {
+  const wl = useMemo(() => workoutLaps(laps, planned, plan), [laps, planned, plan]);
+  if (!wl) return null;
+  const pace = (l: { distance: number; moving_time: number }) => l.moving_time / (l.distance / 1000);
+  const reps = wl.filter((x) => x.role === "work");
+  const floats = wl.filter((x) => x.label === "Float");
+  const avg = (xs: typeof wl) => xs.reduce((a, x) => a + x.lap.moving_time, 0) / Math.max(1, xs.reduce((a, x) => a + x.lap.distance / 1000, 0));
+  const repPaces = reps.map((x) => pace(x.lap));
+  const spread = repPaces.length > 1 ? Math.max(...repPaces) - Math.min(...repPaces) : 0;
+  const t = reps.find((x) => x.target)?.target ?? null;
+  const ft = floats.find((x) => x.target)?.target ?? null;
+  const verdict = (x: (typeof wl)[number]) => {
+    if (!x.target) return null;
+    const p = pace(x.lap);
+    return p < x.target[0] - 3 ? "fast" : p > x.target[1] + 3 ? "slow" : "on";
+  };
+  return (
+    <section className="wl">
+      <h3>Workout</h3>
+      <div className="wl-sum">
+        <span>
+          <b className="num">{reps.length}</b> reps · avg <b className="num">{fmtPace(avg(reps))}/km</b>
+          {t && <small> (target {fmtPace(t[0])}–{fmtPace(t[1])})</small>}
+        </span>
+        {repPaces.length > 1 && (
+          <span>
+            spread <b className="num">{Math.round(spread)} s/km</b> <small>{spread <= 6 ? "very even" : spread <= 12 ? "even" : "uneven"}</small>
+          </span>
+        )}
+        {floats.length > 0 && (
+          <span>
+            floats avg <b className="num">{fmtPace(avg(floats))}/km</b>
+            {ft && <small> (target {fmtPace(ft[0])}–{fmtPace(ft[1])})</small>}
+          </span>
+        )}
+      </div>
+      <div className="wl-table-wrap">
+        <table className="table wl-table">
+          <thead>
+            <tr>
+              <th />
+              <th className="num-col">Time</th>
+              <th className="num-col">Distance</th>
+              <th className="num-col">Pace</th>
+              <th className="num-col">Target</th>
+              <th className="num-col">HR</th>
+            </tr>
+          </thead>
+          <tbody>
+            {wl.map((x, i) => {
+              const v = verdict(x);
+              return (
+                <tr key={i} className={`wl-${x.role}${x.label === "Float" ? " wl-float" : ""}`}>
+                  <td>{x.label}</td>
+                  <td className="num-col">{duration(x.lap.moving_time)}</td>
+                  <td className="num-col">{x.lap.distance >= 1000 ? `${(x.lap.distance / 1000).toFixed(2)} km` : `${Math.round(x.lap.distance)} m`}</td>
+                  <td className={"num-col" + (v ? ` wl-${v}` : "")}>
+                    <b>{fmtPace(pace(x.lap))}</b>
+                  </td>
+                  <td className="num-col muted">{x.target ? `${fmtPace(x.target[0])}–${fmtPace(x.target[1])}` : ""}</td>
+                  <td className="num-col">{x.lap.hr ? Math.round(x.lap.hr) : "–"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+/** After a run Garmin moved your race predictions: say so, with the before and after. */
+function PredictionMoved({ date }: { date: string }) {
+  const rv = useDataVersion("health");
+  const { data } = useQuery(() => predictionChange(date), [date, rv]);
+  if (!data?.length) return null;
+  const better = data.filter((x) => x.after < x.before).length;
+  const t = (s: number) => duration(Math.round(s));
+  return (
+    <div className={"run-pred " + (better >= data.length / 2 ? "up" : "down")}>
+      <b>{better === data.length ? "Race predictions improved" : better ? "Race predictions moved" : "Race predictions slipped"}</b>
+      <span className="small">after this run (Garmin):</span>
+      {data.map((x) => (
+        <span key={x.name} className="run-pred-item">
+          {x.name} <span className="num">{t(x.before)}</span> → <b className="num">{t(x.after)}</b>{" "}
+          <em className={x.after < x.before ? "up" : "down"}>
+            {x.after < x.before ? "−" : "+"}
+            {t(Math.abs(x.after - x.before)).replace(/^0:/, "")}
+          </em>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; onClose: () => void }) {
   const today = useToday();
   const [full, setFull] = useState<FullRun | null>(null);
@@ -264,6 +362,7 @@ function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; o
       {edit && <RunReview run={run} onClose={() => setEdit(false)} />}
       {map && run.polyline && <RunMap polyline={run.polyline} title={run.name} onClose={() => setMap(false)} />}
       <RunNotes id={run.id} />
+      <PredictionMoved date={run.date} />
       <RunFocus run={run} label="Training focus" />
       {details.get(run.id)?.photo && <img className="run-photo" src={details.get(run.id)!.photo!} alt="Photo from the run" referrerPolicy="no-referrer" />}
       <div className="run-detail-top">
@@ -301,6 +400,7 @@ function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; o
       {full?.description && <p className="run-desc">{full.description}</p>}
       <ErrorNote error={err} />
       {!full && !err && <p className="muted small">Loading laps and charts…</p>}
+      {full && <WorkoutLapsView laps={full.laps} planned={day?.text} plan={plan} />}
       {charts && (
         <div className="run-charts">
           {charts.pace.length > 1 && <XYChart label="Pace" points={charts.pace} invert format={(v) => fmtPace(v)} marks={lapMarks} />}
