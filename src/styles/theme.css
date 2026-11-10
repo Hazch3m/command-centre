@@ -6300,3 +6300,21 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .tl-grid .recent-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .tl-grid h3 { margin: 0 0 0.3rem; font-size: 0.9rem; }
 @media (max-width: 950px), (max-height: 560px) { .tab-page-running .subpage:has(.tl-grid) { display: block; overflow-y: auto; } .tl-grid { display: flex; flex-direction: column; } }
+
+/* Phone-sized panels on the PC are drawn at phone scale; shrink them to fit beside everything else. */
+.ph-next { zoom: 0.72; }
+.ph-panel { zoom: 0.86; }
+.tl-grid > div { zoom: 0.84; }
+@media (max-height: 860px) {
+  .ph-next { zoom: 0.62; }
+  .ph-panel { zoom: 0.78; }
+  .tl-grid > div { zoom: 0.74; }
+}
+/* Home: a size smaller on a laptop; VDOT bars short so the columns never overlap. */
+.home { font-size: 12px; }
+.home-table { font-size: 12px; }
+.home-card h3 { font-size: 13px; }
+.home-equiv .equiv-bar i { max-width: 26px; }
+.home-equiv .equiv-bar-cell { width: auto; }
+.hw-day svg.effort { height: 44px; }
+.hw-km { font-size: 18px; }
