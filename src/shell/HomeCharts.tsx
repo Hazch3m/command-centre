@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { addDays, parseKey } from "../core/time";
 import type { Fitness } from "../modules/running/fitness";
 import { mondayOf, type Plan } from "../modules/running/plan";
@@ -79,7 +79,7 @@ export function weekBuilds(f: Fitness, runs: Run[], details: Map<string, RunDeta
 /** Weekly km by intensity, VO2 max over it, and what it adds up to: productive, maintaining, … */
 export function BuildingCard({ f, runs, details, today }: { f: Fitness; runs: Run[]; details: Map<string, RunDetail>; today: string }) {
   const weeks = useMemo(() => weekBuilds(f, runs, details, today), [f, runs, details, today]);
-  const [ref, box] = useBox(false);
+  const [ref, box] = useBox(true);
   const [hover, setHover] = useState<number | null>(null);
   const vo2s = weeks.map((w) => w.vo2).filter((v): v is number => v != null);
   const last = [...weeks].reverse().find((w) => w.vo2 != null);
@@ -95,8 +95,8 @@ export function BuildingCard({ f, runs, details, today }: { f: Fitness; runs: Ru
   const easyShare = recentTotal ? sum(recent, 0) / recentTotal : null;
 
   const W = box.w || 800;
-  // Shorter on a laptop screen.
-  const H = typeof window !== "undefined" && window.innerHeight < 900 ? 150 : 210;
+  // As tall as its box (the home page fills the screen).
+  const H = Math.max(110, (box.h || 200) - 22);
   const pad = { top: 12, bottom: 20, left: 34, right: 40 };
   const kmMax = Math.max(10, ...weeks.map((w) => w.total)) * 1.08;
   const vLo = vo2s.length ? Math.floor(Math.min(...vo2s) - 1) : 40;
@@ -213,7 +213,7 @@ const BUCKETS = [
  * Each distance's best race (2 years) as a VO2 max (VDOT), against your strongest one: which races are
  * as good as your best, and which have time to find.
  */
-export function RaceEquivalence({ f, runs, plan, today }: { f: Fitness; runs: Run[]; plan: Plan; today: string }) {
+export function RaceEquivalence({ f, runs, plan, today, news }: { f: Fitness; runs: Run[]; plan: Plan; today: string; news?: ReactNode }) {
   const rows = useMemo(() => {
     const since = addDays(today, -730);
     const races = raceHistory(runs, plan).filter((r) => r.date >= since);
@@ -232,16 +232,18 @@ export function RaceEquivalence({ f, runs, plan, today }: { f: Fitness; runs: Ru
   return (
     <section className="home-card home-equiv">
       <header>
-        <h3>Races against your best</h3>
-        <span className="muted small">best race per distance (2 years) as VDOT; equivalent: that distance run as well as your {strongest.name}</span>
+        <h3>Race times</h3>
+        <span className="muted small">now ({f.predictions[0]?.source === "garmin" ? "Garmin" : "your runs"}) · best race (2 years) · equivalent of your {strongest.name}</span>
       </header>
+      {news}
       <table className="home-table equiv-table">
         <thead>
           <tr>
             <th />
+            <th className="r">Now</th>
             <th>Best race</th>
             <th>VDOT</th>
-            <th className="r">Equivalent</th>
+            <th className="r">Equiv.</th>
             <th className="r">To find</th>
           </tr>
         </thead>
@@ -254,10 +256,23 @@ export function RaceEquivalence({ f, runs, plan, today }: { f: Fitness; runs: Ru
                 <td>
                   <b>{r.name}</b>
                 </td>
+                <td className="r num nowrap">
+                  {(() => {
+                    const p = f.predictions.find((x) => Math.abs(x.distance / 1000 - r.km) < 0.6);
+                    if (!p?.seconds) return "–";
+                    const ch = p.monthAgoSeconds != null ? p.seconds - p.monthAgoSeconds : null;
+                    return (
+                      <>
+                        <b>{duration(p.seconds)}</b>
+                        {ch != null && Math.abs(ch) >= 1 && <small className={ch < 0 ? "up" : "down"}> {ch < 0 ? "−" : "+"}{duration(Math.abs(ch)).replace(/^0:/, "")}</small>}
+                      </>
+                    );
+                  })()}
+                </td>
                 <td className="nowrap">
                   {r.race ? (
                     <>
-                      <span className="num">{duration(r.race.time)}</span> <small className="muted">{fmt(r.race.date)} {r.race.date.slice(2, 4)}</small>
+                      <span className="num">{duration(r.race.time)}</span> <small className="muted">{MON[parseKey(r.race.date).getMonth()]} {r.race.date.slice(2, 4)}</small>
                     </>
                   ) : (
                     <span className="muted">no race</span>

@@ -1,4 +1,6 @@
 import { predictionChange } from "./goalTrend";
+import { useFitness } from "./fitness";
+import { lapVo2 } from "./vo2";
 import { workoutLaps } from "../../phone/EffortProfile";
 import { useEffect, useMemo, useState, type ReactNode, useRef } from "react";
 import { useSwipe } from "../../phone/swipe";
@@ -213,6 +215,13 @@ function thin(xs: number[], ys: number[], n = 400): [number, number][] {
 /** A workout's laps by name: each rep with its time, pace against the target, heart rate; and the reps on average. */
 function WorkoutLapsView({ laps, planned, plan }: { laps: FullRun["laps"]; planned?: string | null; plan: Plan }) {
   const wl = useMemo(() => workoutLaps(laps, planned, plan), [laps, planned, plan]);
+  const f = useFitness(plan);
+  // VO2 max each lap is worth (pace against heart rate, on your scale), like Runna.
+  const v = (l: { speed: number; hr?: number | null; moving_time: number }) => {
+    if (!f) return null;
+    const x = lapVo2(l, f.config);
+    return x == null ? null : x + f.offset;
+  };
   if (!wl) return null;
   const pace = (l: { distance: number; moving_time: number }) => l.moving_time / (l.distance / 1000);
   const reps = wl.filter((x) => x.role === "work");
@@ -257,6 +266,7 @@ function WorkoutLapsView({ laps, planned, plan }: { laps: FullRun["laps"]; plann
               <th className="num-col">Pace</th>
               <th className="num-col">Target</th>
               <th className="num-col">HR</th>
+              <th className="num-col" title="VO2 max the lap is worth from its pace and heart rate (short reps read high: heart rate lags)">VO2</th>
             </tr>
           </thead>
           <tbody>
@@ -272,6 +282,10 @@ function WorkoutLapsView({ laps, planned, plan }: { laps: FullRun["laps"]; plann
                   </td>
                   <td className="num-col muted">{x.target ? `${fmtPace(x.target[0])}–${fmtPace(x.target[1])}` : ""}</td>
                   <td className="num-col">{x.lap.hr ? Math.round(x.lap.hr) : "–"}</td>
+                  <td className="num-col">{(() => {
+                    const val = v(x.lap);
+                    return val == null ? "–" : `${x.lap.moving_time < 180 ? "~" : ""}${val.toFixed(1)}`;
+                  })()}</td>
                 </tr>
               );
             })}
@@ -314,6 +328,7 @@ function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; o
   const [map, setMap] = useState(false);
   const rv = useDataVersion("running");
   const { data } = useQuery(() => Promise.all([loadRuns("2024-01-01"), loadShoes(), loadPlan(), loadOverrides(), loadDetails("2024-01-01")]), [id, rv]);
+  const fit = useFitness(data?.[2].plan);
   useEffect(() => {
     setFull(null);
     setErr(null);
@@ -437,6 +452,7 @@ function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; o
                 <th className="num-col">Pace</th>
                 <th className="num-col">Avg HR</th>
                 <th className="num-col">Max HR</th>
+                <th className="num-col" title="VO2 max the lap is worth from its pace and heart rate">VO2</th>
                 <th className="num-col">Cadence</th>
                 <th className="num-col">Climb</th>
               </tr>
@@ -450,6 +466,7 @@ function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; o
                   <td className="num-col">{paceOf(l.speed)}</td>
                   <td className="num-col">{l.hr ? Math.round(l.hr) : "–"}</td>
                   <td className="num-col">{l.max_hr ? Math.round(l.max_hr) : "–"}</td>
+                  <td className="num-col">{fit && lapVo2(l, fit.config) != null ? (lapVo2(l, fit.config)! + fit.offset).toFixed(1) : "–"}</td>
                   <td className="num-col">{l.cadence ? Math.round(l.cadence) : "–"}</td>
                   <td className="num-col">{l.elev != null ? `${Math.round(l.elev)} m` : "–"}</td>
                 </tr>

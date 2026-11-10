@@ -69,6 +69,12 @@ export function predictTime(distanceM: number, v: number): number {
   return (lo + hi) / 2;
 }
 
+/** VO2 max a lap is worth from its pace and heart rate (null when the heart rate is too low to say). */
+export function lapVo2(l: { speed: number; hr?: number | null; moving_time: number }, cfg: Vo2Config): number | null {
+  if (!l.hr || l.speed <= 0 || l.moving_time < 60 || l.hr < 0.75 * cfg.hrMax || l.hr >= cfg.hrMax) return null;
+  return splitEstimate({ distance: 0, moving_time: l.moving_time, speed: l.speed, hr: l.hr }, cfg);
+}
+
 function splitEstimate(s: Split, cfg: Vo2Config): number {
   const hrr = (s.hr! - cfg.hrRest) / (cfg.hrMax - cfg.hrRest);
   return (oxygenCost(s.speed * 60) - 3.5) / hrr + 3.5;
