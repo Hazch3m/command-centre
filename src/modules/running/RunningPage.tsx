@@ -8,6 +8,7 @@ import { useQuery } from "../../core/useQuery";
 import { loadOverrides, type Run } from "./strava";
 import type { Plan } from "./plan";
 import { WeekProgress } from "../../phone/WeekProgress";
+import { Session } from "../../phone/Today";
 import { WeekAhead } from "../../phone/WeekAhead";
 import { ErrorNote } from "../../shell/ui";
 import { mondayOf, upcomingRaces, weekFor } from "./plan";
@@ -123,6 +124,7 @@ function PlanHome({ plan, runs }: { plan: Plan; runs: Run[] }) {
       <div className="ph-main">
         <PlanWeeksChart plan={plan} runs={runs} />
         <PlanWeekView plan={plan} runs={runs} hideStrip />
+        <NextSession plan={plan} runs={runs} />
       </div>
       <aside className={`ph-side side-${side}`}>
         <nav className="segmented small-seg ph-tabs" role="tablist">
@@ -143,6 +145,25 @@ function PlanHome({ plan, runs }: { plan: Plan; runs: Run[] }) {
           {(side === "goal" || side === "ready") && <GoalCarousel plan={plan} split />}
         </div>
       </aside>
+    </div>
+  );
+}
+
+/** The next run in full under the week: its parts, lengths and paces. */
+function NextSession({ plan, runs }: { plan: Plan; runs: Run[] }) {
+  const today = useToday();
+  const version = useDataVersion("running");
+  const { data: overrides } = useQuery(loadOverrides, [version]);
+  const d = useMemo(() => {
+    const m = mondayOf(today);
+    const days = [...forecastWeek(plan, m, runs, overrides).days, ...forecastWeek(plan, addDays(m, 7), runs, overrides).days];
+    return days.find((x) => x.date >= today && (x.km ?? 0) > 0 && !/^rest\b/i.test(x.text) && !(x.date === today && x.runs.length)) ?? null;
+  }, [plan, runs, overrides, today]);
+  if (!d) return null;
+  const label = d.date === today ? "Today" : d.date === addDays(today, 1) ? "Tomorrow" : new Date(d.date + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long" });
+  return (
+    <div className="ph-next pl-embed">
+      <Session d={d} label={`Next run · ${label}`} />
     </div>
   );
 }
@@ -238,18 +259,22 @@ export function RunningPage() {
 
       <div className="page-body" key={tab}>
         {tab === "pace" && <PaceOnPointTab plan={plan} runs={runs} />}
-        {tab === "trends" && <RecentBlock runs={runs} plan={plan} />}
-        {tab === "trends" && <h3>Training load</h3>}
+
         {tab === "runs" && <RunsTab runs={runs} plan={plan} />}
 
         {tab === "watch" && <WatchPage />}
         {tab === "trends" && (
-          <div className="pl-embed pl-cols">
+          <div className="tl-grid pl-embed">
+            <div>
+              <RecentBlock runs={runs} plan={plan} />
+            </div>
             <div>
               <TrainingLoad />
             </div>
             <div>
               <FitnessPredictor plan={plan} />
+            </div>
+            <div>
               <RunalyzeMore />
             </div>
           </div>
