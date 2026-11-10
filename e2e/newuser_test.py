@@ -136,6 +136,12 @@ try:
         tab("Plan")
         check(pp.locator(".p-subnav").count() == 1, "new: plan built")
         shot("n07-plan-week")
+        w1 = pp.get_by_role("button", name="See week 1 ›")
+        check(w1.count() == 1 or "Week 1" in pp.locator(".p-pane.on").inner_text(), "new: says when the plan starts")
+        if w1.count():
+            w1.click()
+            pp.wait_for_timeout(1200)
+            shot("n07b-plan-week1")
         wk = pp.locator(".p-pane.on").inner_text()
         print("plan week:", wk[:400].replace("\n", " | "))
         check(bool(re.search(r"\d:\d\d", wk)), "new: sessions have paces")
