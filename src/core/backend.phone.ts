@@ -194,6 +194,8 @@ export interface AccountInfo {
   created: string | null;
   garmin: boolean;
   google: boolean;
+  /** The athlete's name (or true) when Strava is connected. */
+  strava?: string | boolean;
   pc: boolean;
   last: { ranAt: string; errors: Record<string, string | null>; newRuns: number } | null;
 }
@@ -220,6 +222,20 @@ export async function connectGoogle(): Promise<string> {
   const done = new URL((await native().openAuth({ url, scheme: "commandcentre" })).url);
   if (done.searchParams.get("ok") !== "1") throw new Error(done.searchParams.get("msg") ?? "Google sign-in didn't finish.");
   return done.searchParams.get("msg") ?? "Google connected";
+}
+/** Strava's sign-in page (in Apple's secure sheet); the sync service keeps the tokens and fetches runs. */
+export async function connectStrava(): Promise<string> {
+  if (!link?.account) throw new Error("Sign in first.");
+  const r = await api("/strava/begin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ from: "app" }) });
+  if (!r.ok) throw new Error(await errorOf(r));
+  const { url } = (await r.json()) as { url: string };
+  const done = new URL((await native().openAuth({ url, scheme: "commandcentre" })).url);
+  if (done.searchParams.get("ok") !== "1") throw new Error(done.searchParams.get("msg") ?? "Strava sign-in didn't finish.");
+  return done.searchParams.get("msg") ?? "Strava connected";
+}
+export async function disconnectStrava(): Promise<void> {
+  const r = await api("/strava/disconnect", { method: "POST" });
+  if (!r.ok) throw new Error(await errorOf(r));
 }
 export async function disconnectGoogle(): Promise<void> {
   const r = await api("/google/disconnect", { method: "POST" });

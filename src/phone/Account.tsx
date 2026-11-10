@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { notifyChanged } from "../core/events";
-import { accountInfo, cloudRun, connectGarmin, connectGoogle, disconnectGoogle, deleteAccount, disconnectGarmin, hasAccount, makeComputerCode, phoneState, refresh, unpair, type AccountInfo } from "../core/backend.phone";
+import { accountInfo, cloudRun, connectGarmin, connectGoogle, connectStrava, disconnectStrava, disconnectGoogle, deleteAccount, disconnectGarmin, hasAccount, makeComputerCode, phoneState, refresh, unpair, type AccountInfo } from "../core/backend.phone";
 import { isEmptyPlan } from "../core/account";
 import { cancelled } from "../core/native";
 import { showCode } from "../core/sync";
@@ -35,6 +35,15 @@ export async function connectAndSync(): Promise<string> {
   if (await refresh()) await notifyChanged("*");
   const problems = Object.values(r?.errors ?? {}).filter(Boolean);
   return problems.length ? `Garmin connected. ${problems.join(" · ")}` : `Garmin connected${r?.newRuns ? `: ${r.newRuns} runs so far` : ""}. Older runs keep arriving over the next syncs.`;
+}
+
+/** Connect Strava, then fetch straight away so runs appear. */
+export async function connectStravaAndSync(): Promise<string> {
+  const said = await connectStrava();
+  const r = await cloudRun().catch(() => null);
+  if (await refresh()) await notifyChanged("*");
+  const problem = r?.errors?.strava;
+  return problem ? `${said}. ${problem}` : `${said}${r?.newRuns ? `: ${r.newRuns} runs so far` : ""}. Older runs keep arriving over the next syncs.`;
 }
 
 /** More → Account: Garmin, a PC, signing out, deleting the account. */
@@ -84,6 +93,21 @@ export function AccountSection() {
         )}
       </div>
       <AppleHealthRow busy={busy} act={act} />
+      <div className="p-row">
+        <span className="p-row-main">
+          <span className="p-row-title">Strava</span>
+          <span className="p-row-sub">{info?.strava ? `Connected${typeof info.strava === "string" ? ` as ${info.strava}` : ""}` : "Runs from any watch you sync to Strava (COROS, Polar, Suunto, Wahoo, the Strava app…)"}</span>
+        </span>
+        {info?.strava ? (
+          <button className="p-link" disabled={!!busy} onClick={() => act("strava", async () => (await disconnectStrava(), "Strava disconnected."))}>
+            Disconnect
+          </button>
+        ) : (
+          <button className="p-pill" disabled={!!busy} onClick={() => act("strava", connectStravaAndSync)}>
+            {busy === "strava" ? "Connecting…" : "Connect"}
+          </button>
+        )}
+      </div>
       <div className="p-row">
         <span className="p-row-main">
           <span className="p-row-title">Google Calendar</span>
@@ -181,7 +205,8 @@ export function GettingStarted() {
   if (!hasAccount()) return null;
   const garmin = !!phoneState.header?.connected.garmin;
   const health = !!ah.st?.on;
-  const linked = garmin || health;
+  const strava = !!phoneState.header?.connected.strava;
+  const linked = garmin || health || strava;
   const noPlan = isEmptyPlan(plan);
   if (linked && !noPlan) return null;
   const go = (fn: () => Promise<string>) => async () => {
@@ -202,7 +227,7 @@ export function GettingStarted() {
         <span className="p-start-n">{linked ? "✓" : "1"}</span>
         <span className="p-row-main">
           <span className="p-row-title">{busy ? "Connecting…" : "Connect your runs"}</span>
-          <span className="p-row-sub">{linked ? `${[garmin && "Garmin", health && "Apple Health"].filter(Boolean).join(" and ")} connected` : "Garmin for runs, sleep, HRV and workouts on your watch; Apple Health for any other watch or app"}</span>
+          <span className="p-row-sub">{linked ? `${[garmin && "Garmin", health && "Apple Health", strava && "Strava"].filter(Boolean).join(" and ")} connected` : "Garmin for runs, sleep, HRV and workouts on your watch; Apple Health or Strava for any other watch or app"}</span>
           {!linked && (
             <span className="p-start-pills">
               <button className="p-pill" disabled={busy} onClick={go(connectAndSync)}>
@@ -213,6 +238,9 @@ export function GettingStarted() {
                   Apple Health
                 </button>
               )}
+              <button className="p-pill" disabled={busy} onClick={go(connectStravaAndSync)}>
+                Strava
+              </button>
             </span>
           )}
         </span>

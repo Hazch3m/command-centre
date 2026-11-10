@@ -7,6 +7,7 @@ import type { SqlJsStatic } from "sql.js";
 import { cloudMayWrite, gunzip, gzip, linkKeys, packSnapshot, PHONE_FILES, phoneMayWrite, seal, unpackSnapshot, unseal, type CloudOp, type PhoneOp, type SnapshotHeader } from "../../src/core/sync";
 import { setContext, type Creds } from "./appBackend";
 import { syncGarminRuns } from "../../src/modules/running/garminRuns";
+import { syncStrava } from "../../src/modules/running/strava";
 import { syncHealth } from "../../src/modules/health/data";
 import { syncCalendar } from "../../src/modules/calendar/data";
 import { runAutoSync } from "../../src/modules/watch/autoSync";
@@ -37,7 +38,7 @@ export interface SyncResult {
   newRuns: number;
 }
 
-export async function runCloudSync(io: CloudIO, only?: ("runs" | "health" | "calendar" | "watch")[]): Promise<SyncResult & { applied?: number }> {
+export async function runCloudSync(io: CloudIO, only?: ("runs" | "health" | "calendar" | "watch")[], force = false): Promise<SyncResult & { applied?: number }> {
   const ranAt = new Date().toISOString();
   const snap = await io.loadSnapshot();
   if (!snap) return { ranAt, wrote: 0, errors: { data: "No copy from the PC yet: open Pacelife on the PC once." }, newRuns: 0 };
@@ -86,9 +87,9 @@ export async function runCloudSync(io: CloudIO, only?: ("runs" | "health" | "cal
     }
     // What the cloud itself is connected to (an account's Garmin was signed in to on the phone).
     const connected = io.account
-      ? { ...header2.connected, garmin: !!io.creds.garmin, google: !!io.creds.google || header2.connected.google }
+      ? { ...header2.connected, garmin: !!io.creds.garmin, google: !!io.creds.google || header2.connected.google, strava: !!io.creds.strava || header2.connected.strava }
       : { ...header2.connected, garmin: !!io.creds.garmin || header2.connected.garmin, google: !!io.creds.google || header2.connected.google };
-    const headerChanged = phoneApplied !== header.applied || !header.cloud || connected.garmin !== header.connected.garmin || connected.google !== header.connected.google;
+    const headerChanged = phoneApplied !== header.applied || !header.cloud || connected.garmin !== header.connected.garmin || connected.google !== header.connected.google || connected.strava !== header.connected.strava;
     header2 = { ...header2, connected, cloud: true };
     const runCount = () => Number(db.exec("SELECT count(*) FROM strava_activities")[0]?.values[0][0] ?? 0);
     const before = runCount();
@@ -101,6 +102,18 @@ export async function runCloudSync(io: CloudIO, only?: ("runs" | "health" | "cal
       if (io.creds.garmin && want("runs")) {
         const s = await syncGarminRuns().catch((e) => ({ lastError: String((e as Error)?.message ?? e) }));
         errors.runs = s.lastError ?? null;
+      }
+      // Strava's limits are per app (all accounts together): an hour apart unless you asked (pull to refresh).
+      const stravaLast = (() => {
+        try {
+          return Date.parse(JSON.parse((db.exec("SELECT value FROM kv WHERE key = 'strava.sync'")[0]?.values[0][0] as string) ?? "{}").lastSync ?? "") || 0;
+        } catch {
+          return 0;
+        }
+      })();
+      if (io.creds.strava && want("runs") && (force || Date.now() - stravaLast > 55 * 60_000)) {
+        const s = await syncStrava().catch((e) => ({ lastError: String((e as Error)?.message ?? e) }));
+        errors.strava = s.lastError ?? null;
       }
       if (io.creds.garmin && want("health")) {
         const s = await syncHealth().catch((e) => ({ errors: [String((e as Error)?.message ?? e)] }));

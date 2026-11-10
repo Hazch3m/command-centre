@@ -48,6 +48,9 @@ interface Env {
   /** Google sign-in for accounts (a "Web application" OAuth client), set from GitHub secrets on deploy. */
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
+  /** Pacelife's Strava API app (strava.com/settings/api), set from GitHub secrets on deploy. */
+  STRAVA_CLIENT_ID?: string;
+  STRAVA_CLIENT_SECRET?: string;
 }
 
 /** Sign in with Apple on the web (the PC): the Services ID set up for it in the Apple developer account. */
@@ -177,7 +180,7 @@ export class Store extends DurableObject<Env> {
 
   /** Something for the 15-minute sync to fetch? */
   private hasSources(c: Creds | null) {
-    return !!c && (!!c.garmin || !!c.google || c.ics.length > 0);
+    return !!c && (!!c.garmin || !!c.google || !!c.strava || c.ics.length > 0);
   }
 
   /** One cloud sync (one at a time). Calendars at most hourly: they're rewritten in full each time. */
@@ -208,7 +211,7 @@ export class Store extends DurableObject<Env> {
       };
       let r: SyncResult;
       try {
-        r = await runCloudSync(io, onlyThese ?? (withCal ? undefined : ["runs", "health", "watch"]));
+        r = await runCloudSync(io, onlyThese ?? (withCal ? undefined : ["runs", "health", "watch"]), force);
         if (withCal && !onlyThese) this.set("cloudCalAt", String(Date.now()));
       } catch (e) {
         r = { ranAt: new Date().toISOString(), wrote: 0, errors: { cloud: String((e as Error)?.message ?? e) }, newRuns: 0 };
@@ -285,6 +288,28 @@ export class Store extends DurableObject<Env> {
         if (!row || row.expires < Date.now()) return err(404, "not yet");
         this.sql.exec("DELETE FROM dir WHERE h = ?", key);
         return new Response(row.account, { headers: { "content-type": "application/json", ...CORS } });
+      }
+      if (path === "/internal/strava/finish") {
+        // Strava's sign-in came back for this account: swap the code for tokens and keep them for run sync.
+        const want = this.get("stravaState") ?? "";
+        this.set("stravaState", "");
+        if (!want || want !== body.state || Number(this.get("stravaStateAt") ?? 0) < Date.now() - 15 * 60_000) return err(400, "This sign-in has expired. Start it again in the app.");
+        if (!/activity:read/.test(String(body.scope ?? ""))) return err(400, "Pacelife needs to see your activities: connect again and leave \"View data about your activities\" ticked.");
+        const env = this.env as Env;
+        const r = await fetch("https://www.strava.com/oauth/token", {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ client_id: env.STRAVA_CLIENT_ID!, client_secret: env.STRAVA_CLIENT_SECRET!, code: String(body.code), grant_type: "authorization_code" }),
+        });
+        const t = (await r.json().catch(() => ({}))) as { access_token?: string; refresh_token?: string; expires_at?: number; athlete?: { firstname?: string; lastname?: string }; message?: string; errors?: unknown };
+        if (!t.access_token || !t.refresh_token) return err(502, `Strava didn't finish the sign-in: ${t.message ?? r.status}`);
+        const c = this.creds();
+        if (!c) return err(409, "Account not found.");
+        const athlete = [t.athlete?.firstname, t.athlete?.lastname].filter(Boolean).join(" ") || null;
+        const strava = { client: { id: env.STRAVA_CLIENT_ID!, secret: env.STRAVA_CLIENT_SECRET! }, token: { access_token: t.access_token, refresh_token: t.refresh_token, expires_at: t.expires_at ?? Math.floor(Date.now() / 1000) + 6 * 3600, athlete } };
+        this.set("creds", JSON.stringify({ ...c, strava } satisfies Creds));
+        await this.ctx.storage.setAlarm(Date.now() + 1000);
+        return json({ ok: true, athlete });
       }
       if (path === "/internal/google/finish") {
         // Google's sign-in came back for this account: swap the code for tokens and keep them for calendar sync.
@@ -400,7 +425,7 @@ export class Store extends DurableObject<Env> {
     // ---- Accounts ------------------------------------------------------------------------
     if (path === "/account" && m === "GET") {
       const c = this.creds();
-      return json({ account: this.get("account"), created: this.get("created"), garmin: !!c?.garmin, google: !!c?.google, pc: this.get("pcLinked") === "1", hasData: !!this.get("snapVersion"), last: this.get("cloudLast") ? JSON.parse(this.get("cloudLast")!) : null });
+      return json({ account: this.get("account"), created: this.get("created"), garmin: !!c?.garmin, google: !!c?.google, strava: c?.strava ? (c.strava.token.athlete ?? true) : false, pc: this.get("pcLinked") === "1", hasData: !!this.get("snapVersion"), last: this.get("cloudLast") ? JSON.parse(this.get("cloudLast")!) : null });
     }
     if (path === "/account/delete" && m === "POST") {
       if (!this.isAccount()) return err(409, "Not an account.");
@@ -436,6 +461,29 @@ export class Store extends DurableObject<Env> {
       for (const [k, v] of Object.entries({ client_id: env.GOOGLE_CLIENT_ID, redirect_uri: redirect, response_type: "code", scope: `openid email ${GOOGLE_SCOPES}`, access_type: "offline", prompt: "consent", include_granted_scopes: "true", state: `${account}.${state}.${from === "app" ? "app" : "web"}` })) u.searchParams.set(k, v);
       return json({ url: u.toString() });
     }
+    if (path === "/strava/begin" && m === "POST") {
+      // Starts Strava sign-in for this account: returns the address of Strava's page.
+      const env = this.env as Env;
+      if (!env.STRAVA_CLIENT_ID || !env.STRAVA_CLIENT_SECRET) return err(501, "Strava isn't set up on the sync service yet (add STRAVA_CLIENT_ID and STRAVA_CLIENT_SECRET to the GitHub secrets).");
+      const account = this.get("account");
+      if (!account) return err(409, "Only for accounts.");
+      const { from } = (await req.json().catch(() => ({}))) as { from?: string };
+      const state = [...crypto.getRandomValues(new Uint8Array(24))].map((x) => x.toString(16).padStart(2, "0")).join("");
+      this.set("stravaState", state);
+      this.set("stravaStateAt", String(Date.now()));
+      const u = new URL("https://www.strava.com/oauth/authorize");
+      for (const [k, v] of Object.entries({ client_id: env.STRAVA_CLIENT_ID, redirect_uri: `${url.origin}/api/oauth/strava/callback`, response_type: "code", approval_prompt: "auto", scope: "read,activity:read_all,profile:read_all", state: `${account}.${state}.${from === "app" ? "app" : "web"}` })) u.searchParams.set(k, v);
+      return json({ url: u.toString() });
+    }
+    if (path === "/strava/disconnect" && m === "POST") {
+      const c = this.creds();
+      if (c?.strava) {
+        // Tell Strava too, so Pacelife's access is gone on their side.
+        await fetch("https://www.strava.com/oauth/deauthorize", { method: "POST", headers: { Authorization: `Bearer ${c.strava.token.access_token}` } }).catch(() => {});
+        this.set("creds", JSON.stringify({ ...c, strava: null } satisfies Creds));
+      }
+      return json({ ok: true });
+    }
     if (path === "/google/disconnect" && m === "POST") {
       const c = this.creds();
       if (c) this.set("creds", JSON.stringify({ ...c, google: null } satisfies Creds));
@@ -470,13 +518,13 @@ export class Store extends DurableObject<Env> {
         // newer, signed in on the phone) is kept and the PC's only fills a gap. Garmin's tokens rotate, so an
         // older copy may no longer work.
         const pick = <T,>(mine: T | null | undefined, theirs: T | null | undefined) => (c.fresh ? (theirs ?? mine) : (mine ?? theirs)) ?? null;
-        this.set("creds", JSON.stringify({ secret: have?.secret ?? c.secret, garmin: pick(have?.garmin, c.garmin), google: pick(have?.google, c.google), ics: Array.isArray(c.ics) && c.ics.length ? c.ics : (have?.ics ?? []) } satisfies Creds));
+        this.set("creds", JSON.stringify({ secret: have?.secret ?? c.secret, garmin: pick(have?.garmin, c.garmin), google: pick(have?.google, c.google), strava: have?.strava ?? null, ics: Array.isArray(c.ics) && c.ics.length ? c.ics : (have?.ics ?? []) } satisfies Creds));
         this.set("pcLinked", "1");
         this.set("cloudCalAt", "0");
         await this.ctx.storage.setAlarm(Date.now() + 1000);
         return json({ ok: true });
       }
-      this.set("creds", JSON.stringify({ secret: c.secret, garmin: c.garmin ?? null, google: c.google ?? null, ics: Array.isArray(c.ics) ? c.ics : [] }));
+      this.set("creds", JSON.stringify({ secret: c.secret, garmin: c.garmin ?? null, google: c.google ?? null, strava: this.creds()?.strava ?? null, ics: Array.isArray(c.ics) ? c.ics : [] }));
       this.set("cloudCalAt", "0");
       await this.ctx.storage.setAlarm(Date.now() + 1000);
       return json({ ok: true });
@@ -654,6 +702,18 @@ export default {
         }
         const account = await sha256hex("cc-apple:" + who.sub);
         return store("acct:" + account).fetch("https://cc/internal/login", { method: "POST", body: JSON.stringify({ account, sub: who.sub }) });
+      }
+
+      if (url.pathname === "/api/oauth/strava/callback" && req.method === "GET") {
+        // Strava's sign-in comes back here, then on to the app (or a page saying you can close the browser).
+        const [account, state, from] = (url.searchParams.get("state") ?? "").split(".");
+        const done = (ok: boolean, msg: string) =>
+          from === "app" ? Response.redirect(`commandcentre://auth-done?ok=${ok ? 1 : 0}&msg=${encodeURIComponent(msg)}`, 302) : page(ok ? "Strava connected" : "Strava sign-in didn't finish", ok ? "Your runs now come into Pacelife. You can close this tab." : msg, ok ? 200 : 400);
+        if (url.searchParams.get("error")) return done(false, url.searchParams.get("error") === "access_denied" ? "You cancelled on Strava's page." : `Strava said: ${url.searchParams.get("error")}`);
+        if (!/^[0-9a-f]{64}$/.test(account ?? "") || !state) return done(false, "This sign-in link is broken. Start it again.");
+        const r = await store("acct:" + account).fetch("https://cc/internal/strava/finish", { method: "POST", body: JSON.stringify({ state, code: url.searchParams.get("code"), scope: url.searchParams.get("scope") }) });
+        const j = (await r.json().catch(() => ({}))) as { error?: string; athlete?: string };
+        return done(r.ok, r.ok ? `Strava connected${j.athlete ? ` as ${j.athlete}` : ""}` : (j.error ?? "Strava sign-in failed"));
       }
 
       if (url.pathname === "/api/oauth/google/callback" && req.method === "GET") {
