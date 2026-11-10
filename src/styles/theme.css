@@ -6112,3 +6112,6 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .pwc .chart-readout { display: none; }
 .plan-home .pwv-day { min-height: 0; }
 .plan-home .pwv-notes { padding: 0.2rem 0.7rem; }
+.plan-home-goal .gc-ready .p-section-head { position: static; background: none; -webkit-mask: none; mask: none; padding: 0 0.3rem 0.4rem; border-radius: 0; }
+.plan-home-goal .gc-ready .p-section-head h2 { font-size: 1.1rem; }
+.plan-home-goal .gc-ready > .p-section, .plan-home-goal .gc-ready section { overflow: visible; }
