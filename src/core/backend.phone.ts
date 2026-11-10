@@ -175,7 +175,37 @@ export async function signInWithApple(): Promise<{ isNew: boolean }> {
   const { identityToken } = await native().signInWithApple({ nonce });
   const r = await fetch("/api/auth/apple", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ identityToken, nonce }) });
   if (!r.ok) throw new Error(await errorOf(r));
-  const j = (await r.json()) as { account: string; secret: string; isNew: boolean };
+  return adoptAccount((await r.json()) as { account: string; secret: string; isNew: boolean });
+}
+
+/** Where Sign in with Apple on the web runs (the address registered with Apple for it). */
+const WEB_SIGNIN_ORIGIN = "https://command-centre-sync.harryknoblauch12.workers.dev";
+
+/**
+ * Sign in with Apple in a browser (Pacelife on the web): Apple's page opens in a new window, and
+ * this waits for it to finish (the same way the PC signs in).
+ */
+export async function signInWithAppleWeb(): Promise<{ isNew: boolean }> {
+  const session = [...crypto.getRandomValues(new Uint8Array(32))].map((x) => x.toString(16).padStart(2, "0")).join("");
+  const origin = /\.workers\.dev$|^localhost|^127\./.test(location.hostname) ? location.origin : WEB_SIGNIN_ORIGIN;
+  const w = window.open(`${origin}/api/auth/apple/web/start?session=${session}`, "pacelife-signin", "width=520,height=720");
+  if (!w) throw new Error("Your browser blocked the sign-in window: allow pop-ups for this site, then try again.");
+  for (const until = Date.now() + 5 * 60_000; Date.now() < until; ) {
+    await new Promise((r) => setTimeout(r, 1500));
+    const r = await fetch(`/api/auth/session?id=${session}`).catch(() => null);
+    if (r?.ok) {
+      try {
+        w.close();
+      } catch {
+        /* already closed */
+      }
+      return adoptAccount((await r.json()) as { account: string; secret: string; isNew: boolean });
+    }
+  }
+  throw new Error("Sign-in timed out. Try again.");
+}
+
+async function adoptAccount(j: { account: string; secret: string; isNew: boolean }): Promise<{ isNew: boolean }> {
   await idbSet("secret", j.secret);
   await idbSet("account", j.account);
   // A different account than before on this phone: start from its data, not the old copy.

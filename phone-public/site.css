@@ -11,3 +11,4 @@ h1{font-size:clamp(1.9rem,6vw,2.8rem);line-height:1.1;margin:.2em 0 .4em;letter-
 .card p{margin:0;color:var(--muted);font-size:.95rem}
 footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem}
 table{width:100%;border-collapse:collapse;font-size:.93rem}td,th{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}
+.btn-web{display:inline-block;padding:12px 18px;border-radius:12px;background:var(--accent);color:#fff;text-decoration:none;font-weight:700}
