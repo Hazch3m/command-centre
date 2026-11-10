@@ -217,7 +217,7 @@ function WorkoutLapsView({ laps, planned, plan }: { laps: FullRun["laps"]; plann
   const wl = useMemo(() => workoutLaps(laps, planned, plan), [laps, planned, plan]);
   const f = useFitness(plan);
   // VO2 max each lap is worth (pace against heart rate, on your scale), like Runna.
-  const v = (l: { speed: number; hr?: number | null; moving_time: number }) => {
+  const lapV = (l: { speed: number; hr?: number | null; moving_time: number }) => {
     if (!f) return null;
     const x = lapVo2(l, f.config);
     return x == null ? null : x + f.offset;
@@ -283,7 +283,7 @@ function WorkoutLapsView({ laps, planned, plan }: { laps: FullRun["laps"]; plann
                   <td className="num-col muted">{x.target ? `${fmtPace(x.target[0])}–${fmtPace(x.target[1])}` : ""}</td>
                   <td className="num-col">{x.lap.hr ? Math.round(x.lap.hr) : "–"}</td>
                   <td className="num-col">{(() => {
-                    const val = v(x.lap);
+                    const val = lapV(x.lap);
                     return val == null ? "–" : `${x.lap.moving_time < 180 ? "~" : ""}${val.toFixed(1)}`;
                   })()}</td>
                 </tr>
