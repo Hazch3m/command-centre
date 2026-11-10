@@ -5760,3 +5760,48 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 /* Charts that scroll sideways (past on the left, planned weeks to the right) */
 .chart-scroll { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding-bottom: 2px; }
 .chart-scroll > div { width: 100%; }
+
+/* Training tab: tighter. Title and tabs share a row; the plan's view switch and targets share one too. */
+.train-head { align-items: center; flex-wrap: wrap; gap: 0.4rem 1.2rem; }
+.train-head .train-title { min-width: 0; }
+.train-head h1 { font-size: 1.15rem; line-height: 1.2; }
+.subpage .train-head .page-tabs { margin: 0; margin-left: auto; }
+.tab-page-running .subpage { padding: 0.9rem 1.2rem 1.6rem; }
+.tab-page-running .page-body { margin-top: 0.8rem; font-size: 0.95em; }
+.tab-page-running .page-body h3 { margin: 1rem 0 0.35rem; font-size: 0.92rem; }
+.plan-toolbar { justify-content: flex-start; align-items: flex-start; gap: 0.6rem; flex-wrap: wrap; margin: 0 0 0.6rem; }
+.plan-toolbar .targets-fold { flex: 1; min-width: 16rem; margin: 0; }
+.plan-toolbar .targets-fold summary { padding: 0.3rem 0.7rem; font-size: 0.82rem; }
+.plan-toolbar .targets-fold[open] { flex-basis: 100%; order: 2; }
+.pwv { gap: 0.45rem; }
+.pwv-head { padding: 0.4rem 0.6rem; gap: 0.7rem; }
+.pwv-arrow { width: 2.1rem; height: 2.1rem; font-size: 1.2rem; }
+.pwv-title { font-size: 0.95rem; }
+.pwv-km { font-size: 0.9rem; min-width: 7rem; }
+.pwv-notes { padding: 0.3rem 0.7rem; font-size: 0.82rem; }
+.pwv-days { min-height: 0; gap: 0.45rem; }
+.pwv-day { padding: 0.6rem 0.6rem 0.55rem; gap: 0.3rem; border-top-width: 4px; }
+.pwv-day-top { font-size: 0.85rem; }
+.pwv-km-big { font-size: 1.5rem; }
+.pwv-km-big small { font-size: 0.75rem; }
+.pwv-day.rt-rest .pwv-km-big { font-size: 1.1rem; font-weight: 600; color: var(--text-3, var(--text-2)); }
+.pwv-text { font-size: 0.8rem; }
+.pwv-pace { font-size: 0.74rem; }
+.pwv-done { font-size: 0.74rem; }
+.plan-focus { gap: 1rem; grid-template-columns: minmax(0, 1fr) minmax(18rem, 23rem); }
+.plan-focus-side { gap: 0.8rem; font-size: 0.92em; }
+
+/* Analysis: everything on the side panel (and the month and week rows) opens a chart or the period. */
+.ana .ana-click { cursor: pointer; border-radius: 6px; transition: background 0.12s; }
+.ana .ana-click:hover { background: color-mix(in srgb, var(--c-running) 9%, transparent); }
+.ana .ana-click.sel { background: color-mix(in srgb, var(--c-running) 16%, transparent); box-shadow: inset 3px 0 0 var(--c-running); }
+.ana tr.ana-click.sel td { background: color-mix(in srgb, var(--c-running) 12%, transparent); }
+.ana-calc.ana-click { padding: 1px 4px; margin: 0 -4px; }
+.ana-big.ana-click { padding: 4px 6px; margin: -4px -6px; display: block; }
+.ana-chart { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px 8px; margin-bottom: 14px; }
+.ana-chart-head { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 6px; }
+.ana-chart-head .segmented { margin-left: auto; }
+.ana-chart-x { border: 0; background: none; color: var(--text-2); font-size: 1.3rem; line-height: 1; cursor: pointer; padding: 0 4px; }
+.ana-chart-x:hover { color: var(--text); }
+.s-ctl.chart-line { stroke: var(--info); }
+.s-atl.chart-line { stroke: var(--c-running); }

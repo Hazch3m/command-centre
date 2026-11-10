@@ -8,9 +8,12 @@ interface CCNative {
   garminLogin(o: { url: string }): Promise<{ ticket: string }>;
   /** Apple's secure sign-in sheet (Google won't sign in inside an app's own web view); resolves with the commandcentre:// address it ends on. */
   openAuth(o: { url: string; scheme?: string }): Promise<{ url: string }>;
+  /** Android: opens a page in the browser and returns at once. */
+  openBrowser(o: { url: string }): Promise<void>;
 }
 type Cap = {
   isNativePlatform?: () => boolean;
+  getPlatform?: () => string;
   registerPlugin?: <T>(name: string) => T;
   /** Injected by the iPhone app's bridge itself (no Capacitor library needed in the page). */
   nativePromise?: <T>(plugin: string, method: string, options: unknown) => Promise<T>;
@@ -21,6 +24,9 @@ const cap = () => (globalThis as unknown as { Capacitor?: Cap }).Capacitor;
 /** Inside the iPhone app (not a browser)? */
 export const isNativeApp = () => !!cap()?.isNativePlatform?.() || /CommandCentreApp/.test(globalThis.navigator?.userAgent ?? "");
 
+/** Inside the Android app? */
+export const isAndroidApp = () => isNativeApp() && (cap()?.getPlatform?.() === "android" || /Android/.test(globalThis.navigator?.userAgent ?? ""));
+
 let plugin: CCNative | null = null;
 /** The app's native plugin, called through the bridge the app injects into the page. */
 export function native(): CCNative {
@@ -28,9 +34,9 @@ export function native(): CCNative {
   const c = cap();
   if (c?.nativePromise) {
     const call = <T,>(method: string) => (o: unknown) => c.nativePromise!<T>("CCNative", method, o);
-    plugin = Object.fromEntries(["signInWithApple", "garminLogin", "openAuth", "healthAvailable", "healthAuthorize", "healthWorkouts", "healthWorkoutDetail", "healthDaily"].map((m) => [m, call(m)])) as unknown as CCNative;
+    plugin = Object.fromEntries(["signInWithApple", "garminLogin", "openAuth", "openBrowser", "healthAvailable", "healthAuthorize", "healthWorkouts", "healthWorkoutDetail", "healthDaily"].map((m) => [m, call(m)])) as unknown as CCNative;
   } else if (c?.registerPlugin) plugin = c.registerPlugin<CCNative>("CCNative");
-  else throw new Error(isNativeApp() ? "This version of the app can't do this yet: update Pacelife in TestFlight." : "This needs the Pacelife iPhone app.");
+  else throw new Error(isNativeApp() ? "This version of the app can't do this yet: update Pacelife." : "This needs the Pacelife app.");
   return plugin;
 }
 
