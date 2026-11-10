@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       input:
         mode === "phone"
-          ? { phone: resolve(__dirname, "phone.html") }
+          ? { phone: resolve(__dirname, "phone.html"), web: resolve(__dirname, "web.html") }
           : {
               main: resolve(__dirname, "index.html"),
               quickadd: resolve(__dirname, "quickadd.html"),

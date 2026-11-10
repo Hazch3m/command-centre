@@ -776,6 +776,9 @@ export default {
       if (account && url.pathname === "/api/claim") return err(404, "unknown request");
       return store(account ? "acct:" + account : "main").fetch(req);
     }
+    // pacelife.run: the website (what Pacelife is) at the front; the app on the web at /web.
+    // The sync service's own address keeps the phone app at "/".
+    if (url.pathname === "/" && /(^|\.)pacelife\.run$/.test(url.hostname)) return env.ASSETS.fetch(new Request(new URL("/about", url), req));
     return env.ASSETS.fetch(req);
   },
 } satisfies ExportedHandler<Env>;

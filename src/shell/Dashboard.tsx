@@ -4,6 +4,7 @@ import { flushSync } from "react-dom";
 import GridLayout, { type Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import { backend } from "@backend";
+import { notifyChanged } from "../core/events";
 import { getSettings, subscribeSettings } from "../core/settings";
 import { useNow } from "../core/time";
 import { NavContext } from "./nav";
@@ -22,6 +23,24 @@ function BackgroundJobs() {
   usePhoneSync();
   useAutoRefresh();
   useWatchAutoSync();
+  return null;
+}
+
+/** On the web the data lives in your cloud account: fetch what's new every couple of minutes and when you come back to the tab. */
+function WebRefresh() {
+  useEffect(() => {
+    const pull = () =>
+      import("../core/backend.phone").then(async (m) => {
+        if (await m.refresh()) await notifyChanged("*");
+      });
+    const iv = window.setInterval(pull, 2 * 60_000);
+    const vis = () => document.visibilityState === "visible" && pull();
+    document.addEventListener("visibilitychange", vis);
+    return () => {
+      window.clearInterval(iv);
+      document.removeEventListener("visibilitychange", vis);
+    };
+  }, []);
   return null;
 }
 
@@ -412,7 +431,7 @@ export function Dashboard() {
 
       {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
       <RunViewHost />
-      <BackgroundJobs />
+      {backend.kind === "phone" ? <WebRefresh /> : <BackgroundJobs />}
     </div>
     </NavContext.Provider>
   );
