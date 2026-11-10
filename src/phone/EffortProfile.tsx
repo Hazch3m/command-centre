@@ -49,7 +49,7 @@ interface Block {
   zone: Zone;
 }
 
-const zonesOf = (plan?: Plan): Zones => {
+export const zonesOf = (plan?: Plan): Zones => {
   const z = (re: RegExp) => plan?.paces.find((x) => re.test(x.zone))?.now;
   return { MP: z(/^Marathon pace/i), HMP: z(/^Half marathon pace/i), T: z(/^Threshold/i) };
 };
@@ -191,4 +191,65 @@ export function SessionSegments({ text, plan }: { text: string; plan?: Plan }) {
       </li>
     </ol>
   );
+}
+
+// ---- A done workout: its laps matched to the session's steps --------------------------------
+
+export interface LapLike {
+  distance: number;
+  moving_time: number;
+  speed: number;
+  hr?: number | null;
+}
+export interface WorkoutLap {
+  lap: LapLike;
+  role: "warmup" | "work" | "recovery" | "cooldown" | "other";
+  label: string;
+  /** Target pace range, s/km. */
+  target: [number, number] | null;
+}
+
+const rangeOf = (target: string): [number, number] | null => {
+  const m = /(\d{1,2}):(\d{2})\s*(?:-\s*(\d{1,2}):(\d{2}))?/.exec(target);
+  if (!m) return null;
+  const a = +m[1] * 60 + +m[2];
+  return [a, m[3] ? +m[3] * 60 + +m[4] : a];
+};
+
+/**
+ * Names each lap of a structured run: when the laps line up with the planned steps (the watch makes a
+ * lap per step) they take the step's name and target; otherwise the clearly faster laps are the reps.
+ */
+export function workoutLaps(laps: LapLike[], planned: string | null | undefined, plan?: Plan): WorkoutLap[] | null {
+  const ls = laps.filter((l) => l.distance > 30 && l.moving_time > 5);
+  if (ls.length < 4) return null;
+  const w = planned ? sessionToWorkout(planned, zonesOf(plan)) : null;
+  const flat: { s: Step; rep?: number; of?: number }[] = [];
+  for (const it of w?.steps ?? []) {
+    if (it.kind === "repeat") for (let r = 0; r < it.times; r++) for (const st of it.steps) flat.push({ s: st, rep: r + 1, of: it.times });
+    else flat.push({ s: it });
+  }
+  const roleOf = (k: string): WorkoutLap["role"] => (k === "warmup" ? "warmup" : k === "cooldown" ? "cooldown" : k === "interval" ? "work" : k === "recovery" || k === "rest" ? "recovery" : "other");
+  // The watch's laps follow the steps (sometimes the last cool-down is split, or strides add laps).
+  if (flat.length >= 3 && ls.length >= flat.length - 1 && ls.length <= flat.length + 6) {
+    return ls.map((lap, i) => {
+      const f = flat[Math.min(i, flat.length - 1)];
+      const role = i < flat.length ? roleOf(f.s.kind) : "cooldown";
+      const name = role === "warmup" ? "Warm-up" : role === "cooldown" ? "Cool-down" : role === "work" ? `Rep ${f.rep ?? ""}${f.of ? ` of ${f.of}` : ""}`.trim() : /^float/i.test(f.s.notes ?? "") ? "Float" : "Recovery";
+      return { lap, role, label: name, target: role === "work" || /^float/i.test(f.s.notes ?? "") ? rangeOf(f.s.target) : null };
+    });
+  }
+  // No match: by pace. Reps are the laps well faster than the run's middle pace.
+  const paces = ls.map((l) => l.moving_time / (l.distance / 1000)).sort((a, b) => a - b);
+  const mid = paces[Math.floor(paces.length / 2)];
+  const fast = ls.filter((l) => l.moving_time / (l.distance / 1000) < mid * 0.93).length;
+  if (fast < 2) return null;
+  let rep = 0;
+  return ls.map((lap, i) => {
+    const p = lap.moving_time / (lap.distance / 1000);
+    const work = p < mid * 0.93;
+    if (work) rep++;
+    const role: WorkoutLap["role"] = work ? "work" : rep === 0 ? "warmup" : rep >= fast && !ls.slice(i + 1).some((x) => x.moving_time / (x.distance / 1000) < mid * 0.93) ? "cooldown" : "recovery";
+    return { lap, role, label: work ? `Rep ${rep}` : role === "warmup" ? "Warm-up" : role === "cooldown" ? "Cool-down" : "Recovery", target: null };
+  });
 }
