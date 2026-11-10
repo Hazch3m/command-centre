@@ -68,11 +68,16 @@ export function plannedSeconds(text: string, cuts: Cuts, zones: Zones = {}): Foc
   for (const s of flatten(w.steps)) {
     const p = paceOf(s.target);
     const secs = seconds(s, p ?? easy);
-    let k: FocusKind;
-    if (p) k = p <= cuts.anaerobic ? "anaerobic" : p < cuts.low ? "high" : "low";
-    else if (s.kind === "interval" && s.target === "open") k = /hill|sprint|stride/i.test(s.notes ?? "") || /hill/i.test(text) ? "anaerobic" : "high";
-    else k = "low";
-    m[k] += secs;
+    // Like Garmin's anaerobic: short hard reps (a couple of minutes at 10K pace) work it too, not just
+    // 5K pace and faster; sprints and strides count for more than their few seconds.
+    if (p && p <= cuts.anaerobic) m.anaerobic += secs;
+    else if (p && s.kind === "interval" && secs <= 180 && p < cuts.low - 15) {
+      m.anaerobic += secs * 0.5;
+      m.high += secs * 0.5;
+    } else if (p) m[p < cuts.low ? "high" : "low"] += secs;
+    else if (s.kind === "interval" && s.target === "open" && (/hill|sprint|stride/i.test(s.notes ?? "") || /hill|stride/i.test(text))) m.anaerobic += secs <= 40 ? Math.max(secs, 45) : secs;
+    else if (s.kind === "interval" && s.target === "open") m.high += secs;
+    else m.low += secs;
   }
   return m;
 }

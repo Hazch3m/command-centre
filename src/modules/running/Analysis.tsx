@@ -151,6 +151,8 @@ export function Analysis() {
   const [chart, setChart] = useState<ChartKey | null>(null);
   const pick = (k: ChartKey) => setChart((c) => (c === k ? null : k));
   const [tweak, setTweak] = useState(false);
+  /** One section at a time, so the page fits the screen. */
+  const [sec, setSec] = useState<"period" | "distances" | "months" | "weeks">("period");
 
   const model = useMemo(() => {
     if (!f || !q) return null;
@@ -241,10 +243,27 @@ export function Analysis() {
             today={today}
             thresholdPace={model.paces?.threshold ?? null}
             easyPace={model.paces ? (Array.isArray(model.paces.easy) ? (model.paces.easy[0] + model.paces.easy[1]) / 2 : model.paces.easy) : null}
-            onMonth={(m) => setMonth(m)}
+            onMonth={(m) => (setMonth(m), setSec("period"))}
             onClose={() => setChart(null)}
           />
         )}
+        <nav className="segmented small-seg ana-secs" role="tablist">
+          {(
+            [
+              ["period", month ? "Month" : "Week"],
+              ["distances", "Mileage or pace"],
+              ["months", "Months"],
+              ["weeks", "Last 10 weeks"],
+            ] as const
+          ).map(([k, l]) => (
+            <button key={k} type="button" role="tab" aria-selected={sec === k} className={sec === k ? "on" : ""} onClick={() => setSec(k)}>
+              {l}
+            </button>
+          ))}
+        </nav>
+        <div className="ana-sec">
+        {sec === "period" && (
+          <>
         <div className="ana-weekbar">
           {month ? (
             <>
@@ -364,17 +383,16 @@ export function Analysis() {
             </tbody>
           </table>
         </div>
-
-        {model.gaps.length > 0 && <Gaps gaps={model.gaps} biggestWeek={Math.max(0, ...weeks.slice(0, 10).map((w) => w.sum.dist / 1000))} />}
-
-        <h3 className="ana-h">Months</h3>
-        <SummaryTable rows={months.slice(0, 6).map((m, i) => ({ ...m, prev: months[i + 1]?.sum ?? null }))} show={show} sel={month} onPick={(k) => (setMonth(k), scrollTop())} />
-        <h3 className="ana-h">Last 10 training weeks</h3>
-        <SummaryTable rows={weeks.slice(0, 10).map((w, i) => ({ ...w, label: i === 0 ? `This week · ${w.label}` : w.label, prev: weeks[i + 1]?.sum ?? null }))} show={show} sel={month ? null : monday} onPick={(k) => (setMonth(null), setMonday(k), scrollTop())} />
+          </>
+        )}
+        {sec === "distances" && model.gaps.length > 0 && <Gaps gaps={model.gaps} biggestWeek={Math.max(0, ...weeks.slice(0, 10).map((w) => w.sum.dist / 1000))} />}
+        {sec === "months" && <SummaryTable rows={months.slice(0, 12).map((m, i) => ({ ...m, prev: months[i + 1]?.sum ?? null }))} show={show} sel={month} onPick={(k) => (setMonth(k), setSec("period"))} />}
+        {sec === "weeks" && <SummaryTable rows={weeks.slice(0, 10).map((w, i) => ({ ...w, label: i === 0 ? `This week · ${w.label}` : w.label, prev: weeks[i + 1]?.sum ?? null }))} show={show} sel={month ? null : monday} onPick={(k) => (setMonth(null), setMonday(k), setSec("period"))} />}
         <p className="ana-note">
           Zones: pace from your training paces (easy, steady, threshold, interval, faster), heart rate from your zones ({model.zones.source ?? "your settings"}). VO2 max is each run's effective VO2 max from pace and heart rate; the arrow compares it with your shape at the
           time (↑ well above, ↗ above, → as usual, ↘ below, ↓ well below). Cadence, ground contact, vertical ratio and training effect come from Garmin.
         </p>
+        </div>
       </div>
 
       <aside className="ana-side">
@@ -619,8 +637,6 @@ function CalcSettings({ f, onClose }: { f: Fitness; onClose: () => void }) {
   );
 }
 
-/** Back to the top of the page (the opened month or chart is there). */
-const scrollTop = () => document.querySelector(".ana")?.scrollIntoView({ behavior: "smooth", block: "start" });
 
 const mmss = (s: number) => `${Math.floor(Math.round(s) / 60)}:${String(Math.round(s) % 60).padStart(2, "0")}`;
 

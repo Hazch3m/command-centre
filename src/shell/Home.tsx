@@ -5,15 +5,14 @@ import { useQuery } from "../core/useQuery";
 import { latest as latestHealth, loadHealth } from "../modules/health/data";
 import { useFitness } from "../modules/running/fitness";
 import { forecastWeek, type ForecastDay } from "../modules/running/forecast";
-import { mondayOf, priorityOf, upcomingRaces, weekFor, type PlanRace } from "../modules/running/plan";
-import { openRun, openWeek } from "../modules/running/RunView";
-import { duration, pace, weeklyTotals } from "../modules/running/stats";
+import { mondayOf, priorityOf, upcomingRaces, type PlanRace } from "../modules/running/plan";
+import { openRun } from "../modules/running/RunView";
+import { duration, pace } from "../modules/running/stats";
 import { loadDetails, loadOverrides } from "../modules/running/strava";
 import { useRunningData } from "../modules/running/useRunning";
 import { predictionChange } from "../modules/running/goalTrend";
 import { EffortProfile, segmentsOf, zoneOf } from "../phone/EffortProfile";
 import { sessionTitle } from "../phone/Today";
-import { BarChart } from "./charts";
 import { BuildingCard, RaceEquivalence } from "./HomeCharts";
 import { useNav } from "./nav";
 
@@ -80,29 +79,6 @@ export function Home() {
 
   const monday = mondayOf(today);
   const weeks = useMemo(() => (plan ? [forecastWeek(plan, monday, runs, overrides), forecastWeek(plan, addDays(monday, 7), runs, overrides)] : null), [plan, monday, runs, overrides]);
-  const bars = useMemo(() => {
-    if (!plan) return { bars: [], focus: 0, weeks: [] as string[] };
-    const past = Array.from({ length: 12 }, (_, i) => addDays(monday, (i - 11) * 7));
-    const tot = new Map(weeklyTotals(runs, past[0], monday).map((w) => [w.week, w]));
-    const ahead = plan.weeks.filter((w) => w.start > monday).slice(0, 8).map((w) => w.start);
-    const label = (w: string, i: number) => (parseKey(w).getDate() <= 7 || i === 0 ? MON[parseKey(w).getMonth()] : "");
-    return {
-      weeks: past,
-      focus: past.length - 1,
-      bars: [
-        ...past.map((w, i) => {
-          const pw = weekFor(plan, w);
-          const t = tot.get(w);
-          return { label: label(w, i), value: t?.km ?? 0, target: pw?.kmMin ?? null, targetMax: pw?.kmMax ?? null, highlight: w === monday, title: `Week of ${fmt(w)}: ${(t?.km ?? 0).toFixed(1)} km, ${t?.runs ?? 0} runs` };
-        }),
-        ...ahead.map((w, i) => {
-          const pw = weekFor(plan, w);
-          const km = forecastWeek(plan, w, [], overrides).plannedKm ?? 0;
-          return { label: label(w, i + 1), value: km, target: pw?.kmMin ?? null, targetMax: pw?.kmMax ?? null, planned: true, title: `Week of ${fmt(w)}: planned ${Math.round(km)} km${pw?.phase ? ` · ${pw.phase}` : ""}` };
-        }),
-      ],
-    };
-  }, [plan, runs, monday, overrides]);
 
   if (!plan || !weeks) return <div className="home-wait">Loading your training…</div>;
   const [fw, next] = weeks;
@@ -113,11 +89,10 @@ export function Home() {
   const pct = pk ? Math.min(1, fw.actualKm / pk) : 0;
   const upcoming = [...fw.days, ...next.days].filter((d) => d.date >= today && isRun(d) && !(d.date === today && d.runs.length));
   const nextRun = upcoming[0] ?? null;
-  const keys = upcoming.filter((d) => d.kind === "key" || d.kind === "long" || d.race).slice(0, 4);
+  const keys = upcoming.filter((d) => d.kind === "key" || d.kind === "long" || d.race).slice(0, 3);
   const vo2 = f?.current != null ? f.current + f.shift : null;
   const vo2ch = f?.slope != null ? f.slope * 4 : null;
-  const est = new Map((f?.estimates ?? []).map((e) => [e.id, e.vo2 + (f?.shift ?? 0)]));
-  const recent = [...runs].sort((a, b) => b.start_local.localeCompare(a.start_local)).slice(0, 8);
+  const recent = [...runs].sort((a, b) => b.start_local.localeCompare(a.start_local)).slice(0, 7);
   const h = latestHealth(health);
   const gk = goal ? raceKm(goal) : null;
   const goalPred = gk != null && f ? f.predictions.find((p) => Math.abs(p.distance / 1000 - gk) < 0.6) : null;
@@ -167,13 +142,17 @@ export function Home() {
             {goal ? `${goal.target ? `goal ${goal.target}` : fmt(goal.date!)}${goalPred?.seconds ? ` · now ${duration(goalPred.seconds)}` : ""}` : "Add one in Training → Edit plan"}
           </span>
         </button>
-        <button type="button" className="kpi" onClick={() => go("analysis")}>
-          <span className="kpi-l">Marathon shape</span>
-          <span className="kpi-v num">{f?.shape ? `${Math.round(f.shape.total * 100)}` : "–"}<small> %</small></span>
-          <span className="kpi-bar">
-            <i style={{ width: `${Math.min(1, f?.shape?.total ?? 0) * 100}%` }} />
+        <button type="button" className="kpi" onClick={() => go("health")}>
+          <span className="kpi-l">Health</span>
+          <span className="kpi-v num">
+            {h.rhr ? Math.round(h.rhr) : "–"}
+            <small> bpm resting</small>
           </span>
-          <span className="kpi-s">volume and long runs for 42 km</span>
+          <span className="kpi-s">
+            HRV {h.hrv ? `${Math.round(h.hrv)} ms` : "–"}
+            {h.sleep_secs ? ` · sleep ${duration(h.sleep_secs).replace(/:\d\d$/, "")}` : ""}
+            {h.readiness != null ? ` · ready ${h.readiness}` : ""}
+          </span>
         </button>
       </section>
 
@@ -232,8 +211,8 @@ export function Home() {
         {/* What's coming: the key sessions and races of the next fortnight. */}
         <section className="home-card home-next">
           <header>
-            <h3>Key sessions</h3>
-            <span className="muted small">next two weeks</span>
+            <h3>Coming up</h3>
+            <span className="muted small">key sessions, next two weeks</span>
           </header>
           <ul className="hn-list">
             {keys.length === 0 && <li className="muted small">No key sessions in the next two weeks.</li>}
@@ -252,64 +231,26 @@ export function Home() {
               </li>
             ))}
           </ul>
+          {races.length > 0 && (
+            <>
+              <h4>Races</h4>
+              <ul className="hn-races">
+                {races.slice(0, 4).map((r) => (
+                  <li key={r.name + r.date}>
+                    <span className={`hn-pri pri-${priorityOf(r)}`}>{priorityOf(r)}</span>
+                    <span className="hn-race">{r.name}</span>
+                    <span className="muted small">{r.target ?? ""}</span>
+                    <span className="num">{r.days} d</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </section>
 
         {/* Are you building: km by intensity with VO2 max over it, and what it adds up to. */}
         {f && details && <BuildingCard f={f} runs={runs} details={details} today={today} />}
-        <div className="home-side">
-          {f && <RaceEquivalence f={f} runs={runs} plan={plan} today={today} />}
-          {/* Health: last night and this morning, small. */}
-          <section className="home-card home-health2">
-            <header>
-              <h3>Health</h3>
-              <span className="muted small">{h.dates?.rhr ? `from ${fmt(h.dates.rhr)}` : ""}</span>
-              <button type="button" className="home-link" onClick={() => go("health")}>
-                Health ›
-              </button>
-            </header>
-            <div className="hh-grid">
-              <span>
-                <small>Resting HR</small>
-                <b className="num">{h.rhr ? Math.round(h.rhr) : "–"}</b>
-                <i>bpm</i>
-              </span>
-              <span>
-                <small>HRV</small>
-                <b className="num">{h.hrv ? Math.round(h.hrv) : "–"}</b>
-                <i>{h.hrv_status ? h.hrv_status.toLowerCase() : "ms"}</i>
-              </span>
-              <span>
-                <small>Sleep</small>
-                <b className="num">{h.sleep_secs ? duration(h.sleep_secs).replace(/:\d\d$/, "") : "–"}</b>
-                <i>{h.sleep_score ? `score ${h.sleep_score}` : "h"}</i>
-              </span>
-              <span>
-                <small>Body battery</small>
-                <b className="num">{h.bb_high ?? "–"}</b>
-                <i>{h.bb_low != null ? `low ${h.bb_low}` : ""}</i>
-              </span>
-              <span>
-                <small>Readiness</small>
-                <b className="num">{h.readiness ?? "–"}</b>
-                <i>{h.readiness_level ? h.readiness_level.toLowerCase() : ""}</i>
-              </span>
-              <span>
-                <small>VO2 max (Garmin)</small>
-                <b className="num">{h.vo2 ?? "–"}</b>
-                <i />
-              </span>
-            </div>
-          </section>
-        </div>
-
-        {/* Volume: what you ran, and what the plan has ahead. */}
-        <section className="home-card home-volume">
-          <header>
-            <h3>Kilometres per week</h3>
-            <span className="muted small">last 12 weeks · faint: the plan's next 8</span>
-          </header>
-          <BarChart bars={bars.bars} height={190} unit=" km" axis showValues={false} onBar={(i) => (i < bars.weeks.length ? openWeek(bars.weeks[i]) : undefined)} />
-        </section>
+        {f && <RaceEquivalence f={f} runs={runs} plan={plan} today={today} news={<PredictionNews runs={runs} today={today} />} />}
 
         <section className="home-card home-runs">
           <header>
@@ -324,10 +265,9 @@ export function Home() {
                 <th>Date</th>
                 <th>Run</th>
                 <th className="r">km</th>
-                <th className="r">Time</th>
                 <th className="r">Pace</th>
                 <th className="r">HR</th>
-                <th className="r">VO2</th>
+
               </tr>
             </thead>
             <tbody>
@@ -336,55 +276,15 @@ export function Home() {
                   <td className="nowrap">{r.date === today ? "Today" : fmt(r.date)}</td>
                   <td className="home-name">{r.name}</td>
                   <td className="r num">{(r.distance / 1000).toFixed(1)}</td>
-                  <td className="r num">{duration(r.moving_time)}</td>
                   <td className="r num">{pace(r.distance, r.moving_time)}</td>
                   <td className="r num">{r.avg_hr ? Math.round(r.avg_hr) : "–"}</td>
-                  <td className="r num">{est.has(r.id) ? est.get(r.id)!.toFixed(1) : "–"}</td>
+
                 </tr>
               ))}
             </tbody>
           </table>
         </section>
 
-        <section className="home-card home-preds">
-          <header>
-            <h3>Races</h3>
-            <span className="muted small">{f?.predictions[0]?.source === "garmin" ? "Garmin" : "from your runs"} · change in 30 days</span>
-          </header>
-          <PredictionNews runs={runs} today={today} />
-          <table className="home-table">
-            <tbody>
-              {(f?.predictions ?? []).map((p) => {
-                const ch = p.seconds != null && p.monthAgoSeconds != null ? p.seconds - p.monthAgoSeconds : null;
-                return (
-                  <tr key={p.name}>
-                    <td>{p.name}</td>
-                    <td className="r num">
-                      <b>{p.seconds != null ? duration(p.seconds) : "–"}</b>
-                    </td>
-                    <td className={"r num " + (ch == null ? "muted" : ch < 0 ? "up" : ch > 0 ? "down" : "muted")}>{ch == null ? "–" : `${ch <= 0 ? "−" : "+"}${duration(Math.abs(ch))}`}</td>
-                    <td className="r num muted">{p.target ?? ""}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {races.length > 0 && (
-            <>
-              <h4>Coming up</h4>
-              <ul className="hn-races">
-                {races.slice(0, 4).map((r) => (
-                  <li key={r.name + r.date}>
-                    <span className={`hn-pri pri-${priorityOf(r)}`}>{priorityOf(r)}</span>
-                    <span className="hn-race">{r.name}</span>
-                    <span className="muted small">{r.target ?? ""}</span>
-                    <span className="num">{r.days} d</span>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </section>
       </div>
 
     </div>

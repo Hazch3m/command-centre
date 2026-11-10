@@ -6009,7 +6009,7 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .plan-home-col { display: flex; flex-direction: column; gap: 0.7rem; min-width: 0; }
 .plan-home-goal { min-width: 0; font-size: 0.92em; }
 .plan-home-goal .gc-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.8rem; align-items: start; }
-.plan-home-goal .gc-cards, .plan-home-goal .gc-ready { display: block; min-width: 0; }
+.plan-home-goal .gc-cards, .plan-home-goal .gc-side { display: block; min-width: 0; }
 .plan-home .pwv-days { gap: 0.4rem; }
 .plan-home .pwv-day { padding: 0.5rem 0.55rem 0.45rem; gap: 0.22rem; }
 .plan-home .pwv-km-big { font-size: 1.3rem; }
@@ -6026,7 +6026,7 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .plan-home { flex: 1; min-height: 0; grid-template-rows: auto minmax(0, 1fr); }
 .plan-home > .plan-home-col, .plan-home > .plan-home-goal { min-height: 0; max-height: 100%; overflow-y: auto; scrollbar-width: thin; padding-bottom: 2px; }
 .plan-home-goal .gc-wrap { max-height: 100%; }
-.plan-home-goal .gc-ready { max-height: 100%; overflow-y: auto; scrollbar-width: thin; }
+.plan-home-goal .gc-side { max-height: 100%; overflow-y: auto; scrollbar-width: thin; }
 @media (max-width: 1250px), (max-height: 700px) {
   .tab-page-running .subpage:has(.plan-home) { display: block; overflow-y: auto; }
   .plan-home > .plan-home-col, .plan-home > .plan-home-goal { max-height: none; overflow: visible; }
@@ -6069,7 +6069,7 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .plan-home-goal .gc-wrap { height: 100%; align-items: stretch; }
 .plan-home-goal .gc-cards { display: flex; flex-direction: column; gap: 0.5rem; min-height: 0; }
 .plan-home-goal .gc-cards > .gc-card { flex: 1; width: 100%; max-width: none; }
-.plan-home-goal .gc-ready { height: 100%; }
+.plan-home-goal .gc-side { height: 100%; }
 .gc-chips { display: flex; gap: 0.3rem; overflow-x: auto; scrollbar-width: none; flex: none; }
 .gc-chips button { flex: none; font: inherit; font-size: 0.78rem; padding: 0.25rem 0.6rem; border-radius: 999px; border: 1px solid var(--line); background: var(--card-2); color: var(--text-2); cursor: pointer; white-space: nowrap; }
 .gc-chips button.on { background: color-mix(in srgb, var(--c-running) 18%, var(--card-2)); border-color: color-mix(in srgb, var(--c-running) 55%, var(--line)); color: var(--text); font-weight: 650; }
@@ -6112,9 +6112,9 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .pwc .chart-readout { display: none; }
 .plan-home .pwv-day { min-height: 0; }
 .plan-home .pwv-notes { padding: 0.2rem 0.7rem; }
-.plan-home-goal .gc-ready .p-section-head { position: static; background: none; -webkit-mask: none; mask: none; padding: 0 0.3rem 0.4rem; border-radius: 0; }
-.plan-home-goal .gc-ready .p-section-head h2 { font-size: 1.1rem; }
-.plan-home-goal .gc-ready > .p-section, .plan-home-goal .gc-ready section { overflow: visible; }
+.plan-home-goal .gc-side .p-section-head { position: static; background: none; -webkit-mask: none; mask: none; padding: 0 0.3rem 0.4rem; border-radius: 0; }
+.plan-home-goal .gc-side .p-section-head h2 { font-size: 1.1rem; }
+.plan-home-goal .gc-side > .p-section, .plan-home-goal .gc-side section { overflow: visible; }
 .gc-trend { display: block; font-style: normal; font-size: 0.7rem; font-weight: 700; margin-top: 1px; }
 .gc-trend.up, .gc-trend-line.up { color: #2e9e5b; }
 .gc-trend.down, .gc-trend-line.down { color: #e8634e; }
@@ -6191,7 +6191,7 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
   .plan-home > .plan-home-col, .plan-home > .plan-home-goal { max-height: none; overflow: visible; }
 }
 .plan-home-goal .gc-wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-.plan-home-goal .gc-cards, .plan-home-goal .gc-ready { overflow-y: auto; scrollbar-width: thin; min-height: 0; }
+.plan-home-goal .gc-cards, .plan-home-goal .gc-side { overflow-y: auto; scrollbar-width: thin; min-height: 0; }
 .plan-home-goal .gc-card { min-width: 0; }
 .pwc-body { display: flex; align-items: stretch; gap: 4px; }
 .pwc-chart { flex: 1; min-width: 0; }
@@ -6209,4 +6209,70 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
   .home-card h3 { font-size: 13px; }
 }
 /* Readiness beside the goal card: room for its edges (it's drawn a little wider than its box). */
-.plan-home-goal .gc-ready { padding: 0 4px 0 14px; overflow-x: hidden; }
+.plan-home-goal .gc-side { padding: 0 4px 0 14px; overflow-x: hidden; }
+
+/* ---- Home fills the screen, no scrolling: numbers, then two rows that share the height ---- */
+.tab-page-home { overflow: hidden; }
+.home { height: 100%; min-height: 0; padding-bottom: 0; }
+.home-grid { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr) minmax(0, 1.15fr); align-items: stretch; }
+.home-grid > .home-card { min-height: 0; overflow: hidden; }
+.home-week { grid-column: span 8 !important; grid-row: 1; }
+.home-next { grid-column: span 4 !important; grid-row: 1; overflow-y: auto !important; scrollbar-width: none; }
+.home-build { grid-column: span 5 !important; grid-row: 2; }
+.home-equiv { grid-column: span 4 !important; grid-row: 2; }
+.home-runs { grid-column: span 3 !important; grid-row: 2; }
+.hw-days { flex: 1; min-height: 0; }
+.hw-day { min-height: 0 !important; overflow: hidden; }
+.build-chart { flex: 1 1 0; min-height: 0; overflow: hidden; }
+.build-facts { gap: 2px 14px; }
+.home-runs .home-table td, .home-runs .home-table th { padding: 3px 4px; }
+.home-equiv .home-table td, .home-equiv .home-table th { padding: 3px 5px; }
+.home-equiv .equiv-bar-cell { width: 22%; }
+.home-equiv .home-sum { font-size: 11px; }
+.hn-races li { padding: 2px 0; }
+@media (max-width: 1100px) {
+  .home-week { grid-column: span 12 !important; }
+  .home-next { display: none; }
+  .home-build { grid-column: span 6 !important; }
+  .home-equiv { grid-column: span 6 !important; }
+  .home-runs { display: none; }
+}
+
+/* Training → Plan v4: week on the left, one side panel at a time on the right; fills the screen. */
+.tab-page-running .subpage:has(.plan-home2) { display: flex; flex-direction: column; overflow: hidden; }
+.tab-page-running .subpage:has(.plan-home2) > .page-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.plan-home2 { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(19rem, 25rem); gap: 0.8rem; }
+.ph-main { display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; min-height: 0; }
+.ph-main .pwv { flex: 1; min-height: 0; }
+.ph-side { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; min-height: 0; }
+.ph-tabs { align-self: stretch; display: flex; }
+.ph-tabs button { flex: 1; font-size: 0.78rem; padding: 0.3rem 0.3rem; }
+.ph-panel { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; display: flex; flex-direction: column; gap: 0.6rem; }
+.ph-panel .gc-wrap { display: block; }
+.side-goal .gc-side { display: none; }
+.side-ready .gc-cards > .gc-card { display: none; }
+.side-ready .gc-chips { margin-bottom: 0.4rem; }
+.ph-panel .gc-cards { display: flex; flex-direction: column; gap: 0.5rem; }
+.ph-panel .gc-card { width: 100%; max-width: none; }
+.ph-panel .gc-side { display: block; padding: 0; overflow: visible; }
+.side-goal .gc-side { display: none; }
+.ph-panel .wp { padding: 0.8rem 0.9rem; }
+.ph-main .pwv-days { gap: 0.35rem; }
+.ph-main .pwv-day { padding: 0.45rem 0.5rem; }
+.ph-main .pwv-km-big { font-size: 1.25rem; }
+.ph-main .pwv-text { font-size: 0.78rem; }
+@media (max-width: 950px), (max-height: 560px) {
+  .tab-page-running .subpage:has(.plan-home2) { display: block; overflow-y: auto; }
+  .plan-home2 { display: flex; flex-direction: column; }
+  .ph-panel { overflow: visible; }
+}
+
+/* Analysis fills the screen: the main column and the side panel each scroll inside if they must. */
+.tab-page-analysis { overflow: hidden; }
+.tab-page-analysis > .ana, .tab-page-analysis .ana { flex: 1; min-height: 0; height: 100%; align-items: stretch; }
+.ana-main { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.ana-secs { align-self: flex-start; margin: 0 0 8px; }
+.ana-sec { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.ana-side { min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.ana-chart { flex: none; }
+@media (max-width: 1100px) { .tab-page-analysis { overflow-y: auto; } .ana-main, .ana-sec, .ana-side { overflow: visible; } }

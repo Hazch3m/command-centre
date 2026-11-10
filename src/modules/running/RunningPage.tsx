@@ -89,6 +89,64 @@ const fmtDate = (d: string) => {
   return `${x.getDate()} ${MON[x.getMonth()]}`;
 };
 
+const SIDE_TABS = [
+  { id: "week", label: "This week" },
+  { id: "build", label: "The build" },
+  { id: "goal", label: "Goal" },
+  { id: "ready", label: "Readiness" },
+] as const;
+type SideTab = (typeof SIDE_TABS)[number]["id"];
+
+/**
+ * Training → Plan on one screen: the weekly km chart and the week on the left; on the right one panel
+ * at a time (this week's progress and plan check, the build to your race, the goal, readiness).
+ */
+function PlanHome({ plan, runs }: { plan: Plan; runs: Run[] }) {
+  const [side, setSideState] = useState<SideTab>(() => {
+    try {
+      const v = localStorage.getItem("cc-plan-side") as SideTab | null;
+      return v && SIDE_TABS.some((t) => t.id === v) ? v : "week";
+    } catch {
+      return "week";
+    }
+  });
+  const setSide = (t: SideTab) => {
+    setSideState(t);
+    try {
+      localStorage.setItem("cc-plan-side", t);
+    } catch {
+      /* private mode */
+    }
+  };
+  return (
+    <div className="plan-home2">
+      <div className="ph-main">
+        <PlanWeeksChart plan={plan} runs={runs} />
+        <PlanWeekView plan={plan} runs={runs} hideStrip />
+      </div>
+      <aside className={`ph-side side-${side}`}>
+        <nav className="segmented small-seg ph-tabs" role="tablist">
+          {SIDE_TABS.map((t) => (
+            <button key={t.id} type="button" role="tab" aria-selected={side === t.id} className={side === t.id ? "on" : ""} onClick={() => setSide(t.id)}>
+              {t.label}
+            </button>
+          ))}
+        </nav>
+        <div className="ph-panel pl-embed">
+          {side === "week" && (
+            <>
+              <WeekProgressCard plan={plan} runs={runs} />
+              <PlanCoach plan={plan} />
+            </>
+          )}
+          {side === "build" && <WeekAhead plan={plan} onDay={(d) => window.dispatchEvent(new CustomEvent("cc:plan-day", { detail: d }))} />}
+          {(side === "goal" || side === "ready") && <GoalCarousel plan={plan} split />}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 /** How the week's going: progress, streaks. */
 function WeekProgressCard({ plan, runs }: { plan: Plan; runs: Run[] }) {
   const today = useToday();
@@ -237,24 +295,7 @@ export function RunningPage() {
             {/* The week (or weeks) first and widest; how the plan's going alongside. */}
             {view === "week" ? (
               /* The week across the top; under it how it's going, what's coming, and the goal. */
-              <div className="plan-home">
-                <div className="plan-home-chart">
-                  <PlanWeeksChart plan={plan} runs={runs} />
-                </div>
-                <div className="plan-home-week">
-                  <PlanWeekView plan={plan} runs={runs} hideStrip />
-                </div>
-                <div className="plan-home-col">
-                  <WeekProgressCard plan={plan} runs={runs} />
-                  <PlanCoach plan={plan} />
-                </div>
-                <div className="plan-home-col pl-embed">
-                  <WeekAhead plan={plan} onDay={(d) => window.dispatchEvent(new CustomEvent("cc:plan-day", { detail: d }))} />
-                </div>
-                <div className="plan-home-goal pl-embed">
-                  <GoalCarousel plan={plan} split />
-                </div>
-              </div>
+              <PlanHome plan={plan} runs={runs} />
             ) : (
               <div className="plan-focus">
                 <div className="plan-focus-main">

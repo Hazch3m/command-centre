@@ -230,14 +230,47 @@ export function workoutLaps(laps: LapLike[], planned: string | null | undefined,
     else flat.push({ s: it });
   }
   const roleOf = (k: string): WorkoutLap["role"] => (k === "warmup" ? "warmup" : k === "cooldown" ? "cooldown" : k === "interval" ? "work" : k === "recovery" || k === "rest" ? "recovery" : "other");
-  // The watch's laps follow the steps (sometimes the last cool-down is split, or strides add laps).
-  if (flat.length >= 3 && ls.length >= flat.length - 1 && ls.length <= flat.length + 6) {
-    return ls.map((lap, i) => {
-      const f = flat[Math.min(i, flat.length - 1)];
-      const role = i < flat.length ? roleOf(f.s.kind) : "cooldown";
-      const name = role === "warmup" ? "Warm-up" : role === "cooldown" ? "Cool-down" : role === "work" ? `Rep ${f.rep ?? ""}${f.of ? ` of ${f.of}` : ""}`.trim() : /^float/i.test(f.s.notes ?? "") ? "Float" : "Recovery";
-      return { lap, role, label: name, target: role === "work" || /^float/i.test(f.s.notes ?? "") ? rangeOf(f.s.target) : null };
-    });
+  // Walk the steps, each taking the laps it covers: a 3 km warm-up the watch split into three 1 km laps
+  // is one warm-up; a timed rep is one lap. Laps of one step are added together.
+  if (flat.length >= 3) {
+    const out: WorkoutLap[] = [];
+    let j = 0;
+    let ok = true;
+    for (let k = 0; k < flat.length && j < ls.length; k++) {
+      const f = flat[k];
+      const d = f.s.duration.trim().toLowerCase();
+      const km = /^(\d+(?:\.\d+)?)\s*km$/.exec(d);
+      const mm = /^(\d+)\s*m$/.exec(d);
+      const tm = /^(\d+):(\d{2})$/.exec(d);
+      const ss = /^(\d+)\s*s$/.exec(d);
+      const wantM = km ? +km[1] * 1000 : mm ? +mm[1] : null;
+      const wantS = tm ? +tm[1] * 60 + +tm[2] : ss ? +ss[1] : null;
+      const last = k === flat.length - 1 || d === "lap";
+      let dist = 0;
+      let time = 0;
+      let hrT = 0;
+      const start = j;
+      do {
+        const l = ls[j++];
+        dist += l.distance;
+        time += l.moving_time;
+        hrT += (l.hr ?? 0) * l.moving_time;
+      } while (j < ls.length && (last ? d === "lap" && k === flat.length - 1 : wantM != null ? dist < wantM * 0.9 : wantS != null ? time < wantS * 0.85 : false));
+      // A step that swallowed far more than it asked for means the laps don't follow the steps.
+      if ((wantS != null && time > wantS * 1.6 + 20) || (wantM != null && dist > wantM * 1.5 + 100)) ok = false;
+      const lap: LapLike = { distance: dist, moving_time: time, speed: time ? dist / time : 0, hr: hrT && time ? hrT / time : null };
+      const role = roleOf(f.s.kind);
+      const float = /^float/i.test(f.s.notes ?? "");
+      const name = role === "warmup" ? "Warm-up" : role === "cooldown" ? "Cool-down" : role === "work" ? `Rep ${f.rep ?? ""}${f.of ? ` of ${f.of}` : ""}`.trim() : float ? "Float" : "Recovery";
+      out.push({ lap, role, label: name + (j - start > 1 && role !== "work" ? ` (${j - start} laps)` : ""), target: role === "work" || float ? rangeOf(f.s.target) : null });
+    }
+    // Whatever's left (strides, a split cool-down) as it is.
+    for (; j < ls.length; j++) out.push({ lap: ls[j], role: "cooldown", label: "Cool-down", target: null });
+    const reps = out.filter((x) => x.role === "work");
+    const rest = out.filter((x) => x.role === "recovery");
+    const pc = (x: WorkoutLap) => x.lap.moving_time / Math.max(1, x.lap.distance / 1000);
+    const avg = (xs: WorkoutLap[]) => xs.reduce((a, x) => a + pc(x), 0) / Math.max(1, xs.length);
+    if (ok && reps.length >= 2 && (!rest.length || avg(reps) < avg(rest))) return out;
   }
   // No match: by pace. Reps are the laps well faster than the run's middle pace.
   const paces = ls.map((l) => l.moving_time / (l.distance / 1000)).sort((a, b) => a - b);

@@ -70,7 +70,7 @@ export function GoalCarousel({ plan, split }: { plan: Plan; split?: boolean }) {
           </div>
           {opt && <GoalCard key={opt.id} opt={opt} mainDate={main?.date} goals={goals} active onTap={() => {}} />}
         </div>
-        <div className="gc-ready">{ready}</div>
+        <div className="gc-side">{ready}</div>
       </div>
     );
   return (
