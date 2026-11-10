@@ -6321,3 +6321,14 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 /* The week's days take the spare height; the next run sits under them at its own size. */
 .ph-main .pwv-days { flex: 1 1 auto; min-height: 9rem; }
 .ph-next { flex: none; max-height: 40%; }
+
+/* Edit plan → Refresh & export */
+.plan-tools { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+.pt-block { background: var(--card-2); border: 1px solid var(--line); border-radius: 12px; padding: 0.8rem 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.pt-block h3 { margin: 0; }
+.pt-block p { margin: 0; }
+.pt-check { display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; font-size: 0.9rem; }
+.pt-examples { margin: 0; padding-left: 1rem; font-size: 0.82rem; display: flex; flex-direction: column; gap: 0.2rem; }
+.pt-examples s { color: var(--text-2); }
+.pt-actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+@media (max-width: 900px) { .plan-tools { grid-template-columns: 1fr; } }

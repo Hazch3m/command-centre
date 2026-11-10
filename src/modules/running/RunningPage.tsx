@@ -37,6 +37,7 @@ import { ImportPlan } from "./ImportPlan";
 import { PlanEditor } from "./PlanEditor";
 import { PlanList } from "./PlanList";
 import { PlanWeekView, PlanWeeksChart } from "./PlanWeekView";
+import { PlanTools } from "./PlanTools";
 import { WatchPage } from "../watch";
 import { TrainingLoad } from "../../phone/TrainingLoad";
 import { RunalyzeMore } from "../../phone/RunalyzeMore";
@@ -63,6 +64,7 @@ const EDIT_VIEWS = [
   { id: "races", label: "Races" },
   { id: "import", label: "Import CSV" },
   { id: "adjust", label: "Adjust" },
+  { id: "refresh", label: "Refresh & export" },
   { id: "about", label: "About this plan" },
   { id: "weeks", label: "Edit week by week" },
 ] as const;
@@ -295,6 +297,7 @@ export function RunningPage() {
             {editView === "races" && <RaceManager plan={plan} />}
             {editView === "import" && <ImportPlan plan={plan} />}
             {editView === "adjust" && <PlanSettings plan={plan} />}
+            {editView === "refresh" && <PlanTools plan={plan} />}
             {editView === "about" && <AboutPlan plan={plan} />}
             {editView === "weeks" && <PlanEditor plan={plan} />}
           </>
