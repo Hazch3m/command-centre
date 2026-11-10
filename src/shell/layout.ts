@@ -10,7 +10,7 @@ export type Orientation = "portrait" | "landscape";
 export const COLS = 24;
 export const ROWS: Record<Orientation, number> = { portrait: 48, landscape: 24 };
 /** Bump when the default arrangement changes enough that old custom layouts no longer fit. */
-export const LAYOUT_VERSION = 7;
+export const LAYOUT_VERSION = 8;
 
 export const orientationOf = (w: number, h: number): Orientation => (h > w ? "portrait" : "landscape");
 
@@ -29,15 +29,15 @@ export const DEFAULTS: Record<Orientation, Record<string, GridPos>> = {
     weather: { x: 12, y: 28, w: 12, h: 10 },
   },
   landscape: {
-    // Top: this week, fitness and race times. Middle: the week's days, with health down the side.
-    // Bottom: the last run and the weather. Heights match what each card holds.
-    running: { x: 0, y: 0, w: 7, h: 10 },
-    fitness: { x: 7, y: 0, w: 10, h: 10 },
-    predictions: { x: 17, y: 0, w: 7, h: 10 },
-    "training-week": { x: 0, y: 10, w: 17, h: 7 },
-    health: { x: 17, y: 10, w: 7, h: 14 },
-    "latest-run": { x: 0, y: 17, w: 11, h: 7 },
-    weather: { x: 11, y: 17, w: 6, h: 7 },
+    // Left: this week, fitness, the week's days and the last run (wide). Right: race times, weather, health.
+    // Heights match what each card holds.
+    running: { x: 0, y: 0, w: 7, h: 12 },
+    fitness: { x: 7, y: 0, w: 10, h: 12 },
+    predictions: { x: 17, y: 0, w: 7, h: 6 },
+    weather: { x: 17, y: 6, w: 7, h: 7 },
+    health: { x: 17, y: 13, w: 7, h: 11 },
+    "training-week": { x: 0, y: 12, w: 17, h: 6 },
+    "latest-run": { x: 0, y: 18, w: 17, h: 6 },
   },
 };
 
