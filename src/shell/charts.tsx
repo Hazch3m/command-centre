@@ -54,7 +54,10 @@ export function BarChart({
   showValues = true,
   digits = 0,
   onBar,
+  axis = false,
 }: {
+  /** Value axis on the left, with light gridlines. */
+  axis?: boolean;
   /** Makes bars clickable. */
   onBar?: (index: number) => void;
   bars: Bar[];
@@ -73,7 +76,7 @@ export function BarChart({
   const [ref, box] = useBox(fill);
   const W = box.w || 1000;
   const H = fill ? Math.max(40, box.h - READOUT) : height;
-  const pad = { top: showValues ? 16 : 8, bottom: 18, left: 0, right: 0 };
+  const pad = { top: showValues ? 16 : 8, bottom: 18, left: axis ? 34 : 0, right: 0 };
   const top = Math.max(min + 1, ...bars.map((b) => Math.max(b.value, b.targetMax ?? b.target ?? 0)), refLine?.value ?? 0);
   const max = min + (top - min) * 1.08;
   const bw = (W - pad.left - pad.right) / Math.max(1, bars.length);
@@ -82,6 +85,16 @@ export function BarChart({
   return (
     <div className={"chart" + (fill ? " chart-fill" : "")} ref={ref} onMouseLeave={() => setHover(null)}>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} role="img">
+        {axis &&
+          niceTicks(min, max).map((t) => (
+            <g key={t}>
+              <line x1={pad.left} x2={W} y1={y(t)} y2={y(t)} className="chart-grid" />
+              <text x={pad.left - 6} y={y(t) + 3.5} textAnchor="end" className="chart-label">
+                {t}
+                {t === niceTicks(min, max).at(-1) ? unit.trim() && ` ${unit.trim()}` : ""}
+              </text>
+            </g>
+          ))}
         {refLine && <line x1={0} x2={W} y1={y(refLine.value)} y2={y(refLine.value)} className="chart-ref" />}
         {refLine && refLine.label.length * 6.2 < W * 0.55 && (
           <text x={W - 4} y={y(refLine.value) - 5} textAnchor="end" className="chart-ref-label">
@@ -125,6 +138,17 @@ export function BarChart({
       </div>
     </div>
   );
+}
+
+/** Round numbers between lo and hi for an axis (3–5 of them). */
+export function niceTicks(lo: number, hi: number): number[] {
+  const span = Math.max(1, hi - lo);
+  const raw = span / 4;
+  const mag = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((x) => x >= raw) ?? raw;
+  const out: number[] = [];
+  for (let t = Math.ceil(lo / step) * step; t <= hi; t += step) out.push(Math.round(t * 100) / 100);
+  return out;
 }
 
 export interface LineSeries {

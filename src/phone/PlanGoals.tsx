@@ -39,8 +39,10 @@ export function GoalCarousel({ plan }: { plan: Plan }) {
     const w = (card?.offsetWidth ?? el.clientWidth) + 10;
     setI(Math.max(0, Math.min(options.length - 1, Math.round(el.scrollLeft / w))));
   };
+  // gc-wrap / gc-cards / gc-ready are invisible on the phone (display: contents); the PC lays them side by side.
   return (
-    <>
+    <div className="gc-wrap">
+      <div className="gc-cards">
       <div className="gc-strip" ref={strip} onScroll={onScroll} data-noswipe>
         {options.map((o, k) => (
           <GoalCard key={o.id} opt={o} mainDate={main?.date} goals={goals} active={k === i} onTap={() => strip.current?.scrollTo({ left: k * ((strip.current.firstElementChild as HTMLElement).offsetWidth + 10), behavior: "smooth" })} />
@@ -51,8 +53,9 @@ export function GoalCarousel({ plan }: { plan: Plan }) {
           <button key={o.id} role="tab" aria-selected={k === i} aria-label={o.label} className={k === i ? "on" : ""} onClick={() => strip.current?.scrollTo({ left: k * ((strip.current.firstElementChild as HTMLElement).offsetWidth + 10), behavior: "smooth" })} />
         ))}
       </div>
-      {opt && <GoalReadiness key={opt.id} plan={plan} opt={opt} mainDate={main?.date} goals={goals} />}
-    </>
+      </div>
+      <div className="gc-ready">{opt && <GoalReadiness key={opt.id} plan={plan} opt={opt} mainDate={main?.date} goals={goals} />}</div>
+    </div>
   );
 }
 
