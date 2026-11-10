@@ -22,6 +22,7 @@ const APPEARANCE_VERSION = 3;
 const DEFAULTS: Settings = { dayResetHour: 4, hideCursor: true, theme: "light", accent: "sunset", textScale: 1, appearanceVersion: APPEARANCE_VERSION };
 
 export const TEXT_SIZES = [
+  { label: "Compact", value: 0.82 },
   { label: "Small", value: 0.9 },
   { label: "Medium", value: 1 },
   { label: "Large", value: 1.15 },

@@ -533,8 +533,8 @@ function session(kind: SessionKind, v: number, o: BuildOptions, phase: Phase, t:
     case "progression": {
       const total = r1(lerp(10, 16, t) + big * 2);
       const fast = Math.max(2, r1(lerp(3, 6, t)));
-      // Finishing at steady (a little slower than marathon pace), marathon pace or threshold, in turn.
-      const at = phase === "base" || phase === "recover" ? pick([p.mp + 10, p.mp]) : pick([p.mp + 10, T, p.mp]);
+            // Never slower than marathon pace: MP early on, then up to between MP and threshold, or threshold.
+      const at = phase === "base" || phase === "recover" ? pick([p.mp, p.mp - 3]) : pick([p.mp, Math.round((p.mp + T) / 2), T]);
       // Easy, then the faster block, then a short easy cool-down to finish.
       const cd = total >= 12 ? 2 : 1.5;
       const easy = r1(Math.max(3, total - fast - cd));
