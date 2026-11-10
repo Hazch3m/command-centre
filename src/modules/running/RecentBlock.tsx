@@ -140,7 +140,7 @@ export function RecentBlock({ runs, plan }: { runs: Run[]; plan: Plan }) {
           <LineChart
             from={weeks[0]}
             to={addDays(weeks[weeks.length - 1], 6)}
-            height={220}
+            height={150}
             today={today}
             format={(v) => paceStr(v)}
             series={[
@@ -151,7 +151,7 @@ export function RecentBlock({ runs, plan }: { runs: Run[]; plan: Plan }) {
         ) : (
           <ScrollBars
             bars={bars}
-            height={240}
+            height={150}
             perBar={span <= 26 ? 34 : 14}
             focus={weeks.length - 1}
             unit={key === "km" ? " km" : ""}

@@ -129,7 +129,7 @@ interface Drawn {
 
 function draw(c: Ctx, from: string): Drawn {
   const { k, f, today } = c;
-  const lc = (series: LineSeries[], extra: Partial<Parameters<typeof LineChart>[0]> = {}) => <LineChart series={series} from={from} to={today} height={270} today={today} {...extra} />;
+  const lc = (series: LineSeries[], extra: Partial<Parameters<typeof LineChart>[0]> = {}) => <LineChart series={series} from={from} to={today} height={190} today={today} {...extra} />;
   if (k === "km") {
     const months: { from: string; km: number; n: number }[] = [];
     const d = parseKey(today);
@@ -147,7 +147,7 @@ function draw(c: Ctx, from: string): Drawn {
       note: "click a month to see its runs · change: last full month against the first",
       el: (
         <BarChart
-          height={270}
+          height={190}
           unit=" km"
           bars={months.map((m, i) => ({ label: MON[parseKey(m.from).getMonth()], value: m.km, highlight: i === months.length - 1, title: `${MON[parseKey(m.from).getMonth()]} ${m.from.slice(0, 4)}: ${m.km.toFixed(1)} km, ${m.n} runs` }))}
           onBar={(i) => c.onMonth(months[i].from)}

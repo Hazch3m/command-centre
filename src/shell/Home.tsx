@@ -5,7 +5,7 @@ import { useQuery } from "../core/useQuery";
 import { latest as latestHealth, loadHealth } from "../modules/health/data";
 import { useFitness } from "../modules/running/fitness";
 import { forecastWeek, type ForecastDay } from "../modules/running/forecast";
-import { mondayOf, priorityOf, upcomingRaces, type PlanRace } from "../modules/running/plan";
+import { mondayOf, priorityOf, upcomingRaces } from "../modules/running/plan";
 import { openRun } from "../modules/running/RunView";
 import { duration, pace } from "../modules/running/stats";
 import { loadDetails, loadOverrides } from "../modules/running/strava";
@@ -25,8 +25,6 @@ const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const fmt = (d: string) => `${parseKey(d).getDate()} ${MON[parseKey(d).getMonth()]}`;
 const isRun = (d: ForecastDay) => d.kind !== "rest" && (d.km ?? 0) > 0 && !/^rest\b/i.test(d.text);
-const raceKm = (r: PlanRace) => r.km ?? (/half/i.test(r.name) ? 21.1 : /marathon/i.test(r.name) ? 42.2 : /10\s?k/i.test(r.name) ? 10 : /5\s?k/i.test(r.name) ? 5 : null);
-const LOAD_TEXT: Record<string, string> = { low: "Fresh: room to build", optimal: "In the sweet spot", high: "Building fast", "very-high": "Too steep: ease off" };
 
 /** Opens a day in Training → Plan (its day editor). */
 function openDay(go: (t: string) => void, date: string) {
@@ -86,75 +84,13 @@ export function Home() {
   const goal = races.find((r) => priorityOf(r) === "A") ?? races[0] ?? null;
   const nextRace = races[0] ?? null;
   const pk = fw.plannedKm ?? 0;
-  const pct = pk ? Math.min(1, fw.actualKm / pk) : 0;
   const upcoming = [...fw.days, ...next.days].filter((d) => d.date >= today && isRun(d) && !(d.date === today && d.runs.length));
-  const nextRun = upcoming[0] ?? null;
   const keys = upcoming.filter((d) => d.kind === "key" || d.kind === "long" || d.race).slice(0, 3);
-  const vo2 = f?.current != null ? f.current + f.shift : null;
-  const vo2ch = f?.slope != null ? f.slope * 4 : null;
   const recent = [...runs].sort((a, b) => b.start_local.localeCompare(a.start_local)).slice(0, 7);
   const h = latestHealth(health);
-  const gk = goal ? raceKm(goal) : null;
-  const goalPred = gk != null && f ? f.predictions.find((p) => Math.abs(p.distance / 1000 - gk) < 0.6) : null;
 
   return (
     <div className="home">
-      {/* The numbers that matter, at a glance. */}
-      <section className="home-kpis">
-        <button type="button" className="kpi" onClick={() => go("running")}>
-          <span className="kpi-l">This week</span>
-          <span className="kpi-v num">
-            {fw.actualKm.toFixed(fw.actualKm < 10 ? 1 : 0)}
-            <small> / {Math.round(pk)} km</small>
-          </span>
-          <span className="kpi-bar">
-            <i style={{ width: `${pct * 100}%` }} />
-          </span>
-          <span className="kpi-s">
-            {fw.days.filter((d) => d.runs.length && d.date <= today).length} of {fw.days.filter(isRun).length} runs{fw.week ? ` · week ${fw.week.week}, ${fw.week.phase.replace(/^Phase \d+:\s*/i, "")}` : ""}
-          </span>
-        </button>
-        <button type="button" className="kpi" onClick={() => nextRun && openDay(go, nextRun.date)} disabled={!nextRun}>
-          <span className="kpi-l">Next run{nextRun ? ` · ${nextRun.date === today ? "today" : nextRun.date === addDays(today, 1) ? "tomorrow" : DOW[(parseKey(nextRun.date).getDay() + 6) % 7]}` : ""}</span>
-          <span className="kpi-v num">
-            {nextRun ? nextRun.km : "–"}
-            <small> km</small>
-          </span>
-          <span className="kpi-s">{nextRun ? sessionTitle(nextRun.text, nextRun.kind) : "Nothing planned"}</span>
-        </button>
-        <button type="button" className="kpi" onClick={() => go("fitness")}>
-          <span className="kpi-l">VO2 max</span>
-          <span className="kpi-v num">{vo2 != null ? vo2.toFixed(1) : "–"}</span>
-          <span className={"kpi-s " + (vo2ch == null ? "" : vo2ch >= 0.2 ? "up" : vo2ch <= -0.2 ? "down" : "")}>{vo2ch == null ? "Needs runs with heart rate" : `${vo2ch >= 0 ? "+" : "−"}${Math.abs(vo2ch).toFixed(1)} over 4 weeks`}</span>
-        </button>
-        <button type="button" className="kpi" onClick={() => go("analysis")}>
-          <span className="kpi-l">Training load</span>
-          <span className="kpi-v num">{f?.load.ratio != null ? f.load.ratio.toFixed(2) : "–"}</span>
-          <span className={`kpi-s load-${f?.load.status ?? "none"}`}>{f?.load.status ? LOAD_TEXT[f.load.status] : "Acute : chronic"}</span>
-        </button>
-        <button type="button" className="kpi" onClick={() => go("running")} disabled={!goal}>
-          <span className="kpi-l">{goal ? goal.name : "Goal race"}</span>
-          <span className="kpi-v num">
-            {goal ? goal.days : "–"}
-            <small> days</small>
-          </span>
-          <span className="kpi-s">
-            {goal ? `${goal.target ? `goal ${goal.target}` : fmt(goal.date!)}${goalPred?.seconds ? ` · now ${duration(goalPred.seconds)}` : ""}` : "Add one in Training → Edit plan"}
-          </span>
-        </button>
-        <button type="button" className="kpi" onClick={() => go("health")}>
-          <span className="kpi-l">Health</span>
-          <span className="kpi-v num">
-            {h.rhr ? Math.round(h.rhr) : "–"}
-            <small> bpm resting</small>
-          </span>
-          <span className="kpi-s">
-            HRV {h.hrv ? `${Math.round(h.hrv)} ms` : "–"}
-            {h.sleep_secs ? ` · sleep ${duration(h.sleep_secs).replace(/:\d\d$/, "")}` : ""}
-            {h.readiness != null ? ` · ready ${h.readiness}` : ""}
-          </span>
-        </button>
-      </section>
 
       <div className="home-grid">
         {/* This week, day by day, with each session's shape. */}
@@ -162,7 +98,8 @@ export function Home() {
           <header>
             <h3>This week</h3>
             <span className="muted small">
-              {fmt(monday)} – {fmt(addDays(monday, 6))}
+              {fmt(monday)} – {fmt(addDays(monday, 6))} · <b>{fw.actualKm.toFixed(fw.actualKm < 10 ? 1 : 0)}</b> of {Math.round(pk)} km
+              {goal ? ` · ${goal.name} in ${goal.days} days` : ""}
               {nextRace && nextRace !== goal ? ` · next race: ${nextRace.name} in ${nextRace.days} days` : ""}
             </span>
             <button type="button" className="home-link" onClick={() => go("running")}>
@@ -255,6 +192,10 @@ export function Home() {
         <section className="home-card home-runs">
           <header>
             <h3>Recent runs</h3>
+            <span className="muted small">
+              {h.rhr ? `RHR ${Math.round(h.rhr)}` : ""}
+              {h.hrv ? ` · HRV ${Math.round(h.hrv)}` : ""}
+            </span>
             <button type="button" className="home-link" onClick={() => go("running")}>
               All runs ›
             </button>
