@@ -504,14 +504,23 @@ try:
             print("web tabs:", tabs[:20])
             check(any(t == "Training" for t in tabs), "web: the desktop view opens with your account")
             print("viewport:", wp.viewport_size)
-            for name in ["Training", "Runs", "Stats", "Health"]:
+            for name in ["Training", "Fitness", "Runs", "Stats", "Health"]:
                 t = wp.get_by_role("tab", name=name, exact=True)
                 if t.count():
                     t.first.click(force=True)
                     wp.wait_for_timeout(2500)
                     wp.screenshot(path=f"{out}/31-web-{name.lower()}.png")
+                    if name in ("Training", "Fitness"):
+                        print(name, "scroll:", wp.locator(".subpage").first.evaluate("e => [e.scrollHeight, e.clientHeight]"))
                     if name == "Training":
-                        print("training scroll:", wp.locator(".subpage").first.evaluate("e => [e.scrollHeight, e.clientHeight]"))
+                        bars = wp.locator(".pwc .chart-bar")
+                        check(bars.count() > 5, "web: weekly km chart on the plan")
+                        if bars.count() > 8:
+                            before = wp.locator(".pwv-title").first.inner_text()
+                            wp.locator(".pwc svg g").nth(8).click()
+                            wp.wait_for_timeout(700)
+                            check(wp.locator(".pwv-title").first.inner_text() != before, "web: a week on the chart opens it")
+                            wp.screenshot(path=f"{out}/31b-web-training-week.png")
             if wp.locator(".page-tabs").get_by_role("tab", name="Trends & load", exact=True).count():
                 wp.get_by_role("tab", name="Training", exact=True).first.click(force=True)
                 wp.wait_for_timeout(1500)
@@ -576,6 +585,13 @@ try:
                     wp.wait_for_timeout(1200)
                     check(" 20" in wp.locator(".ana-weekbar b").inner_text(), "web: a month row opens that month")
                     wp.screenshot(path=f"{out}/37-web-analysis-month.png")
+                gear = wp.locator(".ana-gear")
+                if gear.count():
+                    gear.click()
+                    wp.wait_for_timeout(500)
+                    check(wp.locator(".ana-calc-set").count() == 1, "web: calculation settings open")
+                    wp.screenshot(path=f"{out}/38b-web-calc-settings.png")
+                    gear.click()
                 calc = wp.locator(".ana-calc.ana-click", has_text="Fitness (CTL)")
                 if calc.count():
                     calc.click()
