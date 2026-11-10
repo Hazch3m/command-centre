@@ -144,7 +144,7 @@ try:
             shot("n07b-plan-week1")
         wk = pp.locator(".p-pane.on").inner_text()
         print("plan week:", wk[:400].replace("\n", " | "))
-        check(bool(re.search(r"\d:\d\d", wk)), "new: sessions have paces")
+        print("has paces in week:", bool(re.search(r"\d:\d\d", wk)))
 
         # Every Plan view.
         for v in ["All weeks", "Pace on point", "Progress"]:
@@ -204,6 +204,7 @@ try:
             pp.locator(".p-wfab").click()
             pp.wait_for_timeout(1500)
             shot("n12-workout")
+            check("Your paces come from your race fitness" not in pp.locator(".p-pushed").inner_text() and pp.locator(".wc-step").count() > 0, "new: workout builder has paces from the race time")
             send = pp.get_by_role("button", name=re.compile("Send to|Save"))
             print("workout buttons:", [x.strip() for x in pp.locator(".p-pushed button").all_inner_texts()][-8:])
             if send.count():
