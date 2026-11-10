@@ -5961,3 +5961,9 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .home-health { display: flex; flex-wrap: wrap; gap: 6px 22px; align-items: baseline; padding: 8px 14px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); color: var(--text-2); font: inherit; font-size: 12.5px; cursor: pointer; text-align: left; }
 .home-health b { color: var(--text); font-weight: 700; margin-left: 3px; }
 .home-health small { color: var(--text-2); }
+.home-grid { align-items: start; }
+.hw-day { --hz: var(--text-2); }
+.hw-day.z-easy { --hz: #2e9e5b; } .hw-day.z-long { --hz: #4f6bed; } .hw-day.z-threshold, .hw-day.z-vo2 { --hz: #e07a24; } .hw-day.z-race { --hz: #e8344e; }
+.hw-day .effort .effort-b { fill: var(--hz); }
+.hw-day .effort .effort-b.z-easy:not(:only-child) { fill: color-mix(in srgb, var(--text) 20%, transparent); }
+.home-preds h4 { margin-top: 8px; }
