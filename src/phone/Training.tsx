@@ -218,7 +218,20 @@ export function Training() {
           );
         })}
       </div>
-      {fw.week || day.km || day.runs.length || day.race ? <Session d={day} label={dayName(day.date, today)} /> : <div className="p-hint center">{fw.block ? `${fw.block.key}. No day-by-day sessions this far out yet.` : "No plan this week."}</div>}
+      {fw.week || day.km || day.runs.length || day.race ? (
+        <Session d={day} label={dayName(day.date, today)} />
+      ) : fw.block ? (
+        <div className="p-hint center">{`${fw.block.key}. No day-by-day sessions this far out yet.`}</div>
+      ) : plan.weeks[0] && plan.weeks[0].start > monday ? (
+        <div className="p-hint center">
+          Your plan starts on {new Date(plan.weeks[0].start + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}. Until then, run easy as you like.{" "}
+          <button type="button" className="link-btn" onClick={() => setMonday(plan.weeks[0].start)}>
+            See week 1 ›
+          </button>
+        </div>
+      ) : (
+        <div className="p-hint center">No plan this week.</div>
+      )}
       </div>
 
       {/* On the screen itself (not the sliding page), and only while you're on Plan. */}
