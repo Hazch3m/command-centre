@@ -174,7 +174,8 @@ export function phoneMayWrite(sql: string, params: unknown[]): boolean {
     if (/^\s*DELETE/i.test(sql)) return false;
     return params.some((p) => typeof p === "string" && /^hk[0-9a-f]{32}$/.test(p));
   }
-  if (t === "health_daily") return /^\s*INSERT/i.test(sql);
+  // Apple Health's days only fill gaps: never overwrite what Garmin recorded.
+  if (t === "health_daily") return /^\s*INSERT/i.test(sql) && /DO UPDATE SET rhr = COALESCE\(health_daily\.rhr, excluded\.rhr\)/i.test(sql) && !/=\s*excluded\.(?!\w+\))/i.test(sql.replace(/COALESCE\(health_daily\.\w+, excluded\.\w+\)/gi, ""));
   return true;
 }
 

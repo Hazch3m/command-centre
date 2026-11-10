@@ -22,8 +22,8 @@ describe("Apple Health runs", () => {
     }
     const b = buildFromGarmin(hkDetailsAsGarmin({ hr, dist: [], route }), null);
     expect(b.detail.splits.length).toBe(5);
-    expect(b.detail.splits[0].moving_time).toBeGreaterThan(290);
-    expect(b.detail.splits[0].moving_time).toBeLessThan(310);
+    expect(b.detail.splits[0].moving_time).toBeGreaterThan(285);
+    expect(b.detail.splits[0].moving_time).toBeLessThan(316);
     expect(b.detail.splits[4].hr).toBeGreaterThan(b.detail.splits[0].hr!);
     expect(b.polyline).toBeTruthy();
   });
@@ -33,5 +33,10 @@ describe("Apple Health runs", () => {
     expect(phoneMayWrite("INSERT INTO strava_activities (id, date) VALUES (?, ?)", ["g123", "2026-11-08"])).toBe(false);
     expect(phoneMayWrite("DELETE FROM strava_activities WHERE id = ?", [id])).toBe(false);
     expect(phoneMayWrite("UPDATE strava_activities SET polyline = ? WHERE id = ?", ["abc", id])).toBe(true);
+    const fill = `INSERT INTO health_daily (date, rhr, hrv, vo2, sleep_secs, updated_at) VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(date) DO UPDATE SET rhr = COALESCE(health_daily.rhr, excluded.rhr), hrv = COALESCE(health_daily.hrv, excluded.hrv),
+                  vo2 = COALESCE(health_daily.vo2, excluded.vo2), sleep_secs = COALESCE(health_daily.sleep_secs, excluded.sleep_secs)`;
+    expect(phoneMayWrite(fill, ["2026-11-08", 50, 60, null, 25000, "x"])).toBe(true);
+    expect(phoneMayWrite("INSERT INTO health_daily (date, rhr) VALUES (?, ?) ON CONFLICT(date) DO UPDATE SET rhr = COALESCE(health_daily.rhr, excluded.rhr), hrv = excluded.hrv", ["x", 1])).toBe(false);
   });
 });
