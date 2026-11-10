@@ -14,6 +14,7 @@ import { COLS, ROWS, defaultFor, fillGaps, findSpot, fitToScreen, loadLayout, or
 import { SettingsPanel } from "./SettingsPanel";
 import { RunViewHost } from "../modules/running/RunView";
 import { Analysis } from "../modules/running/Analysis";
+import { Home } from "./Home";
 import { usePlanCalendarSync } from "../modules/running/planCalendar";
 import { usePhoneSync } from "../core/phoneSync";
 import { useAutoRefresh, useRefresh } from "./refresh";
@@ -108,7 +109,7 @@ function useTabs() {
   return useMemo(() => {
     const pages = modules.filter((m) => m.page && !m.page.inTraining && !PLANNER.includes(m.id)).map((m) => ({ id: m.id, label: m.page!.label, order: m.page!.order }));
     pages.push({ id: "analysis", label: "Analysis", order: 1.2 }, { id: "planner", label: "Planner", order: 3 });
-    return [{ id: "overview", label: "Overview" }, ...pages.sort((a, b) => a.order - b.order).map(({ id, label }) => ({ id, label }))];
+    return [{ id: "overview", label: "Home" }, ...pages.sort((a, b) => a.order - b.order).map(({ id, label }) => ({ id, label }))];
   }, []);
 }
 
@@ -192,6 +193,22 @@ export function Dashboard() {
     }
   });
   const [fallbackAnim, setFallbackAnim] = useState<string | null>(null);
+  // Home is the running page; the old board of draggable tiles is still there (e.g. for a second screen).
+  const [board, setBoardState] = useState(() => {
+    try {
+      return localStorage.getItem("cc-board") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const setBoard = (on: boolean) => {
+    setBoardState(on);
+    try {
+      localStorage.setItem("cc-board", on ? "1" : "0");
+    } catch {
+      /* private mode */
+    }
+  };
   const tabRef = useRef(tab);
   tabRef.current = tab;
   const go = useCallback(
@@ -390,7 +407,12 @@ export function Dashboard() {
         <HeaderClock />
         <div className="topbar-actions">
           {tab === "overview" && !editing && (
-            <button className="btn ghost" onClick={() => setEditing(true)} title="Rearrange the overview (Ctrl+E)">
+            <button className="btn ghost" onClick={() => setBoard(!board)} title={board ? "Back to the running home page" : "The board of tiles you can arrange (good on a second screen)"}>
+              {board ? "Home view" : "Board view"}
+            </button>
+          )}
+          {tab === "overview" && board && !editing && (
+            <button className="btn ghost" onClick={() => setEditing(true)} title="Rearrange the board (Ctrl+E)">
               Edit
             </button>
           )}
@@ -438,6 +460,12 @@ export function Dashboard() {
       <main className={"stage" + (fallbackAnim ? ` enter-${fallbackAnim}` : "")} key={tab} onAnimationEnd={() => setFallbackAnim(null)}>
       {tab !== "overview" ? (
         <ModulePage id={tab} />
+      ) : !board && !editing ? (
+        <div className="tab-page tab-page-home">
+          <ErrorBoundary name="Home">
+            <Home />
+          </ErrorBoundary>
+        </div>
       ) : (
       <div
         className="dashboard"
