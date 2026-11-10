@@ -1,3 +1,4 @@
+import { useGoalTrend } from "../modules/running/goalTrend";
 import { useMemo, useRef, useState } from "react";
 import { useDataVersion } from "../core/events";
 import { addDays, parseKey, useToday } from "../core/time";
@@ -80,6 +81,19 @@ export function GoalCarousel({ plan, split }: { plan: Plan; split?: boolean }) {
   );
 }
 
+const sinceText = (d: string, today: string) => {
+  const n = Math.round((parseKey(today).getTime() - parseKey(d).getTime()) / 86400000);
+  return n <= 0 ? "today" : n === 1 ? "yesterday" : n < 7 ? parseKey(d).toLocaleDateString("en-GB", { weekday: "long" }) : parseKey(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+};
+
+/** "−0:12": how much a time moved since it last changed (faster is good). */
+function TrendTag({ v }: { v: number | null }) {
+  if (v == null || Math.abs(v) < 2) return null;
+  const s = Math.abs(Math.round(v));
+  const t = s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : `${s} s`;
+  return <em className={"gc-trend " + (v < 0 ? "up" : "down")}>{v < 0 ? "▲ " : "▼ "}{v < 0 ? "−" : "+"}{t}</em>;
+}
+
 function GoalCard({ opt, mainDate, goals, active, onTap }: { opt: GoalOption; mainDate?: string | null; goals: Record<string, number>; active: boolean; onTap: () => void }) {
   const today = useToday();
   const { plan } = useRunningData();
@@ -91,6 +105,7 @@ function GoalCard({ opt, mainDate, goals, active, onTap }: { opt: GoalOption; ma
   const r = useReadiness(plan, race);
   const goal = r?.goal ?? (goals[opt.id] || null);
   const days = Math.round((parseKey(race.date!).getTime() - parseKey(today).getTime()) / 86400000);
+  const trend = useGoalTrend(opt.id, r?.now ?? null, r?.predicted ?? null, opt.km);
   return (
     <button type="button" className={"gc-card" + (active ? " on" : "")} onClick={onTap}>
       <span className="gc-head">
@@ -102,10 +117,12 @@ function GoalCard({ opt, mainDate, goals, active, onTap }: { opt: GoalOption; ma
           <span>
             <small>Now</small>
             <b className="num">{r.now ? fmtTime(r.now) : "–"}</b>
+            <TrendTag v={trend?.now ?? null} />
           </span>
           <span className="gc-day">
             <small>Race day</small>
             <b className="num">{r.predicted ? fmtTime(r.predicted) : "–"}</b>
+            <TrendTag v={trend?.day ?? null} />
           </span>
           <span>
             <small>Goal</small>
@@ -114,6 +131,12 @@ function GoalCard({ opt, mainDate, goals, active, onTap }: { opt: GoalOption; ma
         </span>
       ) : (
         <span className="p-hint">Working it out…</span>
+      )}
+      {trend && ((trend.now != null && Math.abs(trend.now) >= 2) || (trend.day != null && Math.abs(trend.day) >= 2)) && (
+        <span className={"gc-trend-line " + ((trend.day ?? trend.now ?? 0) < 0 ? "up" : "down")}>
+          {(trend.day ?? trend.now ?? 0) < 0 ? "Faster" : "Slower"} since {sinceText(trend.since, today)}
+          {(trend.day ?? trend.now ?? 0) < 0 ? ": your recent training is paying off." : "."}
+        </span>
       )}
       {r && <GoalChart plan={plan} km={opt.km} now={r.now} predicted={r.predicted} range={r.range} goal={goal} raceDate={race.date!} />}
       {r && active && (

@@ -118,7 +118,9 @@ export function sessionToWorkout(text: string, zones: Zones = {}): Omit<Draft, "
       const recDur = fl ? dur(fl[1], fl[2]) : rec ? (rec[1].includes(":") ? rec[1] : dur(rec[1], rec[2] ?? "min")) : hills ? "90s" : "2:00";
       const fp = fl?.[3] ? paceIn(fl[3]) : null;
       const work = step("interval", dur(rep[2], rep[3]), p ? pace(p) : "open", hills ? "Hill sprint: fast, tall, relaxed" : p ? `${paceText(p)}/km` : "Hard but controlled");
-      const back = fl ? step("recovery", recDur, fp ? pace(fp) : "open", fp ? `Float: ${paceText(fp)}/km, keep moving` : "Float: steady, keep moving") : step("recovery", recDur, "open", hills ? "Walk back down" : "Easy jog");
+      const back = fl
+        ? step("recovery", recDur, fp ? pace(fp) : "open", fp ? `Float, not a jog: steady ${paceText(fp)}/km` : "Float, not a jog: steady, keep moving")
+        : step("recovery", recDur, "open", hills ? "Walk or jog back down" : "Easy jog: as slow as you like");
       return { block: repeat(+rep[1], [work, back]), p, label: `${rep[1]}×${durLabel(rep[2], rep[3])}`, after };
     });
     // Between sets: two easy minutes before the next one starts.
@@ -128,13 +130,16 @@ export function sessionToWorkout(text: string, zones: Zones = {}): Omit<Draft, "
     const wu = /(\d+(?:\.\d+)?)\s*km warm-up/i.exec(s)?.[1];
     const warm = wu ? step("warmup", `${wu}km`, "hr zone 2", "Easy") : total ? step("warmup", "3km", "hr zone 2", "Easy") : step("warmup", "15:00", "hr zone 2", "Easy, build to steady");
     const cool = total ? step("cooldown", "lap", "hr zone 2", `Easy to finish the ${total[1]} km, then lap`) : step("cooldown", "10:00", "hr zone 2", "Easy");
+    // Floats keep you moving between reps, so after the last one: two easy minutes before the cool-down.
+    const floats = sets.some((x) => /float/i.test(x.after));
+    const settle: Item[] = floats ? [step("recovery", "2:00", "open", "Easy jog: let your breathing settle")] : [];
     const kind = hills ? (/hill reps|hill strength/i.test(s) ? "Hill reps" : "Hill sprints") : /fartlek/i.test(s) ? "Fartlek" : /vo2/i.test(s) ? "VO2 max" : /\bT\b|threshold/i.test(s) ? "Threshold" : /\bHMP\b/.test(s) ? "HMP" : /\bMP\b/.test(s) ? "MP" : "Intervals";
     const name = sets.length > 1 ? `${kind} ${sets.map((x) => x.label).join(" + ")}` : `${kind} ${sets[0].label}${p ? ` @ ${paceText(p)}` : ""}`;
     return {
       name,
       sport: "running",
-      steps: [warm, ...middle, cool, ...strides(sets[sets.length - 1].after.replace(reps[reps.length - 1][0], ""))],
-      description: `${raw}. ${hills ? "Full recovery between sprints." : sets.length > 1 ? "Each set at its own pace; easy between sets." : p ? `Hit ${paceText(p)}/km from the first rep; even splits, the last should feel like the first.` : "Controlled effort."}${extra}`,
+      steps: [warm, ...middle, ...settle, cool, ...strides(sets[sets.length - 1].after.replace(reps[reps.length - 1][0], ""))],
+      description: `${raw}. ${hills ? "Full recovery between sprints." : sets.length > 1 ? "Each set at its own pace; 2 min easy between sets." : p ? `Hit ${paceText(p)}/km from the first rep; even splits, the last should feel like the first.` : "Controlled effort."}${floats ? " The floats are steady running at the pace given, not a jog: keep moving, then 2 min easy after the last rep." : !hills ? " Recoveries are an easy jog, as slow as you like." : ""}${extra}`,
     };
   }
 

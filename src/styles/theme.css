@@ -6115,3 +6115,16 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .plan-home-goal .gc-ready .p-section-head { position: static; background: none; -webkit-mask: none; mask: none; padding: 0 0.3rem 0.4rem; border-radius: 0; }
 .plan-home-goal .gc-ready .p-section-head h2 { font-size: 1.1rem; }
 .plan-home-goal .gc-ready > .p-section, .plan-home-goal .gc-ready section { overflow: visible; }
+.gc-trend { display: block; font-style: normal; font-size: 0.7rem; font-weight: 700; margin-top: 1px; }
+.gc-trend.up, .gc-trend-line.up { color: #2e9e5b; }
+.gc-trend.down, .gc-trend-line.down { color: #e8634e; }
+.gc-trend-line { display: block; font-size: 0.78rem; font-weight: 600; margin: 0.15rem 0 0.1rem; }
+/* After a run: Garmin's race predictions before → after. */
+.run-pred { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; padding: 8px 12px; margin: 6px 0; border-radius: 10px; border: 1px solid var(--line); background: color-mix(in srgb, #2e9e5b 8%, var(--card-2)); }
+.run-pred.down { background: color-mix(in srgb, #e8634e 7%, var(--card-2)); }
+.run-pred > b { color: #2e9e5b; }
+.run-pred.down > b { color: #e8634e; }
+.run-pred-item { font-size: 0.86rem; }
+.run-pred em { font-style: normal; font-weight: 700; }
+.run-pred em.up { color: #2e9e5b; }
+.run-pred em.down { color: #e8634e; }

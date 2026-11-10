@@ -5323,3 +5323,9 @@ svg.effort {
 .seg-total { border-bottom: 0; grid-template-columns: minmax(0, 1fr) auto; color: var(--text-2); font-size: 0.8rem; }
 .seg-total .seg-km { color: var(--text-2); font-weight: 600; }
 .day-editor .segs { margin: 0.2rem 0 0.4rem; padding: 0.4rem 0.7rem; border-radius: 10px; background: var(--card-2); }
+
+/* Goal times: what changed since they last moved. */
+.gc-trend { display: block; font-style: normal; font-size: 0.7rem; font-weight: 700; margin-top: 1px; }
+.gc-trend.up, .gc-trend-line.up { color: #2e9e5b; }
+.gc-trend.down, .gc-trend-line.down { color: #e8634e; }
+.gc-trend-line { display: block; font-size: 0.78rem; font-weight: 600; margin: 0.15rem 0 0.1rem; }

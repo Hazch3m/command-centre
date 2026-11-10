@@ -1,3 +1,4 @@
+import { predictionChange } from "./goalTrend";
 import { useEffect, useMemo, useState, type ReactNode, useRef } from "react";
 import { useSwipe } from "../../phone/swipe";
 import { RunMap, RunMapThumb } from "./RunMap";
@@ -208,6 +209,30 @@ function thin(xs: number[], ys: number[], n = 400): [number, number][] {
   return out;
 }
 
+/** After a run Garmin moved your race predictions: say so, with the before and after. */
+function PredictionMoved({ date }: { date: string }) {
+  const rv = useDataVersion("health");
+  const { data } = useQuery(() => predictionChange(date), [date, rv]);
+  if (!data?.length) return null;
+  const better = data.filter((x) => x.after < x.before).length;
+  const t = (s: number) => duration(Math.round(s));
+  return (
+    <div className={"run-pred " + (better >= data.length / 2 ? "up" : "down")}>
+      <b>{better === data.length ? "Race predictions improved" : better ? "Race predictions moved" : "Race predictions slipped"}</b>
+      <span className="small">after this run (Garmin):</span>
+      {data.map((x) => (
+        <span key={x.name} className="run-pred-item">
+          {x.name} <span className="num">{t(x.before)}</span> → <b className="num">{t(x.after)}</b>{" "}
+          <em className={x.after < x.before ? "up" : "down"}>
+            {x.after < x.before ? "−" : "+"}
+            {t(Math.abs(x.after - x.before)).replace(/^0:/, "")}
+          </em>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; onClose: () => void }) {
   const today = useToday();
   const [full, setFull] = useState<FullRun | null>(null);
@@ -264,6 +289,7 @@ function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; o
       {edit && <RunReview run={run} onClose={() => setEdit(false)} />}
       {map && run.polyline && <RunMap polyline={run.polyline} title={run.name} onClose={() => setMap(false)} />}
       <RunNotes id={run.id} />
+      <PredictionMoved date={run.date} />
       <RunFocus run={run} label="Training focus" />
       {details.get(run.id)?.photo && <img className="run-photo" src={details.get(run.id)!.photo!} alt="Photo from the run" referrerPolicy="no-referrer" />}
       <div className="run-detail-top">

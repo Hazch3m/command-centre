@@ -148,13 +148,14 @@ export function segmentsOf(text: string, plan?: Plan): Segment[] {
       const work = it.steps.find((s) => s.kind === "interval") ?? it.steps[0];
       const rest = it.steps.find((s) => s !== work);
       const km = it.steps.reduce((a, s) => a + (kmOfStep(s) ?? 0), 0) * it.times;
-      out.push({ kind: "work", label: `${it.times} × ${durText(work)}`, detail: [targetText(work), rest ? `${durText(rest)} ${targetText(rest) || "jog"}`.trim() : ""].filter(Boolean).join(", "), km });
+      const restText = !rest ? "" : /^float/i.test(rest.notes ?? "") ? `${durText(rest)} float ${targetText(rest)} (steady, not a jog)` : rest.kind === "recovery" && rest.target === "open" ? `${durText(rest)} easy jog` : `${durText(rest)} ${targetText(rest) || "jog"}`;
+      out.push({ kind: "work", label: `${it.times} × ${durText(work)}`, detail: [targetText(work), restText.trim()].filter(Boolean).join(", "), km });
     } else {
       const km = kmOfStep(it);
       // An "interval" with only an easy heart-rate target is the easy part of a run, not work.
       const easyStep = it.kind === "interval" && !paceOf(it.target) && /zone [12]\b/i.test(it.target);
       const kind = it.kind === "warmup" ? "warmup" : it.kind === "cooldown" ? "cooldown" : it.kind === "interval" && !easyStep ? "work" : "easy";
-      const label = it.kind === "warmup" ? "Warm-up" : it.kind === "cooldown" ? "Cool-down" : kind === "work" ? durText(it) : `${durText(it)} easy`;
+      const label = it.kind === "warmup" ? "Warm-up" : it.kind === "cooldown" ? "Cool-down" : kind === "work" ? durText(it) : it.kind === "recovery" ? `${durText(it)} easy jog` : `${durText(it)} easy`;
       out.push({ kind, label, detail: kind === "work" ? targetText(it) : km == null ? "the rest of the run" : kind === "easy" ? "" : targetText(it), km: km ?? 0, open: km == null });
     }
   }
