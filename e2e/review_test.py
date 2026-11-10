@@ -545,6 +545,11 @@ try:
                 an.first.click(force=True)
                 wp.wait_for_timeout(4000)
                 check(wp.locator(".ana-table").count() >= 3, "web: Analysis week, months and weeks tables")
+                check(wp.locator(".ana-gaps tbody tr").count() == 4, "web: distances, mileage or pace")
+                if wp.locator(".ana-gaps").count():
+                    print("gaps:", wp.locator(".ana-gaps").inner_text().replace("\n", " | ")[:700])
+                    wp.locator(".ana-gaps").scroll_into_view_if_needed()
+                    wp.screenshot(path=f"{out}/33b-web-gaps.png")
                 print("analysis:", wp.locator(".ana").inner_text().replace("\n", " | ")[:900])
                 wp.screenshot(path=f"{out}/33-web-analysis.png", full_page=True)
                 mrow = wp.locator(".ana-table tr.ana-click").first
