@@ -10,33 +10,31 @@ export type Orientation = "portrait" | "landscape";
 export const COLS = 24;
 export const ROWS: Record<Orientation, number> = { portrait: 48, landscape: 24 };
 /** Bump when the default arrangement changes enough that old custom layouts no longer fit. */
-export const LAYOUT_VERSION = 5;
+export const LAYOUT_VERSION = 6;
 
 export const orientationOf = (w: number, h: number): Orientation => (h > w ? "portrait" : "landscape");
 
-/** Default tiles per orientation. Modules not listed fall back to their own defaultPos (scaled). */
+/**
+ * Default tiles per orientation: running first. Calendar, to-do and habits have their own Planner
+ * tab, so they're off the overview unless you add them (Edit). Modules not listed are hidden.
+ */
 export const DEFAULTS: Record<Orientation, Record<string, GridPos>> = {
   portrait: {
-    running: { x: 0, y: 0, w: 13, h: 11 },
-    fitness: { x: 13, y: 0, w: 11, h: 11 },
-    "training-week": { x: 0, y: 11, w: 24, h: 7 },
-    predictions: { x: 0, y: 18, w: 12, h: 7 },
-    weather: { x: 12, y: 18, w: 12, h: 7 },
-    health: { x: 0, y: 25, w: 12, h: 9 },
-    checklist: { x: 12, y: 25, w: 12, h: 9 },
-    calendar: { x: 0, y: 34, w: 12, h: 14 },
-    tasks: { x: 12, y: 34, w: 12, h: 14 },
+    running: { x: 0, y: 0, w: 13, h: 12 },
+    fitness: { x: 13, y: 0, w: 11, h: 12 },
+    "training-week": { x: 0, y: 12, w: 24, h: 8 },
+    predictions: { x: 0, y: 20, w: 12, h: 8 },
+    health: { x: 12, y: 20, w: 12, h: 8 },
+    "latest-run": { x: 0, y: 28, w: 12, h: 10 },
+    weather: { x: 12, y: 28, w: 12, h: 10 },
   },
   landscape: {
-    running: { x: 0, y: 0, w: 8, h: 9 },
-    fitness: { x: 8, y: 0, w: 8, h: 9 },
-    health: { x: 16, y: 0, w: 8, h: 9 },
-    "training-week": { x: 0, y: 9, w: 12, h: 7 },
-    predictions: { x: 12, y: 9, w: 6, h: 7 },
-    weather: { x: 18, y: 9, w: 6, h: 7 },
-    calendar: { x: 0, y: 16, w: 8, h: 8 },
-    tasks: { x: 8, y: 16, w: 8, h: 8 },
-    checklist: { x: 16, y: 16, w: 8, h: 8 },
+    running: { x: 0, y: 0, w: 8, h: 12 },
+    fitness: { x: 8, y: 0, w: 8, h: 12 },
+    health: { x: 16, y: 0, w: 8, h: 12 },
+    "training-week": { x: 0, y: 12, w: 12, h: 12 },
+    predictions: { x: 12, y: 12, w: 6, h: 12 },
+    weather: { x: 18, y: 12, w: 6, h: 12 },
   },
 };
 

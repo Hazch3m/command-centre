@@ -93,7 +93,7 @@ function Settings({ f }: { f: Fitness }) {
           </label>
         ))}
         <p className="muted small">
-          Goal values are the VO2 max (VDOT) a race time needs: sub-2:50 = {vdot(42195, 170 * 60).toFixed(1)}, sub-2:45 = {vdot(42195, 165 * 60).toFixed(1)}.
+          Goal values are the VO2 max (VDOT) a race time needs; for example a 3:30 marathon = {vdot(42195, 210 * 60).toFixed(1)}, a 25:00 5K = {vdot(5000, 25 * 60).toFixed(1)}.
         </p>
       </div>
       {msg && <div className="ok-note">{msg}</div>}

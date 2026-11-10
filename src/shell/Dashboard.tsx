@@ -13,6 +13,7 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { COLS, ROWS, defaultFor, fillGaps, findSpot, fitToScreen, loadLayout, orientationOf, resolveLayout, saveLayout, type Orientation, type ResolvedLayout } from "./layout";
 import { SettingsPanel } from "./SettingsPanel";
 import { RunViewHost } from "../modules/running/RunView";
+import { Analysis } from "../modules/running/Analysis";
 import { usePlanCalendarSync } from "../modules/running/planCalendar";
 import { usePhoneSync } from "../core/phoneSync";
 import { useAutoRefresh, useRefresh } from "./refresh";
@@ -99,21 +100,67 @@ function HeaderClock() {
   );
 }
 
-/** Top-level tabs: the overview, then every module that has a page. */
+/** Calendar, tasks and habits share one top tab (Planner), as sub-tabs. */
+const PLANNER = ["calendar", "tasks", "checklist"];
+
+/** Top-level tabs: the overview, the running pages, Analysis, then Planner. */
 function useTabs() {
-  return useMemo(
-    () => [
-      { id: "overview", label: "Overview" },
-      ...modules
-        .filter((m) => m.page && !m.page.inTraining)
-        .sort((a, b) => a.page!.order - b.page!.order)
-        .map((m) => ({ id: m.id, label: m.page!.label })),
-    ],
-    [],
+  return useMemo(() => {
+    const pages = modules.filter((m) => m.page && !m.page.inTraining && !PLANNER.includes(m.id)).map((m) => ({ id: m.id, label: m.page!.label, order: m.page!.order }));
+    pages.push({ id: "analysis", label: "Analysis", order: 1.2 }, { id: "planner", label: "Planner", order: 3 });
+    return [{ id: "overview", label: "Overview" }, ...pages.sort((a, b) => a.order - b.order).map(({ id, label }) => ({ id, label }))];
+  }, []);
+}
+
+const PLANNER_KEY = "cc-planner-tab";
+function PlannerPage() {
+  const subs = PLANNER.map((id) => moduleById.get(id)).filter((m): m is NonNullable<typeof m> => !!m);
+  const [sub, setSub] = useState(() => {
+    try {
+      const v = localStorage.getItem(PLANNER_KEY);
+      if (v && PLANNER.includes(v)) return v;
+    } catch {
+      /* private mode */
+    }
+    return "calendar";
+  });
+  useEffect(() => {
+    const on = (e: Event) => setSub((e as CustomEvent<string>).detail);
+    window.addEventListener("cc:planner-sub", on);
+    return () => window.removeEventListener("cc:planner-sub", on);
+  }, []);
+  const pick = (id: string) => {
+    setSub(id);
+    try {
+      localStorage.setItem(PLANNER_KEY, id);
+    } catch {
+      /* private mode */
+    }
+  };
+  return (
+    <div className="tab-page tab-page-planner">
+      <nav className="page-tabs planner-tabs" role="tablist" aria-label="Planner">
+        {subs.map((m) => (
+          <button key={m.id} type="button" role="tab" aria-selected={sub === m.id} className={sub === m.id ? "on" : ""} onClick={() => pick(m.id)}>
+            {m.page!.label}
+          </button>
+        ))}
+      </nav>
+      <ModulePage id={sub} />
+    </div>
   );
 }
 
 export function ModulePage({ id }: { id: string }) {
+  if (id === "planner") return <PlannerPage />;
+  if (id === "analysis")
+    return (
+      <div className="tab-page tab-page-analysis">
+        <ErrorBoundary name="Analysis">
+          <Analysis />
+        </ErrorBoundary>
+      </div>
+    );
   const m = moduleById.get(id);
   if (!m) return null;
   const Page = m.page?.Page;
@@ -149,6 +196,16 @@ export function Dashboard() {
   tabRef.current = tab;
   const go = useCallback(
     (next: string) => {
+      if (PLANNER.includes(next)) {
+        // Calendar, to-do and habits live under Planner now: open that sub-tab.
+        try {
+          localStorage.setItem(PLANNER_KEY, next);
+        } catch {
+          /* private mode */
+        }
+        window.dispatchEvent(new CustomEvent("cc:planner-sub", { detail: next }));
+        next = "planner";
+      }
       const cur = tabRef.current;
       if (next === cur || !tabs.some((t) => t.id === next)) return;
       const dir = tabs.findIndex((t) => t.id === next) > tabs.findIndex((t) => t.id === cur) ? "fwd" : "back";
