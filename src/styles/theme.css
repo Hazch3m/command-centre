@@ -6004,7 +6004,7 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .equiv-bar b { font-size: 12px; }
 
 /* Training → Plan, one screen: the week, then four columns (progress + plan check, the build, goal card, readiness). */
-.gc-wrap, .gc-cards, .gc-ready { display: contents; }
+
 .plan-home { grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.15fr) minmax(0, 2fr); gap: 0.8rem; }
 .plan-home-col { display: flex; flex-direction: column; gap: 0.7rem; min-width: 0; }
 .plan-home-goal { min-width: 0; font-size: 0.92em; }

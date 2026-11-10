@@ -20,7 +20,7 @@ import { RaceReady } from "./RaceReady";
  * Your goals side by side: swipe across your races and 5K / 10K / Half / Marathon. Each card shows
  * now, race day and the goal; the one in view gets the full readiness below.
  */
-export function GoalCarousel({ plan }: { plan: Plan }) {
+export function GoalCarousel({ plan, split }: { plan: Plan; split?: boolean }) {
   const today = useToday();
   const rv = useDataVersion("running");
   const goals = useQuery(loadGoals, [rv]).data ?? {};
@@ -39,10 +39,8 @@ export function GoalCarousel({ plan }: { plan: Plan }) {
     const w = (card?.offsetWidth ?? el.clientWidth) + 10;
     setI(Math.max(0, Math.min(options.length - 1, Math.round(el.scrollLeft / w))));
   };
-  // gc-wrap / gc-cards / gc-ready are invisible on the phone (display: contents); the PC lays them side by side.
-  return (
-    <div className="gc-wrap">
-      <div className="gc-cards">
+  const cards = (
+    <>
       <div className="gc-strip" ref={strip} onScroll={onScroll} data-noswipe>
         {options.map((o, k) => (
           <GoalCard key={o.id} opt={o} mainDate={main?.date} goals={goals} active={k === i} onTap={() => strip.current?.scrollTo({ left: k * ((strip.current.firstElementChild as HTMLElement).offsetWidth + 10), behavior: "smooth" })} />
@@ -53,9 +51,22 @@ export function GoalCarousel({ plan }: { plan: Plan }) {
           <button key={o.id} role="tab" aria-selected={k === i} aria-label={o.label} className={k === i ? "on" : ""} onClick={() => strip.current?.scrollTo({ left: k * ((strip.current.firstElementChild as HTMLElement).offsetWidth + 10), behavior: "smooth" })} />
         ))}
       </div>
+    </>
+  );
+  const ready = opt && <GoalReadiness key={opt.id} plan={plan} opt={opt} mainDate={main?.date} goals={goals} />;
+  // On the PC's plan page: the cards and the readiness side by side.
+  if (split)
+    return (
+      <div className="gc-wrap">
+        <div className="gc-cards">{cards}</div>
+        <div className="gc-ready">{ready}</div>
       </div>
-      <div className="gc-ready">{opt && <GoalReadiness key={opt.id} plan={plan} opt={opt} mainDate={main?.date} goals={goals} />}</div>
-    </div>
+    );
+  return (
+    <>
+      {cards}
+      {ready}
+    </>
   );
 }
 
