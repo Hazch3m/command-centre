@@ -6106,3 +6106,9 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .fit-body { margin-top: 0.7rem; }
 .fit-keys > details > summary h3, .fit-set > details > summary h3 { display: inline; font-size: 13px; }
 .fit-keys, .fit-set { padding-top: 6px; padding-bottom: 6px; }
+.fit-shoes .table { display: block; max-height: 13rem; overflow-y: auto; scrollbar-width: thin; }
+.fit-shoes .table thead, .fit-shoes .table tbody { display: table; width: 100%; table-layout: fixed; }
+.pwc { padding: 0.4rem 0.7rem 0.1rem; gap: 0.1rem; }
+.pwc .chart-readout { display: none; }
+.plan-home .pwv-day { min-height: 0; }
+.plan-home .pwv-notes { padding: 0.2rem 0.7rem; }

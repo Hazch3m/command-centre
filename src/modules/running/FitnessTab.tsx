@@ -233,7 +233,7 @@ export function FitnessTab({ f }: { f: Fitness }) {
               <td className="num-col">{p.ownSeconds ? duration(p.ownSeconds) : "–"}</td>
               <td className="num-col muted">{p.vdotSeconds ? duration(p.vdotSeconds) : "–"}</td>
               <td className="num-col muted">{p.formSeconds ? duration(p.formSeconds) : "–"}</td>
-              <td className="nowrap" title={p.target ?? ""}>{p.target ? p.target.replace(/^.*:\s*/, "") : "–"}</td>
+              <td className="nowrap" title={p.target ?? ""}>{p.target ? p.target.replace(/^.*?:\s+/, "") : "–"}</td>
             </tr>
           ))}
         </tbody>
@@ -277,10 +277,13 @@ export function FitnessTab({ f }: { f: Fitness }) {
           { name: "Acute (7-day)", kind: "line", className: "s-acute", points: f.loadSeries.map((d) => ({ x: d.date, y: d.acute })) },
         ]}
       />
+      <details className="fit-why">
+        <summary>About load</summary>
       <p className="muted small">
         Load is heart-rate based (TRIMP: minutes weighted by intensity). An acute:chronic ratio of 0.8–1.3 is the productive range; above 1.5 is where injuries cluster — the same
         idea as the plan's "never add more than 25 km in a week" rule.
       </p>
+      </details>
 
         </section>
         <section className="fit-card fit-eff">
@@ -296,7 +299,10 @@ export function FitnessTab({ f }: { f: Fitness }) {
           { name: "Efficiency", kind: "dots", className: "s-eff", points: f.efficiency.map((e) => ({ x: addDays(e.week, 3), y: e.value })) },
         ]}
       />
+      <details className="fit-why">
+        <summary>About efficiency</summary>
       <p className="muted small">Metres covered per heartbeat on easy runs (under 78% of max heart rate, 6 km+). It rises as your aerobic base grows: more speed for the same heart rate.</p>
+      </details>
 
         </section>
         <section className="fit-card fit-shoes">

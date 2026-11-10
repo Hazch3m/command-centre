@@ -275,7 +275,7 @@ export function PlanWeeksChart({ plan, runs }: { plan: Plan; runs: Run[] }) {
           {s ? `Week ${s.label || "–"} · ${fmt(s.monday)}${s.phase ? ` · ${phaseName(s.phase)}` : ""} · ${s.monday < thisMonday ? `ran ${s.km.toFixed(0)} of ${Math.round(s.planned ?? 0)}` : `${Math.round(s.planned ?? 0)} planned`} km` : ""} · click a week to open it
         </span>
       </header>
-      <ScrollBars bars={bars} height={120} perBar={22} focus={Math.min(weeks.length - 1, i + 6)} unit=" km" axis showValues={false} onBar={(k) => window.dispatchEvent(new CustomEvent("cc:plan-week-go", { detail: weeks[k].monday }))} />
+      <ScrollBars bars={bars} height={95} perBar={22} focus={Math.min(weeks.length - 1, i + 6)} unit=" km" axis showValues={false} onBar={(k) => window.dispatchEvent(new CustomEvent("cc:plan-week-go", { detail: weeks[k].monday }))} />
     </section>
   );
 }
