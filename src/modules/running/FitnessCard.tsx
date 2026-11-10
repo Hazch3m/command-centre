@@ -164,12 +164,11 @@ function FitnessPage() {
   const [tab, setTab] = useState<"overview" | "goal" | "shape">("overview");
   return (
     <div className="subpage">
-      <header className="page-head">
-        <div>
+      <header className="page-head train-head">
+        <div className="train-title">
           <h1>Fitness &amp; VO2 max</h1>
           <div className="muted small">From your key runs' heart rate and pace, your races, and Garmin.</div>
         </div>
-      </header>
       <nav className="segmented page-tabs" role="tablist">
         {(
           [
@@ -183,7 +182,8 @@ function FitnessPage() {
           </button>
         ))}
       </nav>
-      <div className="page-body" key={tab}>
+      </header>
+      <div className="page-body fit-body" key={tab}>
         {!f || !plan ? (
           <p className="muted">Loading…</p>
         ) : tab === "overview" ? (

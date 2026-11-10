@@ -241,14 +241,12 @@ export function RunningPage() {
                 <div className="plan-home-chart">
                   <PlanWeeksChart plan={plan} runs={runs} />
                 </div>
-                <div className="plan-home-coach">
-                  <PlanCoach plan={plan} />
-                </div>
                 <div className="plan-home-week">
                   <PlanWeekView plan={plan} runs={runs} hideStrip />
                 </div>
                 <div className="plan-home-col">
                   <WeekProgressCard plan={plan} runs={runs} />
+                  <PlanCoach plan={plan} />
                 </div>
                 <div className="plan-home-col pl-embed">
                   <WeekAhead plan={plan} onDay={(d) => window.dispatchEvent(new CustomEvent("cc:plan-day", { detail: d }))} />
@@ -404,7 +402,7 @@ export function RunningPage() {
         )}
 
 
-        {tab === "plan" && (
+        {tab === "plan" && view !== "week" && (
           <details className="fold">
             <summary>
               <h3>Training paces, weekly shape and strength</h3>

@@ -6100,3 +6100,9 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .fit-why[open] summary { margin-bottom: 4px; }
 .fit-set > details > summary h3 { display: inline; }
 @media (max-width: 1200px) { .fit-vo2, .fit-pred, .fit-keys, .fit-set { grid-column: span 12; } .fit-load, .fit-eff, .fit-shoes { grid-column: span 6; } }
+.plan-home-chart { grid-column: 1 / -1; }
+.pwc { height: auto; }
+.tab-page-fitness .subpage { padding: 0.9rem 1.2rem 1rem; }
+.fit-body { margin-top: 0.7rem; }
+.fit-keys > details > summary h3, .fit-set > details > summary h3 { display: inline; font-size: 13px; }
+.fit-keys, .fit-set { padding-top: 6px; padding-bottom: 6px; }

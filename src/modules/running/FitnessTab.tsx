@@ -197,7 +197,7 @@ export function FitnessTab({ f }: { f: Fitness }) {
         series={vo2Series(f, from, lastMs)}
         from={from}
         to={lastMs}
-        height={230}
+        height={185}
         today={today}
         markers={f.config.projection.milestones.map((m) => ({ x: m.date, label: m.label }))}
       />
@@ -218,9 +218,9 @@ export function FitnessTab({ f }: { f: Fitness }) {
             <th>Distance</th>
             <th className="num-col">{f.predictions.some((p) => p.source === "garmin") ? "Garmin" : "Prediction"}</th>
             <th className="num-col">Your curve</th>
-            <th className="num-col">Equal endurance (VDOT)</th>
+            <th className="num-col" title="Equal endurance (VDOT)">VDOT</th>
             <th className="num-col">Current form</th>
-            <th>Next target</th>
+            <th>Target</th>
           </tr>
         </thead>
         <tbody>
@@ -233,7 +233,7 @@ export function FitnessTab({ f }: { f: Fitness }) {
               <td className="num-col">{p.ownSeconds ? duration(p.ownSeconds) : "–"}</td>
               <td className="num-col muted">{p.vdotSeconds ? duration(p.vdotSeconds) : "–"}</td>
               <td className="num-col muted">{p.formSeconds ? duration(p.formSeconds) : "–"}</td>
-              <td>{p.target ?? "–"}</td>
+              <td className="nowrap" title={p.target ?? ""}>{p.target ? p.target.replace(/^.*:\s*/, "") : "–"}</td>
             </tr>
           ))}
         </tbody>
@@ -268,7 +268,7 @@ export function FitnessTab({ f }: { f: Fitness }) {
       <LineChart
         from={loadFrom}
         to={today}
-        height={150}
+        height={115}
         digits={0}
         yMin={0}
         series={[
@@ -288,7 +288,7 @@ export function FitnessTab({ f }: { f: Fitness }) {
       <LineChart
         from={from}
         to={today}
-        height={150}
+        height={115}
         digits={2}
         unit=" m/beat"
         series={[
@@ -334,7 +334,8 @@ export function FitnessTab({ f }: { f: Fitness }) {
 
         </section>
         <section className="fit-card fit-keys">
-      <h3>Key runs, last 12 weeks <span className="muted small">{recentKey.length} runs · the dots on the chart</span></h3>
+      <details className="fold">
+      <summary><h3>Key runs, last 12 weeks</h3><span className="muted small">{recentKey.length} runs · the dots on the chart</span></summary>
       <div className="fit-scroll">
       <table className="table">
         <thead>
@@ -374,6 +375,7 @@ export function FitnessTab({ f }: { f: Fitness }) {
         </tbody>
       </table>
       </div>
+      </details>
 
         </section>
         <section className="fit-card fit-set">
