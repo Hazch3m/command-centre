@@ -59,6 +59,8 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
+          STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
         run: |
           npm install --no-audit --no-fund
           set -o pipefail
@@ -68,6 +70,12 @@ jobs:
             printf '%s' "$GOOGLE_CLIENT_ID" | npx wrangler secret put GOOGLE_CLIENT_ID >/dev/null
             printf '%s' "$GOOGLE_CLIENT_SECRET" | npx wrangler secret put GOOGLE_CLIENT_SECRET >/dev/null
             echo "Google sign-in configured"
+          fi
+          # Strava for accounts (Pacelife's Strava API app), when its secrets are set.
+          if [ -n "$STRAVA_CLIENT_ID" ] && [ -n "$STRAVA_CLIENT_SECRET" ]; then
+            printf '%s' "$STRAVA_CLIENT_ID" | npx wrangler secret put STRAVA_CLIENT_ID >/dev/null
+            printf '%s' "$STRAVA_CLIENT_SECRET" | npx wrangler secret put STRAVA_CLIENT_SECRET >/dev/null
+            echo "Strava sign-in configured"
           fi
           url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' deploy.log | head -1)
           echo "::notice title=Sync service address::${url:-see the deploy log}"

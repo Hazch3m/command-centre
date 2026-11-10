@@ -21,11 +21,17 @@ export interface GoogleCreds {
   client: { id: string; secret: string };
   token: { access_token: string; refresh_token: string | null; expires_at: number; account?: string | null };
 }
+export interface StravaCreds {
+  client: { id: string; secret: string };
+  token: { access_token: string; refresh_token: string; expires_at: number; athlete?: string | null };
+}
 export interface Creds {
   /** The link's secret: lets the service open and re-seal your data. */
   secret: string;
   garmin: GarminToken | null;
   google: GoogleCreds | null;
+  /** Strava, signed in on Strava's page for this account (Pacelife's own Strava API app). */
+  strava?: StravaCreds | null;
   ics: { id: string; name: string; url: string }[];
 }
 
@@ -203,6 +209,24 @@ async function googleToken(c: Ctx): Promise<string> {
 
 // ---- The backend the app's code sees ------------------------------------------------
 
+const STRAVA_API = "https://www.strava.com/api/v3/";
+/** A Strava access token that's good for at least a few minutes (Strava's last six hours; refreshed with the refresh token). */
+async function stravaToken(c: Ctx): Promise<string> {
+  const s = c.creds.strava;
+  if (!s) throw new Error("Strava isn't connected");
+  if (s.token.expires_at > nowS() + 300) return s.token.access_token;
+  const r = await fetch("https://www.strava.com/oauth/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ client_id: s.client.id, client_secret: s.client.secret, grant_type: "refresh_token", refresh_token: s.token.refresh_token }),
+  });
+  const v = (await r.json().catch(() => ({}))) as { access_token?: string; refresh_token?: string; expires_at?: number; message?: string };
+  if (!v.access_token) throw new Error(`Strava sign-in expired: connect Strava again (${v.message ?? r.status})`);
+  c.creds = { ...c.creds, strava: { ...s, token: { ...s.token, access_token: v.access_token, refresh_token: v.refresh_token ?? s.token.refresh_token, expires_at: v.expires_at ?? nowS() + 6 * 3600 } } };
+  await c.saveCreds(c.creds);
+  return v.access_token;
+}
+
 const notHere = (what: string) => () => Promise.reject(new Error(`offline: ${what} isn't available in the cloud`));
 
 export const backend = {
@@ -227,10 +251,28 @@ export const backend = {
   garminRequest: async <T,>(path: string) => (await garminGet(need(), path)) as { status: number; body: T },
   garminWrite: async <T,>(method: "POST" | "PUT" | "DELETE", path: string, body?: unknown) => (await garminGet(need(), path, method, body)) as { status: number; body: T },
   oauthStatus: async (p: string) => {
+    if (p === "strava") {
+      const ok = !!ctx?.creds.strava;
+      return { configured: ok, connected: ok, account: ok ? ctx?.creds.strava?.token.athlete ?? null : null };
+    }
     const ok = p === "google" && !!ctx?.creds.google;
     return { configured: ok, connected: ok, account: ok ? ctx?.creds.google?.token.account ?? null : null };
   },
   apiRequest: async <T,>(p: string, method: string, url: string, body?: unknown) => {
+    if (p === "strava") {
+      if (method !== "GET" || !url.startsWith(STRAVA_API)) throw new Error("Only reading from Strava is allowed in the cloud");
+      const c = need();
+      const token = await stravaToken(c);
+      const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      const text = await r.text();
+      let parsed: unknown = text;
+      try {
+        parsed = text ? JSON.parse(text) : null;
+      } catch {
+        /* keep text */
+      }
+      return { status: r.status, body: parsed as T };
+    }
     if (p !== "google" || !GOOGLE_API.some((x) => url.startsWith(x))) throw new Error(`${p} isn't available in the cloud`);
     const c = need();
     let token = await googleToken(c);
