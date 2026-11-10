@@ -5805,3 +5805,5 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .ana-chart-x:hover { color: var(--text); }
 .s-ctl.chart-line { stroke: var(--info); }
 .s-atl.chart-line { stroke: var(--c-running); }
+.week-cards { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 0.8rem; margin-top: 0.8rem; align-items: start; }
+@media (max-width: 1100px) { .week-cards { grid-template-columns: 1fr; } }
