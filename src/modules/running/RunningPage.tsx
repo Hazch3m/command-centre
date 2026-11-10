@@ -1,5 +1,5 @@
 import { PlanCoach } from "./PlanCoach";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { addDays, parseKey, useToday } from "../../core/time";
 import { BarChart, ScrollBars } from "../../shell/charts";
 import { forecastWeek } from "./forecast";
@@ -35,17 +35,16 @@ import { TrainingLoad } from "../../phone/TrainingLoad";
 import { RunalyzeMore } from "../../phone/RunalyzeMore";
 import { FitnessPredictor, GoalCarousel } from "../../phone/PlanGoals";
 
-type Tab = "plan" | "trends" | "runs" | "pace" | "edit" | "progress" | "pbs" | "load" | "watch";
+type Tab = "plan" | "trends" | "runs" | "pace" | "edit" | "progress" | "watch";
+// Fewer, fuller tabs: trends with training load, races with PBs.
 const TABS: { id: Tab; label: string }[] = [
   { id: "plan", label: "Plan" },
-  { id: "trends", label: "Trends" },
   { id: "runs", label: "Runs" },
+  { id: "trends", label: "Trends & load" },
   { id: "pace", label: "Pace on point" },
-  { id: "progress", label: "Races & progress" },
-  { id: "load", label: "Training load" },
-  { id: "pbs", label: "PBs" },
+  { id: "progress", label: "Races & PBs" },
   { id: "watch", label: "Watch" },
-  { id: "edit", label: "Plan & races" },
+  { id: "edit", label: "Edit plan" },
 ];
 const PLAN_VIEWS = [
   { id: "week", label: "Week" },
@@ -89,6 +88,15 @@ export function RunningPage() {
   const today = useToday();
   const { plan, planError, runs = [], connected, sync } = useRunningData();
   const [tab, setTab] = useState<Tab>("plan");
+  // Links elsewhere ("Pace on point ›" on a goal card) switch the tab.
+  useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<string>).detail;
+      if (d === "pace" || d === "progress" || d === "runs" || d === "plan") setTab(d);
+    };
+    window.addEventListener("cc:plan-view", on);
+    return () => window.removeEventListener("cc:plan-view", on);
+  }, []);
   const [view, setView] = useState<(typeof PLAN_VIEWS)[number]["id"]>("week");
   const [editView, setEditView] = useState<(typeof EDIT_VIEWS)[number]["id"]>("build");
 
@@ -134,30 +142,31 @@ export function RunningPage() {
 
   return (
     <div className="subpage">
-      <header className="page-head">
-        <div>
+      <header className="page-head train-head">
+        <div className="train-title">
           <h1>{plan.title}</h1>
           <div className="muted small">
             {plan.editedInApp ? "Edited in the app" : `From your training doc, exported ${plan.exported}`} · {connected ? `${sync?.source === "garmin" ? "Garmin" : sync?.source === "both" ? "Garmin and Strava" : "Strava"} synced ${sync?.lastSync ? new Date(sync.lastSync).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}` : "Runs: connect Garmin in Settings"}
           </div>
         </div>
+        <nav className="segmented page-tabs" role="tablist">
+          {TABS.map((t) => (
+            <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? "on" : ""} onClick={() => setTab(t.id)}>
+              {t.label}
+            </button>
+          ))}
+        </nav>
       </header>
       <ErrorNote error={planError} />
-      <nav className="segmented page-tabs" role="tablist">
-        {TABS.map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? "on" : ""} onClick={() => setTab(t.id)}>
-            {t.label}
-          </button>
-        ))}
-      </nav>
 
       <div className="page-body" key={tab}>
         {tab === "pace" && <PaceOnPointTab plan={plan} runs={runs} />}
         {tab === "trends" && <RecentBlock runs={runs} plan={plan} />}
+        {tab === "trends" && <h3>Training load</h3>}
         {tab === "runs" && <RunsTab runs={runs} plan={plan} />}
-        {tab === "pbs" && <PbsTab />}
+
         {tab === "watch" && <WatchPage />}
-        {tab === "load" && (
+        {tab === "trends" && (
           <div className="pl-embed pl-cols">
             <div>
               <TrainingLoad />
@@ -191,7 +200,7 @@ export function RunningPage() {
 
         {tab === "plan" && (
           <>
-            <div className="plan-view-switch">
+            <div className="plan-view-switch plan-toolbar">
               <span className="segmented small-seg">
                 {PLAN_VIEWS.map((v) => (
                   <button key={v.id} className={view === v.id ? "on" : ""} onClick={() => setView(v.id)}>
@@ -199,13 +208,13 @@ export function RunningPage() {
                   </button>
                 ))}
               </span>
+              <details className="fold targets-fold">
+                <summary>
+                  Targets <span className="muted small">{plan.prefs?.mode === "hr" ? "heart rate" : "pace"} · easy runs {plan.prefs?.easyTarget === "feel" ? "by feel" : plan.prefs?.easyTarget === "wide" ? "wider range" : "plan's range"}{plan.prefs?.easyChecks ? "" : ", not judged"}</span>
+                </summary>
+                <TargetPrefs />
+              </details>
             </div>
-            <details className="fold targets-fold">
-              <summary>
-                Targets <span className="muted small">{plan.prefs?.mode === "hr" ? "heart rate" : "pace"} · easy runs {plan.prefs?.easyTarget === "feel" ? "by feel" : plan.prefs?.easyTarget === "wide" ? "wider range" : "plan's range"}{plan.prefs?.easyChecks ? "" : ", not judged"}</span>
-              </summary>
-              <TargetPrefs />
-            </details>
             {/* The week (or weeks) first and widest; how the plan's going alongside. */}
             <div className="plan-focus">
               <div className="plan-focus-main">
@@ -222,6 +231,8 @@ export function RunningPage() {
             </div>
           </>
         )}
+        {tab === "progress" && <PbsTab />}
+        {tab === "progress" && <h3>Races</h3>}
         {tab === "progress" && (
           <>
             <div className="tiles">

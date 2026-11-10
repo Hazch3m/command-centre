@@ -13,6 +13,7 @@ import { openRun } from "./RunView";
 import { duration, pace } from "./stats";
 import { loadDetails, type Run, type RunDetail } from "./strava";
 import { useRunningData } from "./useRunning";
+import { AnalysisChart, type ChartKey } from "./AnalysisCharts";
 import { predictTime, trimp, type Vo2Config } from "./vo2";
 
 /**
@@ -142,8 +143,12 @@ export function Analysis() {
     () => Promise.all([loadDetails(addDays(today, -420)), db.select<Extra>("SELECT * FROM run_extra").catch(() => [] as Extra[]), loadZoneSettings(), loadGarminZones()]),
     [rv, today],
   ).data;
-  const health = useQuery(() => loadHealth(21), [hv]).data ?? [];
+  const health = useQuery(() => loadHealth(400), [hv]).data ?? [];
   const [monday, setMonday] = useState(() => mondayOf(today));
+  /** A month opened from the months table (or the distance chart): its runs replace the week. */
+  const [month, setMonth] = useState<string | null>(null);
+  const [chart, setChart] = useState<ChartKey | null>(null);
+  const pick = (k: ChartKey) => setChart((c) => (c === k ? null : k));
 
   const model = useMemo(() => {
     if (!f || !q) return null;
@@ -176,15 +181,25 @@ export function Analysis() {
     }
     const daily = dailyLoad(runs, cfg);
     const series = loadSeries(daily, addDays(today, -365), today);
-    return { rows, paces, vd, zones, series, mono: monotony(daily, today) };
+    return { rows, paces, vd, zones, series, daily, mono: monotony(daily, today) };
   }, [f, q, runs, today]);
 
   if (!f || !model) return <div className="ana-wait">Working out your analysis…</div>;
   const rowsIn = (from: string, to: string) => [...model.rows.values()].filter((r) => r.run.date >= from && r.run.date <= to).sort((a, b) => a.run.start_local.localeCompare(b.run.start_local));
   const show = (v: number | null) => (v == null ? "–" : (v + f.shift).toFixed(1));
 
-  // The week.
-  const weekRows = rowsIn(monday, addDays(monday, 6));
+  // The week, or the month you opened.
+  const monthEnd = (m: string) => {
+    const e = new Date(parseKey(m).getFullYear(), parseKey(m).getMonth() + 1, 0);
+    return `${e.getFullYear()}-${String(e.getMonth() + 1).padStart(2, "0")}-${String(e.getDate()).padStart(2, "0")}`;
+  };
+  const shiftMonth = (m: string, by: number) => {
+    const d = new Date(parseKey(m).getFullYear(), parseKey(m).getMonth() + by, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+  };
+  const thisMonth = today.slice(0, 8) + "01";
+  const days = month ? Array.from({ length: Number(monthEnd(month).slice(8)) }, (_, i) => addDays(month, i)) : DOW.map((_, i) => addDays(monday, i));
+  const weekRows = month ? rowsIn(month, monthEnd(month)) : rowsIn(monday, addDays(monday, 6));
   const weekSum = weekRows.reduce(addRow, emptySum());
 
   // Months (last six) and weeks (last ten).
@@ -212,20 +227,57 @@ export function Analysis() {
   return (
     <div className="ana">
       <div className="ana-main">
+        {chart && (
+          <AnalysisChart
+            k={chart}
+            f={f}
+            runs={runs}
+            series={model.series}
+            daily={model.daily}
+            health={health}
+            today={today}
+            thresholdPace={model.paces?.threshold ?? null}
+            easyPace={model.paces ? (Array.isArray(model.paces.easy) ? (model.paces.easy[0] + model.paces.easy[1]) / 2 : model.paces.easy) : null}
+            onMonth={(m) => setMonth(m)}
+            onClose={() => setChart(null)}
+          />
+        )}
         <div className="ana-weekbar">
-          <button type="button" onClick={() => setMonday(addDays(monday, -7))} aria-label="Previous week">
-            ‹
-          </button>
-          <b>
-            {fmtD(monday)} – {fmtD(addDays(monday, 6))}
-          </b>
-          <button type="button" onClick={() => setMonday(addDays(monday, 7))} aria-label="Next week" disabled={monday >= mondayOf(today)}>
-            ›
-          </button>
-          {monday !== mondayOf(today) && (
-            <button type="button" className="ana-link" onClick={() => setMonday(mondayOf(today))}>
-              This week
-            </button>
+          {month ? (
+            <>
+              <button type="button" onClick={() => setMonth(shiftMonth(month, -1))} aria-label="Previous month">
+                ‹
+              </button>
+              <b>
+                {MONTHS[parseKey(month).getMonth()]} {month.slice(0, 4)}
+              </b>
+              <button type="button" onClick={() => setMonth(shiftMonth(month, 1))} aria-label="Next month" disabled={month >= thisMonth}>
+                ›
+              </button>
+              <button type="button" className="ana-link" onClick={() => setMonth(null)}>
+                Back to the week
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" onClick={() => setMonday(addDays(monday, -7))} aria-label="Previous week">
+                ‹
+              </button>
+              <b>
+                {fmtD(monday)} – {fmtD(addDays(monday, 6))}
+              </b>
+              <button type="button" onClick={() => setMonday(addDays(monday, 7))} aria-label="Next week" disabled={monday >= mondayOf(today)}>
+                ›
+              </button>
+              {monday !== mondayOf(today) && (
+                <button type="button" className="ana-link" onClick={() => setMonday(mondayOf(today))}>
+                  This week
+                </button>
+              )}
+              <button type="button" className="ana-link" onClick={() => setMonth(monday.slice(0, 8) + "01")}>
+                Whole month
+              </button>
+            </>
           )}
         </div>
         <div className="ana-scroll">
@@ -251,9 +303,11 @@ export function Analysis() {
               </tr>
             </thead>
             <tbody>
-              {DOW.map((dn, i) => {
-                const date = addDays(monday, i);
+              {days.map((date) => {
+                const dn = DOW[(parseKey(date).getDay() + 6) % 7];
                 const rs = weekRows.filter((r) => r.run.date === date);
+                // A month lists only the days you ran (a week shows every day).
+                if (!rs.length && month) return null;
                 if (!rs.length)
                   return (
                     <tr key={date} className={"ana-empty" + (date === today ? " today" : "")}>
@@ -309,9 +363,9 @@ export function Analysis() {
         </div>
 
         <h3 className="ana-h">Months</h3>
-        <SummaryTable rows={months.slice(0, 6).map((m, i) => ({ ...m, prev: months[i + 1]?.sum ?? null }))} show={show} />
+        <SummaryTable rows={months.slice(0, 6).map((m, i) => ({ ...m, prev: months[i + 1]?.sum ?? null }))} show={show} sel={month} onPick={(k) => (setMonth(k), scrollTop())} />
         <h3 className="ana-h">Last 10 training weeks</h3>
-        <SummaryTable rows={weeks.slice(0, 10).map((w, i) => ({ ...w, label: i === 0 ? `This week · ${w.label}` : w.label, prev: weeks[i + 1]?.sum ?? null }))} show={show} onPick={(k) => setMonday(k)} />
+        <SummaryTable rows={weeks.slice(0, 10).map((w, i) => ({ ...w, label: i === 0 ? `This week · ${w.label}` : w.label, prev: weeks[i + 1]?.sum ?? null }))} show={show} sel={month ? null : monday} onPick={(k) => (setMonth(null), setMonday(k), scrollTop())} />
         <p className="ana-note">
           Zones: pace from your training paces (easy, steady, threshold, interval, faster), heart rate from your zones ({model.zones.source ?? "your settings"}). VO2 max is each run's effective VO2 max from pace and heart rate; the arrow compares it with your shape at the
           time (↑ well above, ↗ above, → as usual, ↘ below, ↓ well below). Cadence, ground contact, vertical ratio and training effect come from Garmin.
@@ -320,7 +374,7 @@ export function Analysis() {
 
       <aside className="ana-side">
         <Panel title="Running">
-          <div className="ana-big">
+          <div className={"ana-big ana-click" + (chart === "km" ? " sel" : "")} role="button" tabIndex={0} onClick={() => pick("km")} title="Distance month by month">
             <b className="num">{n1(monthKm)} km</b>
             <small>
               {months[0].label} · {months[0].sum.n} runs
@@ -328,21 +382,21 @@ export function Analysis() {
           </div>
         </Panel>
         <Panel title="Calculations">
-          <Calc label="Effective VO2max" value={show(f.current)} bar={f.current ? (f.current - 30) / 40 : 0} />
-          <Calc label="Marathon shape" value={f.shape ? `${Math.round(f.shape.total * 100)} %` : "–"} bar={f.shape?.total ?? 0} />
-          <Calc label="Fatigue (ATL)" value={now ? `${Math.round((now.atl / maxAtl) * 100)} %` : "–"} bar={now ? now.atl / maxAtl : 0} />
-          <Calc label="Fitness (CTL)" value={now ? `${Math.round((now.ctl / maxCtl) * 100)} %` : "–"} bar={now ? now.ctl / maxCtl : 0} />
-          <Calc label="Stress balance (TSB)" value={now ? `${now.tsb > 0 ? "+" : ""}${Math.round(now.tsb)}` : "–"} bar={now ? 0.5 + Math.max(-0.5, Math.min(0.5, now.tsb / Math.max(1, now.ctl) / 2)) : 0} />
-          <Calc label="Workload ratio (A:C)" value={now && now.ctl ? (now.atl / now.ctl).toFixed(2) : "–"} bar={now && now.ctl ? Math.min(1, now.atl / now.ctl / 2) : 0} />
-          <Calc label="Monotony" value={model.mono.monotony != null ? model.mono.monotony.toFixed(2) : "–"} bar={model.mono.monotony != null ? Math.min(1, model.mono.monotony / 2.5) : 0} />
-          <Calc label="Training strain" value={String(Math.round(model.mono.strain))} bar={Math.min(1, model.mono.strain / 3000)} />
+          <Calc on={() => pick("vo2")} sel={chart === "vo2"} label="Effective VO2max" value={show(f.current)} bar={f.current ? (f.current - 30) / 40 : 0} />
+          <Calc on={() => pick("shape")} sel={chart === "shape"} label="Marathon shape" value={f.shape ? `${Math.round(f.shape.total * 100)} %` : "–"} bar={f.shape?.total ?? 0} />
+          <Calc on={() => pick("atl")} sel={chart === "atl"} label="Fatigue (ATL)" value={now ? `${Math.round((now.atl / maxAtl) * 100)} %` : "–"} bar={now ? now.atl / maxAtl : 0} />
+          <Calc on={() => pick("ctl")} sel={chart === "ctl"} label="Fitness (CTL)" value={now ? `${Math.round((now.ctl / maxCtl) * 100)} %` : "–"} bar={now ? now.ctl / maxCtl : 0} />
+          <Calc on={() => pick("tsb")} sel={chart === "tsb"} label="Stress balance (TSB)" value={now ? `${now.tsb > 0 ? "+" : ""}${Math.round(now.tsb)}` : "–"} bar={now ? 0.5 + Math.max(-0.5, Math.min(0.5, now.tsb / Math.max(1, now.ctl) / 2)) : 0} />
+          <Calc on={() => pick("acr")} sel={chart === "acr"} label="Workload ratio (A:C)" value={now && now.ctl ? (now.atl / now.ctl).toFixed(2) : "–"} bar={now && now.ctl ? Math.min(1, now.atl / now.ctl / 2) : 0} />
+          <Calc on={() => pick("mono")} sel={chart === "mono"} label="Monotony" value={model.mono.monotony != null ? model.mono.monotony.toFixed(2) : "–"} bar={model.mono.monotony != null ? Math.min(1, model.mono.monotony / 2.5) : 0} />
+          <Calc on={() => pick("strain")} sel={chart === "strain"} label="Training strain" value={String(Math.round(model.mono.strain))} bar={Math.min(1, model.mono.strain / 3000)} />
         </Panel>
         <Panel title="Prognosis">
-          <Prognosis f={f} vd={model.vd} />
+          <Prognosis f={f} vd={model.vd} chart={chart} pick={pick} />
         </Panel>
         {model.paces && (
           <Panel title="Training paces">
-            <table className="ana-mini">
+            <table className={"ana-mini ana-click" + (chart === "paces" ? " sel" : "")} onClick={() => pick("paces")} title="Pace of each run against these">
               <tbody>
                 {(
                   [
@@ -369,19 +423,19 @@ export function Analysis() {
         <Panel title="Health">
           <table className="ana-mini">
             <tbody>
-              <tr>
+              <tr className={"ana-click" + (chart === "rhr" ? " sel" : "")} onClick={() => pick("rhr")}>
                 <td>Resting heart rate</td>
                 <td className="r num">{h.rhr ? `${Math.round(h.rhr)} bpm` : "–"}</td>
               </tr>
-              <tr>
+              <tr className={"ana-click" + (chart === "sleep" ? " sel" : "")} onClick={() => pick("sleep")}>
                 <td>Sleep</td>
                 <td className="r num">{h.sleep_secs ? duration(h.sleep_secs).replace(/:\d\d$/, "") + " h" : "–"}</td>
               </tr>
-              <tr>
+              <tr className={"ana-click" + (chart === "hrv" ? " sel" : "")} onClick={() => pick("hrv")}>
                 <td>HRV</td>
                 <td className="r num">{h.hrv ? `${Math.round(h.hrv)} ms` : "–"}</td>
               </tr>
-              <tr>
+              <tr className={"ana-click" + (chart === "acr" ? " sel" : "")} onClick={() => pick("acr")}>
                 <td>Training load (A:C)</td>
                 <td className="r num">{now && now.ctl ? (now.atl / now.ctl).toFixed(2) : "–"}</td>
               </tr>
@@ -392,6 +446,9 @@ export function Analysis() {
     </div>
   );
 }
+
+/** Back to the top of the page (the opened month or chart is there). */
+const scrollTop = () => document.querySelector(".ana")?.scrollIntoView({ behavior: "smooth", block: "start" });
 
 const mmss = (s: number) => `${Math.floor(Math.round(s) / 60)}:${String(Math.round(s) % 60).padStart(2, "0")}`;
 
@@ -416,7 +473,7 @@ function SumCells({ s }: { s: Sum }) {
   );
 }
 
-function SummaryTable({ rows, show, onPick }: { rows: { key: string; label: string; sum: Sum; prev: Sum | null }[]; show: (v: number | null) => string; onPick?: (key: string) => void }) {
+function SummaryTable({ rows, show, onPick, sel }: { rows: { key: string; label: string; sum: Sum; prev: Sum | null }[]; show: (v: number | null) => string; onPick?: (key: string) => void; sel?: string | null }) {
   return (
     <div className="ana-scroll">
       <table className="ana-table">
@@ -445,10 +502,10 @@ function SummaryTable({ rows, show, onPick }: { rows: { key: string; label: stri
             const v = avg(r.sum.vo2);
             const pv = r.prev ? avg(r.prev.vo2) : null;
             return (
-              <tr key={r.key}>
+              <tr key={r.key} className={(onPick ? "ana-click" : "") + (sel === r.key ? " sel" : "")} onClick={onPick ? () => onPick(r.key) : undefined}>
                 <td>
                   {onPick ? (
-                    <button type="button" className="ana-link" onClick={() => onPick(r.key)}>
+                    <button type="button" className="ana-link" onClick={(e) => (e.stopPropagation(), onPick(r.key))}>
                       {r.label}
                     </button>
                   ) : (
@@ -501,9 +558,9 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function Calc({ label, value, bar }: { label: string; value: string; bar: number }) {
+function Calc({ label, value, bar, on, sel }: { label: string; value: string; bar: number; on?: () => void; sel?: boolean }) {
   return (
-    <div className="ana-calc">
+    <div className={"ana-calc" + (on ? " ana-click" : "") + (sel ? " sel" : "")} role={on ? "button" : undefined} tabIndex={on ? 0 : undefined} onClick={on} onKeyDown={on ? (e) => (e.key === "Enter" || e.key === " ") && on() : undefined}>
       <span>{label}</span>
       <span className="ana-calc-bar">
         <i style={{ width: `${Math.max(0, Math.min(1, bar)) * 100}%` }} />
@@ -514,7 +571,7 @@ function Calc({ label, value, bar }: { label: string; value: string; bar: number
 }
 
 /** Runalyze's prognosis: from the VDOT time (fully trained for it) to the time your marathon shape allows. */
-function Prognosis({ f, vd }: { f: Fitness; vd: number | null }) {
+function Prognosis({ f, vd, chart, pick }: { f: Fitness; vd: number | null; chart: ChartKey | null; pick: (k: ChartKey) => void }) {
   if (!vd) return <p className="ana-note">Needs runs with heart rate, or a race result.</p>;
   const shape = f.shape?.total ?? 1;
   const dists: [string, number][] = [
@@ -533,7 +590,7 @@ function Prognosis({ f, vd }: { f: Fitness; vd: number | null }) {
           const [lo, hi] = [Math.min(a, b), Math.max(a, b)];
           const fmt = (s: number) => duration(s);
           return (
-            <tr key={l}>
+            <tr key={l} className={"ana-click" + (chart === `prog:${m}` ? " sel" : "")} onClick={() => pick(`prog:${m}`)}>
               <td>{l}</td>
               <td className="r num">
                 {Math.abs(hi - lo) < 3 ? fmt(lo) : `${fmt(lo)} – ${fmt(hi)}`} <small className="muted">({pace(m, hi)}/km)</small>
