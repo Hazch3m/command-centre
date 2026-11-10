@@ -90,7 +90,7 @@ function runType(r: Run, d: RunDetail | undefined, p: Paces | null): string {
   if (p && d?.splits?.length) {
     const fast = d.splits.filter((s) => s.speed > 0 && 1000 / s.speed < p.threshold + 6).length;
     if (fast / d.splits.length > 0.15) return fast / d.splits.length > 0.5 ? "TR" : "IT";
-  }
+  } else if (p && r.distance > 0 && r.moving_time / (r.distance / 1000) < p.threshold + 10) return "TR";
   return /recovery/i.test(r.name) ? "RR" : "ER";
 }
 const TYPE_TEXT: Record<string, string> = { RC: "Race", LR: "Long run", IT: "Intervals", TR: "Tempo", ER: "Easy run", RR: "Recovery run" };
