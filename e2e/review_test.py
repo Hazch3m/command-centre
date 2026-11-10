@@ -67,7 +67,7 @@ try:
         pp.wait_for_selector(".p-app", timeout=60000)
         pp.wait_for_timeout(2500)
         # Connect Garmin: the runs arrive, and the newest (today) opens for review by itself.
-        pp.locator(".p-start-step").first.click()
+        pp.locator(".p-start-pills button", has_text="Garmin").click()
         try:
             pp.wait_for_selector(".modal.rr", timeout=60000)
         except Exception:
