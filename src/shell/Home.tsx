@@ -7,7 +7,7 @@ import { useFitness } from "../modules/running/fitness";
 import { forecastWeek, type ForecastDay } from "../modules/running/forecast";
 import { mondayOf, priorityOf, upcomingRaces } from "../modules/running/plan";
 import { openRun } from "../modules/running/RunView";
-import { duration, pace } from "../modules/running/stats";
+import { pace } from "../modules/running/stats";
 import { loadDetails, loadOverrides } from "../modules/running/strava";
 import { useRunningData } from "../modules/running/useRunning";
 import { predictionChange } from "../modules/running/goalTrend";
