@@ -504,6 +504,18 @@ try:
             print("web tabs:", tabs[:20])
             check(any(t == "Training" for t in tabs), "web: the desktop view opens with your account")
             print("viewport:", wp.viewport_size)
+            # A laptop: 1280 × 720 of page, as at 150% on a 1080p screen.
+            big = wp.viewport_size
+            wp.set_viewport_size({"width": 1280, "height": 720})
+            for name in ["Home", "Training", "Analysis", "Fitness"]:
+                t = wp.get_by_role("tab", name=name, exact=True)
+                if t.count():
+                    t.first.click(force=True)
+                    wp.wait_for_timeout(2200)
+                    wp.screenshot(path=f"{out}/40-laptop-{name.lower()}.png")
+                    sc = wp.evaluate("() => [...document.querySelectorAll('.tab-page, .subpage, .tab-page-home')].map(e => e.className.split(' ')[0] + ':' + e.scrollHeight + '/' + e.clientHeight).join(' ')")
+                    print("laptop", name, sc)
+            wp.set_viewport_size(big)
             for name in ["Training", "Fitness", "Runs", "Stats", "Health"]:
                 t = wp.get_by_role("tab", name=name, exact=True)
                 if t.count():
