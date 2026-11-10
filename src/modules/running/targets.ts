@@ -63,7 +63,7 @@ const fmt = (s: number) => {
 
 /** "5:00–5:40" → "4:45–5:55" (15 s either way): room for hills, heat and tired legs. */
 export function widen(range: string, by = 15): string {
-  const m = /(\d:\d{2})\s*[–-]\s*(\d:\d{2})/.exec(range);
+  const m = /(\d{1,2}:\d{2})\s*[–-]\s*(\d{1,2}:\d{2})/.exec(range);
   if (!m) return range;
   return `${fmt(parseTime(m[1])! - by)}–${fmt(parseTime(m[2])! + by)}`;
 }

@@ -85,3 +85,12 @@ describe("floats and over-unders", () => {
     expect(w.name).toBe("Over-unders 3×(4×2 min/1 min)");
   });
 });
+
+describe("slow paces (10:00/km and slower)", () => {
+  it("keeps both minute digits", async () => {
+    const { sessionToWorkout } = await import("./importWeek");
+    const w = sessionToWorkout("26 km long run, last 4 at 10:05–10:11")!;
+    expect(JSON.stringify(w)).toMatch(/10:05/);
+    expect(JSON.stringify(w)).not.toMatch(/"pace 0:/);
+  });
+});

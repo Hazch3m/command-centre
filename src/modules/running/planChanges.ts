@@ -53,8 +53,8 @@ export function shiftPaces(text: string, by: number): string {
   if (!by) return text;
   return text.replace(/\b(\d{1,2}):([0-5]\d)\b/g, (m, a: string, b: string) => {
     const s = +a * 60 + +b;
-    // Only running paces (2:30–9:59 a km), never clock or race times.
-    return s >= 150 && s < 600 ? fmtPace(s + by) : m;
+    // Only running paces (2:30–14:59 a km), never clock or race times.
+    return s >= 150 && s < 900 ? fmtPace(s + by) : m;
   });
 }
 
@@ -79,7 +79,7 @@ function easierWeek(days: ForecastDay[], s: PlanWeek["sessions"], share: number)
 export function applyChanges(plan: Plan): Plan {
   const c = plan.changes;
   if (!c || (!c.weeks && !c.recovery && !c.pace?.shift && !c.progress)) return plan;
-  const tPace = /(\d:\d{2})\s*[–-]\s*(\d:\d{2})/.exec(plan.paces.find((p) => /^Threshold/i.test(p.zone))?.now ?? "");
+  const tPace = /(\d{1,2}:\d{2})\s*[–-]\s*(\d{1,2}:\d{2})/.exec(plan.paces.find((p) => /^Threshold/i.test(p.zone))?.now ?? "");
   const tRange = tPace ? `${tPace[1]}–${tPace[2]}` : null;
   const rec = c.recovery;
   const recEnd = rec ? (rec.weeks ? addDays(rec.from, rec.weeks * 7) : "9999-12-31") : "";
