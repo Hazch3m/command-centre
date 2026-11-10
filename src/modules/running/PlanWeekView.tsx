@@ -209,7 +209,7 @@ export function PlanWeekView({ plan, runs, hideStrip }: { plan: Plan; runs: Run[
           This week's runs in detail ›
         </button>
       </div>
-      <div className="pwv-strip" ref={strip} hidden={hideStrip}>
+      {!hideStrip && <div className="pwv-strip" ref={strip}>
         {weeks.map((w) => (
           <button
             key={w.monday}
@@ -220,7 +220,7 @@ export function PlanWeekView({ plan, runs, hideStrip }: { plan: Plan; runs: Run[
             {w.label}
           </button>
         ))}
-      </div>
+      </div>}
       {editing && createPortal(<DayEditor d={editing.d} week={editing.week} plan={plan} onClose={() => setEditing(null)} />, document.body)}
     </div>
   );
