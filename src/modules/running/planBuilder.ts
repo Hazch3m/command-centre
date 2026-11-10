@@ -686,6 +686,7 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
     name: o.raceName || DIST_LABEL[o.dist],
     target: o.target,
     role: "Goal race",
+    priority: "A",
     ...(o.terrain ? { elevation: { ...courseElevation(o.terrain, DIST_M[o.dist] / 1000), kind: o.terrain.kind } } : {}),
   };
   const inside = old.races.filter((r) => r.date && !r.approx && r.date >= start && r.date <= end && r.date !== o.raceDate);

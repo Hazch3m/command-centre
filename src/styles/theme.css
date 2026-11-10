@@ -5016,18 +5016,19 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .ip-pick { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
 .ip-pick label.btn { cursor: pointer; }
 .ip-paste { width: 100%; font-family: ui-monospace, monospace; font-size: 0.8rem; background: var(--card); color: inherit; border: 1px solid var(--line); border-radius: 8px; padding: 0.5rem; resize: vertical; }
-.ip-templates { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+.ip-templates { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.7rem; }
+.ip-templates > div { min-width: 0; }
 .ip-templates pre { margin: 0.3rem 0 0; font-size: 0.7rem; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 0.5rem; overflow-x: auto; }
 .ip-template-head { display: flex; gap: 0.4rem; align-items: center; }
 .ip-template-head b { flex: 1; }
 
 @media (max-width: 700px) {
-  .pb-two, .ip-templates { grid-template-columns: 1fr; }
+  .pb-two, .ip-templates { grid-template-columns: minmax(0, 1fr); }
   .rm-tapers { grid-template-columns: 1fr 1fr; }
   .pb-steps span { display: none; }
   .pb-steps li.on span { display: inline; }
 }
-.plan-builder.compact .pb-two, .import-plan.compact .ip-templates { grid-template-columns: 1fr; }
+.plan-builder.compact .pb-two, .import-plan.compact .ip-templates { grid-template-columns: minmax(0, 1fr); }
 .plan-builder.compact .pb-steps span { display: none; }
 .plan-builder.compact .pb-steps li.on span { display: inline; }
 .plan-builder.compact .pb-steps li.on { flex: 2.5; }
