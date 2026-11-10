@@ -57,6 +57,32 @@ interface GarminActivity {
   maxHR?: number;
   calories?: number;
   description?: string | null;
+  averageRunningCadenceInStepsPerMinute?: number;
+  avgGroundContactTime?: number;
+  avgVerticalRatio?: number;
+  avgVerticalOscillation?: number;
+  avgStrideLength?: number;
+  aerobicTrainingEffect?: number;
+  anaerobicTrainingEffect?: number;
+  avgPower?: number;
+  vO2MaxValue?: number;
+}
+
+/** Running dynamics and training effect from one activity of Garmin's list. */
+export function garminExtra(a: GarminActivity) {
+  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null);
+  return {
+    id: `g${a.activityId}`,
+    cadence: n(a.averageRunningCadenceInStepsPerMinute),
+    gct: n(a.avgGroundContactTime),
+    vratio: n(a.avgVerticalRatio),
+    vosc: n(a.avgVerticalOscillation),
+    stride: n(a.avgStrideLength),
+    te_aer: n(a.aerobicTrainingEffect),
+    te_ana: typeof a.anaerobicTrainingEffect === "number" ? a.anaerobicTrainingEffect : null,
+    power: n(a.avgPower),
+    vo2: n(a.vO2MaxValue),
+  };
 }
 
 interface GarminDetails {
@@ -117,7 +143,9 @@ async function doSync(): Promise<GarminRunSync> {
   let state: GarminRunSync;
   try {
     const [{ latest }] = await db.select<{ latest: string | null }>("SELECT MAX(date) AS latest FROM strava_activities WHERE id LIKE 'g%'");
-    const from = latest ? ymd(new Date(Date.parse(latest + "T12:00") - 4 * 86400_000)) : HISTORY_FROM;
+    // Running dynamics arrived later: read the whole history once to fill them in.
+    const [{ extras }] = await db.select<{ extras: number }>("SELECT count(*) AS extras FROM run_extra").catch(() => [{ extras: 1 }]);
+    const from = latest && extras ? ymd(new Date(Date.parse(latest + "T12:00") - 4 * 86400_000)) : HISTORY_FROM;
     const to = ymd(new Date(Date.now() + 86400_000));
     let added = 0;
     for (let start = 0; start < 5000; start += PAGE) {
@@ -140,6 +168,18 @@ async function doSync(): Promise<GarminRunSync> {
             };
           }),
         );
+      if (runs.length)
+        await db
+          .batch(
+            runs.map((a) => {
+              const e = garminExtra(a);
+              return {
+                sql: "INSERT OR REPLACE INTO run_extra (id, cadence, gct, vratio, vosc, stride, te_aer, te_ana, power, vo2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                params: [e.id, e.cadence, e.gct, e.vratio, e.vosc, e.stride, e.te_aer, e.te_ana, e.power, e.vo2],
+              };
+            }),
+          )
+          .catch(() => {});
       added += runs.length;
       if (r.body.length < PAGE) break;
     }

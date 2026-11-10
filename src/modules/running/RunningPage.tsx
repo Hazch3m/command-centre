@@ -1,3 +1,4 @@
+import { Analysis } from "./Analysis";
 import { PlanCoach } from "./PlanCoach";
 import { useMemo, useState, type ReactNode } from "react";
 import { parseKey, useToday } from "../../core/time";
@@ -34,10 +35,11 @@ import { TrainingLoad } from "../../phone/TrainingLoad";
 import { RunalyzeMore } from "../../phone/RunalyzeMore";
 import { FitnessPredictor, GoalCarousel } from "../../phone/PlanGoals";
 
-type Tab = "plan" | "runs" | "pace" | "edit" | "progress" | "pbs" | "load" | "watch";
+type Tab = "plan" | "runs" | "pace" | "edit" | "progress" | "pbs" | "load" | "watch" | "analysis";
 const TABS: { id: Tab; label: string }[] = [
   { id: "plan", label: "Plan" },
   { id: "runs", label: "Runs" },
+  { id: "analysis", label: "Analysis" },
   { id: "pace", label: "Pace on point" },
   { id: "progress", label: "Races & progress" },
   { id: "load", label: "Training load" },
@@ -134,6 +136,7 @@ export function RunningPage() {
       <div className="page-body" key={tab}>
         {tab === "pace" && <PaceOnPointTab plan={plan} runs={runs} />}
         {tab === "runs" && <RunsTab runs={runs} plan={plan} />}
+        {tab === "analysis" && <Analysis />}
         {tab === "pbs" && <PbsTab />}
         {tab === "watch" && <WatchPage />}
         {tab === "load" && (

@@ -30,6 +30,10 @@ export interface RunDetail {
   photo?: string | null;
 }
 
+/** Running dynamics and training effect per run (from Garmin's activity list); made here and by the cloud. */
+export const RUN_EXTRA_SQL = `CREATE TABLE IF NOT EXISTS run_extra (
+  id TEXT PRIMARY KEY, cadence REAL, gct REAL, vratio REAL, vosc REAL, stride REAL, te_aer REAL, te_ana REAL, power REAL, vo2 REAL)`;
+
 export const migrations = [
   `CREATE TABLE strava_activities (
      id TEXT PRIMARY KEY,
@@ -74,6 +78,8 @@ export const migrations = [
      json TEXT NOT NULL,
      fetched_at TEXT NOT NULL
    );`,
+  // 4 — running dynamics and training effect per run
+  RUN_EXTRA_SQL,
 ];
 
 export interface FullRun {

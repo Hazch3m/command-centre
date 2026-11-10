@@ -103,7 +103,7 @@ export interface CloudOp {
 }
 
 /** Tables the cloud may write (and the PC and phone accept from it). */
-export const CLOUD_TABLES = new Set(["strava_activities", "strava_details", "strava_full", "health_daily", "calendar_events", "vo2_readings", "kv"]);
+export const CLOUD_TABLES = new Set(["strava_activities", "run_extra", "strava_details", "strava_full", "health_daily", "calendar_events", "vo2_readings", "kv"]);
 /** kv keys the cloud may write: the sync states and lists its sync code keeps. */
 export const CLOUD_KV = /^(health\.|calendar\.(sync|calendars)$|garmin\.runs\.sync$|watch\.autosync$|strava\.(sync|shoes|retired)$)/;
 
