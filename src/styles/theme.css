@@ -5807,3 +5807,40 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .s-atl.chart-line { stroke: var(--c-running); }
 .week-cards { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 0.8rem; margin-top: 0.8rem; align-items: start; }
 @media (max-width: 1100px) { .week-cards { grid-template-columns: 1fr; } }
+
+/* Analysis charts: framed, with the numbers beside them. */
+.ana-chart { padding: 12px 16px 12px; box-shadow: var(--tile-shadow); }
+.ana-chart-body.with-stats { display: grid; grid-template-columns: minmax(0, 1fr) 11rem; gap: 14px; align-items: stretch; }
+.ana-chart-plot { min-width: 0; background: var(--card-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px 4px; }
+.ana-chart-plot .chart { background: none; border: 0; padding: 0; }
+.ana-chart-stats { margin: 0; display: grid; grid-template-rows: repeat(4, auto); align-content: start; gap: 8px; }
+.ana-chart-stats > div { background: var(--card-2); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; }
+.ana-chart-stats dt { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2); }
+.ana-chart-stats dd { margin: 2px 0 0; font-size: 1.05rem; font-weight: 650; }
+.ana-chart-stats dd small { font-size: 0.7rem; font-weight: 500; color: var(--text-2); }
+@media (max-width: 900px) { .ana-chart-body.with-stats { grid-template-columns: 1fr; } .ana-chart-stats { grid-template-columns: repeat(4, 1fr); grid-template-rows: none; } }
+
+/* Distances: mileage or pace */
+.ana-gap-sum { display: flex; flex-direction: column; gap: 2px; margin: 0 0 8px; font-size: 0.85rem; }
+.ana-gap-sum span:last-child { color: var(--text-2); }
+.ana-meter-row { display: inline-flex; align-items: center; gap: 8px; }
+.ana-meter-row small { color: var(--text-2); }
+.ana-meter { display: inline-block; width: 70px; height: 7px; border-radius: 4px; background: color-mix(in srgb, var(--text) 10%, transparent); overflow: hidden; }
+.ana-meter i { display: block; height: 100%; border-radius: 4px; background: #2e9e5b; }
+.ana-meter i.mid { background: #e8b84d; }
+.ana-meter i.low { background: #e8634e; }
+.ana-ok { color: #2e9e5b; }
+.ana-verdict { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 0.78rem; font-weight: 650; }
+.ana-verdict.v-ok { background: color-mix(in srgb, #2e9e5b 18%, transparent); color: #2e9e5b; }
+.ana-verdict.v-mileage { background: color-mix(in srgb, #3d9be9 18%, transparent); color: #3d9be9; }
+.ana-verdict.v-pace { background: color-mix(in srgb, #f2913d 20%, transparent); color: #e07a24; }
+.ana-verdict.v-both { background: color-mix(in srgb, #e8344e 16%, transparent); color: #e8344e; }
+
+/* Training → Plan (week view): the week full width; progress, the build ahead and plan check + goal in three columns under it. */
+.plan-home { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.25fr) minmax(19rem, 1fr); gap: 0.9rem; align-items: start; }
+.plan-home-week { grid-column: 1 / -1; min-width: 0; }
+.plan-home .week-cards { display: contents; }
+.plan-home .week-cards > * { min-width: 0; }
+.plan-home-goal { display: flex; flex-direction: column; gap: 0.8rem; min-width: 0; font-size: 0.92em; }
+@media (max-width: 1250px) { .plan-home { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .plan-home-goal { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; } }
+@media (max-width: 800px) { .plan-home, .plan-home-goal { grid-template-columns: 1fr; display: flex; flex-direction: column; } }

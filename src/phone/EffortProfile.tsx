@@ -98,3 +98,94 @@ export function EffortProfile({ text, kind, plan, height = 56 }: { text: string;
     </svg>
   );
 }
+
+// ---- The session's parts, with how long each one is ------------------------------
+
+export interface Segment {
+  kind: "warmup" | "work" | "cooldown" | "easy";
+  label: string;
+  detail: string;
+  km: number;
+}
+
+const kmOfStep = (s: Step): number | null => {
+  const d = s.duration.trim().toLowerCase();
+  let m = /^(\d+(?:\.\d+)?)\s*km$/.exec(d);
+  if (m) return +m[1];
+  m = /^(\d+)\s*m$/.exec(d);
+  if (m) return +m[1] / 1000;
+  if (d === "lap") return null;
+  const p = paceOf(s.target) ?? (s.kind === "interval" ? 230 : 330);
+  return secondsOf(s) / p;
+};
+const durText = (s: Step): string => {
+  const d = s.duration.trim().toLowerCase();
+  let m = /^(\d+):(\d{2})$/.exec(d);
+  if (m) return +m[2] ? `${+m[1]}:${m[2]} min` : `${+m[1]} min`;
+  m = /^(\d+)\s*s$/.exec(d);
+  if (m) return +m[1] >= 60 && +m[1] % 60 === 0 ? `${+m[1] / 60} min` : `${m[1]} s`;
+  m = /^(\d+)\s*m$/.exec(d);
+  if (m) return `${m[1]} m`;
+  m = /^(\d+(?:\.\d+)?)\s*km$/.exec(d);
+  if (m) return `${m[1]} km`;
+  return d;
+};
+const targetText = (s: Step): string => {
+  const p = /(\d{1,2}:\d{2}(?:\s*-\s*\d{1,2}:\d{2})?)/.exec(s.target)?.[1];
+  if (p) return `at ${p.replace(/\s*-\s*/, "–")}/km`;
+  if (/zone 1|zone 2/i.test(s.target) || s.kind === "warmup" || s.kind === "cooldown") return "easy";
+  return s.kind === "recovery" ? "jog" : s.kind === "rest" ? "rest" : "";
+};
+
+/** Warm-up, the work (reps grouped) and cool-down, each with its length, adding up to the session's distance. */
+export function segmentsOf(text: string, plan?: Plan): Segment[] {
+  const w = sessionToWorkout(text, zonesOf(plan));
+  if (!w || w.steps.length < 2) return [];
+  const total = Number(/^(?:easy\s+)?(\d+(?:\.\d+)?)\s*km\b/i.exec(text.trim())?.[1] ?? /(\d+(?:\.\d+)?)\s*km\b/i.exec(text)?.[1] ?? NaN);
+  const out: (Segment & { open?: boolean })[] = [];
+  for (const it of w.steps) {
+    if (it.kind === "repeat") {
+      const work = it.steps.find((s) => s.kind === "interval") ?? it.steps[0];
+      const rest = it.steps.find((s) => s !== work);
+      const km = it.steps.reduce((a, s) => a + (kmOfStep(s) ?? 0), 0) * it.times;
+      out.push({ kind: "work", label: `${it.times} × ${durText(work)}`, detail: [targetText(work), rest ? `${durText(rest)} ${targetText(rest) || "jog"}`.trim() : ""].filter(Boolean).join(", "), km });
+    } else {
+      const km = kmOfStep(it);
+      const kind = it.kind === "warmup" ? "warmup" : it.kind === "cooldown" ? "cooldown" : it.kind === "interval" ? "work" : "easy";
+      const label = it.kind === "warmup" ? "Warm-up" : it.kind === "cooldown" ? "Cool-down" : it.kind === "interval" ? durText(it) : `${durText(it)} ${targetText(it) || "easy"}`;
+      out.push({ kind, label, detail: it.kind === "interval" ? targetText(it) : km == null ? "the rest of the run" : targetText(it), km: km ?? 0, open: km == null });
+    }
+  }
+  // "Until the lap button": whatever's left of the session's distance.
+  const known = out.filter((s) => !s.open).reduce((a, s) => a + s.km, 0);
+  const open = out.filter((s) => s.open);
+  if (open.length) for (const s of open) s.km = isFinite(total) ? Math.max(0, (total - known) / open.length) : 0;
+  return out;
+}
+
+const kmText = (km: number) => (km >= 9.95 ? Math.round(km) : Math.round(km * 10) / 10).toString();
+
+/** The parts of a session as a list: "Warm-up 3 km · 6 × 1 km at 3:40/km, 90 s jog 7.2 km · Cool-down 1.8 km". */
+export function SessionSegments({ text, plan }: { text: string; plan?: Plan }) {
+  const segs = useMemo(() => segmentsOf(text, plan), [text, plan]);
+  if (!segs.length) return null;
+  const sum = segs.reduce((a, s) => a + s.km, 0);
+  return (
+    <ol className="segs" aria-label="The session's parts">
+      {segs.map((s, i) => (
+        <li key={i} className={`seg seg-${s.kind}`}>
+          <i aria-hidden="true" />
+          <span className="seg-what">
+            <b>{s.label}</b>
+            {s.detail && <small>{s.detail}</small>}
+          </span>
+          <span className="seg-km num">{s.km ? `${s.km < 1 && s.km * 1000 < 995 ? "≈" : ""}${kmText(s.km)} km` : "–"}</span>
+        </li>
+      ))}
+      <li className="seg seg-total">
+        <span className="seg-what">Total</span>
+        <span className="seg-km num">≈{kmText(sum)} km</span>
+      </li>
+    </ol>
+  );
+}

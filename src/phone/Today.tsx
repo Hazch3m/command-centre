@@ -16,7 +16,7 @@ import { RUN_TYPE_LABEL, typeOfDay } from "../modules/running/runType";
 import { duration, km, pace } from "../modules/running/stats";
 import { loadDetails, loadOverrides } from "../modules/running/strava";
 import { sessionKindOf } from "../modules/running/planBuilder";
-import { EffortProfile, zoneOf } from "./EffortProfile";
+import { EffortProfile, zoneOf, SessionSegments } from "./EffortProfile";
 import { useRunningData } from "../modules/running/useRunning";
 import { addTaskFromText, focusGroup, loadTasks, setDone } from "../modules/tasks/data";
 import { HabitButton } from "./Habits";
@@ -76,6 +76,7 @@ export function Session({ d, label, next }: { d: ForecastDay; label: string; nex
         </div>
       )}
       {!rest && !d.race && <EffortProfile text={d.text} kind={d.kind} plan={plan} />}
+      {!rest && !d.race && <SessionSegments text={d.text} plan={plan} />}
       {!rest && !d.race && <PlannedFocus text={d.text} compact />}
       {!rest && (
         <div className="p-session-text">

@@ -14,6 +14,7 @@ import { duration, pace } from "./stats";
 import { loadDetails, type Run, type RunDetail } from "./strava";
 import { useRunningData } from "./useRunning";
 import { AnalysisChart, type ChartKey } from "./AnalysisCharts";
+import { distanceGaps, gapSummary, VERDICT_TEXT, type DistanceGap } from "./distanceGaps";
 import { predictTime, trimp, type Vo2Config } from "./vo2";
 
 /**
@@ -181,7 +182,8 @@ export function Analysis() {
     }
     const daily = dailyLoad(runs, cfg);
     const series = loadSeries(daily, addDays(today, -365), today);
-    return { rows, paces, vd, zones, series, daily, mono: monotony(daily, today) };
+    const gaps = vd ? distanceGaps(runs, details, vd, today) : [];
+    return { rows, paces, vd, zones, series, daily, gaps, mono: monotony(daily, today) };
   }, [f, q, runs, today]);
 
   if (!f || !model) return <div className="ana-wait">Working out your analysis…</div>;
@@ -362,6 +364,8 @@ export function Analysis() {
           </table>
         </div>
 
+        {model.gaps.length > 0 && <Gaps gaps={model.gaps} biggestWeek={Math.max(0, ...weeks.slice(0, 10).map((w) => w.sum.dist / 1000))} />}
+
         <h3 className="ana-h">Months</h3>
         <SummaryTable rows={months.slice(0, 6).map((m, i) => ({ ...m, prev: months[i + 1]?.sum ?? null }))} show={show} sel={month} onPick={(k) => (setMonth(k), scrollTop())} />
         <h3 className="ana-h">Last 10 training weeks</h3>
@@ -444,6 +448,78 @@ export function Analysis() {
         </Panel>
       </aside>
     </div>
+  );
+}
+
+/** Per race distance: is it endurance (long runs) or pace-specific work that's missing? */
+function Gaps({ gaps, biggestWeek }: { gaps: DistanceGap[]; biggestWeek: number }) {
+  const meter = (have: number, need: number) => (
+    <span className="ana-meter" title={`${n1(have)} of ${need} km`}>
+      <i style={{ width: `${Math.min(100, (have / need) * 100)}%` }} className={have >= need * 0.9 ? "ok" : have >= need * 0.5 ? "mid" : "low"} />
+    </span>
+  );
+  return (
+    <>
+      <h3 className="ana-h">Distances: mileage or pace?</h3>
+      <p className="ana-gap-sum">
+        <span>
+          Peak lately: longest run <b className="num">{n1(gaps[0].longestKm)} km</b> · biggest week <b className="num">{Math.round(biggestWeek)} km</b> (last 12 and 10 weeks)
+        </span>
+        <span>{gapSummary(gaps)}</span>
+      </p>
+      <div className="ana-scroll">
+        <table className="ana-table ana-gaps">
+          <thead>
+            <tr>
+              <th>Distance</th>
+              <th className="r" title="The pace your current VO2 max is worth over this distance">Fitness says</th>
+              <th className="r" title="Your fastest stretch this long in a run, last 12 weeks">Best stretch</th>
+              <th className="r">Gap</th>
+              <th>Longest run (needs)</th>
+              <th>Near that pace, 6 weeks (needs)</th>
+              <th>What's missing</th>
+            </tr>
+          </thead>
+          <tbody>
+            {gaps.map((g) => (
+              <tr key={g.name}>
+                <td>
+                  <b>{g.name}</b>
+                </td>
+                <td className="r num">{mmss(g.eqPace)}/km</td>
+                <td className="r num">{g.bestPace != null ? `${mmss(g.bestPace)}/km` : <span className="muted">no run this long</span>}</td>
+                <td className={"r num " + (g.gap == null ? "muted" : g.gap / g.eqPace > 0.05 ? "ana-hot" : g.gap / g.eqPace > 0.02 ? "" : "ana-ok")}>
+                  {g.gap == null ? "–" : `${g.gap > 0 ? "+" : "−"}${Math.abs(Math.round(g.gap))} s/km`}
+                </td>
+                <td>
+                  <span className="ana-meter-row">
+                    {meter(g.longestKm, g.needLongKm)}
+                    <span className="num">
+                      {n1(g.longestKm)} <small>/ {g.needLongKm} km</small>
+                    </span>
+                  </span>
+                </td>
+                <td>
+                  <span className="ana-meter-row">
+                    {meter(g.paceKm, g.needPaceKm)}
+                    <span className="num">
+                      {n1(g.paceKm)} <small>/ {g.needPaceKm} km</small>
+                    </span>
+                  </span>
+                </td>
+                <td>
+                  <span className={`ana-verdict v-${g.verdict}`}>{VERDICT_TEXT[g.verdict]}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="ana-note">
+        Fitness says: the pace your VO2 max is worth over the distance. Best stretch: your fastest piece that long inside a run. Mileage is missing when your longest run is well short of what the distance needs; pace work when you've run little near that pace, or your best stretch is more than 5 %
+        slower than your fitness says.
+      </p>
+    </>
   );
 }
 
