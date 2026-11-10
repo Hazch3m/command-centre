@@ -5309,3 +5309,17 @@ svg.effort {
 .p-start-pills .p-pill {
   padding: 0.35rem 0.9rem;
 }
+
+/* A session's parts with their lengths (under the effort shape; also in the PC's day editor). */
+.segs { list-style: none; margin: 0.35rem 0 0.2rem; padding: 0; display: flex; flex-direction: column; gap: 0.1rem; font-size: 0.86rem; }
+.seg { display: grid; grid-template-columns: 0.55rem minmax(0, 1fr) auto; align-items: baseline; gap: 0.5rem; padding: 0.28rem 0; border-bottom: 1px dashed color-mix(in srgb, var(--text) 10%, transparent); }
+.seg > i { width: 0.55rem; height: 0.55rem; border-radius: 3px; align-self: center; background: color-mix(in srgb, var(--text) 22%, transparent); }
+.seg-work > i { background: var(--z, var(--accent)); }
+.seg-what { display: flex; flex-wrap: wrap; gap: 0 0.45rem; align-items: baseline; min-width: 0; }
+.seg-what b { font-weight: 650; color: var(--text); }
+.seg-what small { color: var(--text-2); font-size: 0.8rem; }
+.seg-km { font-weight: 650; color: var(--text); white-space: nowrap; }
+.seg-work .seg-km { color: var(--z, var(--accent)); }
+.seg-total { border-bottom: 0; grid-template-columns: minmax(0, 1fr) auto; color: var(--text-2); font-size: 0.8rem; }
+.seg-total .seg-km { color: var(--text-2); font-weight: 600; }
+.day-editor .segs { margin: 0.2rem 0 0.4rem; padding: 0.4rem 0.7rem; border-radius: 10px; background: var(--card-2); }

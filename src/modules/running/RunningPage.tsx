@@ -236,20 +236,34 @@ export function RunningPage() {
               </details>
             </div>
             {/* The week (or weeks) first and widest; how the plan's going alongside. */}
-            <div className="plan-focus">
-              <div className="plan-focus-main">
-                {view === "week" && <PlanWeekView plan={plan} runs={runs} />}
-                {view === "week" && <WeekCards plan={plan} runs={runs} />}
-                {view === "list" && <PlanList plan={plan} runs={runs} />}
-                {view === "six" && <WeekCalendar plan={plan} runs={runs} count={6} />}
-              </div>
-              <aside className="plan-focus-side">
-                <PlanCoach plan={plan} />
-                <div className="pl-embed">
-                  <GoalCarousel plan={plan} />
+            {view === "week" ? (
+              /* The week across the top; under it how it's going, what's coming, and the goal. */
+              <div className="plan-home">
+                <div className="plan-home-week">
+                  <PlanWeekView plan={plan} runs={runs} />
                 </div>
-              </aside>
-            </div>
+                <WeekCards plan={plan} runs={runs} />
+                <aside className="plan-home-goal">
+                  <PlanCoach plan={plan} />
+                  <div className="pl-embed">
+                    <GoalCarousel plan={plan} />
+                  </div>
+                </aside>
+              </div>
+            ) : (
+              <div className="plan-focus">
+                <div className="plan-focus-main">
+                  {view === "list" && <PlanList plan={plan} runs={runs} />}
+                  {view === "six" && <WeekCalendar plan={plan} runs={runs} count={6} />}
+                </div>
+                <aside className="plan-focus-side">
+                  <PlanCoach plan={plan} />
+                  <div className="pl-embed">
+                    <GoalCarousel plan={plan} />
+                  </div>
+                </aside>
+              </div>
+            )}
           </>
         )}
         {tab === "progress" && <PbsTab />}

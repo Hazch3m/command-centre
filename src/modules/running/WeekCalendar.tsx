@@ -1,3 +1,4 @@
+import { SessionSegments } from "../../phone/EffortProfile";
 import { SendToWatch } from "../watch/SendToWatch";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type WheelEvent } from "react";
 import { createPortal } from "react-dom";
@@ -93,6 +94,7 @@ export function DayEditor({ d, week, plan, onClose }: { d: ForecastDay; week: Fo
         </header>
         <div className="muted small">Plan: {original || "–"}</div>
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} aria-label="Session" autoFocus />
+        <SessionSegments text={text} plan={plan} />
         <div className="quick-row">
           {QUICK.map((q) => (
             <button key={q} className="btn" onClick={() => setText(q)}>
