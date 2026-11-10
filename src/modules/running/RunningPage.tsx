@@ -1,8 +1,8 @@
-import { Analysis } from "./Analysis";
 import { PlanCoach } from "./PlanCoach";
 import { useMemo, useState, type ReactNode } from "react";
-import { parseKey, useToday } from "../../core/time";
-import { BarChart } from "../../shell/charts";
+import { addDays, parseKey, useToday } from "../../core/time";
+import { BarChart, ScrollBars } from "../../shell/charts";
+import { forecastWeek } from "./forecast";
 import { ErrorNote } from "../../shell/ui";
 import { mondayOf, upcomingRaces, weekFor } from "./plan";
 import {
@@ -35,11 +35,11 @@ import { TrainingLoad } from "../../phone/TrainingLoad";
 import { RunalyzeMore } from "../../phone/RunalyzeMore";
 import { FitnessPredictor, GoalCarousel } from "../../phone/PlanGoals";
 
-type Tab = "plan" | "runs" | "pace" | "edit" | "progress" | "pbs" | "load" | "watch" | "analysis";
+type Tab = "plan" | "trends" | "runs" | "pace" | "edit" | "progress" | "pbs" | "load" | "watch";
 const TABS: { id: Tab; label: string }[] = [
   { id: "plan", label: "Plan" },
+  { id: "trends", label: "Trends" },
   { id: "runs", label: "Runs" },
-  { id: "analysis", label: "Analysis" },
   { id: "pace", label: "Pace on point" },
   { id: "progress", label: "Races & progress" },
   { id: "load", label: "Training load" },
@@ -95,8 +95,10 @@ export function RunningPage() {
   const data = useMemo(() => {
     if (!plan) return null;
     const year = yearSummary(runs, today);
-    const since = "2025-03-31";
-    const weekly = weeklyTotals(runs, since, mondayOf(today)).map((w) => {
+    // From your first run (at most two years back), through the plan's weeks ahead.
+    const first = runs.reduce((a, r) => (r.date < a ? r.date : a), today);
+    const since = mondayOf(first < addDays(today, -730) ? addDays(today, -730) : first);
+    const past = weeklyTotals(runs, since, mondayOf(today)).map((w) => {
       const pw = weekFor(plan, w.week);
       return {
         label: parseKey(w.week).getDate() <= 7 ? MON[parseKey(w.week).getMonth()] : "",
@@ -107,8 +109,25 @@ export function RunningPage() {
         title: `Week of ${fmtDate(w.week)} ${parseKey(w.week).getFullYear()}: ${w.km.toFixed(1)} km, ${w.runs} runs, longest ${w.longest.toFixed(1)} km${pw ? ` · plan ${pw.km} km` : ""}`,
       };
     });
+    const ahead = plan.weeks
+      .filter((w) => w.start > mondayOf(today))
+      .slice(0, 52)
+      .map((pw) => {
+        const km = forecastWeek(plan, pw.start).plannedKm ?? (pw.kmMin != null ? (pw.kmMin + (pw.kmMax ?? pw.kmMin)) / 2 : 0);
+        return {
+          label: parseKey(pw.start).getDate() <= 7 ? MON[parseKey(pw.start).getMonth()] : "",
+          value: km,
+          target: pw.kmMin,
+          targetMax: pw.kmMax,
+          planned: true,
+          title: `Week of ${fmtDate(pw.start)} ${parseKey(pw.start).getFullYear()}: planned ${Math.round(km)} km${pw.phase ? ` · ${pw.phase}` : ""}`,
+        };
+      });
+    const weekly = [...past, ...ahead];
+    const nowIndex = past.length - 1;
+    const sinceLabel = `${MON[parseKey(since).getMonth()]} ${parseKey(since).getFullYear()}`;
     const races = raceHistory(runs, plan);
-    return { year, weekly, races, blocks: marathonBlocks(runs, plan), upcoming: upcomingRaces(plan, today) };
+    return { year, weekly, nowIndex, sinceLabel, races, blocks: marathonBlocks(runs, plan), upcoming: upcomingRaces(plan, today) };
   }, [plan, runs, today]);
 
   if (!plan || !data) return null;
@@ -124,7 +143,6 @@ export function RunningPage() {
         </div>
       </header>
       <ErrorNote error={planError} />
-      <RecentBlock runs={runs} plan={plan} />
       <nav className="segmented page-tabs" role="tablist">
         {TABS.map((t) => (
           <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? "on" : ""} onClick={() => setTab(t.id)}>
@@ -135,8 +153,8 @@ export function RunningPage() {
 
       <div className="page-body" key={tab}>
         {tab === "pace" && <PaceOnPointTab plan={plan} runs={runs} />}
+        {tab === "trends" && <RecentBlock runs={runs} plan={plan} />}
         {tab === "runs" && <RunsTab runs={runs} plan={plan} />}
-        {tab === "analysis" && <Analysis />}
         {tab === "pbs" && <PbsTab />}
         {tab === "watch" && <WatchPage />}
         {tab === "load" && (
@@ -261,9 +279,9 @@ export function RunningPage() {
                 note="elapsed time"
               />
             </div>
-            <h3>Kilometres per week since April 2025</h3>
-            <p className="muted small">Bars: what you ran. Lines and bands: the plan's target for that week. Hover for details.</p>
-            <BarChart bars={data.weekly} height={220} unit=" km" refLine={{ value: 50, label: "50 km: the plan's floor for a normal week" }} />
+            <h3>Kilometres per week since {data.sinceLabel}</h3>
+            <p className="muted small">Bars: what you ran; faint bars: the weeks your plan has ahead (scroll right). Bands: the plan's target for that week. Hover for details.</p>
+            <ScrollBars bars={data.weekly} height={220} unit=" km" perBar={16} focus={data.nowIndex} showValues={false} />
 
             <h3>Marathon blocks (16 weeks before race day)</h3>
             <table className="table">
@@ -294,7 +312,7 @@ export function RunningPage() {
             </table>
 
             <h3>Every race, as a marathon equivalent</h3>
-            <p className="muted small">Shorter races converted with Riegel's formula (exponent 1.06). Shorter bars are faster; the dashed line is 2:50. Green bars are actual marathons.</p>
+            <p className="muted small">Shorter races converted with Riegel's formula (exponent 1.06). Shorter bars are faster; the dashed line is your best. Green bars are actual marathons.</p>
             <BarChart
               bars={data.races.map((r) => ({
                 label: r.date.slice(2, 4) + "/" + r.date.slice(5, 7),
@@ -303,8 +321,8 @@ export function RunningPage() {
                 title: `${r.name} (${r.date}): ${duration(r.time)} → marathon ${duration(r.equiv)}`,
               }))}
               height={180}
-              min={150}
-              refLine={{ value: 170, label: "2:50:00" }}
+              min={data.races.length ? Math.floor((Math.min(...data.races.map((r) => r.equiv)) / 60) * 0.9) : 0}
+              refLine={data.races.length ? { value: Math.min(...data.races.map((r) => r.equiv)) / 60, label: `Best: ${duration(Math.min(...data.races.map((r) => r.equiv)))}` } : null}
             />
             <table className="table">
               <thead>

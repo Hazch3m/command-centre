@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { addDays, parseKey, useToday } from "../../core/time";
-import { BarChart, LineChart } from "../../shell/charts";
+import { LineChart, ScrollBars } from "../../shell/charts";
+import { forecastWeek } from "./forecast";
 import { mondayOf, weekFor, type Plan } from "./plan";
 import { recentVsPrevious, weeklyTotals, type PeriodStats } from "./stats";
 import type { Run } from "./strava";
@@ -55,15 +56,30 @@ export function RecentBlock({ runs, plan }: { runs: Run[]; plan: Plan }) {
   const row = ROWS.find((r) => r.key === key)!;
   const cmp = useMemo(() => recentVsPrevious(runs, today), [runs, today]);
   const weeks = useMemo(() => Array.from({ length: span }, (_, i) => addDays(mondayOf(today), (i - span + 1) * 7)), [today, span]);
+  // Planned weeks ahead (distance only): scroll right to see where the plan takes you.
+  const future = useMemo(() => {
+    if (key !== "km") return [];
+    const out: string[] = [];
+    const last = plan.weeks.length ? plan.weeks[plan.weeks.length - 1].start : mondayOf(today);
+    for (let w = addDays(mondayOf(today), 7); w <= last && out.length < 40; w = addDays(w, 7)) out.push(w);
+    return out;
+  }, [key, plan, today]);
   const bars = useMemo(() => {
     const totals = new Map(weeklyTotals(runs, weeks[0], weeks[weeks.length - 1]).map((w) => [w.week, w]));
-    return weeks.map((w, i) => {
+    const all = [...weeks, ...future];
+    const many = all.length > 20;
+    return all.map((w, i) => {
+      const first = parseKey(w).getDate() <= 7;
+      const label = !many ? String(parseKey(w).getDate()) : first || i === 0 ? MON[parseKey(w).getMonth()] : "";
+      const pw = key === "km" ? weekFor(plan, w) : null;
+      if (i >= weeks.length) {
+        const km = forecastWeek(plan, w).plannedKm ?? (pw?.kmMin != null ? (pw.kmMin + (pw.kmMax ?? pw.kmMin)) / 2 : 0);
+        return { label, value: km, target: pw?.kmMin ?? null, targetMax: pw?.kmMax ?? null, planned: true, title: `Week of ${fmt(w)}: planned ${Math.round(km)} km${pw?.phase ? ` · ${pw.phase}` : ""}` };
+      }
       const rs = runs.filter((r) => r.date >= w && r.date <= addDays(w, 6));
       const v = weekValue(rs, key);
-      const pw = key === "km" ? weekFor(plan, w) : null;
-      const first = parseKey(w).getDate() <= 7;
       return {
-        label: span <= 16 ? String(parseKey(w).getDate()) : first || i === 0 ? MON[parseKey(w).getMonth()] : "",
+        label,
         value: v ?? 0,
         target: pw?.kmMin ?? null,
         targetMax: pw?.kmMax ?? null,
@@ -71,14 +87,14 @@ export function RecentBlock({ runs, plan }: { runs: Run[]; plan: Plan }) {
         title: `Week of ${fmt(w)}: ${row.show(v)} ${row.unit}${key !== "runs" && key !== "km" ? "" : ` · ${totals.get(w)?.runs ?? 0} runs, ${(totals.get(w)?.km ?? 0).toFixed(1)} km`}`,
       };
     });
-  }, [runs, plan, weeks, key, span, cmp.recentFrom, row]);
+  }, [runs, plan, weeks, future, key, cmp.recentFrom, row]);
   const prevAvg = row.get(cmp.previous);
   return (
     <section className="recent-block">
       <div className="recent-head">
-        <h3>Last 4 weeks vs the 12 before</h3>
+        <h3>Trends</h3>
         <span className="muted small">
-          {fmt(cmp.recentFrom)} – today, against {fmt(cmp.prevFrom)} – {fmt(cmp.prevTo)} (per-week averages) · click one to chart it
+          Last 4 weeks ({fmt(cmp.recentFrom)} – today) against the 12 before, per week · pick a measure to chart it
         </span>
       </div>
       <div className="recent-body">
@@ -133,17 +149,19 @@ export function RecentBlock({ runs, plan }: { runs: Run[]; plan: Plan }) {
             ]}
           />
         ) : (
-          <BarChart
+          <ScrollBars
             bars={bars}
-            height={220}
+            height={240}
+            perBar={span <= 26 ? 34 : 14}
+            focus={weeks.length - 1}
             unit={key === "km" ? " km" : ""}
             digits={key === "hours" ? 1 : 0}
             showValues={span <= 26}
-            onBar={(i) => openWeek(weeks[i])}
+            onBar={(i) => i < weeks.length && openWeek(weeks[i])}
             refLine={prevAvg != null ? { value: prevAvg, label: `Previous 12-week average: ${row.show(prevAvg)}` } : null}
           />
         )}
-        <div className="muted small">Last 4 weeks highlighted · dashed: the 12-week average before{key === "km" ? " · marks: the plan's target" : ""} · click a week to see its runs</div>
+        <div className="muted small">Last 4 weeks highlighted · dashed: the 12-week average before{key === "km" ? " · marks: the plan's target" : ""} · click a week to see its runs{future.length ? " · faint bars: planned weeks, scroll right to see them" : ""}</div>
       </div>
       </div>
     </section>

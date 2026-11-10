@@ -443,3 +443,27 @@ function Legend({ series }: { series: LineSeries[] }) {
     </span>
   );
 }
+
+/**
+ * A bar chart wider than its box when there are many bars: it scrolls sideways
+ * (at least `perBar` px a bar) and opens with bar `focus` in view, near the right
+ * so the past is to the left and what's planned is a scroll away.
+ */
+export function ScrollBars({ perBar = 30, focus, ...props }: Parameters<typeof BarChart>[0] & { perBar?: number; focus?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const n = props.bars.length;
+  const f = focus ?? n - 1;
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const w = el.scrollWidth / Math.max(1, n);
+    el.scrollLeft = Math.max(0, (f + 1) * w - el.clientWidth * 0.72);
+  }, [n, f]);
+  return (
+    <div className="chart-scroll" ref={ref}>
+      <div style={{ minWidth: `${n * perBar}px` }}>
+        <BarChart {...props} />
+      </div>
+    </div>
+  );
+}

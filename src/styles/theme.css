@@ -3733,16 +3733,16 @@ select:focus {
 .recent-chart {
   min-width: 0;
 }
-@container (min-width: 62rem) {
-  .recent-body {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
-    gap: 1.2rem;
-    align-items: start;
-  }
+@container (min-width: 56rem) {
+  /* Its own tab now: the measures in one strip, the chart full width under them. */
   .recent-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
+}
+.recent-chart {
+  background: var(--card-2);
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem 0.5rem;
 }
 
 /* Run and week views */
@@ -5756,3 +5756,7 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 .ana-mini .r {
   text-align: right;
 }
+
+/* Charts that scroll sideways (past on the left, planned weeks to the right) */
+.chart-scroll { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding-bottom: 2px; }
+.chart-scroll > div { width: 100%; }
