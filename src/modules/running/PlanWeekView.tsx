@@ -37,6 +37,24 @@ export function PlanWeekView({ plan, runs }: { plan: Plan; runs: Run[] }) {
   const [editing, setEditing] = useState<{ d: ForecastDay; week: ForecastWeek } | null>(null);
   const fw = useMemo(() => forecastWeek(plan, monday, runs, overrides), [plan, monday, runs, overrides]);
   const checks = details ? checkDays(fw.days, details) : undefined;
+  // A key session picked elsewhere (Week ahead): go to its week and open the day.
+  const [wantDay, setWantDay] = useState<string | null>(null);
+  useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<string>).detail;
+      setDir(0);
+      setMonday(mondayOf(d));
+      setWantDay(d);
+    };
+    window.addEventListener("cc:plan-day", on);
+    return () => window.removeEventListener("cc:plan-day", on);
+  }, []);
+  useEffect(() => {
+    if (!wantDay || fw.monday !== mondayOf(wantDay)) return;
+    const d = fw.days.find((x) => x.date === wantDay);
+    if (d && fw.week) setEditing({ d, week: fw });
+    setWantDay(null);
+  }, [wantDay, fw]);
   const go = (n: number) => {
     const m = addDays(monday, 7 * n);
     if (m < range.first || m > range.last) return;

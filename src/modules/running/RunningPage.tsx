@@ -3,6 +3,12 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { addDays, parseKey, useToday } from "../../core/time";
 import { BarChart, ScrollBars } from "../../shell/charts";
 import { forecastWeek } from "./forecast";
+import { useDataVersion } from "../../core/events";
+import { useQuery } from "../../core/useQuery";
+import { loadOverrides, type Run } from "./strava";
+import type { Plan } from "./plan";
+import { WeekProgress } from "../../phone/WeekProgress";
+import { WeekAhead } from "../../phone/WeekAhead";
 import { ErrorNote } from "../../shell/ui";
 import { mondayOf, upcomingRaces, weekFor } from "./plan";
 import {
@@ -82,6 +88,20 @@ const fmtDate = (d: string) => {
   const x = parseKey(d);
   return `${x.getDate()} ${MON[x.getMonth()]}`;
 };
+
+/** Under the week: how it's going (progress, streaks) and what's coming (the build to your race). */
+function WeekCards({ plan, runs }: { plan: Plan; runs: Run[] }) {
+  const today = useToday();
+  const version = useDataVersion("running");
+  const { data: overrides } = useQuery(loadOverrides, [version]);
+  const fw = useMemo(() => forecastWeek(plan, mondayOf(today), runs, overrides), [plan, today, runs, overrides]);
+  return (
+    <div className="pl-embed week-cards">
+      <WeekProgress plan={plan} fw={fw} runs={runs} today={today} overrides={overrides} />
+      <WeekAhead plan={plan} onDay={(d) => window.dispatchEvent(new CustomEvent("cc:plan-day", { detail: d }))} />
+    </div>
+  );
+}
 
 /** The Training tab: the plan week by week, the whole plan, races, progression, paces. */
 export function RunningPage() {
@@ -219,6 +239,7 @@ export function RunningPage() {
             <div className="plan-focus">
               <div className="plan-focus-main">
                 {view === "week" && <PlanWeekView plan={plan} runs={runs} />}
+                {view === "week" && <WeekCards plan={plan} runs={runs} />}
                 {view === "list" && <PlanList plan={plan} runs={runs} />}
                 {view === "six" && <WeekCalendar plan={plan} runs={runs} count={6} />}
               </div>
