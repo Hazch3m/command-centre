@@ -533,6 +533,12 @@ try:
                             wp.wait_for_timeout(700)
                             check(wp.locator(".pwv-title").first.inner_text() != before, "web: a week on the chart opens it")
                             wp.screenshot(path=f"{out}/31b-web-training-week.png")
+                        tabs2 = wp.locator(".ph-tabs button")
+                        check(tabs2.count() == 4, "web: plan side panels")
+                        for k in range(tabs2.count()):
+                            tabs2.nth(k).click()
+                            wp.wait_for_timeout(700)
+                            wp.screenshot(path=f"{out}/31c-web-plan-side-{k}.png")
             if wp.locator(".page-tabs").get_by_role("tab", name="Trends & load", exact=True).count():
                 wp.get_by_role("tab", name="Training", exact=True).first.click(force=True)
                 wp.wait_for_timeout(1500)
@@ -583,7 +589,12 @@ try:
             if an.count():
                 an.first.click(force=True)
                 wp.wait_for_timeout(4000)
-                check(wp.locator(".ana-table").count() >= 3, "web: Analysis week, months and weeks tables")
+                check(wp.locator(".ana-table").count() >= 1, "web: Analysis week table")
+                secs = wp.locator(".ana-secs button")
+                check(secs.count() == 4, "web: Analysis sections")
+                if secs.count() == 4:
+                    secs.nth(1).click()
+                    wp.wait_for_timeout(600)
                 check(wp.locator(".ana-gaps tbody tr").count() == 4, "web: distances, mileage or pace")
                 if wp.locator(".ana-gaps").count():
                     print("gaps:", wp.locator(".ana-gaps").inner_text().replace("\n", " | ")[:700])
@@ -591,6 +602,9 @@ try:
                     wp.screenshot(path=f"{out}/33b-web-gaps.png")
                 print("analysis:", wp.locator(".ana").inner_text().replace("\n", " | ")[:900])
                 wp.screenshot(path=f"{out}/33-web-analysis.png", full_page=True)
+                if secs.count() == 4:
+                    secs.nth(2).click()
+                    wp.wait_for_timeout(600)
                 mrow = wp.locator(".ana-table tr.ana-click").first
                 if mrow.count():
                     mrow.click()
