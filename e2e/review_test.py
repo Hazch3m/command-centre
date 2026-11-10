@@ -479,7 +479,7 @@ try:
             pg.get_by_role("tab", name="Training", exact=True).click(force=True)
             pg.wait_for_timeout(2500)
             pg.screenshot(path=f"{out}/20-desktop-plan.png")
-            pg.locator(".page-tabs").get_by_role("tab", name="Training load", exact=True).click()
+            pg.locator(".page-tabs").get_by_role("tab", name="Trends & load", exact=True).click()
             pg.wait_for_timeout(2500)
             check(pg.locator(".tl-chart").count() == 1, "desktop: training load chart")
             pg.screenshot(path=f"{out}/21-desktop-load.png", full_page=True)
@@ -509,10 +509,10 @@ try:
                     t.first.click(force=True)
                     wp.wait_for_timeout(2500)
                     wp.screenshot(path=f"{out}/31-web-{name.lower()}.png")
-            if wp.locator(".page-tabs").get_by_role("tab", name="Training load", exact=True).count():
+            if wp.locator(".page-tabs").get_by_role("tab", name="Trends & load", exact=True).count():
                 wp.get_by_role("tab", name="Training", exact=True).first.click(force=True)
                 wp.wait_for_timeout(1500)
-                wp.locator(".page-tabs").get_by_role("tab", name="Training load", exact=True).click()
+                wp.locator(".page-tabs").get_by_role("tab", name="Trends & load", exact=True).click()
                 wp.wait_for_timeout(2500)
                 check(wp.locator(".tl-chart").count() == 1, "web: training load from the account's runs")
                 wp.screenshot(path=f"{out}/32-web-load.png", full_page=True)
@@ -530,7 +530,7 @@ try:
             wp.get_by_role("tab", name="Training", exact=True).first.click(force=True)
             wp.wait_for_timeout(1500)
             check(wp.locator(".recent-block").count() == 0, "web: trends not on the Plan sub-tab")
-            tr = wp.locator(".page-tabs").get_by_role("tab", name="Trends", exact=True)
+            tr = wp.locator(".page-tabs").get_by_role("tab", name="Trends & load", exact=True)
             if tr.count():
                 tr.click()
                 wp.wait_for_timeout(2000)
@@ -547,6 +547,24 @@ try:
                 check(wp.locator(".ana-table").count() >= 3, "web: Analysis week, months and weeks tables")
                 print("analysis:", wp.locator(".ana").inner_text().replace("\n", " | ")[:900])
                 wp.screenshot(path=f"{out}/33-web-analysis.png", full_page=True)
+                mrow = wp.locator(".ana-table tr.ana-click").first
+                if mrow.count():
+                    mrow.click()
+                    wp.wait_for_timeout(1200)
+                    check(" 20" in wp.locator(".ana-weekbar b").inner_text(), "web: a month row opens that month")
+                    wp.screenshot(path=f"{out}/37-web-analysis-month.png")
+                calc = wp.locator(".ana-calc.ana-click", has_text="Fitness (CTL)")
+                if calc.count():
+                    calc.click()
+                    wp.wait_for_timeout(1200)
+                    check(wp.locator(".ana-chart svg").count() >= 1, "web: a calculation opens its chart")
+                    wp.screenshot(path=f"{out}/38-web-analysis-chart.png")
+                pr = wp.locator(".ana-mini tr.ana-click", has_text="Marathon")
+                if pr.count():
+                    pr.first.click()
+                    wp.wait_for_timeout(1200)
+                    check("Prognosis" in wp.locator(".ana-chart-head").inner_text(), "web: a prognosis row opens its chart")
+                    wp.screenshot(path=f"{out}/39-web-analysis-prog.png")
                 if wp.locator(".ana-weekbar button").first.count():
                     wp.locator(".ana-weekbar button").first.click()
                     wp.wait_for_timeout(1200)
