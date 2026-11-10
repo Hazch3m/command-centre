@@ -6201,3 +6201,12 @@ button.recent-cell.sel { border-color: var(--c-running); box-shadow: inset 3px 0
 /* Analysis: never cut off at the bottom. */
 .tab-page-analysis { overflow-y: auto; }
 .tab-page-analysis > * { flex: none; }
+@media (max-height: 860px) {
+  .hw-day { min-height: 8.5rem; padding: 6px 8px 7px; gap: 3px; }
+  .hw-day svg.effort { height: 30px; margin: 2px 0; }
+  .hw-km { font-size: 18px; }
+  .hn-list button { padding: 4px 8px; }
+  .home-card h3 { font-size: 13px; }
+}
+/* Readiness beside the goal card: room for its edges (it's drawn a little wider than its box). */
+.plan-home-goal .gc-ready { padding: 0 4px 0 14px; overflow-x: hidden; }
