@@ -151,9 +151,11 @@ export function segmentsOf(text: string, plan?: Plan): Segment[] {
       out.push({ kind: "work", label: `${it.times} × ${durText(work)}`, detail: [targetText(work), rest ? `${durText(rest)} ${targetText(rest) || "jog"}`.trim() : ""].filter(Boolean).join(", "), km });
     } else {
       const km = kmOfStep(it);
-      const kind = it.kind === "warmup" ? "warmup" : it.kind === "cooldown" ? "cooldown" : it.kind === "interval" ? "work" : "easy";
-      const label = it.kind === "warmup" ? "Warm-up" : it.kind === "cooldown" ? "Cool-down" : it.kind === "interval" ? durText(it) : `${durText(it)} ${targetText(it) || "easy"}`;
-      out.push({ kind, label, detail: it.kind === "interval" ? targetText(it) : km == null ? "the rest of the run" : targetText(it), km: km ?? 0, open: km == null });
+      // An "interval" with only an easy heart-rate target is the easy part of a run, not work.
+      const easyStep = it.kind === "interval" && !paceOf(it.target) && /zone [12]\b/i.test(it.target);
+      const kind = it.kind === "warmup" ? "warmup" : it.kind === "cooldown" ? "cooldown" : it.kind === "interval" && !easyStep ? "work" : "easy";
+      const label = it.kind === "warmup" ? "Warm-up" : it.kind === "cooldown" ? "Cool-down" : kind === "work" ? durText(it) : `${durText(it)} easy`;
+      out.push({ kind, label, detail: kind === "work" ? targetText(it) : km == null ? "the rest of the run" : kind === "easy" ? "" : targetText(it), km: km ?? 0, open: km == null });
     }
   }
   // "Until the lap button": whatever's left of the session's distance.

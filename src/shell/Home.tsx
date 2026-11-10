@@ -89,7 +89,7 @@ export function Home() {
   const pct = pk ? Math.min(1, fw.actualKm / pk) : 0;
   const upcoming = [...fw.days, ...next.days].filter((d) => d.date >= today && isRun(d) && !(d.date === today && d.runs.length));
   const nextRun = upcoming[0] ?? null;
-  const keys = upcoming.filter((d) => d.kind === "key" || d.kind === "long" || d.race).slice(0, 5);
+  const keys = upcoming.filter((d) => d.kind === "key" || d.kind === "long" || d.race).slice(0, 4);
   const vo2 = f?.current != null ? f.current + f.shift : null;
   const vo2ch = f?.slope != null ? f.slope * 4 : null;
   const est = new Map((f?.estimates ?? []).map((e) => [e.id, e.vo2 + (f?.shift ?? 0)]));
@@ -190,7 +190,8 @@ export function Home() {
                         <span className="hw-segs">
                           {segs.map((s, j) => (
                             <span key={j} className={`seg-${s.kind}`}>
-                              {s.kind === "work" ? s.label : s.label.replace(/^(Warm-up|Cool-down)$/, (m) => (m === "Warm-up" ? "WU" : "CD"))} {s.km ? `${s.km >= 9.95 ? Math.round(s.km) : Math.round(s.km * 10) / 10} km` : ""}
+                              {s.label.replace(/^Warm-up$/, "WU").replace(/^Cool-down$/, "CD")}
+                              {s.km && !/\bkm\b/.test(s.label) ? ` ${s.km >= 9.95 ? Math.round(s.km) : Math.round(s.km * 10) / 10} km` : ""}
                             </span>
                           ))}
                         </span>
@@ -208,7 +209,8 @@ export function Home() {
         {/* What's coming: the key sessions and races of the next fortnight. */}
         <section className="home-card home-next">
           <header>
-            <h3>Coming up</h3>
+            <h3>Key sessions</h3>
+            <span className="muted small">next two weeks</span>
           </header>
           <ul className="hn-list">
             {keys.length === 0 && <li className="muted small">No key sessions in the next two weeks.</li>}
@@ -227,21 +229,6 @@ export function Home() {
               </li>
             ))}
           </ul>
-          {races.length > 0 && (
-            <>
-              <h4>Races</h4>
-              <ul className="hn-races">
-                {races.slice(0, 4).map((r) => (
-                  <li key={r.name + r.date}>
-                    <span className={`hn-pri pri-${priorityOf(r)}`}>{priorityOf(r)}</span>
-                    <span className="hn-race">{r.name}</span>
-                    <span className="muted small">{r.target ?? ""}</span>
-                    <span className="num">{r.days} d</span>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
         </section>
 
         {/* Volume: what you ran, and what the plan has ahead (scroll right). */}
@@ -268,6 +255,7 @@ export function Home() {
               today={today}
               height={170}
               digits={0}
+              yMin={0}
               series={[
                 { name: "Fitness", kind: "line", className: "s-ctl", points: loadSer.map((p) => ({ x: p.date, y: p.chronic })) },
                 { name: "Fatigue", kind: "line", className: "s-atl", points: loadSer.map((p) => ({ x: p.date, y: p.acute })) },
@@ -358,7 +346,7 @@ export function Home() {
 
         <section className="home-card home-preds">
           <header>
-            <h3>Race times</h3>
+            <h3>Races</h3>
             <span className="muted small">{f?.predictions[0]?.source === "garmin" ? "Garmin" : "from your runs"} · change in 30 days</span>
           </header>
           <table className="home-table">
@@ -378,6 +366,21 @@ export function Home() {
               })}
             </tbody>
           </table>
+          {races.length > 0 && (
+            <>
+              <h4>Coming up</h4>
+              <ul className="hn-races">
+                {races.slice(0, 4).map((r) => (
+                  <li key={r.name + r.date}>
+                    <span className={`hn-pri pri-${priorityOf(r)}`}>{priorityOf(r)}</span>
+                    <span className="hn-race">{r.name}</span>
+                    <span className="muted small">{r.target ?? ""}</span>
+                    <span className="num">{r.days} d</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </section>
       </div>
 
