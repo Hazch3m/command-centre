@@ -14,7 +14,7 @@ import initSqlJs, { type Database } from "sql.js";
 import wasmUrl from "sql.js/dist/sql-wasm.wasm?url";
 import type { Backend, ExecResult, SqlParam, Statement } from "./backend.types";
 import { accountHeader, buildAccountDb } from "./account";
-import { GARMIN_SIGN_IN, native } from "./native";
+import { GARMIN_SIGN_IN, isAndroidApp, native } from "./native";
 import {
   b64url,
   cloudMayWrite,
@@ -171,6 +171,7 @@ const errorOf = async (r: Response) => ((await r.json().catch(() => null)) as { 
 
 /** Sign in with Apple (the iPhone app): opens your account, making it the first time. */
 export async function signInWithApple(): Promise<{ isNew: boolean }> {
+  if (isAndroidApp()) return signInWithAppleWeb(true);
   const nonce = b64url.encode(crypto.getRandomValues(new Uint8Array(24)));
   const { identityToken } = await native().signInWithApple({ nonce });
   const r = await fetch("/api/auth/apple", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ identityToken, nonce }) });
@@ -185,17 +186,23 @@ const WEB_SIGNIN_ORIGIN = "https://command-centre-sync.harryknoblauch12.workers.
  * Sign in with Apple in a browser (Pacelife on the web): Apple's page opens in a new window, and
  * this waits for it to finish (the same way the PC signs in).
  */
-export async function signInWithAppleWeb(): Promise<{ isNew: boolean }> {
+export async function signInWithAppleWeb(inApp = false): Promise<{ isNew: boolean }> {
   const session = [...crypto.getRandomValues(new Uint8Array(32))].map((x) => x.toString(16).padStart(2, "0")).join("");
   const origin = /\.workers\.dev$|^localhost|^127\./.test(location.hostname) ? location.origin : WEB_SIGNIN_ORIGIN;
-  const w = window.open(`${origin}/api/auth/apple/web/start?session=${session}`, "pacelife-signin", "width=520,height=720");
-  if (!w) throw new Error("Your browser blocked the sign-in window: allow pop-ups for this site, then try again.");
+  const start = `${origin}/api/auth/apple/web/start?session=${session}`;
+  // The Android app opens Apple's page in the browser; this waits on the service either way.
+  let w: Window | null = null;
+  if (inApp) await native().openBrowser({ url: start });
+  else {
+    w = window.open(start, "pacelife-signin", "width=520,height=720");
+    if (!w) throw new Error("Your browser blocked the sign-in window: allow pop-ups for this site, then try again.");
+  }
   for (const until = Date.now() + 5 * 60_000; Date.now() < until; ) {
     await new Promise((r) => setTimeout(r, 1500));
     const r = await fetch(`/api/auth/session?id=${session}`).catch(() => null);
     if (r?.ok) {
       try {
-        w.close();
+        w?.close();
       } catch {
         /* already closed */
       }

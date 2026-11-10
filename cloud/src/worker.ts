@@ -731,7 +731,7 @@ export default {
       if (url.pathname === "/api/auth/apple/web/start" && req.method === "GET") {
         // Sign in with Apple on the PC: the PC opens this in the browser with a one-time session id, then collects the result.
         const session = url.searchParams.get("session") ?? "";
-        if (!/^[0-9a-f]{64}$/.test(session)) return page("Sign-in link is broken", "Start again from Pacelife on your PC.", 400);
+        if (!/^[0-9a-f]{64}$/.test(session)) return page("Sign-in link is broken", "Start again from Pacelife.", 400);
         const u = new URL("https://appleid.apple.com/auth/authorize");
         for (const [k, v] of Object.entries({ client_id: APPLE_WEB_ID, redirect_uri: `${url.origin}/api/auth/apple/web`, response_type: "code id_token", response_mode: "form_post", scope: "email", state: session, nonce: await sha256hex(session) })) u.searchParams.set(k, v);
         return Response.redirect(u.toString(), 302);
@@ -739,7 +739,7 @@ export default {
       if (url.pathname === "/api/auth/apple/web" && req.method === "POST") {
         const f = await req.formData().catch(() => null);
         const session = String(f?.get("state") ?? "");
-        if (!/^[0-9a-f]{64}$/.test(session)) return page("Sign-in didn't finish", "Start again from Pacelife on your PC.", 400);
+        if (!/^[0-9a-f]{64}$/.test(session)) return page("Sign-in didn't finish", "Start again from Pacelife.", 400);
         if (f?.get("error")) return page("Sign-in cancelled", "You can close this tab.", 400);
         let who: Awaited<ReturnType<typeof verifyAppleToken>>;
         try {
@@ -750,7 +750,7 @@ export default {
         const account = await sha256hex("cc-apple:" + who.sub);
         const result = await (await store("acct:" + account).fetch("https://cc/internal/login", { method: "POST", body: JSON.stringify({ account, sub: who.sub }) })).json();
         await store("directory").fetch("https://cc/internal/session/put", { method: "POST", body: JSON.stringify({ session, result }) });
-        return page("Signed in", "Go back to Pacelife on your PC: it finishes setting up by itself. You can close this tab.");
+        return page("Signed in", "Go back to Pacelife (the app or the page you started from): it finishes setting up by itself. You can close this tab.");
       }
       if (url.pathname === "/api/auth/session" && req.method === "GET") {
         const session = url.searchParams.get("id") ?? "";

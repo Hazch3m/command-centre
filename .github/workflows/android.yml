@@ -1,0 +1,82 @@
+name: Android app
+
+# Builds the Android app (a native shell around the phone app the sync service
+# serves, like the iPhone app). Without signing secrets it makes a test APK you
+# can install on a phone; with them, a signed .aab for Google Play, and with a
+# Play service account it uploads that to the internal testing track.
+#
+# Secrets (Settings → Secrets and variables → Actions):
+#   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+#   PLAY_SERVICE_ACCOUNT_JSON (optional: upload to Play's internal track)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["android/**", "mobile/capacitor.config.json", "mobile/assets/**", ".github/workflows/android.yml"]
+
+concurrency: { group: android, cancel-in-progress: false }
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults: { run: { working-directory: mobile } }
+    env:
+      KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+      VERSION_CODE: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
+      - uses: actions/setup-java@v5
+        with: { distribution: temurin, java-version: 21 }
+
+      - name: Make the Android project
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-audit --no-fund @capacitor/android@^7
+          # Android's own settings (the iPhone ones are ignored there).
+          jq '.android = {"backgroundColor": "#252a31", "allowMixedContent": false}' capacitor.config.json > c.json && mv c.json capacitor.config.json
+          npx cap add android
+          pip3 install --quiet pillow || pip3 install --quiet --break-system-packages pillow
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+            echo "KEYSTORE_FILE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+            export KEYSTORE_FILE="$RUNNER_TEMP/upload.jks"
+          fi
+          python3 ../android/setup.py
+          npx cap sync android
+
+      - name: Build
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          if [ -n "$KEYSTORE_FILE" ]; then
+            ./gradlew --no-daemon bundleRelease assembleRelease
+          else
+            echo "::notice::No signing secrets yet: building a test APK only (not for Google Play)."
+            ./gradlew --no-daemon assembleDebug
+          fi
+          mkdir -p ../../out
+          find app/build/outputs -name "*.apk" -o -name "*.aab" | while read f; do cp "$f" ../../out/; done
+          ls -la ../../out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pacelife-android-${{ github.run_number }}
+          path: out/
+          retention-days: 14
+
+      - name: Upload to Google Play (internal testing)
+        if: env.PLAY_JSON != '' && env.KEYSTORE_B64 != ''
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.hazch3m.commandcentre
+          releaseFiles: out/app-release.aab
+          track: internal
+          status: draft
