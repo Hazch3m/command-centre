@@ -156,8 +156,10 @@ async function doSync(): Promise<GarminRunSync> {
 }
 
 /** Garmin runs that aren't also in your Strava history (those keep Strava's details). */
-const NOT_A_DUPLICATE = `NOT EXISTS (SELECT 1 FROM strava_activities s WHERE s.id NOT LIKE 'g%' AND s.start_epoch BETWEEN a.start_epoch - 300 AND a.start_epoch + 300)`;
-export const SHOWN_RUNS = `(a.id NOT LIKE 'g%' OR ${NOT_A_DUPLICATE})`;
+const NOT_A_DUPLICATE = `NOT EXISTS (SELECT 1 FROM strava_activities s WHERE s.id NOT LIKE 'g%' AND s.id NOT LIKE 'hk%' AND s.start_epoch BETWEEN a.start_epoch - 300 AND a.start_epoch + 300)`;
+/** Apple Health runs that aren't also there from Garmin or Strava (Garmin Connect saves runs to Health too). */
+const HK_NOT_A_DUPLICATE = `NOT EXISTS (SELECT 1 FROM strava_activities s WHERE s.id NOT LIKE 'hk%' AND s.start_epoch BETWEEN a.start_epoch - 300 AND a.start_epoch + 300)`;
+export const SHOWN_RUNS = `((a.id NOT LIKE 'g%' AND a.id NOT LIKE 'hk%') OR (a.id LIKE 'g%' AND ${NOT_A_DUPLICATE}) OR (a.id LIKE 'hk%' AND ${HK_NOT_A_DUPLICATE}))`;
 
 /** Details (splits, best efforts, map, charts) for the newest Garmin runs without them, a few per sync. */
 async function syncGarminDetails(): Promise<boolean> {

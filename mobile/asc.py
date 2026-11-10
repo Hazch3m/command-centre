@@ -48,6 +48,10 @@ caps = call("GET", f"/bundleIds/{ids[0]['id']}/bundleIdCapabilities")["data"]
 if not any(c["attributes"].get("capabilityType") == "APPLE_ID_AUTH" for c in caps):
     call("POST", "/bundleIdCapabilities", {"data": {"type": "bundleIdCapabilities", "attributes": {"capabilityType": "APPLE_ID_AUTH", "settings": [{"key": "APPLE_ID_AUTH_APP_CONSENT", "options": [{"key": "PRIMARY_APP_CONSENT"}]}]}, "relationships": {"bundleId": {"data": {"type": "bundleIds", "id": ids[0]["id"]}}}}})
     print("Switched on Sign in with Apple for the app")
+# Apple Health (read only).
+if not any(c["attributes"].get("capabilityType") == "HEALTHKIT" for c in caps):
+    call("POST", "/bundleIdCapabilities", {"data": {"type": "bundleIdCapabilities", "attributes": {"capabilityType": "HEALTHKIT"}, "relationships": {"bundleId": {"data": {"type": "bundleIds", "id": ids[0]["id"]}}}}})
+    print("Switched on HealthKit for the app")
 
 apps = call("GET", f"/apps?filter[bundleId]={BUNDLE}&limit=5")["data"]
 if not apps:

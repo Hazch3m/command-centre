@@ -96,6 +96,7 @@ export async function loadFullRun(id: string): Promise<FullRun> {
     }
   }
   if (id.startsWith("g")) return fetchGarminRun(id);
+  if (id.startsWith("hk")) return (await import("../health/appleHealth")).fetchHkRun(id);
   type A = {
     laps?: { name?: string; distance: number; moving_time: number; elapsed_time: number; average_speed: number; average_heartrate?: number; max_heartrate?: number; average_cadence?: number; total_elevation_gain?: number }[];
     splits_metric?: { distance: number; moving_time: number; average_speed: number; average_grade_adjusted_speed?: number; average_heartrate?: number; elevation_difference?: number }[];
@@ -246,9 +247,9 @@ async function doSyncStrava(): Promise<SyncState> {
   if (!status?.connected) return syncState();
   // Strava switched the app off (it now needs a paid subscription): runs come from Garmin instead, so don't keep asking.
   if (await kvGet<boolean>("strava.retired", false)) return syncState();
-  const [{ latest }] = await db.select<{ latest: number | null }>("SELECT MAX(start_epoch) AS latest FROM strava_activities WHERE id NOT LIKE 'g%'");
+  const [{ latest }] = await db.select<{ latest: number | null }>("SELECT MAX(start_epoch) AS latest FROM strava_activities WHERE id NOT LIKE 'g%' AND id NOT LIKE 'hk%'");
   // Runs synced before maps and shoes were stored: re-read once to fill them in.
-  const [{ old }] = await db.select<{ old: number }>("SELECT count(*) AS old FROM strava_activities WHERE has_hr IS NULL AND id NOT LIKE 'g%'");
+  const [{ old }] = await db.select<{ old: number }>("SELECT count(*) AS old FROM strava_activities WHERE has_hr IS NULL AND id NOT LIKE 'g%' AND id NOT LIKE 'hk%'");
   const after = latest && !old ? latest - 3 * 86400 : HISTORY_FROM;
   let state: SyncState;
   try {
@@ -359,7 +360,7 @@ export async function syncRuns(): Promise<RunsSync> {
 async function syncDetails(): Promise<boolean> {
   const todo = await db.select<{ id: string }>(
     `SELECT a.id FROM strava_activities a LEFT JOIN strava_details d ON d.id = a.id
-     WHERE a.id NOT LIKE 'g%' AND a.has_hr = 1 AND a.date >= date('now', '-430 days')
+     WHERE a.id NOT LIKE 'g%' AND a.id NOT LIKE 'hk%' AND a.has_hr = 1 AND a.date >= date('now', '-430 days')
        AND (d.id IS NULL OR (d.fetched_at < a.synced_at AND a.date >= date('now', '-2 days'))
             -- laps (for pace on point) arrived later: fetch recent runs again once
             OR (d.json NOT LIKE '%"laps"%' AND a.date >= date('now', '-60 days'))

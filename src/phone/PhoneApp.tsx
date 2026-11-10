@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { syncAppleHealth } from "../modules/health/appleHealth";
 import { saveFocusSource, useFocusSource } from "./Focus";
 import { kvGet, kvSet } from "../core/db";
 import { notifyChanged } from "../core/events";
@@ -173,6 +174,7 @@ export function PhoneApp() {
     };
     const before = await count();
     let answer = "";
+    await syncAppleHealth(true).catch(() => {});
     try {
       if (cloudOn()) {
         // Cloud sync on: the service fetches from Garmin and the calendars itself, PC or no PC.
@@ -213,6 +215,8 @@ export function PhoneApp() {
     setBusy(true);
     try {
       if (await refresh()) await notifyChanged("*");
+      // Apple Health is read here on the phone (at most every ten minutes).
+      await syncAppleHealth().catch(() => {});
     } finally {
       setBusy(false);
     }

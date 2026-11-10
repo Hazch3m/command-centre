@@ -114,7 +114,7 @@ export function Runs() {
       )}
 
       <Section title="Your runs">
-        {feed.length === 0 && <div className="p-hint">No runs yet. They arrive from Garmin.</div>}
+        {feed.length === 0 && <div className="p-hint">No runs yet. They arrive from Garmin or Apple Health once connected (Settings → Account).</div>}
       </Section>
       {feed.slice(0, shown).map((r) => (
         <RunCard key={r.id} r={r} today={today} kind={kinds.get(r.date)} medals={pb?.medals.get(r.id)} photo={photos?.get(r.id)?.photo} />

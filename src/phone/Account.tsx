@@ -6,6 +6,25 @@ import { cancelled } from "../core/native";
 import { showCode } from "../core/sync";
 import { useRunningData } from "../modules/running/useRunning";
 import { Section, usePhoneNav } from "./common";
+import { appleHealthAvailable, appleHealthState, connectAppleHealth, disconnectAppleHealth, type AppleHealthState } from "../modules/health/appleHealth";
+import { useQuery } from "../core/useQuery";
+import { useDataVersion } from "../core/events";
+
+/** Apple Health: can it be connected here, and is it. */
+function useAppleHealth() {
+  const hv = useDataVersion("health");
+  const can = useQuery(appleHealthAvailable, []).data ?? false;
+  const st = useQuery(appleHealthState, [hv]).data ?? null;
+  return { can, st };
+}
+
+/** Connect Apple Health, then read it straight away. */
+async function connectHealthAndSay(): Promise<string> {
+  const s: AppleHealthState = await connectAppleHealth();
+  if (s.lastError) return `Apple Health connected, but reading it failed: ${s.lastError}`;
+  await notifyChanged("*");
+  return "Apple Health connected: your runs, heart rate, sleep and HRV are coming in. If nothing appears, check Settings → Health → Data Access & Devices → Pacelife.";
+}
 
 const msg = (e: unknown) => String((e as Error)?.message ?? e).replace(/^offline: /, "");
 
@@ -64,6 +83,7 @@ export function AccountSection() {
           </button>
         )}
       </div>
+      <AppleHealthRow busy={busy} act={act} />
       <div className="p-row">
         <span className="p-row-main">
           <span className="p-row-title">Google Calendar</span>
@@ -127,40 +147,76 @@ export function AccountSection() {
   );
 }
 
+function AppleHealthRow({ busy, act }: { busy: string | null; act: (what: string, fn: () => Promise<string | void>) => Promise<void> }) {
+  const { can, st } = useAppleHealth();
+  if (!can) return null;
+  return (
+    <div className="p-row">
+      <span className="p-row-main">
+        <span className="p-row-title">Apple Health</span>
+        <span className="p-row-sub">
+          {st?.on ? `Connected${st.lastSync ? ` · read ${new Date(st.lastSync).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : ""}${st.lastError ? ` · ${st.lastError}` : ""}` : "Runs from Apple Watch, COROS, Polar, Suunto or any app that saves to Health, plus sleep and HRV"}
+        </span>
+      </span>
+      {st?.on ? (
+        <button className="p-link" disabled={!!busy} onClick={() => act("health", async () => (await disconnectAppleHealth(), "Apple Health disconnected. Runs already here stay; to remove Pacelife's access, use Settings → Health."))}>
+          Disconnect
+        </button>
+      ) : (
+        <button className="p-pill" disabled={!!busy} onClick={() => act("health", connectHealthAndSay)}>
+          {busy === "health" ? "Connecting…" : "Connect"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** A new account's first steps, on Today until they're done. */
 export function GettingStarted() {
   const nav = usePhoneNav();
   const { plan } = useRunningData();
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const ah = useAppleHealth();
   if (!hasAccount()) return null;
   const garmin = !!phoneState.header?.connected.garmin;
+  const health = !!ah.st?.on;
+  const linked = garmin || health;
   const noPlan = isEmptyPlan(plan);
-  if (garmin && !noPlan) return null;
+  if (linked && !noPlan) return null;
+  const go = (fn: () => Promise<string>) => async () => {
+    setBusy(true);
+    setNote(null);
+    try {
+      setNote(await fn());
+    } catch (e) {
+      if (!cancelled(e)) setNote(msg(e));
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <section className="p-start">
       <h2>Getting started</h2>
-      <button
-        className={"p-start-step" + (garmin ? " done" : "")}
-        disabled={garmin || busy}
-        onClick={async () => {
-          setBusy(true);
-          setNote(null);
-          try {
-            setNote(await connectAndSync());
-          } catch (e) {
-            if (!cancelled(e)) setNote(msg(e));
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        <span className="p-start-n">{garmin ? "✓" : "1"}</span>
+      <div className={"p-start-step p-start-multi" + (linked ? " done" : "")}>
+        <span className="p-start-n">{linked ? "✓" : "1"}</span>
         <span className="p-row-main">
-          <span className="p-row-title">{busy ? "Connecting Garmin…" : "Connect Garmin"}</span>
-          <span className="p-row-sub">Your runs, PBs, sleep, HRV and VO2 max</span>
+          <span className="p-row-title">{busy ? "Connecting…" : "Connect your runs"}</span>
+          <span className="p-row-sub">{linked ? `${[garmin && "Garmin", health && "Apple Health"].filter(Boolean).join(" and ")} connected` : "Garmin for runs, sleep, HRV and workouts on your watch; Apple Health for any other watch or app"}</span>
+          {!linked && (
+            <span className="p-start-pills">
+              <button className="p-pill" disabled={busy} onClick={go(connectAndSync)}>
+                Garmin
+              </button>
+              {ah.can && (
+                <button className="p-pill" disabled={busy} onClick={go(connectHealthAndSay)}>
+                  Apple Health
+                </button>
+              )}
+            </span>
+          )}
         </span>
-      </button>
+      </div>
       <button className={"p-start-step" + (noPlan ? "" : " done")} disabled={!noPlan} onClick={() => nav.push("adjust")}>
         <span className="p-start-n">{noPlan ? "2" : "✓"}</span>
         <span className="p-row-main">
