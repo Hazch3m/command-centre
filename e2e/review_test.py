@@ -491,6 +491,38 @@ try:
             print("desktop shots:", e)
             fails.append("desktop shots")
         pcx.close()
+        # Pacelife on the web: the same account as the phone, in the desktop view.
+        try:
+            wp = ph.new_page()
+            wp.set_viewport_size({"width": 1440, "height": 900})
+            wp.on("pageerror", lambda e: errors.append("web: " + str(e)))
+            wp.goto(cloud + "/web")
+            wp.wait_for_selector(".page-tabs, [role=tablist]", timeout=60000)
+            wp.wait_for_timeout(3000)
+            wp.screenshot(path=f"{out}/30-web-home.png")
+            tabs = [t.strip() for t in wp.get_by_role("tab").all_inner_texts() if t.strip()]
+            print("web tabs:", tabs[:20])
+            check(any(t == "Training" for t in tabs), "web: the desktop view opens with your account")
+            for name in ["Training", "Runs", "Stats", "Health"]:
+                t = wp.get_by_role("tab", name=name, exact=True)
+                if t.count():
+                    t.first.click(force=True)
+                    wp.wait_for_timeout(2500)
+                    wp.screenshot(path=f"{out}/31-web-{name.lower()}.png")
+            if wp.locator(".page-tabs").get_by_role("tab", name="Training load", exact=True).count():
+                wp.get_by_role("tab", name="Training", exact=True).first.click(force=True)
+                wp.wait_for_timeout(1500)
+                wp.locator(".page-tabs").get_by_role("tab", name="Training load", exact=True).click()
+                wp.wait_for_timeout(2500)
+                check(wp.locator(".tl-chart").count() == 1, "web: training load from the account's runs")
+                wp.screenshot(path=f"{out}/32-web-load.png", full_page=True)
+            land = ph.new_page()
+            land.set_viewport_size({"width": 1280, "height": 900})
+            land.goto(cloud + "/about")
+            check(land.locator("a[href='/web']").count() >= 1, "website links to the web app")
+        except Exception as e:
+            print("web:", e)
+            fails.append("web app")
         b.close()
 finally:
     emu.terminate()
