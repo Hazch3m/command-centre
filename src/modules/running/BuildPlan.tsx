@@ -57,6 +57,7 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
   const fitNow = f ? (f.predictionBasis?.source === "manual" ? f.predictionBasis.vdot : Math.max(f.current ?? 0, f.predictionBasis?.vdot ?? 0) || null) : null;
   // No runs yet (a new account): a recent race or time trial, or a guess, sets the paces.
   const [manualV, setManualV] = useState<number | null>(null);
+  const [manualRace, setManualRace] = useState<{ km: number; seconds: number } | null>(null);
   const fitUse = fitNow ?? manualV;
   const history = useMemo(() => summarizeHistory(runs, today, fitUse), [runs, today, fitUse]);
   // A plan that starts later builds on the weeks of your current plan before it: your training as it will be then.
@@ -177,6 +178,12 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
     setErr(null);
     try {
       await savePlan(built.plan);
+      // A race time you gave (no runs yet) becomes your race fitness everywhere: paces, workouts, predictions.
+      if (fitNow == null && manualRace) {
+        const c = await loadFitnessConfig();
+        await saveFitnessConfig({ ...c, manual: { ...manualRace, date: today, name: "Your race time" } });
+        fitnessConfigChanged();
+      }
       setDone(`Done: your plan now runs ${fmt(built.weeks[0].monday)} → ${o.raceName || DIST_LABEL[o.dist]} on ${fmt(o.raceDate)}.`);
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
@@ -353,7 +360,7 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
       {step === 1 && (
         <section className="ps-card pb-step pb-history">
           <h3>Where you are now</h3>
-          {fitNow == null && <ManualFitness value={manualV} onChange={setManualV} />}
+          {fitNow == null && <ManualFitness value={manualV} onChange={(v, r) => (setManualV(v), setManualRace(r))} />}
           <div className="ps-stats">
             <div>
               <span className="label">Last 4 weeks</span>
@@ -647,12 +654,13 @@ const parseT = (t: string): number | null => {
 };
 
 /** No runs to go on yet: a recent race or time trial (or a fair guess) sets the paces. */
-function ManualFitness({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) {
+function ManualFitness({ value, onChange }: { value: number | null; onChange: (v: number | null, race: { km: number; seconds: number } | null) => void }) {
   const [dist, setDist] = useState<RaceDist>("5k");
   const [t, setT] = useState("");
   const apply = (d: RaceDist, txt: string) => {
     const sec = parseT(txt);
-    onChange(sec && sec > DIST_M[d] / 1000 * 150 ? Math.round(vdot(DIST_M[d], sec) * 10) / 10 : null);
+    const ok = !!sec && sec > (DIST_M[d] / 1000) * 150;
+    onChange(ok ? Math.round(vdot(DIST_M[d], sec!) * 10) / 10 : null, ok ? { km: DIST_M[d] / 1000, seconds: sec! } : null);
   };
   return (
     <div className="pb-manual">
