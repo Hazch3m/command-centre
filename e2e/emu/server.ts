@@ -34,7 +34,7 @@ function storeFor(name: string) {
   }
   return s;
 }
-const types: Record<string, string> = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".wasm": "application/wasm", ".png": "image/png", ".webmanifest": "application/manifest+json", ".woff2": "font/woff2", ".json": "application/json" };
+const types: Record<string, string> = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".wasm": "application/wasm", ".png": "image/png", ".webmanifest": "application/manifest+json", ".woff2": "font/woff2", ".json": "application/json", ".svg": "image/svg+xml" };
 http.createServer(async (req, res) => {
   const url = new URL(req.url!, `http://127.0.0.1:${port}`);
   if (url.pathname === "/__garmin") { res.writeHead(200, { "content-type": "application/json" }); return res.end(JSON.stringify(garminLog)); }
@@ -48,6 +48,8 @@ http.createServer(async (req, res) => {
     } catch (e) { console.error(e); res.writeHead(500); return res.end(String(e)); }
   }
   let f = path.join(staticDir, decodeURIComponent(url.pathname));
+  // Like Cloudflare's assets: /web serves web.html.
+  if ((!fs.existsSync(f) || fs.statSync(f).isDirectory()) && fs.existsSync(f + ".html")) f = f + ".html";
   if (!fs.existsSync(f) || fs.statSync(f).isDirectory()) f = path.join(staticDir, "index.html");
   res.writeHead(200, { "content-type": types[path.extname(f)] ?? "application/octet-stream" }); fs.createReadStream(f).pipe(res);
 }).listen(port, "127.0.0.1", () => console.log("emu on", port));
