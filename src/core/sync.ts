@@ -141,9 +141,11 @@ export interface PhoneOp {
 }
 
 /** Tables the phone may change. Everything else (synced data, caches) comes only from the PC. */
-export const PHONE_TABLES = new Set(["tasks", "projects", "checklist_items", "checklist_log", "plan_overrides", "vo2_readings", "kv"]);
+export const PHONE_TABLES = new Set(["tasks", "projects", "checklist_items", "checklist_log", "plan_overrides", "vo2_readings", "kv", "strava_activities", "strava_details", "strava_full", "health_daily"]);
+/** Runs the phone itself reads (Apple Health, ids starting "hk"): only those, never Garmin or Strava rows. */
+const PHONE_RUN_TABLES = new Set(["strava_activities", "strava_details", "strava_full"]);
 /** kv keys the phone may change: view choices and settings, never sync state. */
-const KV_ALLOWED = [/^calendar\.view\./, /^shape\.settings$/, /^checklist\./, /^tasks\.(view|filter|sort)/, /^phone\.refresh$/, /^running\.prefs$/, /^watch\.autosync\.settings$/, /^run\.meta\./, /^gear\.shoes$/, /^hr\.zones$/, /^running\.paceGoals$/, /^phone\.today$/, /^running\.focusSource$/, /^plan\.highlight$/];
+const KV_ALLOWED = [/^calendar\.view\./, /^shape\.settings$/, /^checklist\./, /^tasks\.(view|filter|sort)/, /^phone\.refresh$/, /^running\.prefs$/, /^watch\.autosync\.settings$/, /^run\.meta\./, /^gear\.shoes$/, /^hr\.zones$/, /^running\.paceGoals$/, /^phone\.today$/, /^running\.focusSource$/, /^plan\.highlight$/, /^apple\.health$/];
 /** The phone's "refresh" button: asks the PC to sync Strava, Garmin and the calendar now and send a fresh copy. */
 export const REFRESH_KEY = "phone.refresh";
 /** Set by the PC (never the phone) to the request it has just answered. */
@@ -167,6 +169,13 @@ export function phoneMayWrite(sql: string, params: unknown[]): boolean {
     const key = typeof params[0] === "string" ? params[0] : null;
     return !!key && KV_ALLOWED.some((r) => r.test(key));
   }
+  if (PHONE_RUN_TABLES.has(t)) {
+    // Inserting or updating one Apple Health run (its id among the values); no deletes.
+    if (/^\s*DELETE/i.test(sql)) return false;
+    return params.some((p) => typeof p === "string" && /^hk[0-9a-f]{32}$/.test(p));
+  }
+  // Apple Health's days only fill gaps: never overwrite what Garmin recorded.
+  if (t === "health_daily") return /^\s*INSERT/i.test(sql) && /DO UPDATE SET rhr = COALESCE\(health_daily\.rhr, excluded\.rhr\)/i.test(sql) && !/=\s*excluded\.(?!\w+\))/i.test(sql.replace(/COALESCE\(health_daily\.\w+, excluded\.\w+\)/gi, ""));
   return true;
 }
 

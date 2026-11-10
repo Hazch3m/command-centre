@@ -5298,3 +5298,14 @@ svg.effort {
 .wp-streaks small {
   line-height: 1.2;
 }
+.p-start-multi {
+  cursor: default;
+}
+.p-start-pills {
+  display: flex;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+}
+.p-start-pills .p-pill {
+  padding: 0.35rem 0.9rem;
+}

@@ -73,6 +73,9 @@ jobs:
           P=$A/Info.plist
           pb() { /usr/libexec/PlistBuddy -c "$1" "$P"; }
           pb "Add :ITSAppUsesNonExemptEncryption bool false"
+          # Apple Health (read only): what Pacelife reads it for, shown when it asks.
+          pb "Add :NSHealthShareUsageDescription string 'Pacelife reads your runs, heart rate, routes, resting heart rate, HRV, sleep and VO2 max from Apple Health to build and adapt your training plan.'"
+          pb "Add :NSHealthUpdateUsageDescription string 'Pacelife does not write to Apple Health.'"
           # Lets the phone app's offline cache (its service worker) run inside the app.
           pb "Add :WKAppBoundDomains array"
           pb "Add :WKAppBoundDomains:0 string command-centre-sync.harryknoblauch12.workers.dev"

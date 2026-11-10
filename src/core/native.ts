@@ -28,7 +28,7 @@ export function native(): CCNative {
   const c = cap();
   if (c?.nativePromise) {
     const call = <T,>(method: string) => (o: unknown) => c.nativePromise!<T>("CCNative", method, o);
-    plugin = { signInWithApple: call("signInWithApple"), garminLogin: call("garminLogin"), openAuth: call("openAuth") } as CCNative;
+    plugin = Object.fromEntries(["signInWithApple", "garminLogin", "openAuth", "healthAvailable", "healthAuthorize", "healthWorkouts", "healthWorkoutDetail", "healthDaily"].map((m) => [m, call(m)])) as unknown as CCNative;
   } else if (c?.registerPlugin) plugin = c.registerPlugin<CCNative>("CCNative");
   else throw new Error(isNativeApp() ? "This version of the app can't do this yet: update Pacelife in TestFlight." : "This needs the Pacelife iPhone app.");
   return plugin;
