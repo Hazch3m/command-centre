@@ -77,8 +77,9 @@ export const migrations = [
      id TEXT PRIMARY KEY,
      json TEXT NOT NULL,
      fetched_at TEXT NOT NULL
-   );`,,
-  RUN_EXTRA_SQL
+   );`,
+  // 4 — running dynamics and training effect per run
+  RUN_EXTRA_SQL,
 ];
 
 export interface FullRun {
