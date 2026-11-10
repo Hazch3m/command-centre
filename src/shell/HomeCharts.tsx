@@ -95,7 +95,8 @@ export function BuildingCard({ f, runs, details, today }: { f: Fitness; runs: Ru
   const easyShare = recentTotal ? sum(recent, 0) / recentTotal : null;
 
   const W = box.w || 800;
-  const H = 210;
+  // Shorter on a laptop screen.
+  const H = typeof window !== "undefined" && window.innerHeight < 900 ? 150 : 210;
   const pad = { top: 12, bottom: 20, left: 34, right: 40 };
   const kmMax = Math.max(10, ...weeks.map((w) => w.total)) * 1.08;
   const vLo = vo2s.length ? Math.floor(Math.min(...vo2s) - 1) : 40;
