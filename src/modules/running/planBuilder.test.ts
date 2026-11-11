@@ -237,3 +237,19 @@ describe("create a workout", () => {
     expect(suggestFocus({ readiness: 80, hardDaysAgo: 5, planToday: null, longDaysAgo: 2 }).focus).toBe("threshold");
   });
 });
+
+describe("Start running", () => {
+  it("builds nine weeks of run/walk to 30 minutes, three days a week, with no history", () => {
+    const h: History = { recent4: 0, recent12: 0, peak12: 0, runsPerWeek: 0, longest8: 0, weeksRun12: 0, vdot: null };
+    const o: BuildOptions = { raceName: "Start running", raceDate: "2027-03-01", dist: "5k", target: "", weeks: 9, level: "beginner", days: 3, longDay: "sun", keepRaces: false, goal: "start" };
+    const { plan, weeks } = buildPlan(BUNDLED_PLAN, o, h, "2026-11-11");
+    expect(weeks).toHaveLength(9);
+    const first = plan.weeks.find((w) => w.start === weeks[0].monday)!;
+    const last = plan.weeks.find((w) => w.start === weeks[8].monday)!;
+    expect(Object.values(first.sessions).filter((x) => /run\/walk/.test(x ?? ""))).toHaveLength(3);
+    expect(first.sessions.tue).toMatch(/8 × 1 min run, 90 s walk/);
+    expect(last.sessions.sun).toMatch(/30 min run without stopping/);
+    expect(forecastWeek).toBeDefined();
+    expect(plan.title).toBe("Start running: 9 weeks");
+  });
+});

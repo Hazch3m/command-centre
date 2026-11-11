@@ -62,8 +62,9 @@ export function elevationCost(gain: number, loss: number): number {
   return Math.max(-0.08 * loss, 0.75 * gain - 0.35 * loss);
 }
 
-export type Goal = "race" | "faster" | "mileage" | "base" | "recover";
+export type Goal = "start" | "race" | "faster" | "mileage" | "base" | "recover";
 export const GOALS: { id: Goal; label: string; blurb: string; weeks: number }[] = [
+  { id: "start", label: "Start running", blurb: "New to running: walk and run, three times a week, to 30 minutes of running without stopping", weeks: 9 },
   { id: "race", label: "A race", blurb: "Build to a race date, with a taper", weeks: 16 },
   { id: "faster", label: "Get faster", blurb: "Speed for 5k–half: intervals, threshold, then race pace; ends with a time trial", weeks: 10 },
   { id: "mileage", label: "More mileage", blurb: "Raise your weekly volume safely, mostly easy running", weeks: 10 },
@@ -614,6 +615,7 @@ export interface BuiltWeek {
 
 /** The plan built from the options, merged into the current one: weeks before it and after the race are kept. */
 export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string): { plan: Plan; weeks: BuiltWeek[] } {
+  if (o.goal === "start") return buildStartPlan(old, o, h, today);
   const T = o.tune ?? {};
   const L0 = LEVELS[o.level];
   const L: LevelSpec = {
@@ -648,7 +650,7 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
   const growth = T.growth ?? Math.max(0.015, Math.min(L.growth, Math.pow(peak / Math.max(1, startKm), 1 / rampWeeks) - 1));
 
   // Paces: fitness now, rising a little through the plan; race-pace work at the goal pace.
-  const v0 = h.vdot ?? 42;
+  const v0 = h.vdot ?? (o.level === "beginner" ? 32 : 42);
   const goalSec = o.target ? targetTime(o.target, DIST_M[o.dist]) : null;
   const vGoal = goalSec ? vdotOf(DIST_M[o.dist], goalSec) : null;
   // Fitness you can expect to gain: about a VDOT point a month, less as it adds up (a long build gains more, but not linearly).
@@ -1015,3 +1017,115 @@ const nQText = (o: BuildOptions) =>
   (o.tune?.quality ?? LEVELS[o.level].quality) >= 2 && o.days >= 4
     ? "Two quality sessions a week (one in easier, tune-up and taper weeks): threshold and VO2 max work early, race-pace work late."
     : "One quality session a week, alternating threshold, VO2 max and race-pace work.";
+
+// ---- Start running: walk and run to 30 minutes ------------------------------------------
+
+/** One session of the run/walk programme: [run minutes, walk minutes] pairs, done in order. */
+type RunWalk = { reps: number; run: number; walk: number }[];
+/** Nine weeks from one minute of running at a time to 30 minutes without stopping (like Couch to 5K). */
+const START_WEEKS: { s: RunWalk; note: string }[] = [
+  { s: [{ reps: 8, run: 1, walk: 1.5 }], note: "Run slowly enough to talk. Walking is part of the plan, not a failure." },
+  { s: [{ reps: 6, run: 1.5, walk: 2 }], note: "A little more running each time. Keep the running gentle." },
+  { s: [{ reps: 2, run: 1.5, walk: 1.5 }, { reps: 2, run: 3, walk: 3 }], note: "Three-minute runs this week: slow down rather than stop." },
+  { s: [{ reps: 2, run: 3, walk: 1.5 }, { reps: 2, run: 5, walk: 2.5 }], note: "Five-minute runs. If a week felt hard, repeat it: there's no rush." },
+  { s: [{ reps: 3, run: 5, walk: 3 }], note: "Halfway. Three blocks of five minutes." },
+  { s: [{ reps: 2, run: 8, walk: 3 }], note: "Eight minutes at a time. Same easy pace as week one." },
+  { s: [{ reps: 2, run: 12, walk: 2 }], note: "Twelve-minute runs with a short walk between." },
+  { s: [{ reps: 1, run: 20, walk: 0 }], note: "Twenty minutes without stopping. Go slower than you think." },
+  { s: [{ reps: 1, run: 30, walk: 0 }], note: "Thirty minutes of running. That's the goal: you're a runner." },
+];
+/** Beginner speeds for an estimate of distance: running about 7:30/km, brisk walking about 11:00/km. */
+const RW_RUN = 7.5;
+const RW_WALK = 11;
+const fmtMin = (m: number) => (m < 1 || m % 1 ? `${Math.round(m * 60)} s` : `${m} min`);
+
+function startSession(rw: RunWalk, last: boolean): { text: string; km: number; mins: number } {
+  // A 5-minute brisk walk to warm up and another to cool down, around the running.
+  const runMin = rw.reduce((a, b) => a + b.reps * b.run, 0);
+  const walkMin = rw.reduce((a, b) => a + b.reps * b.walk, 0) + 10;
+  const km = Math.round((runMin / RW_RUN + walkMin / RW_WALK) * 2) / 2;
+  const mins = Math.round(runMin + walkMin);
+  if (rw.length === 1 && rw[0].reps === 1 && rw[0].walk === 0) {
+    return { text: `${km} km easy: ${rw[0].run} min run without stopping${last ? " (your goal!)" : ""}, 5 min walk before and after`, km, mins };
+  }
+  const parts = rw.map((b) => `${b.reps} × ${fmtMin(b.run)} run, ${fmtMin(b.walk)} walk`).join(", then ");
+  return { text: `${km} km run/walk: ${parts}; 5 min walk before and after`, km, mins };
+}
+
+/** A beginner's plan: three run/walk sessions a week, building to 30 minutes of running. No race or 5k time needed. */
+export function buildStartPlan(old: Plan, o: BuildOptions, h: History, today: string): { plan: Plan; weeks: BuiltWeek[] } {
+  const firstAllowed = mondayOf(today) < today ? addDays(mondayOf(today), 7) : mondayOf(today);
+  const N = Math.max(3, Math.min(20, o.weeks || START_WEEKS.length));
+  const start = firstAllowed;
+  const end = addDays(start, N * 7 - 1);
+  // Runs on three days with a rest day between; the third on your long-run day. Other days: rest or a walk.
+  const runDays: DayKey[] = o.longDay === "sat" ? ["mon", "wed", "sat"] : ["tue", "thu", "sun"];
+  const walkDays = o.days >= 4 ? WEEK_KEYS.filter((k) => !runDays.includes(k)).slice(0, o.days - 3) : [];
+  const built: BuiltWeek[] = [];
+  const weeks: PlanWeek[] = [];
+  for (let i = 0; i < N; i++) {
+    // Longer than nine weeks: each step lasts a little longer. Shorter: some steps are skipped.
+    const step = START_WEEKS[Math.min(START_WEEKS.length - 1, Math.floor((i * START_WEEKS.length) / N))];
+    const lastWeek = i === N - 1;
+    const sess = startSession(step.s, lastWeek);
+    const monday = addDays(start, i * 7);
+    const s: Partial<Record<DayKey, string>> = {};
+    for (const k of WEEK_KEYS) s[k] = runDays.includes(k) ? sess.text : walkDays.includes(k) ? "Rest (or a 20–30 min walk)" : "Rest";
+    const km = Math.round(sess.km * 3 * 10) / 10;
+    built.push({ monday, phase: "base", km, long: sess.km, cut: false });
+    weeks.push({
+      week: String(i + 1),
+      start: monday,
+      end: addDays(monday, 6),
+      phase: i < Math.ceil(N * 0.55) ? "Run/walk" : "Running",
+      km: String(km),
+      kmMin: km,
+      kmMax: km,
+      sessions: s,
+      notes: step.note,
+    });
+  }
+  const runWalkEnd = weeks.filter((w) => w.phase === "Run/walk").length;
+  const phases: Plan["phases"] = [
+    { name: "Run/walk", start, end: addDays(start, runWalkEnd * 7 - 1), summary: "Short runs with walks between, three times a week. The runs get longer and the walks shorter." },
+    ...(runWalkEnd < N ? [{ name: "Running", start: addDays(start, runWalkEnd * 7), end, summary: "Longer runs with fewer walks, to 30 minutes of running without stopping." }] : []),
+  ];
+  const v0 = Math.min(h.vdot ?? 28, 34);
+  const p = pacesFor(v0);
+  const zone = (z: string, a: string, use: string) => ({ zone: z, now: a, autumn: a, hr: "", use });
+  const paces: Plan["paces"] = [
+    zone("Easy", range(...p.easy), "Your running: slow enough to talk in full sentences"),
+    zone("Walk", "Brisk", "Between runs, and 5 minutes before and after"),
+  ];
+  const rules = [
+    "Run slowly: you should be able to talk in full sentences. If you can't, slow down or walk.",
+    "Three sessions a week with a rest day between. Rest days are when your body adapts.",
+    "A week felt hard? Do it again before moving on. There's no prize for finishing early.",
+    "Sore for more than a couple of days, or anything sharp or getting worse? Rest, and see someone if it doesn't settle.",
+    "Good running shoes help. Time, not distance, is what counts for now: the distances are estimates.",
+  ];
+  const keepBefore = old.weeks.filter((w) => w.end < start);
+  const keepAfter = old.weeks.filter((w) => w.start > end);
+  const { previous: _p, baseWeeks: _b, prefs: _q, hrZones: _h, ...prev } = old;
+  const peak = Math.max(...built.map((b) => b.km));
+  const longest = Math.max(...built.map((b) => b.long));
+  const plan: Plan = {
+    ...old,
+    title: `Start running: ${N} weeks`,
+    source: `Built in the app on ${fmtDay(today)} ${new Date(today).getFullYear()}`,
+    exported: today,
+    phases: [...old.phases.filter((x) => x.end && x.end < start), ...phases, ...old.phases.filter((x) => x.start && x.start > end)],
+    blocks: old.blocks.filter((b) => !b.start || b.start > end || (b.end && b.end < start)),
+    races: old.races.filter((r) => !r.date || r.date < start || r.date > end),
+    weeks: [...keepBefore, ...weeks, ...keepAfter],
+    paces,
+    structure: old.structure,
+    rules,
+    benchmarks: old.benchmarks.filter((b) => !b.date || b.date < start || b.date > end),
+    adjust: null,
+    baseWeeks: undefined,
+    built: { ...o, goal: "start", level: "beginner", weeks: N, raceDate: end, start, peak, longest, vdot: v0, vdotEnd: v0 },
+    previous: prev,
+  };
+  return { plan, weeks: built };
+}

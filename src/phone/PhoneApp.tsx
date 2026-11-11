@@ -34,7 +34,7 @@ const ALL_TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "today", label: "Today", icon: "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" },
   { id: "planner", label: "Planner", icon: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M8 14l2 2 4-4" },
   { id: "training", label: "Plan", icon: "M4 20h4v-6H4zM10 20h4V10h-4zM16 20h4V5h-4z" },
-  { id: "runs", label: "Runs", icon: "M13 4a2 2 0 1 0 4 0 2 2 0 0 0-4 0M6 20l3-6 3 2v5M9 14l2-5 4 2 3 3M11 9l-3 1-2 3" },
+  { id: "runs", label: "Runs", icon: "M14.5 5.2a1.9 1.9 0 1 0 3.8 0 1.9 1.9 0 1 0-3.8 0M13.6 8.6 11 13.6M13.6 8.6l2.9 2.6 2.6-.9M13.6 8.6l-3.3.9-1.7 2.6M11 13.6l3.4 2.1-1.1 4.6M11 13.6l-2.1 3.4-4.2.9" },
   { id: "stats", label: "Stats", icon: "M4 20V10M10 20V4M16 20v-7M22 20H2" },
 ];
 
