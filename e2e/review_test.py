@@ -306,6 +306,7 @@ try:
                     pp.evaluate("window.scrollTo(0,0)")
         pp.locator(".p-subnav").get_by_role("tab", name="Progress", exact=True).click()
         pp.wait_for_timeout(1200)
+        check(pp.locator(".p-pane.on .coach-box").count() >= 2, "Progress: the coach's verdicts")
         check(pp.locator(".gc-card").count() >= 3, "Progress: goals to swipe across")
         print("goal cards:", [c.replace("\n", " | ")[:120] for c in pp.locator(".gc-card").all_inner_texts()])
         check(pp.locator(".gc-card .pt-chart").count() >= 1, "Progress: the line to race day on the cards")
@@ -535,16 +536,16 @@ try:
             # A laptop: 1280 × 720 of page, as at 150% on a 1080p screen.
             big = wp.viewport_size
             wp.set_viewport_size({"width": 1280, "height": 720})
-            # Every page and sub-page: the dashboards fit the screen (lists and forms may scroll).
-            OVER = """() => { const out = []; for (const e of document.querySelectorAll('main .tab-page, main .subpage, main .card-body, main .ana-side, main .ana-sec, main .tl-grid > div, main .fit-card, main .hc, main .ph-panel')) { if (e.scrollHeight > e.clientHeight + 3 && e.clientHeight > 40) out.push(String(e.className).split(' ').slice(0, 2).join('.') + ' ' + e.scrollHeight + '/' + e.clientHeight); } return out; }"""
-            MAY_SCROLL = {"training/runs", "training/watch", "training/edit plan", "planner", "planner/tasks", "planner/habits"}
+            # Every page and sub-page scrolls as a whole: nothing wider than the window, and no chart
+            # flatter than a strip (the complaint was wide, low charts on a laptop).
+            wp.set_viewport_size({"width": 1270, "height": 630})
+            SHAPE = """() => { const flat = []; for (const e of document.querySelectorAll('main .chart > svg, main svg.tl-chart')) { const r = e.getBoundingClientRect(); if (r.width > 320 && r.height > 0 && r.width / r.height > 4.6) flat.push(Math.round(r.width) + 'x' + Math.round(r.height)); } return { flat, wide: document.documentElement.scrollWidth > innerWidth + 2 }; }"""
             def lap(key):
                 wp.wait_for_timeout(1700)
                 wp.screenshot(path=f"{out}/40-laptop-{re.sub(r'[^a-z0-9]+', '-', key)}.png")
-                over = wp.evaluate(OVER)
-                print("laptop", key, over)
-                if key not in MAY_SCROLL:
-                    check(not [o for o in over if not o.startswith("fit-card") and not o.startswith("ph-panel")], f"laptop: {key} fits the screen {over}")
+                sh = wp.evaluate(SHAPE)
+                print("laptop", key, sh)
+                check(not sh["flat"] and not sh["wide"], f"laptop: {key} has well-shaped charts and no sideways scroll {sh}")
             for name in ["Home", "Training", "Analysis", "Fitness", "Health", "Planner"]:
                 t = wp.locator("header .tabs").get_by_role("tab", name=name, exact=True)
                 if not t.count():
@@ -603,6 +604,8 @@ try:
             check(wp.locator(".hv-build svg rect").count() > 10, "web: home building chart")
             check(wp.locator(".hv-equiv tbody tr").count() == 4, "web: home races against your best")
             check(wp.locator(".home-card").count() == 0, "web: home has no boxed panels")
+            check(wp.locator(".coach-wide .coach-box").count() >= 2, "web: the coach's verdicts on home")
+            print("coach:", wp.locator(".coach").inner_text().replace("\n", " | ")[:600])
             clipped = wp.evaluate("""() => [...document.querySelectorAll('.hm *')].filter(e => e.children.length === 0 && e.textContent.trim() && (e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflow !== 'visible')).map(e => e.textContent.trim().slice(0, 30)).slice(0, 8)""")
             print("home clipped text:", clipped)
             print("build:", wp.locator(".hv-build header").inner_text().replace("\n", " "), "|", wp.locator(".hv-equiv").inner_text().replace("\n", " | ")[:400])
