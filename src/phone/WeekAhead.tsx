@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { addDays, diffDays, parseKey, useToday } from "../core/time";
 import { notifyChanged, useDataVersion } from "../core/events";
 import { kvGet, kvSet } from "../core/db";
@@ -54,7 +54,15 @@ export function WeekAhead({ plan, monday: given, onDay, compact, onOpen }: { pla
   const races = upcomingRaces(plan, today);
   const uv = useDataVersion("ui");
   const picked = useQuery(() => kvGet<string>(HIGHLIGHT_KEY, ""), [uv]).data ?? "";
-  const race = races.find((r) => raceKey(r) === picked) ?? races.find((r) => priorityOf(r) === "A") ?? races[0] ?? null;
+  // Swipe (or the arrows) to look at the build to another race, without changing your pick.
+  const [peek, setPeek] = useState<string | null>(null);
+  const touch = useRef<number | null>(null);
+  const race = races.find((r) => raceKey(r) === peek) ?? races.find((r) => raceKey(r) === picked) ?? races.find((r) => priorityOf(r) === "A") ?? races[0] ?? null;
+  const step = (by: number) => {
+    if (races.length < 2 || !race) return;
+    const i = races.indexOf(race);
+    setPeek(raceKey(races[(i + by + races.length) % races.length]));
+  };
 
   // The plan's weeks up to the race, as phases along a line. A tune-up race (B or C) gets its own
   // block, periodised to it: build, then sharpen for the last two weeks, then race week. The goal
@@ -115,7 +123,30 @@ export function WeekAhead({ plan, monday: given, onDay, compact, onOpen }: { pla
   const label = (text: string, kind: string) => (kind === "long" ? "Long run" : kind === "race" ? "Race" : /^([A-Z0-9][\w\s-]{1,18}):/.exec(text)?.[1] ?? sessionKindOf(text) ?? (/hill/i.test(text) ? "Hills" : /fartlek/i.test(text) ? "Fartlek" : /stride/i.test(text) ? "Strides" : /tempo/i.test(text) ? "Tempo" : "Session"));
 
   return (
-    <section className={"wa" + (compact ? " compact" : "") + (onOpen ? " wa-tap" : "")} aria-label="Week ahead" onClick={onOpen} role={onOpen ? "button" : undefined}>
+    <section className={"wa" + (compact ? " compact" : "") + (onOpen ? " wa-tap" : "")} aria-label="Week ahead" onClick={onOpen} role={onOpen ? "button" : undefined}
+      data-noswipe={races.length > 1 ? true : undefined}
+      onTouchStart={(e) => (touch.current = e.touches[0].clientX)}
+      onTouchEnd={(e) => {
+        const dx = touch.current == null ? 0 : e.changedTouches[0].clientX - touch.current;
+        touch.current = null;
+        if (Math.abs(dx) > 45) step(dx < 0 ? 1 : -1);
+      }}
+    >
+      {races.length > 1 && race && (
+        <div className="wa-pager" onClick={(e) => e.stopPropagation()}>
+          <button type="button" onClick={() => step(-1)} aria-label="Previous race">
+            ‹
+          </button>
+          <span className="wa-dots" aria-hidden="true">
+            {races.map((r) => (
+              <i key={raceKey(r)} className={r === race ? "on" : ""} />
+            ))}
+          </span>
+          <button type="button" onClick={() => step(1)} aria-label="Next race">
+            ›
+          </button>
+        </div>
+      )}
       <div className="wa-top">
         <span className="wa-eyebrow">
           {idx >= 0 ? `Week ${idx + 1} of ${weeks.length}` : tuneUp && weeks[0] && weeks[0].start > monday ? `Block starts ${parseKey(weeks[0].start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : isThis ? "This week" : "Week"}
@@ -147,6 +178,7 @@ export function WeekAhead({ plan, monday: given, onDay, compact, onOpen }: { pla
               aria-selected={r === race}
               className={r === race ? "on" : ""}
               onClick={async () => {
+                setPeek(null);
                 await kvSet(HIGHLIGHT_KEY, raceKey(r));
                 notifyChanged("ui");
               }}

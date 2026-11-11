@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useBox } from "../../shell/charts";
+import { sized, useBox } from "../../shell/charts";
 import { useDataVersion } from "../../core/events";
 import { addDays, parseKey, useToday } from "../../core/time";
 import { useQuery } from "../../core/useQuery";
@@ -174,7 +174,7 @@ export function IntervalChart({ rows }: { rows: { day: ForecastDay; check: PaceC
       </div>
     );
   const W = Math.max(320, box.w || 800);
-  const H = Math.round(300 * box.scale);
+  const H = sized(300, box);
   const TOL = 5;
   const pad = { top: 14, bottom: 34, left: 44, right: 8 };
   const all = items.flatMap((r) => [r.check.fastest!, r.check.slowest!, r.check.target[0] - TOL, r.check.target[1] + TOL]);

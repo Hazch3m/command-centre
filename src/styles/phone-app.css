@@ -5433,3 +5433,10 @@ svg.effort {
 .wp.wp-c { margin-bottom: 0.7rem; }
 /* Tab bar: solid enough that the page behind doesn't show through as ghost text */
 .p-tabs { background: color-mix(in srgb, var(--bg) 94%, transparent); }
+
+/* Build card: step or swipe between your races */
+.wa-pager { order: 99; display: flex; align-items: center; justify-content: center; gap: 0.7rem; margin-top: 0.1rem; }
+.wa-pager button { width: 1.9rem; height: 1.5rem; border: 0; border-radius: 999px; background: color-mix(in srgb, #fff 14%, transparent); color: inherit; font: inherit; font-size: 1.05rem; line-height: 1; cursor: pointer; }
+.wa-dots { display: flex; gap: 0.3rem; }
+.wa-dots i { width: 6px; height: 6px; border-radius: 50%; background: color-mix(in srgb, currentColor 30%, transparent); }
+.wa-dots i.on { background: currentColor; width: 14px; border-radius: 3px; }
