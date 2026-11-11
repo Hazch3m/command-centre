@@ -535,23 +535,34 @@ try:
             # A laptop: 1280 × 720 of page, as at 150% on a 1080p screen.
             big = wp.viewport_size
             wp.set_viewport_size({"width": 1280, "height": 720})
-            for name in ["Home", "Training", "Analysis", "Fitness"]:
-                t = wp.get_by_role("tab", name=name, exact=True)
-                if t.count():
-                    t.first.click(force=True)
-                    wp.wait_for_timeout(2200)
-                    wp.screenshot(path=f"{out}/40-laptop-{name.lower()}.png")
-                    if name == "Training":
-                        tl = wp.locator(".page-tabs").get_by_role("tab", name="Trends & load", exact=True)
-                        if tl.count():
-                            tl.click()
-                            wp.wait_for_timeout(2000)
-                            wp.screenshot(path=f"{out}/40-laptop-trends.png")
-                            print("laptop trends", wp.evaluate("() => [...document.querySelectorAll('.subpage')].map(e => e.scrollHeight + '/' + e.clientHeight).join(' ')"))
-                            wp.locator(".page-tabs").get_by_role("tab", name="Plan", exact=True).click()
-                            wp.wait_for_timeout(800)
-                    sc = wp.evaluate("() => [...document.querySelectorAll('.tab-page, .subpage, .tab-page-home')].map(e => e.className.split(' ')[0] + ':' + e.scrollHeight + '/' + e.clientHeight).join(' ')")
-                    print("laptop", name, sc)
+            # Every page and sub-page: the dashboards fit the screen (lists and forms may scroll).
+            OVER = """() => { const out = []; for (const e of document.querySelectorAll('main .tab-page, main .subpage, main .card-body, main .ana-side, main .ana-sec, main .tl-grid > div, main .fit-card, main .hc, main .ph-panel')) { if (e.scrollHeight > e.clientHeight + 3 && e.clientHeight > 40) out.push(String(e.className).split(' ').slice(0, 2).join('.') + ' ' + e.scrollHeight + '/' + e.clientHeight); } return out; }"""
+            MAY_SCROLL = {"training/runs", "training/watch", "training/edit plan", "planner", "planner/tasks", "planner/habits"}
+            def lap(key):
+                wp.wait_for_timeout(1700)
+                wp.screenshot(path=f"{out}/40-laptop-{re.sub(r'[^a-z0-9]+', '-', key)}.png")
+                over = wp.evaluate(OVER)
+                print("laptop", key, over)
+                if key not in MAY_SCROLL:
+                    check(not [o for o in over if not o.startswith("fit-card") and not o.startswith("ph-panel")], f"laptop: {key} fits the screen {over}")
+            for name in ["Home", "Training", "Analysis", "Fitness", "Health", "Planner"]:
+                t = wp.locator("header .tabs").get_by_role("tab", name=name, exact=True)
+                if not t.count():
+                    continue
+                t.first.click(force=True)
+                lap(name.lower())
+                subs = wp.locator(".page-tabs [role=tab], .ana-secs button")
+                names = [x.strip() for x in subs.all_inner_texts()]
+                for i, sn in enumerate(names[1:], 1):
+                    subs.nth(i).click()
+                    lap(f"{name.lower()}/{sn.lower()}")
+                    inner = wp.locator(".prog-views button")
+                    for k in range(1, inner.count()):
+                        inner.nth(k).click()
+                        lap(f"{name.lower()}/{sn.lower()}/{k}")
+                if len(names) > 1:
+                    subs.nth(0).click()
+                    wp.wait_for_timeout(500)
             wp.set_viewport_size(big)
             for name in ["Training", "Fitness", "Runs", "Stats", "Health"]:
                 t = wp.get_by_role("tab", name=name, exact=True)
