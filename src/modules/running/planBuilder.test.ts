@@ -253,3 +253,19 @@ describe("Start running", () => {
     expect(plan.title).toBe("Start running: 9 weeks");
   });
 });
+
+describe("Beyond 5k", () => {
+  it("builds ten weeks from a 35-minute 5k: three runs, long run to 9 km, a time trial at the end", () => {
+    const h: History = { recent4: 0, recent12: 0, peak12: 0, runsPerWeek: 0, longest8: 0, weeksRun12: 0, vdot: null };
+    const o: BuildOptions = { raceName: "Beyond 5k", raceDate: "2027-03-01", dist: "5k", target: "35:00", weeks: 10, level: "beginner", days: 3, longDay: "sun", keepRaces: false, goal: "beyond5k" };
+    const { plan, weeks } = buildPlan(BUNDLED_PLAN, o, h, "2026-11-11");
+    expect(weeks).toHaveLength(10);
+    const ws = weeks.map((b) => plan.weeks.find((w) => w.start === b.monday)!);
+    for (const w of ws) expect(Object.values(w.sessions).filter((x) => x !== "Rest")).toHaveLength(3);
+    expect(Math.max(...weeks.map((b) => b.long))).toBe(9);
+    expect(ws[9].sessions.sun).toMatch(/5 km time trial/);
+    expect(ws[0].sessions.tue).toMatch(/fartlek/);
+    expect(plan.built!.vdot).toBeGreaterThan(24);
+    expect(plan.built!.vdot).toBeLessThan(30);
+  });
+});

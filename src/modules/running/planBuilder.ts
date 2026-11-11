@@ -62,9 +62,10 @@ export function elevationCost(gain: number, loss: number): number {
   return Math.max(-0.08 * loss, 0.75 * gain - 0.35 * loss);
 }
 
-export type Goal = "start" | "race" | "faster" | "mileage" | "base" | "recover";
+export type Goal = "start" | "beyond5k" | "race" | "faster" | "mileage" | "base" | "recover";
 export const GOALS: { id: Goal; label: string; blurb: string; weeks: number }[] = [
   { id: "start", label: "Start running", blurb: "New to running: walk and run, three times a week, to 30 minutes of running without stopping", weeks: 9 },
+  { id: "beyond5k", label: "Beyond 5k", blurb: "You can run 5k: run it faster and go further (towards 10k), three or four runs a week with one fun session; ends with a 5k time trial", weeks: 10 },
   { id: "race", label: "A race", blurb: "Build to a race date, with a taper", weeks: 16 },
   { id: "faster", label: "Get faster", blurb: "Speed for 5k–half: intervals, threshold, then race pace; ends with a time trial", weeks: 10 },
   { id: "mileage", label: "More mileage", blurb: "Raise your weekly volume safely, mostly easy running", weeks: 10 },
@@ -616,6 +617,7 @@ export interface BuiltWeek {
 /** The plan built from the options, merged into the current one: weeks before it and after the race are kept. */
 export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string): { plan: Plan; weeks: BuiltWeek[] } {
   if (o.goal === "start") return buildStartPlan(old, o, h, today);
+  if (o.goal === "beyond5k") return buildBeyond5kPlan(old, o, h, today);
   const T = o.tune ?? {};
   const L0 = LEVELS[o.level];
   const L: LevelSpec = {
@@ -1125,6 +1127,143 @@ export function buildStartPlan(old: Plan, o: BuildOptions, h: History, today: st
     adjust: null,
     baseWeeks: undefined,
     built: { ...o, goal: "start", level: "beginner", weeks: N, raceDate: end, start, peak, longest, vdot: v0, vdotEnd: v0 },
+    previous: prev,
+  };
+  return { plan, weeks: built };
+}
+
+// ---- Beyond 5k: for someone who runs 5k (in about 30–40 min) and wants more -----------------
+
+/**
+ * Ten weeks, three runs (a fourth short easy one if you want it): an easy run, one session that
+ * rotates between fartlek, hills, "comfortably hard" blocks and 5k-pace reps, and a long run that grows
+ * from 5 to 8–9 km. Every fourth week is easier. The last week ends with a 5k time trial.
+ */
+type B5Session = (p: Paces) => { km: number; text: string };
+const B5_SESSIONS: B5Session[] = [
+  () => ({ km: 4.5, text: "4.5 km fartlek: 6 × 1 min brisk, 2 min easy" }),
+  () => ({ km: 4, text: "4 km with 8 × 30 s up a gentle hill, walk or jog back down" }),
+  (p) => ({ km: 5, text: `5 km with 3 × 5 min comfortably hard (T, ${around(p.threshold + 10)}), 2 min easy` }),
+  () => ({ km: 4, text: "4 km easy + 4 × 20 s strides" }),
+  () => ({ km: 5, text: "5 km fartlek: 8 × 1 min brisk, 1 min easy" }),
+  (p) => ({ km: 5.5, text: `5.5 km with 2 × 8 min comfortably hard (T, ${around(p.threshold + 10)}), 3 min easy` }),
+  (p) => ({ km: 5.5, text: `5.5 km with 5 × 3 min at 5k pace (${around(p.fivek)}), 2 min jog or walk` }),
+  () => ({ km: 4.5, text: "4.5 km fartlek: 5 × 1 min brisk, 2 min easy" }),
+  (p) => ({ km: 6, text: `6 km with 3 × 8 min comfortably hard (T, ${around(p.threshold + 10)}), 2 min easy` }),
+  (p) => ({ km: 4, text: `4 km with 4 × 1 min at 5k pace (${around(p.fivek)}), 2 min easy` }),
+];
+/** Long run and easy run, km, week by week (weeks 4 and 8 easier). */
+const B5_LONG = [5, 5.5, 6, 5, 6.5, 7, 8, 6, 9, 0];
+const B5_EASY = [3.5, 4, 4, 3.5, 4.5, 4.5, 5, 4, 5, 3];
+const B5_CUT = new Set([3, 7]);
+
+export function buildBeyond5kPlan(old: Plan, o: BuildOptions, h: History, today: string): { plan: Plan; weeks: BuiltWeek[] } {
+  const firstAllowed = mondayOf(today) < today ? addDays(mondayOf(today), 7) : mondayOf(today);
+  const N = Math.max(4, Math.min(20, o.weeks || B5_LONG.length));
+  const start = firstAllowed;
+  const end = addDays(start, N * 7 - 1);
+  // Paces from the 5k time you give (or your running); about 35 min if neither is known.
+  const tSec = o.target ? targetTime(o.target, 5000) : null;
+  const v0 = Math.min(45, Math.max(20, tSec ? vdotOf(5000, tSec) : (h.vdot ?? vdotOf(5000, 35 * 60))));
+  const vEnd = v0 + Math.min(2.5, N * 0.25);
+  const sat = o.longDay === "sat";
+  const sessDay: DayKey = sat ? "tue" : "tue";
+  const easyDay: DayKey = sat ? "thu" : "thu";
+  const longDay: DayKey = o.longDay;
+  const extraDay: DayKey | null = o.days >= 4 ? (sat ? "mon" : "sat") : null;
+  const built: BuiltWeek[] = [];
+  const weeks: PlanWeek[] = [];
+  for (let i = 0; i < N; i++) {
+    const j = Math.min(B5_LONG.length - 1, Math.floor((i * B5_LONG.length) / N));
+    const last = i === N - 1;
+    const p = pacesFor(lerp(v0, vEnd, i / Math.max(1, N - 1)));
+    const q = B5_SESSIONS[j](p);
+    const easyKm = B5_EASY[j];
+    const s: Partial<Record<DayKey, string>> = {};
+    const sized: Partial<Record<DayKey, number>> = {};
+    for (const k of WEEK_KEYS) s[k] = "Rest";
+    s[sessDay] = q.text;
+    sized[sessDay] = q.km;
+    s[easyDay] = `${easyKm} km easy`;
+    sized[easyDay] = easyKm;
+    if (last) {
+      s[longDay] = `7 km with 5 km time trial: as fast as you can hold evenly (about ${fmtPace(p.fivek)}/km), 1 km easy before and after`;
+      sized[longDay] = 7;
+    } else {
+      s[longDay] = `${B5_LONG[j]} km long run`;
+      sized[longDay] = B5_LONG[j];
+    }
+    if (extraDay && !B5_CUT.has(j) && !last) {
+      s[extraDay] = "3 km easy (optional)";
+      sized[extraDay] = 3;
+    }
+    const km = Math.round(Object.values(sized).reduce((a, x) => a + (x ?? 0), 0) * 10) / 10;
+    const cut = B5_CUT.has(j);
+    built.push({ monday: addDays(start, i * 7), phase: last ? "race" : "base", km, long: last ? 7 : B5_LONG[j], cut });
+    weeks.push({
+      week: String(i + 1),
+      start: addDays(start, i * 7),
+      end: addDays(start, i * 7 + 6),
+      phase: last ? "Time trial" : i < N / 2 ? "Building" : "Stronger",
+      km: String(km),
+      kmMin: km,
+      kmMax: km,
+      sessions: s,
+      notes: last
+        ? "Time trial week: an easy start to the week, then run 5 km as fast as you can hold evenly. Compare it with where you started."
+        : cut
+          ? "Easier week: a bit less running so the last three weeks sink in."
+          : i === 0
+            ? "Easy runs really easy: you should be able to chat. The session is the one day to work a bit."
+            : "",
+    });
+  }
+  const half = Math.ceil(N / 2);
+  const phases: Plan["phases"] = [
+    { name: "Building", start, end: addDays(start, half * 7 - 1), summary: "Three runs a week: easy, a short fun session (fartlek, hills, comfortably hard), and a long run from 5 km up." },
+    { name: "Stronger", start: addDays(start, half * 7), end: addDays(start, (N - 1) * 7 - 1), summary: "Longer blocks at comfortably hard and some 5k-pace reps; the long run reaches 8–9 km." },
+    { name: "Time trial", start: addDays(start, (N - 1) * 7), end, summary: "A lighter week ending with a 5 km time trial." },
+  ];
+  // At this fitness the formula's easy pace is close to walking; easy here is about 1¼–2¼ min/km slower than 5k pace.
+  const relax = (q: Paces): Paces => ({ ...q, easy: [q.fivek + 75, q.fivek + 135], long: [q.fivek + 70, q.fivek + 125] });
+  const p0 = relax(pacesFor(v0));
+  const p1 = relax(pacesFor(vEnd));
+  const zone = (z: string, a: string, b: string, use: string) => ({ zone: z, now: a, autumn: b, hr: "", use });
+  const paces: Plan["paces"] = [
+    zone("Easy", range(...p0.easy), range(...p1.easy), "Most of your running: you can talk in sentences"),
+    zone("Long run (easy part)", range(...p0.long), range(...p1.long), "Long runs"),
+    zone("Threshold (T)", around(p0.threshold + 10), around(p1.threshold + 10), "Comfortably hard: a few words at a time"),
+    zone("5k pace", around(p0.fivek), around(p1.fivek), "5k-pace reps and the time trial"),
+    zone("Brisk (fartlek)", "By feel", "By feel", "Faster than easy, relaxed, never a sprint"),
+  ];
+  const rules = [
+    `Easy runs at ${range(...p0.easy)}/km or slower: easy is the most important pace in the plan.`,
+    "One session a week, on fresh legs, with a rest day or easy day either side.",
+    "The long run grows about half a kilometre a week. Walk breaks are fine whenever you need them.",
+    "Every fourth week is easier. Tired, sore or ill? Skip the session and run easy, or rest.",
+    `Paces come from your 5k (VDOT ${v0.toFixed(1)}); the time trial at the end shows how far you've come.`,
+  ];
+  const keepBefore = old.weeks.filter((w) => w.end < start);
+  const keepAfter = old.weeks.filter((w) => w.start > end);
+  const { previous: _p, baseWeeks: _b, prefs: _q, hrZones: _h, ...prev } = old;
+  const peak = Math.max(...built.map((b) => b.km));
+  const longest = Math.max(...built.map((b) => b.long));
+  const plan: Plan = {
+    ...old,
+    title: `Beyond 5k: ${N} weeks`,
+    source: `Built in the app on ${fmtDay(today)} ${new Date(today).getFullYear()}`,
+    exported: today,
+    phases: [...old.phases.filter((x) => x.end && x.end < start), ...phases, ...old.phases.filter((x) => x.start && x.start > end)],
+    blocks: old.blocks.filter((b) => !b.start || b.start > end || (b.end && b.end < start)),
+    races: old.races.filter((r) => !r.date || r.date < start || r.date > end),
+    weeks: [...keepBefore, ...weeks, ...keepAfter],
+    paces,
+    structure: old.structure,
+    rules,
+    benchmarks: old.benchmarks.filter((b) => !b.date || b.date < start || b.date > end),
+    adjust: null,
+    baseWeeks: undefined,
+    built: { ...o, goal: "beyond5k", level: "beginner", dist: "5k", weeks: N, raceDate: end, start, peak, longest, vdot: v0, vdotEnd: vEnd },
     previous: prev,
   };
   return { plan, weeks: built };

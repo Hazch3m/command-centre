@@ -157,7 +157,7 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
       set({ goal: "race", raceName: r0?.name ?? "", raceDate: r0?.date ?? addDays(today, 16 * 7), dist: r0 ? distOf(r0.name, r0.km) : "marathon", target: r0?.target ?? "", tune: undefined }, false);
     } else {
       const spec = GOALS.find((x) => x.id === g)!;
-      if (g === "start") {
+      if (g === "start" || g === "beyond5k") {
         set({ goal: g, raceName: spec.label, target: "", weeks: spec.weeks, dist: "5k", level: "beginner", days: 3, tune: undefined }, true);
         return;
       }
@@ -166,7 +166,7 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
   };
   const next = (to: number) => {
     // Leaving the race step: the length, level and days follow the suggestion for that race unless you've set them.
-    if (step === 0 && to > 0 && !touched && o.goal !== "start") set(isRace ? { level: rec.level, days: rec.days, weeks: recWeeks } : { level: rec.level, days: rec.days }, false);
+    if (step === 0 && to > 0 && !touched && o.goal !== "start" && o.goal !== "beyond5k") set(isRace ? { level: rec.level, days: rec.days, weeks: recWeeks } : { level: rec.level, days: rec.days }, false);
     setStep(to);
   };
   const STEPS = ["Race", "Your training", "Plan", "Review"];
@@ -282,6 +282,12 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
                   <span className="label">Faster at</span>
                   <Chips value={o.dist} options={(["5k", "10k", "half"] as RaceDist[]).map((d) => ({ v: d, l: DIST_LABEL[d] }))} onChange={(d) => set({ dist: d }, false)} />
                 </>
+              )}
+              {o.goal === "beyond5k" && (
+                <label className="pb-goal">
+                  <span className="label">Your 5k time now (sets your paces)</span>
+                  <input value={o.target} inputMode="numeric" placeholder="35:00" onChange={(e) => set({ target: e.target.value }, false)} />
+                </label>
               )}
               {o.goal === "start" && (
                 <p className="ps-note">
