@@ -46,7 +46,7 @@
   .plan-home2 { display: grid !important; flex: none !important; min-height: 0; grid-template-columns: minmax(0, 1fr) minmax(18rem, 23rem); gap: 1rem; align-items: start; }
   .ph-main { min-height: 0; gap: 0.8rem; }
   .ph-main .pwc { flex: none; height: auto; min-height: 0; max-height: none; }
-  .ph-main .pwc .chart-fill { aspect-ratio: 4.2 / 1; }
+  .ph-main .pwc .chart-fill { aspect-ratio: 3.4 / 1; }
   .ph-main .pwv, .ph-main .pwv.pwv-rich { flex: none; min-height: 0; display: flex; flex-direction: column; }
   .ph-main .pwv-days, .pwv-rich .pwv-days { flex: none; min-height: 0; max-height: none; align-items: stretch; }
   .pwv-rich .pwv-day { justify-content: flex-start; min-height: 13rem; }
