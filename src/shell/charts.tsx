@@ -84,6 +84,17 @@ export function BarChart({
   const bw = (W - pad.left - pad.right) / Math.max(1, bars.length);
   const y = (v: number) => pad.top + (H - pad.top - pad.bottom) * (1 - (Math.max(v, min) - min) / (max - min));
   const h = hover != null ? bars[hover] : null;
+  // Axis labels: as many as fit, left to right, so neighbours never run into each other.
+  const labelled = new Set<number>();
+  let lastRight = -Infinity;
+  bars.forEach((b, i) => {
+    if (!b.label || i % labelEvery !== 0) return;
+    const half = (b.label.length * 6.4) / 2;
+    const cx = pad.left + i * bw + bw / 2;
+    if (cx - half < lastRight + 5) return;
+    labelled.add(i);
+    lastRight = cx + half;
+  });
   return (
     <div className={"chart" + (fill ? " chart-fill" : "")} ref={ref} onMouseLeave={() => setHover(null)}>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} role="img">
@@ -126,7 +137,7 @@ export function BarChart({
                   {b.value.toFixed(digits)}
                 </text>
               )}
-              {i % Math.max(labelEvery, Math.ceil(24 / bw)) === 0 && (
+              {labelled.has(i) && (
                 <text x={x + bw / 2} y={H - 4} className="chart-label" textAnchor="middle">
                   {b.label}
                 </text>
