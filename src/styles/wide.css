@@ -76,6 +76,8 @@
 .p-wide .p-title { padding: 0.2rem 0 1rem; display: flex; align-items: baseline; gap: 0.9rem; }
 .p-wide .p-title h1 { font-size: 2.6rem; }
 .p-wide .p-pane:not(.p-pushed) .p-screen {
+  display: block;
+  padding: 0 0 1rem;
   columns: 23rem 3;
   column-gap: 1.4rem;
 }
@@ -123,3 +125,8 @@
   .p-wide .p-tab span { font-size: 0.68rem; }
   .p-wide > .p-head, .p-wide > .p-main { padding-left: 1rem; padding-right: 1rem; }
 }
+
+/* Stats: the full Fitness page has its own place in the side bar, so it isn't repeated here. */
+.p-wide [data-pane="stats"] .p-screen > .p-embed:last-child { display: none; }
+.p-wide .p-head-right { margin-left: auto; }
+.p-wide .p-pushed :is(.fit-card, .card, .tile-body) { overflow-x: auto; }

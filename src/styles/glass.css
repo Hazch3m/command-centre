@@ -10,7 +10,7 @@
   --bg: #e4ecf7;
   --glass: rgba(255, 255, 255, 0.58);
   --glass-2: rgba(255, 255, 255, 0.4);
-  --glass-thick: rgba(255, 255, 255, 0.66);
+  --glass-thick: rgba(255, 255, 255, 0.8);
   --glass-rim: rgba(255, 255, 255, 0.85);
   --glass-rim-low: rgba(255, 255, 255, 0.3);
   --glass-shadow: 0 10px 30px rgba(38, 56, 110, 0.13), 0 1px 2px rgba(38, 56, 110, 0.08);
@@ -32,7 +32,7 @@
   --bg: #0b1430;
   --glass: rgba(30, 44, 78, 0.5);
   --glass-2: rgba(30, 44, 78, 0.36);
-  --glass-thick: rgba(34, 48, 84, 0.66);
+  --glass-thick: rgba(34, 48, 84, 0.82);
   --glass-rim: rgba(255, 255, 255, 0.16);
   --glass-rim-low: rgba(255, 255, 255, 0.05);
   --glass-shadow: 0 12px 34px rgba(0, 0, 0, 0.35);
