@@ -24,7 +24,6 @@ jobs:
         with:
           python-version: "3.12"
       - run: npm install --no-audit --no-fund && npm i -g tsx
-      - run: pip install --quiet playwright && python -m playwright install --with-deps chromium
       - name: Types (shown, not blocking)
         continue-on-error: true
         run: npx tsc --noEmit 2>&1 | head -60
@@ -42,6 +41,7 @@ jobs:
           git -c user.name=ci -c user.email=ci@localhost add -A
           git -c user.name=ci -c user.email=ci@localhost commit -qm "Builds of ${GITHUB_SHA}"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}" e2e-dist
+      - run: pip install --quiet playwright && python -m playwright install --with-deps chromium
       - name: Fixtures dated to today
         run: |
           mkdir -p /tmp/fix && cp e2e/fixtures/* /tmp/fix/
