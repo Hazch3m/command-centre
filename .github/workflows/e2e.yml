@@ -21,6 +21,9 @@ jobs:
           python-version: "3.12"
       - run: npm install --no-audit --no-fund && npm i -g tsx
       - run: pip install --quiet playwright && python -m playwright install --with-deps chromium
+      - name: Types (shown, not blocking)
+        continue-on-error: true
+        run: npx tsc --noEmit 2>&1 | head -60
       - name: Builds (PC preview and phone)
         run: |
           npx vite build --mode browser --outDir /tmp/pv --base ./
