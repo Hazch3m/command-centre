@@ -6,7 +6,7 @@ import { useDataVersion } from "../core/events";
 import { addDays, parseKey, useToday } from "../core/time";
 import { useQuery } from "../core/useQuery";
 import { forecastRange, forecastWeek } from "../modules/running/forecast";
-import { mondayOf, type Plan } from "../modules/running/plan";
+import { mondayOf } from "../modules/running/plan";
 import { typeOfDay } from "../modules/running/runType";
 import { km } from "../modules/running/stats";
 import { loadOverrides } from "../modules/running/strava";
