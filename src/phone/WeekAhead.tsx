@@ -178,7 +178,7 @@ export function WeekAhead({ plan, monday: given, onDay, compact, onOpen }: { pla
               </span>
             ))}
           </span>
-          {marks.length > 0 && (
+          {!compact && marks.length > 0 && (
             <span className="wa-tunes">
               <i /> Tune-ups: {marks.map((m) => `${shortName(m.r.name)} ${parseKey(m.r.date!).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`).join(" · ")}
             </span>

@@ -92,32 +92,32 @@ export function Home() {
   const left = fw.days.filter((d) => d.date >= today && isRun(d) && !d.runs.length).reduce((a, d) => a + (d.km ?? 0), 0);
 
   return (
-    <div className="hm">
+    <div className="hv">
       {/* One line: where you are this week, the race you're building to, how you've recovered. */}
-      <header className="hm-head">
-        <div className="hm-wk">
-          <span className="hm-eyebrow">
+      <header className="hv-head">
+        <div className="hv-wk">
+          <span className="hv-eyebrow">
             {fw.week ? `Week ${fw.week.week}` : "This week"}
             {fw.week?.phase ? ` · ${fw.week.phase.replace(/\s*\(.*\)\s*$/, "")}` : ""} · {fmt(monday)} – {fmt(addDays(monday, 6))}
           </span>
-          <span className="hm-km">
+          <span className="hv-km">
             <b className="num">{fw.actualKm.toFixed(fw.actualKm < 10 ? 1 : 0)}</b> of {Math.round(pk)} km
             {left > 0 && <small> · {Math.round(left)} km to go</small>}
           </span>
-          <span className="hm-bar" aria-hidden="true">
+          <span className="hv-bar" aria-hidden="true">
             <i style={{ width: `${pct * 100}%` }} />
           </span>
         </div>
         {goal && (
-          <button type="button" className="hm-race" onClick={() => go("running")}>
-            <span className="hm-eyebrow">Building to</span>
+          <button type="button" className="hv-race" onClick={() => go("running")}>
+            <span className="hv-eyebrow">Building to</span>
             <b>{goal.name}</b>
             <small>
               <span className="num">{goal.days}</span> days{goal.target ? ` · goal ${goal.target}` : ""}
             </small>
           </button>
         )}
-        <div className="hm-health" role="group" aria-label="Recovery">
+        <div className="hv-health" role="group" aria-label="Recovery">
           {h.readiness != null && (
             <span>
               <small>Readiness</small>
@@ -150,51 +150,51 @@ export function Home() {
       <PredictionNews runs={runs} today={today} />
 
       {/* This week, day by day, with each session's shape. */}
-      <section className="hm-week home-week" aria-label="This week">
+      <section className="hv-week home-week" aria-label="This week">
         {fw.days.map((d, i) => {
           const run = isRun(d) || !!d.race;
           const z = d.race ? "race" : run ? zoneOf(d.text, d.kind) : "rest";
           const work = run && !d.race ? segmentsOf(d.text, plan).find((x) => x.kind === "work") : undefined;
           return (
-            <button type="button" key={d.date} className={`hm-day z-${z}` + (d.date === today ? " today" : "") + (d.runs.length ? " done" : d.date < today && run ? " missed" : "")} onClick={() => openDay(go, d.date)}>
-              <span className="hm-day-top">
+            <button type="button" key={d.date} className={`hv-day z-${z}` + (d.date === today ? " today" : "") + (d.runs.length ? " done" : d.date < today && run ? " missed" : "")} onClick={() => openDay(go, d.date)}>
+              <span className="hv-day-top">
                 <b>{d.date === today ? "Today" : DOW[i]}</b> <span>{parseKey(d.date).getDate()}</span>
-                {d.runs.length > 0 && <span className="hm-tick">✓ {d.actualKm.toFixed(1)}</span>}
+                {d.runs.length > 0 && <span className="hv-tick">✓ {d.actualKm.toFixed(1)}</span>}
               </span>
               {run ? (
                 <>
-                  <span className="hm-day-km num">
+                  <span className="hv-day-km num">
                     {d.km}
                     <small> km</small>
                   </span>
-                  <span className="hm-day-title">{d.race ? d.race.name : sessionTitle(d.text, d.kind)}</span>
-                  {work && <span className="hm-day-work">{work.label}</span>}
+                  <span className="hv-day-title">{d.race ? d.race.name : sessionTitle(d.text, d.kind)}</span>
+                  {work && <span className="hv-day-work">{work.label}</span>}
                   {!d.race && <EffortProfile text={d.text} kind={d.kind} plan={plan} height={30} />}
                 </>
               ) : (
-                <span className="hm-day-rest">Rest</span>
+                <span className="hv-day-rest">Rest</span>
               )}
             </button>
           );
         })}
       </section>
 
-      <div className="hm-body">
-        <div className="hm-col hm-main">
+      <div className="hv-body">
+        <div className="hv-col hv-main">
           {f && details && <BuildingCard f={f} runs={runs} details={details} today={today} />}
-          <section className="hm-sec hm-runs">
+          <section className="hv-sec hv-runs">
             <header>
               <h2>Recent runs</h2>
-              <button type="button" className="hm-link" onClick={() => go("running")}>
+              <button type="button" className="hv-link" onClick={() => go("running")}>
                 All runs ›
               </button>
             </header>
-            <table className="hm-table">
+            <table className="hv-table">
               <tbody>
                 {recent.map((r) => (
-                  <tr key={r.id} className="hm-click" onClick={() => openRun(r.id)}>
+                  <tr key={r.id} className="hv-click" onClick={() => openRun(r.id)}>
                     <td className="nowrap muted">{r.date === today ? "Today" : fmt(r.date)}</td>
-                    <td className="hm-name">{r.name}</td>
+                    <td className="hv-name">{r.name}</td>
                     <td className="r num">{(r.distance / 1000).toFixed(1)} km</td>
                     <td className="r num">{pace(r.distance, r.moving_time)}/km</td>
                     <td className="r num muted">{r.avg_hr ? `${Math.round(r.avg_hr)} bpm` : ""}</td>
@@ -205,37 +205,37 @@ export function Home() {
           </section>
         </div>
 
-        <div className="hm-col hm-side">
-          <section className="hm-sec hm-next">
+        <div className="hv-col hv-side">
+          <section className="hv-sec hv-next">
             <header>
               <h2>Coming up</h2>
-              <button type="button" className="hm-link" onClick={() => go("running")}>
+              <button type="button" className="hv-link" onClick={() => go("running")}>
                 Plan ›
               </button>
             </header>
-            <ul className="hm-list">
+            <ul className="hv-list">
               {keys.length === 0 && <li className="muted">No key sessions in the next two weeks.</li>}
               {keys.map((d) => (
                 <li key={d.date}>
                   <button type="button" onClick={() => openDay(go, d.date)} className={`z-${d.race ? "race" : zoneOf(d.text, d.kind)}`}>
-                    <span className="hm-when">
+                    <span className="hv-when">
                       {d.date === today ? "Today" : DOW[(parseKey(d.date).getDay() + 6) % 7]} <small>{parseKey(d.date).getDate()}</small>
                     </span>
-                    <span className="hm-what" title={d.text}>
+                    <span className="hv-what" title={d.text}>
                       <b>{d.race ? d.race.name : sessionTitle(d.text, d.kind)}</b>
                       <small>{d.text}</small>
                     </span>
-                    <span className="num hm-list-km">{d.km} km</span>
+                    <span className="num hv-list-km">{d.km} km</span>
                   </button>
                 </li>
               ))}
             </ul>
             {races.length > 0 && (
-              <ul className="hm-races">
+              <ul className="hv-races">
                 {races.slice(0, 3).map((r) => (
                   <li key={r.name + r.date}>
-                    <span className={`hm-pri pri-${priorityOf(r)}`}>{priorityOf(r)}</span>
-                    <span className="hm-race-name">{r.name}</span>
+                    <span className={`hv-pri pri-${priorityOf(r)}`}>{priorityOf(r)}</span>
+                    <span className="hv-race-name">{r.name}</span>
                     <span className="muted">{r.target ?? ""}</span>
                     <span className="num">{r.days} d</span>
                   </li>

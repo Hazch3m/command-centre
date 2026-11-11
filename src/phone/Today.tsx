@@ -52,13 +52,57 @@ export function sessionTitle(text: string, kind?: string): string {
 /** The session without its distance up front ("13 km with 3 km warm-up, …" → "3 km warm-up, …"). */
 const detailOf = (text: string) => text.replace(/^\d+(?:\.\d+)?\s*km\s+(?:with\s+)?/i, "").replace(/^(?:VO2 max|Threshold tempo|Threshold|Hill strength|Race pace):\s*/i, "");
 
-export function Session({ d, label, next, brief }: { d: ForecastDay; label: string; next?: ForecastDay; brief?: ReactNode }) {
+export function Session({ d, label, next, brief, compact, onOpen }: { d: ForecastDay; label: string; next?: ForecastDay; brief?: ReactNode; compact?: boolean; onOpen?: () => void }) {
   const { plan } = useRunningData();
   const t = typeOfDay(d.kind);
   const rest = t === "rest" || !d.km;
   const zone = rest ? "rest" : d.race ? "race" : zoneOf(d.text, d.kind);
   const title = rest ? "Rest day" : d.race ? "Race day" : sessionTitle(d.text, d.kind);
   const detail = d.race ? `${d.race.name}${d.race.target ? `, aiming for ${d.race.target}` : ""}` : detailOf(d.text);
+  // Today's version: the run at a glance (tap it for the full session in the Plan), so the week fits under it.
+  if (compact)
+    return (
+      <div className={`p-session p-session-c z-${zone}`}>
+        <div className="p-session-top">
+          <span className="p-session-label">{label}</span>
+          {!rest && (
+            <span className="p-zone-pill">
+              <ZoneIcon zone={zone} title={title} size={14} />
+              {title}
+            </span>
+          )}
+        </div>
+        <button type="button" className="p-session-main" onClick={onOpen} aria-label="Open the session in your plan">
+          {rest ? (
+            <span className="p-session-km rest">Rest</span>
+          ) : (
+            <span className="p-session-km num">
+              {d.km ?? 0}
+              <small>km</small>
+            </span>
+          )}
+          <span className="p-session-what">
+            <span className="p-session-text">{rest ? (next && next.km ? `Tomorrow: ${next.km} km ${next.race ? "race" : sessionTitle(next.text, next.kind).toLowerCase()}` : "Recovery is training too.") : detail}</span>
+            {!rest && d.pace && <span className="p-session-pace num">{/\d:\d\d/.test(d.pace) ? `${d.pace}/km` : d.pace}</span>}
+          </span>
+          <span className="p-chev" aria-hidden="true">
+            ›
+          </span>
+        </button>
+        {!rest && !d.race && <EffortProfile text={d.text} kind={d.kind} plan={plan} height={26} />}
+        {brief}
+        {!rest && !d.race && !d.runs.length && d.date >= todayKey() && <SendToWatch date={d.date} text={d.text} compact />}
+        {d.runs.map((r) => (
+          <button key={r.id} className="p-done" onClick={() => openRun(r.id)}>
+            <span className="p-done-tick">✓</span>
+            <span>
+              Ran <b className="num">{km(r.distance).toFixed(1)} km</b> at <b className="num">{pace(r.distance, r.moving_time)}/km</b>
+            </span>
+            <span className="p-chev">›</span>
+          </button>
+        ))}
+      </div>
+    );
   return (
     <div className={`p-session z-${zone}`}>
       <div className="p-session-top">
@@ -256,10 +300,10 @@ export function Today() {
   const blocks: Record<BlockId, ReactNode> = {
     session: todayRun && !isEmptyPlan(plan) && (
       <div className="p-today-run">
-        {done && !openDone ? <DoneToday d={todayRun} next={tomorrowRun} onOpen={() => setOpenDone(true)} /> : <Session d={todayRun} label={dayGreeting(now)} next={tomorrowRun} brief={<TodayBrief />} />}
+        {done && !openDone ? <DoneToday d={todayRun} next={tomorrowRun} onOpen={() => setOpenDone(true)} /> : <Session d={todayRun} label={dayGreeting(now)} next={tomorrowRun} brief={<TodayBrief />} compact onOpen={() => openPlanDay(nav, today)} />}
       </div>
     ),
-    progress: plan && week && !isEmptyPlan(plan) && <WeekProgress plan={plan} fw={week} runs={runs} today={today} overrides={overrides} onDay={(d) => openPlanDay(nav, d)} />,
+    progress: plan && week && !isEmptyPlan(plan) && <WeekProgress compact plan={plan} fw={week} runs={runs} today={today} overrides={overrides} onDay={(d) => openPlanDay(nav, d)} />,
     ahead: plan && !isEmptyPlan(plan) && <WeekAhead plan={plan} compact onOpen={() => (window.dispatchEvent(new CustomEvent("cc:plan-view", { detail: "plan" })), nav.setTab("training"))} />,
     lastrun: <LastRun />,
     tiles: (
