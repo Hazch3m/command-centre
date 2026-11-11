@@ -551,7 +551,7 @@ try:
                     cols = wp.evaluate("() => { const s = document.querySelector('.p-pane.on .p-screen'); return s ? getComputedStyle(s).columnCount + '/' + getComputedStyle(s).columnWidth : null; }")
                     print("today columns:", cols)
                     check(wp.locator(".p-pane.on .p-screen > *").count() >= 3, "web: Today's cards")
-            wp.locator(".p-wide > .p-tabs .p-tab", has_text="Plan").first.click()
+            wp.locator(".p-wide > .p-tabs .p-tab").filter(has_text=re.compile(r"^\s*Plan\s*$")).first.click()
             wp.wait_for_timeout(1200)
             wp.locator(".p-pane.on .p-subnav").get_by_role("tab", name="Progress", exact=True).click()
             wp.wait_for_timeout(2000)
@@ -563,7 +563,7 @@ try:
             n = wp.evaluate("() => { const xs = new Set([...document.querySelectorAll('.p-pane.on .p-screen > *')].map(e => Math.round(e.getBoundingClientRect().left))); return xs.size; }")
             check(n >= 2, f"web: a big screen shows the cards in columns ({n})")
             if wp.locator(".p-runcard").count() or True:
-                wp.locator(".p-wide > .p-tabs .p-tab", has_text="Runs").first.click()
+                wp.locator(".p-wide > .p-tabs .p-tab").filter(has_text=re.compile(r"^\s*Runs\s*$")).first.click()
                 wp.wait_for_timeout(1500)
                 if wp.locator(".p-pane.on .p-runcard").count():
                     wp.locator(".p-pane.on .p-runcard").first.click()

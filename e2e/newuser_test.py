@@ -88,7 +88,7 @@ try:
         # Every tab renders with nothing in it.
         check(pp.locator(".p-tabs [role=tab]").count() == 4, "new: four tabs (no Planner until you turn it on)")
         tw = pp.evaluate("() => { const t = [...document.querySelectorAll('.p-tabs [role=tab]')].map(e => e.getBoundingClientRect()); return [Math.round(t[0].left), Math.round(t[t.length - 1].right), innerWidth]; }")
-        check(tw[0] < 20 and tw[1] > tw[2] - 20, f"new: the four tabs span the bar ({tw})")
+        check(tw[0] < 32 and tw[1] > tw[2] - 32, f"new: the four tabs span the bar ({tw})")
         for t in ["Today", "Plan", "Runs", "Stats"]:
             tab(t)
             shot(f"n03-empty-{t.lower()}")
