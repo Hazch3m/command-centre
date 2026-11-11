@@ -5440,3 +5440,40 @@ svg.effort {
 .wa-dots { display: flex; gap: 0.3rem; }
 .wa-dots i { width: 6px; height: 6px; border-radius: 50%; background: color-mix(in srgb, currentColor 30%, transparent); }
 .wa-dots i.on { background: currentColor; width: 14px; border-radius: 3px; }
+
+/* ---- Coach: how you're doing, in verdicts ---- */
+.coach { display: flex; flex-direction: column; gap: 0.6rem; margin: 0 0 0.9rem; }
+.coach-grid { display: flex; flex-direction: column; gap: 0.6rem; }
+.coach-wide .coach-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); align-items: stretch; }
+.coach-box {
+  --tone: var(--text-2);
+  display: flex; flex-direction: column; gap: 0.3rem; min-width: 0;
+  padding: 0.8rem 0.95rem 0.85rem; border-radius: 16px;
+  background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--tone);
+}
+.coach .tone-good { --tone: #2e9e5b; }
+.coach .tone-warn { --tone: #d18a1a; }
+.coach .tone-bad { --tone: #e04e3e; }
+.coach .tone-info { --tone: var(--text-2); }
+.coach-eyebrow { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); }
+.coach-verdict { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; font-size: 1.12rem; font-weight: 750; line-height: 1.2; color: var(--tone); }
+.coach-score { font-size: 0.85rem; font-weight: 750; padding: 0.05rem 0.5rem; border-radius: 999px; background: color-mix(in srgb, var(--tone, var(--text-2)) 15%, transparent); color: var(--tone, var(--text-2)); }
+.coach-box p, .coach-next { margin: 0; font-size: 0.86rem; line-height: 1.4; color: var(--text); }
+.coach-box p.coach-fix { color: var(--text-2); }
+.coach-act { align-self: flex-start; margin-top: 0.25rem; }
+.coach-lines { list-style: none; margin: 0.1rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.coach-lines li { display: grid; grid-template-columns: 1.25rem minmax(0, 1fr); gap: 0.45rem; align-items: start; font-size: 0.86rem; line-height: 1.35; }
+.coach-mark { width: 1.2rem; height: 1.2rem; border-radius: 50%; display: grid; place-items: center; font-size: 0.7rem; font-weight: 800; color: #fff; background: var(--tone); margin-top: 0.05rem; }
+.coach-line { display: flex; flex-direction: column; min-width: 0; }
+.coach-detail { color: var(--text-2); }
+.coach-line small { font-size: 0.8rem; color: var(--text-2); }
+.coach-review { border-radius: 16px; background: var(--card); border: 1px solid var(--line); padding: 0.2rem 0.95rem; }
+.coach-review-head { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.55rem 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 0.9rem; cursor: pointer; }
+.coach-review-head > span:first-child { display: flex; align-items: baseline; gap: 0.6rem; }
+.coach-chev { color: var(--text-2); font-size: 1.1rem; }
+.coach-review .coach-lines { padding-bottom: 0.5rem; }
+.coach-next { padding: 0.5rem 0 0.7rem; border-top: 1px solid var(--line); color: var(--text-2); }
+.coach-run { --tone: var(--text-2); display: flex; flex-direction: column; gap: 0.15rem; margin: 0.5rem 0; padding: 0.55rem 0.8rem; border-radius: 12px; border: 1px solid var(--line); border-left: 4px solid var(--tone); background: var(--card-2, var(--card)); font-size: 0.88rem; line-height: 1.4; }
+.coach-run.tone-good { --tone: #2e9e5b; } .coach-run.tone-warn { --tone: #d18a1a; } .coach-run.tone-bad { --tone: #e04e3e; }
+.coach-run b { color: var(--tone); }
+.coach-run small { color: var(--text-2); font-size: 0.82rem; }

@@ -15,6 +15,7 @@ import { EffortProfile, segmentsOf, zoneOf } from "../phone/EffortProfile";
 import { sessionTitle } from "../phone/Today";
 import { BuildingCard, RaceEquivalence } from "./HomeCharts";
 import { useNav } from "./nav";
+import { CoachCard } from "../modules/running/Coach";
 import "../styles/home.css";
 
 /**
@@ -178,6 +179,8 @@ export function Home() {
           );
         })}
       </section>
+
+      <CoachCard plan={plan} runs={runs} wide />
 
       <div className="hv-body">
         <div className="hv-col hv-main">
