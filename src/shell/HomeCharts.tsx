@@ -111,11 +111,11 @@ export function BuildingCard({ f, runs, details, today }: { f: Fitness; runs: Ru
   const h = hover != null ? weeks[hover] : null;
 
   return (
-    <section className="home-card home-build">
+    <section className="hm-sec hm-build">
       <header>
-        <h3>Are you building?</h3>
+        <h2>Are you building?</h2>
         <span className={`build-pill b-${status}`}>{STATUS[status].label}</span>
-        <span className="muted small">{STATUS[status].text}</span>
+        <span className="hm-sub">{STATUS[status].text}</span>
       </header>
       <div className="build-facts">
         <span>
@@ -227,22 +227,20 @@ export function RaceEquivalence({ f, runs, plan, today, news }: { f: Fitness; ru
   const top = Math.max(...vs);
   const strongest = rows.find((r) => r.v === top)!;
   const now = f.predictionBasis?.vdot ?? f.current ?? null;
-  const lo = Math.min(...vs, now ?? top) - 2;
-  const scale = (v: number) => Math.max(0.03, (v - lo) / Math.max(1, top + 1 - lo));
   return (
-    <section className="home-card home-equiv">
+    <section className="hm-sec hm-equiv">
       <header>
-        <h3>Race times</h3>
-        <span className="muted small">now ({f.predictions[0]?.source === "garmin" ? "Garmin" : "your runs"}) · best race (2 years) · equivalent of your {strongest.name}</span>
+        <h2>Race times</h2>
+        <span className="hm-sub">now ({f.predictions[0]?.source === "garmin" ? "Garmin" : "your runs"}), your best race in 2 years, and what your {strongest.name} is worth</span>
       </header>
       {news}
-      <table className="home-table equiv-table">
+      <table className="hm-table hm-equiv-table">
         <thead>
           <tr>
             <th />
             <th className="r">Now</th>
             <th>Best race</th>
-            <th>VDOT</th>
+            <th className="r">VDOT</th>
             <th className="r">Equiv.</th>
             <th className="r">To find</th>
           </tr>
@@ -252,7 +250,7 @@ export function RaceEquivalence({ f, runs, plan, today, news }: { f: Fitness; ru
             const eq = predictTime(r.km * 1000, top);
             const gap = r.race ? r.race.time - eq : null;
             return (
-              <tr key={r.name} className={r.race ? "home-click" : ""} onClick={r.race ? () => openRun(r.race!.id) : undefined}>
+              <tr key={r.name} className={r.race ? "hm-click" : ""} onClick={r.race ? () => openRun(r.race!.id) : undefined}>
                 <td>
                   <b>{r.name}</b>
                 </td>
@@ -278,22 +276,17 @@ export function RaceEquivalence({ f, runs, plan, today, news }: { f: Fitness; ru
                     <span className="muted">no race</span>
                   )}
                 </td>
-                <td className="equiv-bar-cell">
-                  {r.v != null && (
-                    <span className="equiv-bar">
-                      <i style={{ width: `${scale(r.v) * 100}%` }} className={r.v >= top - 0.3 ? "best" : r.v >= top - 1.5 ? "near" : "far"} />
-                      <b className="num">{r.v.toFixed(1)}</b>
-                    </span>
-                  )}
+                <td className="r num">
+                  {r.v != null && <span className={"hm-vdot " + (r.v >= top - 0.3 ? "best" : r.v >= top - 1.5 ? "near" : "far")}>{r.v.toFixed(1)}</span>}
                 </td>
                 <td className="r num">{duration(eq)}</td>
-                <td className={"r num " + (gap == null ? "muted" : gap <= 5 ? "up" : gap / eq > 0.03 ? "down" : "")}>{gap == null ? "–" : gap <= 5 ? "★ your best" : `−${duration(gap)}`}</td>
+                <td className={"r num " + (gap == null ? "muted" : gap <= 5 ? "up" : gap / eq > 0.03 ? "down" : "")}>{gap == null ? "–" : gap <= 5 ? "★ best" : `−${duration(gap)}`}</td>
               </tr>
             );
           })}
         </tbody>
       </table>
-      <p className="muted small home-sum">
+      <p className="hm-note">
         Strongest: <b>{strongest.name}</b> (VDOT {top.toFixed(1)}).
         {now != null ? ` Your fitness now: VDOT ${now.toFixed(1)}${now > top + 0.3 ? ", above your best race: a PB is in your legs" : now < top - 1 ? ", below your best race" : ", about your best race"}.` : ""}{" "}
         {(() => {

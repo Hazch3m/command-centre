@@ -15,6 +15,7 @@ import { EffortProfile, segmentsOf, zoneOf } from "../phone/EffortProfile";
 import { sessionTitle } from "../phone/Today";
 import { BuildingCard, RaceEquivalence } from "./HomeCharts";
 import { useNav } from "./nav";
+import "../styles/home.css";
 
 /**
  * The web and PC home: running first, dense and readable rather than big tiles. Numbers across the
@@ -82,152 +83,169 @@ export function Home() {
   const [fw, next] = weeks;
   const races = upcomingRaces(plan, today);
   const goal = races.find((r) => priorityOf(r) === "A") ?? races[0] ?? null;
-  const nextRace = races[0] ?? null;
   const pk = fw.plannedKm ?? 0;
+  const pct = pk ? Math.min(1, fw.actualKm / pk) : 0;
   const upcoming = [...fw.days, ...next.days].filter((d) => d.date >= today && isRun(d) && !(d.date === today && d.runs.length));
-  const keys = upcoming.filter((d) => d.kind === "key" || d.kind === "long" || d.race).slice(0, 3);
-  const recent = [...runs].sort((a, b) => b.start_local.localeCompare(a.start_local)).slice(0, 7);
+  const keys = upcoming.filter((d) => d.kind === "key" || d.kind === "long" || d.race).slice(0, 4);
+  const recent = [...runs].sort((a, b) => b.start_local.localeCompare(a.start_local)).slice(0, 5);
   const h = latestHealth(health);
+  const left = fw.days.filter((d) => d.date >= today && isRun(d) && !d.runs.length).reduce((a, d) => a + (d.km ?? 0), 0);
 
   return (
-    <div className="home">
-
-      <div className="home-grid">
-        {/* This week, day by day, with each session's shape. */}
-        <section className="home-card home-week">
-          <header>
-            <h3>This week</h3>
-            <span className="muted small">
-              {fmt(monday)} – {fmt(addDays(monday, 6))} · <b>{fw.actualKm.toFixed(fw.actualKm < 10 ? 1 : 0)}</b> of {Math.round(pk)} km
-              {goal ? ` · ${goal.name} in ${goal.days} days` : ""}
-              {nextRace && nextRace !== goal ? ` · next race: ${nextRace.name} in ${nextRace.days} days` : ""}
+    <div className="hm">
+      {/* One line: where you are this week, the race you're building to, how you've recovered. */}
+      <header className="hm-head">
+        <div className="hm-wk">
+          <span className="hm-eyebrow">
+            {fw.week ? `Week ${fw.week.week}` : "This week"}
+            {fw.week?.phase ? ` · ${fw.week.phase.replace(/\s*\(.*\)\s*$/, "")}` : ""} · {fmt(monday)} – {fmt(addDays(monday, 6))}
+          </span>
+          <span className="hm-km">
+            <b className="num">{fw.actualKm.toFixed(fw.actualKm < 10 ? 1 : 0)}</b> of {Math.round(pk)} km
+            {left > 0 && <small> · {Math.round(left)} km to go</small>}
+          </span>
+          <span className="hm-bar" aria-hidden="true">
+            <i style={{ width: `${pct * 100}%` }} />
+          </span>
+        </div>
+        {goal && (
+          <button type="button" className="hm-race" onClick={() => go("running")}>
+            <span className="hm-eyebrow">Building to</span>
+            <b>{goal.name}</b>
+            <small>
+              <span className="num">{goal.days}</span> days{goal.target ? ` · goal ${goal.target}` : ""}
+            </small>
+          </button>
+        )}
+        <div className="hm-health" role="group" aria-label="Recovery">
+          {h.readiness != null && (
+            <span>
+              <small>Readiness</small>
+              <b className="num">{h.readiness}</b>
             </span>
-            <button type="button" className="home-link" onClick={() => go("running")}>
-              Plan ›
-            </button>
-          </header>
-          <div className="hw-days">
-            {fw.days.map((d, i) => {
-              const run = isRun(d) || d.race;
-              const z = d.race ? "race" : run ? zoneOf(d.text, d.kind) : "rest";
-              const segs = run && !d.race ? segmentsOf(d.text, plan) : [];
-              return (
-                <button type="button" key={d.date} className={`hw-day z-${z}` + (d.date === today ? " today" : "") + (d.runs.length ? " done" : d.date < today && run ? " missed" : "")} onClick={() => openDay(go, d.date)}>
-                  <span className="hw-top">
-                    <b>{DOW[i]}</b> <span className="muted">{parseKey(d.date).getDate()}</span>
-                    {d.runs.length > 0 && <span className="hw-tick">✓ {d.actualKm.toFixed(1)}</span>}
-                  </span>
-                  {run ? (
-                    <>
-                      <span className="hw-km num">
-                        {d.km}
-                        <small> km</small>
-                      </span>
-                      <span className="hw-title">{d.race ? d.race.name : sessionTitle(d.text, d.kind)}</span>
-                      {!d.race && <EffortProfile text={d.text} kind={d.kind} plan={plan} height={48} />}
-                      {segs.length > 0 && (
-                        <span className="hw-segs">
-                          {segs.map((s, j) => (
-                            <span key={j} className={`seg-${s.kind}`}>
-                              {s.label.replace(/^Warm-up$/, "WU").replace(/^Cool-down$/, "CD")}
-                              {s.km && !/\bkm\b/.test(s.label) ? ` ${s.km >= 9.95 ? Math.round(s.km) : Math.round(s.km * 10) / 10} km` : ""}
-                            </span>
-                          ))}
-                        </span>
-                      )}
-                    </>
-                  ) : (
-                    <span className="hw-rest">Rest</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </section>
+          )}
+          {h.hrv != null && (
+            <span>
+              <small>HRV</small>
+              <b className="num">{Math.round(h.hrv)}</b>
+            </span>
+          )}
+          {h.rhr != null && (
+            <span>
+              <small>RHR</small>
+              <b className="num">{Math.round(h.rhr)}</b>
+            </span>
+          )}
+          {h.sleep_secs != null && (
+            <span>
+              <small>Sleep</small>
+              <b className="num">
+                {Math.floor(h.sleep_secs / 3600)}:{String(Math.round((h.sleep_secs % 3600) / 60)).padStart(2, "0")}
+              </b>
+            </span>
+          )}
+        </div>
+      </header>
 
-        {/* What's coming: the key sessions and races of the next fortnight. */}
-        <section className="home-card home-next">
-          <header>
-            <h3>Coming up</h3>
-            <span className="muted small">key sessions, next two weeks</span>
-          </header>
-          <ul className="hn-list">
-            {keys.length === 0 && <li className="muted small">No key sessions in the next two weeks.</li>}
-            {keys.map((d) => (
-              <li key={d.date}>
-                <button type="button" onClick={() => openDay(go, d.date)} className={`z-${d.race ? "race" : zoneOf(d.text, d.kind)}`}>
-                  <span className="hn-when">
-                    {DOW[(parseKey(d.date).getDay() + 6) % 7]} <small>{fmt(d.date)}</small>
+      <PredictionNews runs={runs} today={today} />
+
+      {/* This week, day by day, with each session's shape. */}
+      <section className="hm-week home-week" aria-label="This week">
+        {fw.days.map((d, i) => {
+          const run = isRun(d) || !!d.race;
+          const z = d.race ? "race" : run ? zoneOf(d.text, d.kind) : "rest";
+          const work = run && !d.race ? segmentsOf(d.text, plan).find((x) => x.kind === "work") : undefined;
+          return (
+            <button type="button" key={d.date} className={`hm-day z-${z}` + (d.date === today ? " today" : "") + (d.runs.length ? " done" : d.date < today && run ? " missed" : "")} onClick={() => openDay(go, d.date)}>
+              <span className="hm-day-top">
+                <b>{d.date === today ? "Today" : DOW[i]}</b> <span>{parseKey(d.date).getDate()}</span>
+                {d.runs.length > 0 && <span className="hm-tick">✓ {d.actualKm.toFixed(1)}</span>}
+              </span>
+              {run ? (
+                <>
+                  <span className="hm-day-km num">
+                    {d.km}
+                    <small> km</small>
                   </span>
-                  <span className="hn-what">
-                    <b>{d.race ? d.race.name : sessionTitle(d.text, d.kind)}</b>
-                    <small>{d.text}</small>
-                  </span>
-                  <span className="hn-km num">{d.km} km</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          {races.length > 0 && (
-            <>
-              <h4>Races</h4>
-              <ul className="hn-races">
-                {races.slice(0, 4).map((r) => (
+                  <span className="hm-day-title">{d.race ? d.race.name : sessionTitle(d.text, d.kind)}</span>
+                  {work && <span className="hm-day-work">{work.label}</span>}
+                  {!d.race && <EffortProfile text={d.text} kind={d.kind} plan={plan} height={30} />}
+                </>
+              ) : (
+                <span className="hm-day-rest">Rest</span>
+              )}
+            </button>
+          );
+        })}
+      </section>
+
+      <div className="hm-body">
+        <div className="hm-col hm-main">
+          {f && details && <BuildingCard f={f} runs={runs} details={details} today={today} />}
+          <section className="hm-sec hm-runs">
+            <header>
+              <h2>Recent runs</h2>
+              <button type="button" className="hm-link" onClick={() => go("running")}>
+                All runs ›
+              </button>
+            </header>
+            <table className="hm-table">
+              <tbody>
+                {recent.map((r) => (
+                  <tr key={r.id} className="hm-click" onClick={() => openRun(r.id)}>
+                    <td className="nowrap muted">{r.date === today ? "Today" : fmt(r.date)}</td>
+                    <td className="hm-name">{r.name}</td>
+                    <td className="r num">{(r.distance / 1000).toFixed(1)} km</td>
+                    <td className="r num">{pace(r.distance, r.moving_time)}/km</td>
+                    <td className="r num muted">{r.avg_hr ? `${Math.round(r.avg_hr)} bpm` : ""}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        </div>
+
+        <div className="hm-col hm-side">
+          <section className="hm-sec hm-next">
+            <header>
+              <h2>Coming up</h2>
+              <button type="button" className="hm-link" onClick={() => go("running")}>
+                Plan ›
+              </button>
+            </header>
+            <ul className="hm-list">
+              {keys.length === 0 && <li className="muted">No key sessions in the next two weeks.</li>}
+              {keys.map((d) => (
+                <li key={d.date}>
+                  <button type="button" onClick={() => openDay(go, d.date)} className={`z-${d.race ? "race" : zoneOf(d.text, d.kind)}`}>
+                    <span className="hm-when">
+                      {d.date === today ? "Today" : DOW[(parseKey(d.date).getDay() + 6) % 7]} <small>{parseKey(d.date).getDate()}</small>
+                    </span>
+                    <span className="hm-what" title={d.text}>
+                      <b>{d.race ? d.race.name : sessionTitle(d.text, d.kind)}</b>
+                      <small>{d.text}</small>
+                    </span>
+                    <span className="num hm-list-km">{d.km} km</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {races.length > 0 && (
+              <ul className="hm-races">
+                {races.slice(0, 3).map((r) => (
                   <li key={r.name + r.date}>
-                    <span className={`hn-pri pri-${priorityOf(r)}`}>{priorityOf(r)}</span>
-                    <span className="hn-race">{r.name}</span>
-                    <span className="muted small">{r.target ?? ""}</span>
+                    <span className={`hm-pri pri-${priorityOf(r)}`}>{priorityOf(r)}</span>
+                    <span className="hm-race-name">{r.name}</span>
+                    <span className="muted">{r.target ?? ""}</span>
                     <span className="num">{r.days} d</span>
                   </li>
                 ))}
               </ul>
-            </>
-          )}
-        </section>
-
-        {/* Are you building: km by intensity with VO2 max over it, and what it adds up to. */}
-        {f && details && <BuildingCard f={f} runs={runs} details={details} today={today} />}
-        {f && <RaceEquivalence f={f} runs={runs} plan={plan} today={today} news={<PredictionNews runs={runs} today={today} />} />}
-
-        <section className="home-card home-runs">
-          <header>
-            <h3>Recent runs</h3>
-            <span className="muted small">
-              {h.rhr ? `RHR ${Math.round(h.rhr)}` : ""}
-              {h.hrv ? ` · HRV ${Math.round(h.hrv)}` : ""}
-            </span>
-            <button type="button" className="home-link" onClick={() => go("running")}>
-              All runs ›
-            </button>
-          </header>
-          <table className="home-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Run</th>
-                <th className="r">km</th>
-                <th className="r">Pace</th>
-                <th className="r">HR</th>
-
-              </tr>
-            </thead>
-            <tbody>
-              {recent.map((r) => (
-                <tr key={r.id} className="home-click" onClick={() => openRun(r.id)}>
-                  <td className="nowrap">{r.date === today ? "Today" : fmt(r.date)}</td>
-                  <td className="home-name">{r.name}</td>
-                  <td className="r num">{(r.distance / 1000).toFixed(1)}</td>
-                  <td className="r num">{pace(r.distance, r.moving_time)}</td>
-                  <td className="r num">{r.avg_hr ? Math.round(r.avg_hr) : "–"}</td>
-
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-
+            )}
+          </section>
+          {f && <RaceEquivalence f={f} runs={runs} plan={plan} today={today} />}
+        </div>
       </div>
-
     </div>
   );
 }
