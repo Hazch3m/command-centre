@@ -258,15 +258,15 @@ try:
         # Plan views along the top.
         if pp.locator(".p-subnav button").count() != 4:
             print("plan pane:", pp.locator(".p-pane.on").inner_text()[:400].replace("\n", " | "))
-        check(pp.locator(".p-subnav button").count() == 4, "Plan: four views along the top")
-        for i, name in enumerate(["Week", "All weeks", "Pace on point", "Progress"]):
+        check(pp.locator(".p-subnav button").count() == 3, "Plan: three views along the top")
+        for i, name in enumerate(["Week", "Plan", "Progress"]):
             pp.locator(".p-subnav").get_by_role("tab", name=name, exact=True).click()
             pp.wait_for_timeout(1500)
             pp.screenshot(path=f"{out}/08-plan-{i}-{name.split()[0].lower()}.png", full_page=True)
             sw = pp.evaluate("document.documentElement.scrollWidth")
             check(sw <= 392, f"Plan/{name}: no sideways scroll ({sw})")
             if name == "Week":
-                check(pp.locator(".p-pane.on .wa").count() == 1, "Plan week: the build to your race")
+                check(pp.locator(".p-pane.on .p-weekbars .db-day").count() == 7, "Plan week: a mileage bar per day")
                 if pp.locator(".p-pane.on .p-adjust-btn").count():
                     pp.locator(".p-pane.on .p-adjust-btn").click()
                     pp.wait_for_timeout(1500)
@@ -288,15 +288,16 @@ try:
                     pp.locator(".p-pane.on .lf").scroll_into_view_if_needed()
                     pp.screenshot(path=f"{out}/08-plan-0b-load-focus.png")
                     pp.evaluate("window.scrollTo(0,0)")
-            if name == "All weeks":
+            if name == "Plan":
+                check(pp.locator(".p-pane.on .wa").count() == 1, "Plan: the build to your race")
+                check(pp.locator(".p-pane.on .pp-week.pick").count() > 3, "Plan: weeks to pick")
                 n = pp.locator(".p-pane.on .lfw-row").count()
-                check(n >= 2, f"All weeks: load focus % per upcoming week ({n})")
+                check(n >= 2, f"Plan: load focus % per upcoming week ({n})")
                 if n:
                     pp.locator(".p-pane.on .lfw").scroll_into_view_if_needed()
                     pp.screenshot(path=f"{out}/08-plan-1b-focus-weeks.png")
                     print("focus weeks:", pp.locator(".p-pane.on .lfw").inner_text().replace("\n", " ")[:400])
                     pp.evaluate("window.scrollTo(0,0)")
-        check(pp.locator(".pp-week").count() > 3, "Progress: weeks planned vs done")
         check(pp.locator(".gc-card").count() >= 3, "Progress: goals to swipe across")
         print("goal cards:", [c.replace("\n", " | ")[:120] for c in pp.locator(".gc-card").all_inner_texts()])
         check(pp.locator(".gc-card .pt-chart").count() >= 1, "Progress: the line to race day on the cards")
@@ -311,10 +312,12 @@ try:
         if pp.locator(".gc-card.on .gc-link").count():
             pp.locator(".gc-card.on .gc-link").click()
             pp.wait_for_timeout(2000)
-            check(pp.locator(".p-subnav [aria-selected=true]").inner_text().strip() == "Pace on point", "Progress card opens Pace on point")
+            check(pp.locator(".p-subnav [aria-selected=true]").inner_text().strip() == "Progress", "Progress card stays on Progress (pace on point is there)")
             print("pace picked:", pp.locator(".pt-picks button.on").inner_text() if pp.locator(".pt-picks button.on").count() else None)
-        pp.locator(".p-subnav").get_by_role("tab", name="Pace on point", exact=True).click()
+        pp.locator(".p-subnav").get_by_role("tab", name="Progress", exact=True).click()
         pp.wait_for_timeout(2500)
+        if pp.locator(".pt-card").count():
+            pp.locator(".pt-card").first.scroll_into_view_if_needed()
         check(pp.locator(".pt-picks button").count() >= 4, "Pace: races and distances to pick from")
         print("pace card:", pp.locator(".pt-card").first.inner_text()[:300].replace("\n", " | ") if pp.locator(".pt-card").count() else None)
         check(pp.locator(".pt-day-row").count() == 1, "Pace: current, race day and goal")
@@ -440,8 +443,19 @@ try:
                 keys.last.click()
                 pp.wait_for_timeout(1500)
                 check(pp.locator(".p-tab.on").inner_text().strip() == "Plan", "Week ahead: a key session opens the Plan")
-                print("plan day picked:", pp.locator(".p-pane.on .p-wday.on").inner_text().replace("\n", " ") if pp.locator(".p-pane.on .p-wday.on").count() else None)
+                print("plan day picked:", pp.locator(".p-pane.on .db-day.on").get_attribute("aria-label") if pp.locator(".p-pane.on .db-day.on").count() else None)
                 pp.screenshot(path=f"{out}/03f-session-from-today.png")
+            elif pp.locator(".p-pane.on .wa.compact").count():
+                check(pp.locator(".p-pane.on .wp .db-day").count() == 7, "Today: week progress has a mileage bar per day")
+                print("brief:", pp.locator(".p-pane.on .p-brief").inner_text().replace("\n", " ") if pp.locator(".p-pane.on .p-brief").count() else None)
+                pp.locator(".p-pane.on .wa.compact").click()
+                pp.wait_for_timeout(1500)
+                check(pp.locator(".p-tab.on").inner_text().strip() == "Plan" and pp.locator(".p-pane.on .p-subnav [aria-selected=true]").inner_text().strip() == "Plan", "Today: the build card opens Plan → Plan")
+                pp.screenshot(path=f"{out}/03f-plan-from-today.png")
+                pp.locator(".p-tabs").get_by_role("tab", name="Today", exact=True).click()
+                pp.wait_for_timeout(1000)
+                pp.evaluate("window.scrollTo(0,0)")
+                pp.screenshot(path=f"{out}/03a2-today-top.png")
         pp.evaluate("window.scrollTo(0,0)")
         pp.locator(".p-tabs").get_by_role("tab", name="Stats", exact=True).click()
         pp.wait_for_timeout(2500)
