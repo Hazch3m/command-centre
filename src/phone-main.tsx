@@ -8,6 +8,7 @@ import "@fontsource/barlow-condensed/600.css";
 import "@fontsource/barlow-condensed/700.css";
 import "./styles/phone.css";
 import "./styles/phone-app.css";
+import "./styles/glass.css";
 import { applyPhoneLook } from "./core/appearance";
 
 // Your colours before anything draws, so nothing flashes.
