@@ -523,171 +523,56 @@ try:
         # Pacelife on the web: the same account as the phone, in the desktop view.
         try:
             wp = ph.new_page()
-            wp.set_viewport_size({"width": 1440, "height": 900})
+            wp.set_viewport_size({"width": 1270, "height": 630})
             wp.on("pageerror", lambda e: errors.append("web: " + str(e)))
             wp.goto(cloud + "/web")
-            wp.wait_for_selector(".page-tabs, [role=tablist]", timeout=60000)
-            wp.wait_for_timeout(3000)
-            wp.screenshot(path=f"{out}/30-web-home.png")
-            tabs = [t.strip() for t in wp.get_by_role("tab").all_inner_texts() if t.strip()]
-            print("web tabs:", tabs[:20])
-            check(any(t == "Training" for t in tabs), "web: the desktop view opens with your account")
-            print("viewport:", wp.viewport_size)
-            # A laptop: 1280 × 720 of page, as at 150% on a 1080p screen.
-            big = wp.viewport_size
-            wp.set_viewport_size({"width": 1280, "height": 720})
-            # Every page and sub-page scrolls as a whole: nothing wider than the window, and no chart
-            # flatter than a strip (the complaint was wide, low charts on a laptop).
-            wp.set_viewport_size({"width": 1270, "height": 630})
-            SHAPE = """() => { const flat = []; for (const e of document.querySelectorAll('main .chart > svg, main svg.tl-chart')) { const r = e.getBoundingClientRect(); if (r.width > 320 && r.height > 0 && r.width <= innerWidth && r.width / r.height > 4.6) flat.push(Math.round(r.width) + 'x' + Math.round(r.height)); } return { flat, wide: document.documentElement.scrollWidth > innerWidth + 2 }; }"""
+            wp.wait_for_selector(".p-app.p-wide", timeout=60000)
+            wp.wait_for_timeout(3500)
+            check(wp.locator(".p-wide > .p-tabs .p-tab").count() >= 7, "web: the app with its tabs down the side")
+            # Every page on a laptop-sized window: columns of cards, nothing sideways, no flat charts.
+            SHAPE = """() => { const flat = []; for (const e of document.querySelectorAll('.p-pane.on .chart > svg, .p-pane.on svg.tl-chart')) { const r = e.getBoundingClientRect(); if (r.width > 320 && r.height > 0 && r.width <= innerWidth && r.width / r.height > 4.6) flat.push(Math.round(r.width) + 'x' + Math.round(r.height)); } return { flat, wide: document.documentElement.scrollWidth > innerWidth + 2 }; }"""
             def lap(key):
                 wp.wait_for_timeout(1700)
+                wp.evaluate("window.scrollTo(0, 0)")
                 wp.screenshot(path=f"{out}/40-laptop-{re.sub(r'[^a-z0-9]+', '-', key)}.png")
                 sh = wp.evaluate(SHAPE)
                 print("laptop", key, sh)
                 check(not sh["flat"] and not sh["wide"], f"laptop: {key} has well-shaped charts and no sideways scroll {sh}")
-            for name in ["Home", "Training", "Analysis", "Fitness", "Health", "Planner"]:
-                t = wp.locator("header .tabs").get_by_role("tab", name=name, exact=True)
-                if not t.count():
-                    continue
-                t.first.click(force=True)
+            names = [t.strip() for t in wp.locator(".p-wide > .p-tabs .p-tab").all_inner_texts()]
+            print("web tabs:", names)
+            for i, name in enumerate(names):
+                wp.locator(".p-wide > .p-tabs .p-tab").nth(i).click()
                 lap(name.lower())
-                subs = wp.locator(".page-tabs [role=tab], .ana-secs button")
-                names = [x.strip() for x in subs.all_inner_texts()]
-                for i, sn in enumerate(names[1:], 1):
-                    subs.nth(i).click()
-                    lap(f"{name.lower()}/{sn.lower()}")
-                    inner = wp.locator(".prog-views button")
-                    for k in range(1, inner.count()):
-                        inner.nth(k).click()
-                        lap(f"{name.lower()}/{sn.lower()}/{k}")
-                if len(names) > 1:
-                    subs.nth(0).click()
-                    wp.wait_for_timeout(500)
-            wp.set_viewport_size(big)
-            for name in ["Training", "Fitness", "Runs", "Stats", "Health"]:
-                t = wp.get_by_role("tab", name=name, exact=True)
-                if t.count():
-                    t.first.click(force=True)
-                    wp.wait_for_timeout(2500)
-                    wp.screenshot(path=f"{out}/31-web-{name.lower()}.png")
-                    if name in ("Training", "Fitness"):
-                        print(name, "scroll:", wp.locator(".subpage").first.evaluate("e => [e.scrollHeight, e.clientHeight]"))
-                    if name == "Training":
-                        bars = wp.locator(".pwc .chart-bar")
-                        check(bars.count() > 5, "web: weekly km chart on the plan")
-                        if bars.count() > 8:
-                            before = wp.locator(".pwv-title").first.inner_text()
-                            wp.locator(".pwc svg g").nth(8).click()
-                            wp.wait_for_timeout(700)
-                            check(wp.locator(".pwv-title").first.inner_text() != before, "web: a week on the chart opens it")
-                            wp.screenshot(path=f"{out}/31b-web-training-week.png")
-                        tabs2 = wp.locator(".ph-tabs button")
-                        check(tabs2.count() == 4, "web: plan side panels")
-                        for k in range(tabs2.count()):
-                            tabs2.nth(k).click()
-                            wp.wait_for_timeout(700)
-                            wp.screenshot(path=f"{out}/31c-web-plan-side-{k}.png")
-            if wp.locator(".page-tabs").get_by_role("tab", name="Trends & load", exact=True).count():
-                wp.get_by_role("tab", name="Training", exact=True).first.click(force=True)
-                wp.wait_for_timeout(1500)
-                wp.locator(".page-tabs").get_by_role("tab", name="Trends & load", exact=True).click()
-                wp.wait_for_timeout(2500)
-                check(wp.locator(".tl-chart").count() == 1, "web: training load from the account's runs")
-                wp.screenshot(path=f"{out}/32-web-load.png", full_page=True)
-            wp.get_by_role("tab", name="Home", exact=True).first.click(force=True)
+                subs = wp.locator(".p-pane.on .p-subnav [role=tab]")
+                for k in range(1, subs.count()):
+                    subs.nth(k).click()
+                    lap(f"{name.lower()}/{k}")
+                if name == "Today":
+                    cols = wp.evaluate("() => { const s = document.querySelector('.p-pane.on .p-screen'); return s ? getComputedStyle(s).columnCount + '/' + getComputedStyle(s).columnWidth : null; }")
+                    print("today columns:", cols)
+                    check(wp.locator(".p-pane.on .p-screen > *").count() >= 3, "web: Today's cards")
+            wp.locator(".p-wide > .p-tabs .p-tab", has_text="Plan").first.click()
+            wp.wait_for_timeout(1200)
+            wp.locator(".p-pane.on .p-subnav").get_by_role("tab", name="Progress", exact=True).click()
             wp.wait_for_timeout(2000)
-            check(wp.locator(".card-calendar, .card-tasks, .card-checklist").count() == 0, "web: overview is running-only by default")
-            check(wp.locator(".home-kpis").count() == 0, "web: no numbers row on home")
-            check(wp.locator(".hv-day").count() == 7, "web: home page week")
-            check(wp.locator(".hv-runs tbody tr").count() >= 3, "web: home page recent runs")
-            check(wp.locator(".hv-build svg rect").count() > 10, "web: home building chart")
-            check(wp.locator(".hv-equiv tbody tr").count() == 4, "web: home races against your best")
-            check(wp.locator(".home-card").count() == 0, "web: home has no boxed panels")
-            check(wp.locator(".coach-wide .coach-box").count() >= 2, "web: the coach's verdicts on home")
-            print("coach:", wp.locator(".coach").inner_text().replace("\n", " | ")[:600])
-            clipped = wp.evaluate("""() => [...document.querySelectorAll('.hm *')].filter(e => e.children.length === 0 && e.textContent.trim() && (e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflow !== 'visible')).map(e => e.textContent.trim().slice(0, 30)).slice(0, 8)""")
-            print("home clipped text:", clipped)
-            print("build:", wp.locator(".hv-build header").inner_text().replace("\n", " "), "|", wp.locator(".hv-equiv").inner_text().replace("\n", " | ")[:400])
-            wp.screenshot(path=f"{out}/30-web-overview.png")
-            wp.screenshot(path=f"{out}/30b-web-home-full.png", full_page=True)
-            bv = wp.get_by_role("button", name="Board view")
-            if bv.count():
-                bv.click()
+            check(wp.locator(".p-pane.on .coach-box").count() >= 2, "web: the coach's verdicts")
+            wp.set_viewport_size({"width": 1920, "height": 1080})
+            wp.locator(".p-wide > .p-tabs .p-tab").first.click()
+            wp.wait_for_timeout(2000)
+            wp.screenshot(path=f"{out}/30-web-home.png")
+            n = wp.evaluate("() => { const xs = new Set([...document.querySelectorAll('.p-pane.on .p-screen > *')].map(e => Math.round(e.getBoundingClientRect().left))); return xs.size; }")
+            check(n >= 2, f"web: a big screen shows the cards in columns ({n})")
+            if wp.locator(".p-runcard").count() or True:
+                wp.locator(".p-wide > .p-tabs .p-tab", has_text="Runs").first.click()
                 wp.wait_for_timeout(1500)
-                check(wp.locator(".react-grid-layout").count() == 1, "web: board view still there")
-                wp.screenshot(path=f"{out}/30c-web-board.png")
-                wp.get_by_role("button", name="Home view").click()
-                wp.wait_for_timeout(800)
-            pl = wp.get_by_role("tab", name="Planner", exact=True)
-            check(pl.count() == 1, "web: Planner tab")
-            if pl.count():
-                pl.first.click(force=True)
-                wp.wait_for_timeout(1500)
-                check(wp.locator(".planner-tabs [role=tab]").count() == 3, "web: Planner has Calendar, To-do and Habits")
-                wp.screenshot(path=f"{out}/35-web-planner.png")
-            wp.get_by_role("tab", name="Training", exact=True).first.click(force=True)
-            wp.wait_for_timeout(1500)
-            check(wp.locator(".recent-block").count() == 0, "web: trends not on the Plan sub-tab")
-            tr = wp.locator(".page-tabs").get_by_role("tab", name="Trends & load", exact=True)
-            if tr.count():
-                tr.click()
-                wp.wait_for_timeout(2000)
-                sc = wp.locator(".recent-block .chart-scroll")
-                check(sc.count() == 1, "web: trends chart scrolls")
-                if sc.count():
-                    print("trends scroll:", sc.evaluate("e => [e.scrollWidth, e.clientWidth, e.scrollLeft]"))
-                wp.screenshot(path=f"{out}/36-web-trends.png")
-            an = wp.get_by_role("tab", name="Analysis", exact=True)
-            check(an.count() == 1, "web: Analysis is a main tab")
-            if an.count():
-                an.first.click(force=True)
-                wp.wait_for_timeout(4000)
-                check(wp.locator(".ana-table").count() >= 1, "web: Analysis week table")
-                secs = wp.locator(".ana-secs button")
-                check(secs.count() == 4, "web: Analysis sections")
-                if secs.count() == 4:
-                    secs.nth(1).click()
+                if wp.locator(".p-pane.on .p-runcard").count():
+                    wp.locator(".p-pane.on .p-runcard").first.click()
+                    wp.wait_for_timeout(2500)
+                    wp.screenshot(path=f"{out}/33-web-run.png")
+                    box = wp.locator(".run-modal").bounding_box() if wp.locator(".run-modal").count() else None
+                    check(bool(box) and box["width"] < 1200, f"web: a run opens as a centred sheet ({box})")
+                    wp.keyboard.press("Escape")
                     wp.wait_for_timeout(600)
-                check(wp.locator(".ana-gaps tbody tr").count() == 4, "web: distances, mileage or pace")
-                if wp.locator(".ana-gaps").count():
-                    print("gaps:", wp.locator(".ana-gaps").inner_text().replace("\n", " | ")[:700])
-                    wp.locator(".ana-gaps").scroll_into_view_if_needed()
-                    wp.screenshot(path=f"{out}/33b-web-gaps.png")
-                print("analysis:", wp.locator(".ana").inner_text().replace("\n", " | ")[:900])
-                wp.screenshot(path=f"{out}/33-web-analysis.png", full_page=True)
-                if secs.count() == 4:
-                    secs.nth(2).click()
-                    wp.wait_for_timeout(600)
-                mrow = wp.locator(".ana-table tr.ana-click").first
-                if mrow.count():
-                    mrow.click()
-                    wp.wait_for_timeout(1200)
-                    check(" 20" in wp.locator(".ana-weekbar b").inner_text(), "web: a month row opens that month")
-                    wp.screenshot(path=f"{out}/37-web-analysis-month.png")
-                gear = wp.locator(".ana-gear")
-                if gear.count():
-                    gear.click()
-                    wp.wait_for_timeout(500)
-                    check(wp.locator(".ana-calc-set").count() == 1, "web: calculation settings open")
-                    wp.screenshot(path=f"{out}/38b-web-calc-settings.png")
-                    gear.click()
-                calc = wp.locator(".ana-calc.ana-click", has_text="Fitness (CTL)")
-                if calc.count():
-                    calc.click()
-                    wp.wait_for_timeout(1200)
-                    check(wp.locator(".ana-chart svg").count() >= 1, "web: a calculation opens its chart")
-                    wp.screenshot(path=f"{out}/38-web-analysis-chart.png")
-                pr = wp.locator(".ana-mini tr.ana-click", has_text="Marathon")
-                if pr.count():
-                    pr.first.click()
-                    wp.wait_for_timeout(1200)
-                    check("Prognosis" in wp.locator(".ana-chart-head").inner_text(), "web: a prognosis row opens its chart")
-                    wp.screenshot(path=f"{out}/39-web-analysis-prog.png")
-                if wp.locator(".ana-weekbar button").first.count():
-                    wp.locator(".ana-weekbar button").first.click()
-                    wp.wait_for_timeout(1200)
-                    wp.screenshot(path=f"{out}/34-web-analysis-lastweek.png")
             land = ph.new_page()
             land.set_viewport_size({"width": 1280, "height": 900})
             land.goto(cloud + "/about")
