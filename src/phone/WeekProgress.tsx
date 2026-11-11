@@ -3,10 +3,9 @@ import { addDays } from "../core/time";
 import { forecastWeek, type ForecastDay, type ForecastWeek } from "../modules/running/forecast";
 import { mondayOf, type Plan } from "../modules/running/plan";
 import type { Run } from "../modules/running/strava";
-import { zoneOf } from "./EffortProfile";
 import { sessionTitle } from "./Today";
+import { DayBars } from "./DayBars";
 
-const DOW = ["M", "T", "W", "T", "F", "S", "S"];
 const isRun = (d: ForecastDay) => d.kind !== "rest" && d.kind !== "optional" && (d.km ?? 0) > 0 && !/^rest\b/i.test(d.text);
 
 /** Planned runs done in a row, counting back from today (rest days don't break it; today not yet run doesn't either). */
@@ -57,7 +56,7 @@ function cheer(fw: ForecastWeek, today: string, doneRuns: number, planned: numbe
 }
 
 /** This week at a glance: how much of it you've trained, each day, and your streaks. */
-export function WeekProgress({ plan, fw, runs, today, overrides }: { plan: Plan; fw: ForecastWeek; runs: Run[]; today: string; overrides?: Map<string, string> }) {
+export function WeekProgress({ plan, fw, runs, today, overrides, onDay }: { plan: Plan; fw: ForecastWeek; runs: Run[]; today: string; overrides?: Map<string, string>; onDay?: (date: string) => void }) {
   const planned = fw.days.filter(isRun);
   // Runs done this week: planned ones, plus any extra day you ran.
   const doneRuns = fw.days.filter((d) => d.runs.length > 0 && d.date <= today).length;
@@ -68,7 +67,7 @@ export function WeekProgress({ plan, fw, runs, today, overrides }: { plan: Plan;
   const pct = pk ? Math.min(100, Math.round((km / pk) * 100)) : 0;
   const streak = useMemo(() => sessionStreak(plan, runs, today, overrides), [plan, runs, today, overrides]);
   const onPlan = useMemo(() => weeksOnPlan(plan, runs, today, overrides), [plan, runs, today, overrides]);
-  const size = 92;
+  const size = 70;
   const r = (size - 12) / 2;
   const c = 2 * Math.PI * r;
   return (
@@ -92,19 +91,7 @@ export function WeekProgress({ plan, fw, runs, today, overrides }: { plan: Plan;
           {missed > 0 && <span className="wp-missed">{missed} missed</span>}
         </span>
       </div>
-      <div className="wp-days">
-        {fw.days.map((d, i) => {
-          const run = isRun(d);
-          const st = d.runs.length ? "done" : !run ? "rest" : d.date < today ? "missed" : d.date === today ? "today" : "todo";
-          const z = d.race ? "race" : run ? zoneOf(d.text, d.kind) : "rest";
-          return (
-            <span key={d.date} className={`wp-day ${st} z-${z}`} title={run ? sessionTitle(d.text, d.kind) : "Rest"}>
-              <i>{st === "done" ? "✓" : st === "missed" ? "·" : ""}</i>
-              <small>{DOW[i]}</small>
-            </span>
-          );
-        })}
-      </div>
+      <DayBars days={fw.days} today={today} onDay={onDay} />
       <p className="wp-cheer">{cheer(fw, today, doneRuns, planned.length, left)}</p>
       <div className="wp-streaks">
         <span>

@@ -64,6 +64,24 @@ export function bestRunHour(f: Forecast, nowIso: string): number | null {
 }
 
 const hh = (iso: string) => iso.slice(11, 16);
+
+/** Now, in a few words, and the best hour left today to run (for Today's run card). */
+export function useWeatherBrief(): { temp: number; text: string; icon: string; best: string | null } | null {
+  const now = useNow("minute");
+  const version = useDataVersion("weather");
+  const { data } = useQuery(load, [version]);
+  useEffect(() => {
+    if (!data) return;
+    const stale = !data.fetchedAt || Date.now() - Date.parse(data.fetchedAt) > 60 * 60_000;
+    if (stale) void refresh(data.place).catch(() => {});
+  }, [data?.place.lat, data?.fetchedAt]);
+  const f = data?.data;
+  if (!f?.current) return null;
+  const nowIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T${String(now.getHours()).padStart(2, "0")}:00`;
+  const d = describe(f.current.weather_code, true);
+  const b = bestRunHour(f, nowIso);
+  return { temp: Math.round(f.current.temperature_2m), text: d.text.toLowerCase(), icon: d.icon, best: b != null ? hh(f.hourly.time[b]) : null };
+}
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 async function load(): Promise<{ place: Place; data: Forecast | null; fetchedAt: string | null; error: string | null }> {

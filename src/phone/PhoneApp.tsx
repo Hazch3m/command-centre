@@ -25,16 +25,20 @@ import { Today } from "./Today";
 import { Training } from "./Training";
 import { Planner, plannerView } from "./Planner";
 import { useSwipe } from "./swipe";
+import { plannerShown, setPlannerShown } from "./plannerPref";
 import { WorkoutCreator } from "./WorkoutCreator";
 import { ACCENTS, phoneLook, setPhoneLook, type PhoneLook } from "../core/appearance";
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
+const ALL_TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "today", label: "Today", icon: "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" },
   { id: "planner", label: "Planner", icon: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M8 14l2 2 4-4" },
   { id: "training", label: "Plan", icon: "M4 20h4v-6H4zM10 20h4V10h-4zM16 20h4V5h-4z" },
   { id: "runs", label: "Runs", icon: "M13 4a2 2 0 1 0 4 0 2 2 0 0 0-4 0M6 20l3-6 3 2v5M9 14l2-5 4 2 3 3M11 9l-3 1-2 3" },
   { id: "stats", label: "Stats", icon: "M4 20V10M10 20V4M16 20v-7M22 20H2" },
 ];
+
+let TABS = ALL_TABS.filter((t) => t.id !== "planner" || plannerShown());
+if (typeof window !== "undefined") window.addEventListener("cc:tabs-changed", () => (TABS = ALL_TABS.filter((t) => t.id !== "planner" || plannerShown())));
 const PUSHED: Record<Exclude<Pushed, null>, { title: string; module: string | null }> = {
   health: { title: "Health", module: "health" },
   fitness: { title: "Fitness", module: "fitness" },
@@ -90,6 +94,13 @@ function SyncLine({ onRefresh, busy }: { onRefresh: () => void; busy: boolean })
 }
 
 export function PhoneApp() {
+  // Re-render when the Planner tab is switched on or off.
+  const [, setTabsVer] = useState(0);
+  useEffect(() => {
+    const on = () => setTabsVer((v) => v + 1);
+    window.addEventListener("cc:tabs-changed", on);
+    return () => window.removeEventListener("cc:tabs-changed", on);
+  }, []);
   const [tab, setTabState] = useState<Tab>(() => {
     const t = sessionStorage.getItem("cc-phone-tab") as Tab | null;
     return t && TABS.some((x) => x.id === t) ? t : "today";
@@ -292,7 +303,7 @@ export function PhoneApp() {
             })}
           </main>
           <AutoReview />
-          <nav className="p-tabs" role="tablist">
+          <nav className="p-tabs" role="tablist" style={{ ["--tabs" as string]: TABS.length }}>
             <span className={"p-tab-ind" + (pushed ? " off" : "")} style={{ transform: `translateX(${TABS.findIndex((x) => x.id === tab) * 100}%)` }} aria-hidden="true" />
             {TABS.map((t) => (
               <button key={t.id} role="tab" aria-selected={tab === t.id} className={`p-tab tab-${t.id}` + (tab === t.id ? " on" : "")} onClick={() => setTab(t.id)}>
@@ -310,6 +321,27 @@ export function PhoneApp() {
   );
 }
 
+/** Show or hide the Planner tab (calendar, to-do, habits). */
+function PlannerToggle() {
+  const [on, setOn] = useState(plannerShown());
+  return (
+    <label className="p-row p-toggle">
+      <span className="p-row-main">
+        <span className="p-row-title">Show Planner</span>
+        <span className="p-row-sub">Calendar, to-do and habits: a tab of their own, and on Today</span>
+      </span>
+      <input
+        type="checkbox"
+        checked={on}
+        onChange={(e) => {
+          setOn(e.target.checked);
+          setPlannerShown(e.target.checked);
+        }}
+      />
+    </label>
+  );
+}
+
 /** Dark or light, and your accent colour (this phone only). */
 function TrainingSettings() {
   const src = useFocusSource();
@@ -318,6 +350,7 @@ function TrainingSettings() {
       <div className="p-section-head">
         <h2>Training</h2>
       </div>
+      <PlannerToggle />
       <div className="p-group p-look">
         <span className="p-row-title">Load focus values</span>
         <div className="p-seg">

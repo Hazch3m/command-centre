@@ -10,7 +10,7 @@ import { mondayOf, type Plan } from "../modules/running/plan";
 import { openRun } from "../modules/running/RunView";
 import { plannedKinds, RUN_TYPE_LABEL, typeOfDay, typeOfRun } from "../modules/running/runType";
 import { km, pace } from "../modules/running/stats";
-import { loadOverrides } from "../modules/running/strava";
+import { loadOverrides, type Run } from "../modules/running/strava";
 import { useRunningData } from "../modules/running/useRunning";
 import { TargetPrefs } from "../modules/running/TargetPrefs";
 import { AutoSyncSetting } from "../modules/watch/AutoSyncSetting";
@@ -22,22 +22,22 @@ import { PracticeTag } from "../modules/running/PracticeTag";
 import { PlanCoach } from "../modules/running/PlanCoach";
 import { isEmptyPlan } from "../core/account";
 
-import { PlanList } from "../modules/running/PlanList";
 import { PaceOnTrack } from "./PaceOnTrack";
 import { RaceManager } from "../modules/running/RaceManager";
 import { FitnessPredictor, GoalCarousel, PlanWeeksChart } from "./PlanGoals";
 import { LoadFocusCard, PlanFocusWeeks, WeekFocusStrip } from "./Focus";
 import { WeekAhead } from "./WeekAhead";
+import { DayBars } from "./DayBars";
 
-type View = "week" | "calendar" | "pace" | "progress";
+type View = "week" | "plan" | "progress";
 const VIEWS: { id: View; label: string; icon: string }[] = [
   { id: "week", label: "Week", icon: "M4 5h16v15H4zM4 9h16M8 3v4M16 3v4M7.5 13h2M11 13h2M14.5 13h2" },
-  { id: "calendar", label: "All weeks", icon: "M4 5h16M4 10h16M4 15h16M4 20h10" },
-  { id: "pace", label: "Pace on point", icon: "M12 21a8 8 0 1 1 0-16 8 8 0 0 1 0 16zM12 13l3.5-3.5M12 2v3" },
+  { id: "plan", label: "Plan", icon: "M4 5h16M4 10h16M4 15h16M4 20h10" },
   { id: "progress", label: "Progress", icon: "M3 20h18M5 16l4-5 4 3 6-8M15 6h4v4" },
 ];
+/** Old view names (All weeks, Pace on point) still land somewhere sensible. */
+const viewOf = (v: string | null | undefined): View => (v === "calendar" ? "plan" : v === "pace" ? "progress" : v === "plan" || v === "progress" ? v : "week");
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const DOW1 = ["M", "T", "W", "T", "F", "S", "S"];
 const fmt = (d: string) => `${parseKey(d).getDate()} ${MON[parseKey(d).getMonth()]}`;
 const phase = (p: string) => p.replace(/\s*\(.*\)\s*$/, "").replace(/^Recovery and /, "");
 
@@ -56,8 +56,9 @@ export function Training() {
   const thisMonday = mondayOf(today);
   const [monday, setMonday] = useState(thisMonday);
   const [sel, setSel] = useState(today);
-  const [view, setView] = useState<View>(() => (sessionStorage.getItem("cc-plan-view") as View | null) ?? "week");
-  const pickView = (v: View) => {
+  const [view, setView] = useState<View>(() => viewOf(sessionStorage.getItem("cc-plan-view")));
+  const pickView = (raw: string) => {
+    const v = viewOf(raw);
     setView(v);
     sessionStorage.setItem("cc-plan-view", v);
   };
@@ -102,7 +103,7 @@ export function Training() {
     on();
     window.addEventListener("cc:plan-day", on);
     const onView = (e: Event) => {
-      const v = (e as CustomEvent<View>).detail;
+      const v = (e as CustomEvent<string>).detail;
       if (v) pickView(v);
       window.scrollTo({ top: 0 });
     };
@@ -134,7 +135,6 @@ export function Training() {
     if (m >= range.first && m <= range.last) setMonday(m);
   };
   const day = fw.days.find((d) => d.date === sel) ?? fw.days[0];
-  const pct = fw.plannedKm ? Math.min(1, fw.actualKm / fw.plannedKm) : 0;
   const recent = [...runs].filter((r) => r.date <= today).slice(-3).reverse();
   const off = Math.round((parseKey(monday).getTime() - parseKey(thisMonday).getTime()) / (7 * 86400000));
   return (
@@ -149,31 +149,58 @@ export function Training() {
           </button>
         ))}
       </nav>
-      {view === "calendar" && (
-        <Section title="Every week" className="p-padded">
-          <PlanWeeksChart plan={plan} first={range.first} last={range.last} />
-        </Section>
+      {view === "plan" && (
+        <>
+          <div className="p-weekbar p-planbar">
+            <button className="p-round" onClick={() => go(-1)} disabled={monday <= range.first} aria-label="Previous week">
+              ‹
+            </button>
+            <div className="p-weekbar-mid">
+              <b>
+                {fw.week ? `Week ${fw.week.week}` : fmt(monday)}
+                {off !== 0 && <span className="p-when">{off === 1 ? "next week" : off === -1 ? "last week" : off > 0 ? `in ${off} weeks` : `${-off} weeks ago`}</span>}
+              </b>
+              <span className="p-row-sub">
+                {fmt(monday)} – {fmt(addDays(monday, 6))}
+                {monday !== thisMonday && (
+                  <>
+                    {" · "}
+                    <button type="button" className="link-btn" onClick={() => setMonday(thisMonday)}>
+                      this week
+                    </button>
+                  </>
+                )}
+              </span>
+            </div>
+            <button className="p-round" onClick={() => go(1)} disabled={monday >= range.last} aria-label="Next week">
+              ›
+            </button>
+          </div>
+          <WeekAhead
+            plan={plan}
+            monday={monday}
+            onDay={(d) => {
+              setSel(d);
+              pickView("week");
+              window.setTimeout(() => showWeekdays(), 60);
+            }}
+          />
+          <Section title="Every week" className="p-padded">
+            <PlanWeeksChart plan={plan} first={range.first} last={range.last} sel={monday} onPick={setMonday} />
+          </Section>
+          <PlanFocusWeeks plan={plan} first={range.first} last={range.last} />
+          <button className="p-row p-row-btn" onClick={() => nav.push("adjust")}>
+            <span className="p-row-main">
+              <span className="p-row-title">Change the plan</span>
+              <span className="p-row-sub">Easier weeks, recovery, paces, a new build</span>
+            </span>
+            <span className="p-chev">›</span>
+          </button>
+        </>
       )}
-      {view === "calendar" && <PlanFocusWeeks plan={plan} first={range.first} last={range.last} />}
-      {view === "calendar" && (
-        <div className="p-embed">
-          <PlanList plan={plan} runs={runs} single />
-        </div>
-      )}
-      {view === "pace" && (
-        <PaceOnTrack plan={plan} runs={runs} />
-      )}
-      {view === "progress" && <PlanProgress plan={plan} first={range.first} last={range.last} />}
+      {view === "progress" && <PlanProgress plan={plan} runs={runs} />}
       {view === "week" && (
       <>
-      <WeekAhead
-        plan={plan}
-        monday={monday}
-        onDay={(d) => {
-          setSel(d);
-          window.setTimeout(() => showWeekdays(), 60);
-        }}
-      />
       <div ref={weekRef} data-noswipe className="p-weekswipe">
       <div className="p-weekbar">
         <button className="p-round" onClick={() => go(-1)} disabled={monday <= range.first} aria-label="Previous week">
@@ -197,27 +224,14 @@ export function Training() {
         <span className="num">
           <b>{fw.actualKm.toFixed(0)}</b> / {fw.plannedKm ?? "–"} km
         </span>
-        <span className="p-bar">
-          <span style={{ width: `${pct * 100}%` }} />
-        </span>
         {monday !== thisMonday && (
           <button className="p-link" onClick={() => setMonday(thisMonday)}>
             This week
           </button>
         )}
       </div>
-      <WeekFocusStrip fw={fw} />
-      <div className="p-weekdays">
-        {fw.days.map((d, i) => {
-          const t = typeOfDay(d.kind);
-          return (
-            <button key={d.date} className={`p-wday rt-${t}` + (d.date === sel ? " on" : "") + (d.date === today ? " today" : "") + (d.runs.length ? " done" : "")} onClick={() => setSel(d.date)}>
-              <span className="p-wday-dow">{DOW1[i]}</span>
-              <span className="p-wday-dot">{d.runs.length ? "✓" : d.km ? d.km : ""}</span>
-              <span className="p-wday-num num">{parseKey(d.date).getDate()}</span>
-            </button>
-          );
-        })}
+      <div className="p-weekdays p-weekbars">
+        <DayBars days={fw.days} today={today} sel={sel} onDay={setSel} height={54} />
       </div>
       {fw.week || day.km || day.runs.length || day.race ? (
         <>
@@ -237,6 +251,8 @@ export function Training() {
         <div className="p-hint center">No plan this week.</div>
       )}
       </div>
+
+      <WeekFocusStrip fw={fw} />
 
       {/* On the screen itself (not the sliding page), and only while you're on Plan. */}
       {nav.tab === "training" &&
@@ -355,28 +371,18 @@ export function Training() {
   );
 }
 
-/** How the plan's going: readiness for the next race, and every week's km, planned against done. */
-function PlanProgress({ plan, first, last }: { plan: Plan; first: string; last: string }) {
-  const nav = usePhoneNav();
+/** How the plan's going: readiness for the race, the predicted times, and whether your paces are on point. */
+function PlanProgress({ plan, runs }: { plan: Plan; runs: Run[] }) {
   return (
     <>
       <GoalCarousel plan={plan} />
       <FitnessPredictor plan={plan} />
-      <Section title="Week by week" className="p-padded">
-        <PlanWeeksChart plan={plan} first={first} last={last} />
-      </Section>
+      <PaceOnTrack plan={plan} runs={runs} />
       <Section title="Races" className="p-padded">
         <div className="p-embed">
           <RaceManager plan={plan} />
         </div>
       </Section>
-      <button className="p-row p-row-btn" onClick={() => nav.push("adjust")}>
-        <span className="p-row-main">
-          <span className="p-row-title">Change the plan</span>
-          <span className="p-row-sub">Easier weeks, recovery, paces, a new build</span>
-        </span>
-        <span className="p-chev">›</span>
-      </button>
     </>
   );
 }
