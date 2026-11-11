@@ -268,7 +268,7 @@ try:
             sw = pp.evaluate("document.documentElement.scrollWidth")
             check(sw <= 392, f"Plan/{name}: no sideways scroll ({sw})")
             if name == "Week":
-                check(pp.locator(".p-pane.on .p-weekbars .db-day").count() == 7, "Plan week: a mileage bar per day")
+                check(pp.locator(".p-pane.on .p-daybars .db-day").count() == 7, "Plan week: a mileage bar per day")
                 if pp.locator(".p-pane.on .p-adjust-btn").count():
                     pp.locator(".p-pane.on .p-adjust-btn").click()
                     pp.wait_for_timeout(1500)
@@ -304,11 +304,11 @@ try:
                     pp.screenshot(path=f"{out}/08-plan-1b-focus-weeks.png")
                     print("focus weeks:", pp.locator(".p-pane.on .lfw").inner_text().replace("\n", " ")[:400])
                     pp.evaluate("window.scrollTo(0,0)")
+        pp.locator(".p-subnav").get_by_role("tab", name="Progress", exact=True).click()
+        pp.wait_for_timeout(1200)
         check(pp.locator(".gc-card").count() >= 3, "Progress: goals to swipe across")
         print("goal cards:", [c.replace("\n", " | ")[:120] for c in pp.locator(".gc-card").all_inner_texts()])
         check(pp.locator(".gc-card .pt-chart").count() >= 1, "Progress: the line to race day on the cards")
-        pp.locator(".p-subnav").get_by_role("tab", name="Progress", exact=True).click()
-        pp.wait_for_timeout(1200)
         pp.screenshot(path=f"{out}/08-plan-3a-progress-top.png")
         if pp.locator(".rr2").count():
             pp.locator(".rr2-seg button", has_text="Ready today").click()
@@ -458,7 +458,7 @@ try:
                     pp.locator(".p-pane.on .p-donetile-main").click()
                     pp.wait_for_timeout(700)
                 fit = pp.evaluate("""() => { const w = document.querySelector('.p-pane.on .wa'); const t = document.querySelector('.p-tabs'); return [Math.round(w.getBoundingClientRect().bottom), Math.round(t.getBoundingClientRect().top)]; }""")
-                check(fit[0] <= fit[1], f"Today: the run, the week and the build fit on the first screen ({fit})")
+                check(fit[0] <= fit[1] - 90, f"Today: the run, the week and the build fit on the first screen, with room for a phone's status bar and home bar ({fit})")
                 pp.screenshot(path=f"{out}/03a3-today-fit.png")
                 check(pp.locator(".p-pane.on .wp .db-day").count() == 7, "Today: week progress has a mileage bar per day")
                 print("brief:", pp.locator(".p-pane.on .p-brief").inner_text().replace("\n", " ") if pp.locator(".p-pane.on .p-brief").count() else None)
