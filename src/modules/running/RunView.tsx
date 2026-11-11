@@ -1,4 +1,5 @@
 import { predictionChange } from "./goalTrend";
+import { runVerdict } from "./coach";
 import { useFitness } from "./fitness";
 import { lapVo2 } from "./vo2";
 import { workoutLaps } from "../../phone/EffortProfile";
@@ -377,6 +378,17 @@ function RunDetail({ id, onBack, onClose }: { id: string; onBack?: () => void; o
       {edit && <RunReview run={run} onClose={() => setEdit(false)} />}
       {map && run.polyline && <RunMap polyline={run.polyline} title={run.name} onClose={() => setMap(false)} />}
       <RunNotes id={run.id} />
+      {(() => {
+        const v = runVerdict(day && plan.weeks.some((w) => w.start <= run.date && run.date <= w.end) ? day : null, check, run.distance / 1000);
+        return v ? (
+          <div className={`coach-run tone-${v.tone}`}>
+            <span>
+              <b>{v.label}.</b> {v.detail}
+            </span>
+            {v.fix && <small>{v.fix}</small>}
+          </div>
+        ) : null;
+      })()}
       <PredictionMoved date={run.date} />
       <RunFocus run={run} label="Training focus" />
       {details.get(run.id)?.photo && <img className="run-photo" src={details.get(run.id)!.photo!} alt="Photo from the run" referrerPolicy="no-referrer" />}

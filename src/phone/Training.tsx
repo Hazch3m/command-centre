@@ -27,6 +27,7 @@ import { FitnessPredictor, GoalCarousel, PlanWeeksChart } from "./PlanGoals";
 import { LoadFocusCard, PlanFocusWeeks, WeekFocusStrip } from "./Focus";
 import { WeekAhead } from "./WeekAhead";
 import { DayBars } from "./DayBars";
+import { CoachCard } from "../modules/running/Coach";
 
 type View = "week" | "plan" | "progress" | "races";
 const VIEWS: { id: View; label: string; icon: string }[] = [
@@ -214,6 +215,9 @@ export function Training() {
       )}
       {view === "progress" && (
         <>
+          <Section title="How you're doing">
+            <CoachCard plan={plan} runs={runs} />
+          </Section>
           <GoalCarousel plan={plan} />
           <PaceOnTrack plan={plan} runs={runs} />
         </>
