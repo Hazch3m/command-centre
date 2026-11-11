@@ -147,7 +147,7 @@ try:
         print("has paces in week:", bool(re.search(r"\d:\d\d", wk)))
 
         # Every Plan view.
-        for v in ["All weeks", "Pace on point", "Progress"]:
+        for v in ["Plan", "Progress"]:
             pp.locator(".p-subnav").get_by_role("tab", name=v, exact=True).click()
             pp.wait_for_timeout(1500)
             shot(f"n08-plan-{v.split()[0].lower()}")
