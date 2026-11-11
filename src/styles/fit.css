@@ -59,6 +59,14 @@
   .tl-grid > div:nth-child(2) .tl > .tl-chart { flex: 1 1 0; min-height: 0; width: 100%; height: 0; }
   .tl-grid > div:first-child { --chart-scale: 1; }
 
+  /* ---------- Training → Pace on point: the sessions' table scrolls inside if it's long ---------- */
+  .tab-page-running .subpage:has(.pace-page) { display: flex; flex-direction: column; overflow: hidden; }
+  .tab-page-running .subpage:has(.pace-page) > .page-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .pace-page { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0.45rem; }
+  .pace-page > * { flex: none; margin-top: 0; margin-bottom: 0; }
+  .pace-page > .pace-rows { flex: 1 1 0; min-height: 5rem; overflow-y: auto; scrollbar-width: thin; }
+  .pace-page .interval-chart { margin: 0; }
+
   /* ---------- Training → Races & PBs: three views, each a screen ---------- */
   .tab-page-running .subpage:has(.pbs),
   .tab-page-running .subpage:has(.prog-races),
