@@ -174,7 +174,6 @@ export function PhoneApp() {
   const askPc = async () => {
     if (asking) return;
     setAsking(true);
-    setNote("Asking your PC for the latest runs and data…");
     const stamp = new Date().toISOString();
     const count = async () => {
       try {
@@ -189,7 +188,6 @@ export function PhoneApp() {
     try {
       if (cloudOn()) {
         // Cloud sync on: the service fetches from Garmin and the calendars itself, PC or no PC.
-        setNote("Asking the cloud to check Garmin and your calendars…");
         const r = await cloudRun();
         if (await refresh()) await notifyChanged("*");
         const problems = Object.entries(r?.errors ?? {}).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`);
@@ -217,7 +215,8 @@ export function PhoneApp() {
     } catch (e) {
       if (!(e as { done?: boolean })?.done) answer = `Couldn't ${cloudOn() ? "ask the cloud" : "ask the PC"}: ${String((e as Error)?.message ?? e)}`;
     }
-    setNote(answer);
+    // The spinning refresh button says it's working; words only when there's news or a problem.
+    setNote(/^Up to date/.test(answer) && answer.length < 40 ? null : answer);
     setAsking(false);
     window.setTimeout(() => setNote((x) => (x === answer ? null : x)), 8000);
   };

@@ -111,13 +111,15 @@ export function weekLines(fw: ForecastWeek, checks: PaceCheck[], today: string):
   const inWeek = checks.filter((c) => c.date >= fw.monday && c.date <= fw.days[6].date && !c.autoZone);
   const sessions = inWeek.filter((c) => c.session);
   if (sessions.length) {
-    const off = sessions.filter((c) => c.verdict !== "on-point");
+    // Averaging inside the range is on target, whatever the spread of the reps.
+    const off = sessions.filter((c) => c.verdict !== "on-point" && Math.abs(Math.round(c.off)) >= 1);
+    const uneven = sessions.filter((c) => c.verdict !== "on-point" && Math.abs(Math.round(c.off)) < 1);
     const worst = [...off].sort((a, b) => Math.abs(b.off) - Math.abs(a.off))[0];
     lines.push({
       tone: off.length === 0 ? "good" : off.some((c) => c.verdict.startsWith("too")) ? "bad" : "warn",
       label: "Sessions on pace",
       detail: `${sessions.length - off.length} of ${sessions.length} on target`,
-      fix: worst ? `${dayName(worst.date)}'s session was ${Math.abs(Math.round(worst.off))} ${worst.unit === "bpm" ? "bpm" : "s/km"} too ${worst.off < 0 ? "fast: hold the target, the pace is the point" : "slow: fine once, but if it repeats, ease the paces"}.` : undefined,
+      fix: !worst && uneven.length ? `${dayName(uneven[0].date)}'s session averaged inside the range; a few reps strayed, so aim for even ones next time.` : worst ? `${dayName(worst.date)}'s session was ${Math.abs(Math.round(worst.off))} ${worst.unit === "bpm" ? "bpm" : "s/km"} too ${worst.off < 0 ? "fast: hold the target, the pace is the point" : "slow: fine once, but if it repeats, ease the paces"}.` : undefined,
     });
   }
   const easy = inWeek.filter((c) => !c.session);
@@ -251,7 +253,7 @@ export function runVerdict(day: ForecastDay | null, check: PaceCheck | null, ran
   const by = Math.abs(Math.round(check.off));
   if (check.session) {
     const reps = check.inRange != null ? `, ${Math.round(check.inRange * 100)}% of the work in range` : "";
-    if (check.verdict === "on-point") return { tone: "good", label: "Session on target", detail: `Averaged ${did} against ${range}${reps}.${dist}`, fix: "Exactly the job. Recover well; the next session builds on this one." };
+    if (check.verdict === "on-point" || by < 1) return { tone: "good", label: "Session on target", detail: `Averaged ${did} against ${range}${reps}.${dist}`, fix: "Exactly the job. Recover well; the next session builds on this one." };
     if (check.off < 0)
       return { tone: check.verdict === "too-fast" ? "bad" : "warn", label: `${by} ${unit} too quick`, detail: `Averaged ${did} against ${range}${reps}.${dist}`, fix: "The session works at its target pace; quicker adds fatigue, not fitness. If it felt easy, your paces may be due an update (Plan check)." };
     return { tone: check.verdict === "too-slow" ? "bad" : "warn", label: `${by} ${unit} off the target`, detail: `Averaged ${did} against ${range}${reps}.${dist}`, fix: "Fine if it was heat, hills or tired legs. If the next one's the same, ease the paces rather than forcing them." };

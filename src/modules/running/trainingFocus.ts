@@ -87,7 +87,7 @@ export function plannedSeconds(text: string, cuts: Cuts, zones: Zones = {}): Foc
  * (heart rate lags too much to show short, very hard efforts), otherwise its heart-rate zone
  * (1–3 low aerobic, 4–5 high aerobic), else its pace.
  */
-export function runFocus(run: Pick<Run, "moving_time" | "distance" | "avg_hr">, detail: Pick<RunDetail, "splits"> | undefined, zones: Pick<HrZones, "floors"> | null, cuts: Cuts): FocusMix | null {
+export function runFocus(run: Pick<Run, "moving_time" | "distance" | "avg_hr">, detail: (Pick<RunDetail, "splits"> & Partial<Pick<RunDetail, "laps">>) | undefined, zones: Pick<HrZones, "floors"> | null, cuts: Cuts): FocusMix | null {
   const m: FocusMix = { low: 0, high: 0, anaerobic: 0 };
   const splits = detail?.splits?.filter((s) => s.moving_time > 0) ?? [];
   const kindOf = (secPerKm: number, hr: number | null | undefined): FocusKind => {
@@ -96,7 +96,21 @@ export function runFocus(run: Pick<Run, "moving_time" | "distance" | "avg_hr">, 
     if (zones && hr) return hrZoneOf(hr, zones) <= 3 ? "low" : "high";
     return secPerKm < cuts.low ? "high" : "low";
   };
-  if (splits.length) {
+  // A session run on laps (reps and recoveries): judge each lap, since a kilometre that mixes a hard
+  // rep with its jog averages out to "steady". Short hard reps work the anaerobic side even at
+  // 10K pace, as they do for a planned session.
+  const laps = detail?.laps?.filter((l) => l.moving_time > 0 && l.distance > 0) ?? [];
+  const reps = laps.length >= 4 && laps.filter((l) => l.moving_time <= 330).length >= 3;
+  if (reps) {
+    for (const l of laps) {
+      const p = l.moving_time / (l.distance / 1000);
+      if (p <= cuts.anaerobic) m.anaerobic += l.moving_time;
+      else if (l.moving_time <= 200 && p < cuts.low - 15) {
+        m.anaerobic += l.moving_time * 0.5;
+        m.high += l.moving_time * 0.5;
+      } else m[kindOf(p, l.hr)] += l.moving_time;
+    }
+  } else if (splits.length) {
     for (const s of splits) m[kindOf(s.moving_time / Math.max(0.05, s.distance / 1000), s.hr)] += s.moving_time;
   } else if (run.moving_time > 0) {
     m[kindOf(run.moving_time / Math.max(0.05, run.distance / 1000), run.avg_hr)] += run.moving_time;

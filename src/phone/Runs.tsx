@@ -31,6 +31,8 @@ export function Runs() {
   const pb = usePbData();
   const [shown, setShown] = useState(15);
   const [pickWeek, setPickWeek] = useState<string | null>(null);
+  // How many weeks back the chart's right edge sits: swipe it (or the arrows) for earlier weeks.
+  const [back, setBack] = useState(0);
 
   const totals = useMemo(() => {
     const sum = (from: string) => {
@@ -44,11 +46,19 @@ export function Runs() {
   const weeks = useMemo(() => {
     const out: { week: string; km: number }[] = [];
     for (let i = 11; i >= 0; i--) {
-      const w = addDays(mondayOf(today), -7 * i);
+      const w = addDays(mondayOf(today), -7 * (i + back));
       out.push({ week: w, km: runs.filter((r) => r.date >= w && r.date <= addDays(w, 6)).reduce((s, r) => s + km(r.distance), 0) });
     }
     return out;
-  }, [runs, today]);
+  }, [runs, today, back]);
+  const oldest = runs.length ? runs.reduce((a, r) => (r.date < a ? r.date : a), today) : today;
+  const canBack = addDays(mondayOf(today), -7 * (back + 11)) > oldest;
+  const move = (by: number) => {
+    if (by > 0 && !canBack) return;
+    setBack((b) => Math.max(0, b + by * 6));
+    setPickWeek(null);
+  };
+  const swipeX = useRef<number | null>(null);
   const feed = useMemo(() => [...runs].sort((a, b) => (a.start_local < b.start_local ? 1 : -1)), [runs]);
 
   return (
@@ -69,7 +79,34 @@ export function Runs() {
         ))}
       </div>
 
-      <WeekChart weeks={weeks} today={today} pick={pickWeek} onPick={(w) => setPickWeek(pickWeek === w ? null : w)} />
+      <div
+        className="p-wchart-wrap"
+        data-noswipe
+        onTouchStart={(e) => (swipeX.current = e.touches[0].clientX)}
+        onTouchEnd={(e) => {
+          const dx = swipeX.current == null ? 0 : e.changedTouches[0].clientX - swipeX.current;
+          swipeX.current = null;
+          if (Math.abs(dx) > 45) move(dx > 0 ? 1 : -1);
+        }}
+      >
+        <div className="p-wchart-nav">
+          <button type="button" className="p-round" onClick={() => move(1)} disabled={!canBack} aria-label="Earlier weeks">
+            ‹
+          </button>
+          <span className="num">
+            {parseKey(weeks[0].week).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: back ? "numeric" : undefined })} – {parseKey(addDays(weeks[11].week, 6)).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: back ? "numeric" : undefined })}
+            {back > 0 && (
+              <button type="button" className="p-link" onClick={() => (setBack(0), setPickWeek(null))}>
+                Now
+              </button>
+            )}
+          </span>
+          <button type="button" className="p-round" onClick={() => move(-1)} disabled={back === 0} aria-label="Later weeks">
+            ›
+          </button>
+        </div>
+        <WeekChart weeks={weeks} today={today} pick={pickWeek} onPick={(w) => setPickWeek(pickWeek === w ? null : w)} />
+      </div>
       {pickWeek && (
         <div className="p-weekpick">
           <div className="p-weekpick-head">
