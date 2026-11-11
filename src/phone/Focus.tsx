@@ -1,4 +1,4 @@
-import { useMemo, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { notifyChanged, useDataVersion } from "../core/events";
 import { kvGet, kvSet } from "../core/db";
 import { addDays, useToday } from "../core/time";
@@ -333,6 +333,8 @@ export function PlanFocusWeeks({ plan, first, last }: { plan: Plan; first: strin
   const overrides = useQuery(loadOverrides, [rv]).data;
   const b = useFocusBasis();
   const thisMonday = mondayOf(today);
+  // The next eight weeks to start with; the rest of the plan on request.
+  const [all, setAll] = useState(false);
   const rows = useMemo(() => {
     if (!b.ready) return [];
     const out: { monday: string; label: string; w: NonNullable<ReturnType<typeof weekFocus>> }[] = [];
@@ -378,7 +380,7 @@ export function PlanFocusWeeks({ plan, first, last }: { plan: Plan; first: strin
             </span>
           ))}
         </div>
-        {rows.map((r) => (
+        {(all ? rows : rows.slice(0, 8)).map((r) => (
           <div key={r.monday} className={"lfw-row" + (r.monday === thisMonday ? " now" : "")}>
             <span className="lfw-wk">
               <b>{r.monday === thisMonday ? "This week" : r.label || fmtD(r.monday)}</b>
@@ -395,6 +397,11 @@ export function PlanFocusWeeks({ plan, first, last }: { plan: Plan; first: strin
             <FocusStack share={r.w.share} />
           </div>
         ))}
+        {rows.length > 8 && (
+          <button type="button" className="p-link lfw-more" onClick={() => setAll(!all)}>
+            {all ? "Show the next 8 weeks" : `Show all ${rows.length} weeks`}
+          </button>
+        )}
         <p className="p-hint">Each week's load from its planned sessions (this week: what you've run plus what's left). Green is inside its target zone. Single weeks swing (recovery and race weeks especially); the four weeks together are what count.</p>
       </div>
     </Section>

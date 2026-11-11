@@ -348,6 +348,7 @@ function HealthCharts({ rows, today }: { rows: HealthDay[]; today: string }) {
   const last = preds[preds.length - 1];
   return (
     <div className="health-charts">
+      <section className="hc">
       <h3>HRV</h3>
       <LineChart
         from={from}
@@ -362,8 +363,12 @@ function HealthCharts({ rows, today }: { rows: HealthDay[]; today: string }) {
           { name: "7-day average", kind: "line", className: "s-trend", points: pts("hrv_week") },
         ]}
       />
+      </section>
+      <section className="hc">
       <h3>Resting heart rate</h3>
       <LineChart from={from} to={today} height={130} digits={0} unit=" bpm" series={[{ name: "Resting HR", kind: "line", className: "s-acute", points: pts("rhr") }]} />
+      </section>
+      <section className="hc">
       <h3>Sleep</h3>
       <LineChart
         from={from}
@@ -375,10 +380,13 @@ function HealthCharts({ rows, today }: { rows: HealthDay[]; today: string }) {
           { name: "Score ÷ 10", kind: "line", className: "s-trend", points: pts("sleep_score", 0.1) },
         ]}
       />
+      </section>
+      <section className="hc">
       <h3>VO2 max (Garmin)</h3>
       <LineChart from={from} to={today} height={130} series={[{ name: "VO2 max", kind: "line", className: "s-trend", points: pts("vo2") }]} />
+      </section>
       {last && (
-        <>
+        <section className="hc hc-preds">
           <h3>Garmin's race predictions</h3>
           <table className="table">
             <thead>
@@ -411,7 +419,7 @@ function HealthCharts({ rows, today }: { rows: HealthDay[]; today: string }) {
               })}
             </tbody>
           </table>
-        </>
+        </section>
       )}
     </div>
   );

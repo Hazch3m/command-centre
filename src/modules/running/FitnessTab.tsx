@@ -199,7 +199,7 @@ export function FitnessTab({ f }: { f: Fitness }) {
         to={lastMs}
         height={185}
         today={today}
-        markers={f.config.projection.milestones.map((m) => ({ x: m.date, label: m.label }))}
+        markers={f.config.projection.milestones.map((m) => ({ x: m.date, label: m.label.split(" · ").pop() ?? m.label }))}
       />
       <details className="fit-why">
         <summary>How it's worked out</summary>

@@ -1,11 +1,11 @@
-/** Planner (calendar, to-do, habits) is optional: Settings → Show Planner. Kept on this phone. */
+/** Planner (calendar, to-do, habits) is optional and off unless you turn it on: Settings → Show Planner. Kept on this phone. */
 const PLANNER_KEY = "cc-show-planner";
 
 export const plannerShown = () => {
   try {
-    return localStorage.getItem(PLANNER_KEY) !== "0";
+    return localStorage.getItem(PLANNER_KEY) === "1";
   } catch {
-    return true;
+    return false;
   }
 };
 
