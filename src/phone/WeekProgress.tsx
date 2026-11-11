@@ -55,6 +55,14 @@ function cheer(fw: ForecastWeek, today: string, doneRuns: number, planned: numbe
   return [lead, rest].filter(Boolean).join(" ") || "A fresh week: one run at a time.";
 }
 
+/** One short line for Today: what's left this week and what's next. */
+function nextUp(today: string, doneRuns: number, planned: number, left: ForecastDay[]): string {
+  if (!left.length) return doneRuns >= planned && planned > 0 ? "Every run of the week done." : "Nothing more planned this week.";
+  const n = left[0];
+  const when = n.date === today ? "today" : n.date === addDays(today, 1) ? "tomorrow" : "on " + new Date(n.date + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long" });
+  return `${left.length} run${left.length === 1 ? "" : "s"} to go · next: ${sessionTitle(n.text, n.kind)} ${when}`;
+}
+
 /** This week at a glance: how much of it you've trained, each day, and your streaks. */
 export function WeekProgress({ plan, fw, runs, today, overrides, onDay, compact }: { plan: Plan; fw: ForecastWeek; runs: Run[]; today: string; overrides?: Map<string, string>; onDay?: (date: string) => void; compact?: boolean }) {
   const planned = fw.days.filter(isRun);
@@ -98,7 +106,7 @@ export function WeekProgress({ plan, fw, runs, today, overrides, onDay, compact 
         )}
       </div>
       <DayBars days={fw.days} today={today} onDay={onDay} height={compact ? 32 : 46} />
-      <p className="wp-cheer">{cheer(fw, today, doneRuns, planned.length, left)}</p>
+      <p className="wp-cheer">{compact ? nextUp(today, doneRuns, planned.length, left) : cheer(fw, today, doneRuns, planned.length, left)}</p>
       {!compact && <div className="wp-streaks">
         <span>
           <b className="num">🔥 {streak}</b>
