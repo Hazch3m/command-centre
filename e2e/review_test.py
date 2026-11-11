@@ -539,7 +539,7 @@ try:
             # Every page and sub-page scrolls as a whole: nothing wider than the window, and no chart
             # flatter than a strip (the complaint was wide, low charts on a laptop).
             wp.set_viewport_size({"width": 1270, "height": 630})
-            SHAPE = """() => { const flat = []; for (const e of document.querySelectorAll('main .chart > svg, main svg.tl-chart')) { const r = e.getBoundingClientRect(); if (r.width > 320 && r.height > 0 && r.width <= e.parentElement.clientWidth + 2 && r.width / r.height > 4.6) flat.push(Math.round(r.width) + 'x' + Math.round(r.height)); } return { flat, wide: document.documentElement.scrollWidth > innerWidth + 2 }; }"""
+            SHAPE = """() => { const flat = []; for (const e of document.querySelectorAll('main .chart > svg, main svg.tl-chart')) { const r = e.getBoundingClientRect(); if (r.width > 320 && r.height > 0 && r.width <= innerWidth && r.width / r.height > 4.6) flat.push(Math.round(r.width) + 'x' + Math.round(r.height)); } return { flat, wide: document.documentElement.scrollWidth > innerWidth + 2 }; }"""
             def lap(key):
                 wp.wait_for_timeout(1700)
                 wp.screenshot(path=f"{out}/40-laptop-{re.sub(r'[^a-z0-9]+', '-', key)}.png")
