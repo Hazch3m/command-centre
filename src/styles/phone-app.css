@@ -4918,6 +4918,8 @@ svg.effort {
 }
 .wa-phases span {
   position: absolute;
+  top: 0;
+  line-height: 0.95rem;
   overflow: hidden;
   font-size: 0.64rem;
   font-weight: 750;
@@ -5477,3 +5479,11 @@ svg.effort {
 .coach-run.tone-good { --tone: #2e9e5b; } .coach-run.tone-warn { --tone: #d18a1a; } .coach-run.tone-bad { --tone: #e04e3e; }
 .coach-run b { color: var(--tone); }
 .coach-run small { color: var(--text-2); font-size: 0.82rem; }
+
+/* Runs: step or swipe the weekly chart back through earlier weeks */
+.p-wchart-nav { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin: 0 0 0.35rem; font-size: 0.82rem; color: var(--text-2); }
+.p-wchart-nav > span { display: flex; align-items: baseline; gap: 0.6rem; }
+.p-wchart-nav .p-round { width: 2rem; height: 2rem; font-size: 1.1rem; }
+.p-wchart-nav .p-round:disabled { opacity: 0.3; }
+
+.p-less { display: block; margin: 0.3rem auto 0.6rem; }

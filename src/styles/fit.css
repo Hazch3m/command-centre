@@ -36,11 +36,16 @@
   .subpage .page-head h1 { font-size: 1.25rem; line-height: 1.15; }
   .subpage .page-tabs { margin: 0; }
 
-  /* ---------- Home ---------- */
-  .hv { max-width: 1320px; margin: 0 auto; width: 100%; min-height: 0; }
-  .hv-body { flex: none; min-height: 0; align-items: start; }
-  .hv-build { flex: none; min-height: 0; }
-  .hv-build .chart { flex: none; width: 100%; aspect-ratio: 2.4 / 1; min-height: 0; overflow: hidden; }
+  /* ---------- The app's tabs down the left, so the page gets the window's full height ---------- */
+  :root:not(.phone-root) .app { position: relative; padding-left: 10.5rem; }
+  :root:not(.phone-root) .topbar { position: absolute; left: 0; top: 0; bottom: 0; width: 10.5rem; box-sizing: border-box; flex-direction: column; align-items: stretch; gap: 0.9rem; padding: 0.9rem 0.6rem 0.8rem 0.8rem; }
+  :root:not(.phone-root) .topbar .brand { padding: 0 0.3rem; }
+  :root:not(.phone-root) .topbar .tabs { flex-direction: column; gap: 0.2rem; padding: 0.3rem; border-radius: 16px; }
+  :root:not(.phone-root) .topbar .tab { text-align: left; padding: 0.5rem 0.8rem; font-size: 0.9rem; border-radius: 11px; }
+  :root:not(.phone-root) .topbar .tab-ind { border-radius: 11px; }
+  :root:not(.phone-root) .topbar .head-clock { margin-left: 0; margin-top: auto; padding: 0 0.3rem; flex-direction: column; align-items: flex-start; gap: 0; }
+  :root:not(.phone-root) .topbar .topbar-actions { margin: 0; flex-wrap: wrap; justify-content: flex-start; gap: 0.3rem; }
+  :root:not(.phone-root) .tab-page { padding: 0.8rem 0.9rem 0.9rem 0.3rem; }
 
   /* ---------- Training → Plan: the week, with the weekly km above and the detail beside ---------- */
   .plan-home2 { display: grid !important; flex: none !important; min-height: 0; grid-template-columns: minmax(0, 1fr) minmax(18rem, 23rem); gap: 1rem; align-items: start; }
