@@ -171,3 +171,6 @@
   .fit-dash { --chart-scale: 0.62; }
   .card-page.card-health { --chart-scale: 0.85; }
 }
+
+/* The target line's label is in the line under the chart; over the bars it was unreadable. */
+.shape-weekly .chart-ref-label { display: none; }
