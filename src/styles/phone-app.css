@@ -5426,3 +5426,10 @@ svg.effort {
 .db-day.z-rest .db-bar { background: none; }
 .db-day.z-rest .db-bar::after { content: ""; position: absolute; left: 22%; right: 22%; bottom: 0; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--text) 12%, transparent); }
 .p-weekprog .p-bar { min-width: 0; }
+/* Today: the day and date on one line, so more of the page fits above the fold */
+[data-pane="today"] .p-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 0.6rem; padding-bottom: 0.5rem; }
+[data-pane="today"] .p-title h1 { font-size: 2.2rem; }
+.wp-c .wp-cheer { -webkit-line-clamp: 1; }
+.wp.wp-c { margin-bottom: 0.7rem; }
+/* Tab bar: solid enough that the page behind doesn't show through as ghost text */
+.p-tabs { background: color-mix(in srgb, var(--bg) 94%, transparent); }
