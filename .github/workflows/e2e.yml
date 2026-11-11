@@ -41,7 +41,7 @@ jobs:
           git -c user.name=ci -c user.email=ci@localhost add -A
           git -c user.name=ci -c user.email=ci@localhost commit -qm "Builds of ${GITHUB_SHA}"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}" e2e-dist
-      - run: pip install --quiet playwright && python -m playwright install --with-deps chromium
+      - run: pip install --quiet playwright && (python -m playwright install --with-deps chromium || python -m playwright install chromium)
       - name: Fixtures dated to today
         run: |
           mkdir -p /tmp/fix && cp e2e/fixtures/* /tmp/fix/
