@@ -25,6 +25,15 @@ jobs:
         run: |
           npx vite build --mode browser --outDir /tmp/pv --base ./
           npm run build:phone && cp -r cloud/public /tmp/ppv
+      - name: Builds to the e2e-dist branch (to try layouts against, without a rebuild)
+        if: always()
+        run: |
+          rm -rf /tmp/dist && mkdir -p /tmp/dist && cp -r /tmp/pv /tmp/dist/pv && cp -r /tmp/ppv /tmp/dist/ppv
+          cd /tmp/dist
+          git init -q -b e2e-dist
+          git -c user.name=ci -c user.email=ci@localhost add -A
+          git -c user.name=ci -c user.email=ci@localhost commit -qm "Builds of ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}" e2e-dist
       - name: Fixtures dated to today
         run: |
           mkdir -p /tmp/fix && cp e2e/fixtures/* /tmp/fix/
