@@ -76,7 +76,7 @@ export function PaceOnPointTab({ plan, runs }: { plan: Plan; runs: Run[] }) {
   const p = usePaceChecks(plan, runs, 12);
   if (!p) return <p className="muted">Loading…</p>;
   return (
-    <>
+    <div className="pace-page">
       <p className="lead">
         How close each run was to the pace the plan asked for.{" "}
         {p.last14 != null ? (
@@ -108,6 +108,7 @@ export function PaceOnPointTab({ plan, runs }: { plan: Plan; runs: Run[] }) {
           ))}
         </div>
       )}
+      <div className="pace-rows">
       <table className="table">
         <thead>
           <tr>
@@ -141,8 +142,9 @@ export function PaceOnPointTab({ plan, runs }: { plan: Plan; runs: Run[] }) {
           ))}
         </tbody>
       </table>
+      </div>
       {!p.rows.length && <p className="muted">Runs on planned days will appear here once the plan starts.</p>}
-    </>
+    </div>
   );
 }
 
@@ -172,7 +174,7 @@ export function IntervalChart({ rows }: { rows: { day: ForecastDay; check: PaceC
       </div>
     );
   const W = Math.max(320, box.w || 800);
-  const H = 300;
+  const H = Math.round(300 * box.scale);
   const TOL = 5;
   const pad = { top: 14, bottom: 34, left: 44, right: 8 };
   const all = items.flatMap((r) => [r.check.fastest!, r.check.slowest!, r.check.target[0] - TOL, r.check.target[1] + TOL]);

@@ -106,7 +106,7 @@ export function GoalPath({ f }: { f: Fitness }) {
   const onTrack = nowM <= reqNow + 5;
 
   return (
-    <>
+    <div className="goal-path">
       <p className="lead">
         To run <b>{hmm(final.seconds)}</b> at {final.label.split(" · ")[1] ?? "the goal race"} ({fmtDate(final.date)}), your {dist === "Marathon" ? "marathon" : dist} prediction needs to come down
         steadily from {duration(model.base[dist])} ({fmtDate(startDate)}) to {duration(required(dist, final.date))}. Today it should be <b>{duration(reqNow)}</b>; it's <b className={onTrack ? "tone-accent" : "tone-danger"}>{duration(nowM)}</b>{" "}
@@ -141,6 +141,8 @@ export function GoalPath({ f }: { f: Fitness }) {
         ))}
       </div>
 
+      <div className="gp-row">
+      <div className="gp-chart">
       <div className="goal-bar">
         <h3>{dist} prediction against the path</h3>
         <div className="segmented small-seg">
@@ -154,7 +156,7 @@ export function GoalPath({ f }: { f: Fitness }) {
       <LineChart
         from={from}
         to={final.date}
-        height={220}
+        height="fill"
         today={today}
         format={dist === "Marathon" || dist === "Half" ? hmm : (v: number) => duration(v)}
         markers={goals.map((g) => ({ x: g.date, label: g.label.split(" · ")[0] }))}
@@ -168,7 +170,9 @@ export function GoalPath({ f }: { f: Fitness }) {
         The dashed line is the prediction you need on each date, improving at a steady rate of speed through each goal. Under the line is ahead of plan. It fills in every day from
         Garmin's predictor.
       </p>
+      </div>
 
+      <div className="gp-months">
       <h3>Month by month</h3>
       <table className="table">
         <thead>
@@ -205,7 +209,9 @@ export function GoalPath({ f }: { f: Fitness }) {
           })}
         </tbody>
       </table>
-    </>
+      </div>
+      </div>
+    </div>
   );
 }
 
@@ -348,7 +354,7 @@ export function ShapeView({ f, plan, overrides }: { f: Fitness; plan: Plan; over
   const s = data.now;
   const pctOf = (x: number) => Math.round((x / need) * 100);
   return (
-    <>
+    <div className="shape-view">
       <div className="shape-controls">
         <Choice label="Race" value={set.dist} options={SHAPE_DISTS.map((d) => ({ v: d.name, l: d.name }))} onChange={(v) => update({ dist: v })} />
         <Choice
@@ -417,11 +423,13 @@ export function ShapeView({ f, plan, overrides }: { f: Fitness; plan: Plan; over
           );
         })}
       </div>
+      <div className="sv-row">
+      <div className="sv-main">
       <h3>Shape over time</h3>
       <LineChart
         from={data.past[0].x}
         to={final.date}
-        height={220}
+        height="fill"
         today={today}
         digits={0}
         unit="%"
@@ -433,13 +441,15 @@ export function ShapeView({ f, plan, overrides }: { f: Fitness; plan: Plan; over
           { name: "Ready", kind: "dashed", className: "s-goal", points: [{ x: data.past[0].x, y: 100 }, { x: final.date, y: 100 }] },
         ]}
       />
+      </div>
       <WeeklyBars weeks={data.weeks} thisWeek={data.thisWeek} need={data.at(final.date)} finalLabel={final.label.split(" · ")[0]} longMin={set.longMin} />
-      <p className="muted small">
+      </div>
+      <p className="muted small sv-note">
         Race tiles show your shape two weeks out, at the start of the taper: it always dips over the last two weeks as the volume comes down, and that's the fitness you take
         into the race. Targets grow with your fitness (VO2 max 50 → ~85 km/week and ~30 km long runs; 60 → ~105 and ~32). The projection uses the plan's weeks as estimated in the training
         calendar, including any days you've changed; the what-if buttons only change this page, not the plan.
       </p>
-    </>
+    </div>
   );
 }
 
@@ -472,7 +482,7 @@ function WeeklyBars({
         </span>
       </div>
       <BarChart
-        height={170}
+        height="fill"
         unit=" km"
         bars={weeks.map((w) => ({
           label: label(w.week),
@@ -490,7 +500,7 @@ function WeeklyBars({
         </span>
       </div>
       <BarChart
-        height={150}
+        height="fill"
         unit=" km"
         bars={weeks.map((w) => ({
           label: label(w.week),

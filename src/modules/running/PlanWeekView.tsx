@@ -14,6 +14,7 @@ import { km, pace } from "./stats";
 import { loadDetails, loadOverrides, type Run } from "./strava";
 import { DayEditor } from "./WeekCalendar";
 import { BarChart } from "../../shell/charts";
+import { EffortProfile, segmentsOf } from "../../phone/EffortProfile";
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DOW_LONG = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -25,7 +26,7 @@ const phaseName = (p: string) => p.replace(/\s*\(.*\)\s*$/, "").replace(/^Recove
  * The plan one week at a time, days side by side as tiles (like Runna's week
  * view). ‹ › or the arrow keys move between weeks; click a day to change it.
  */
-export function PlanWeekView({ plan, runs, hideStrip }: { plan: Plan; runs: Run[]; hideStrip?: boolean }) {
+export function PlanWeekView({ plan, runs, hideStrip, rich }: { plan: Plan; runs: Run[]; hideStrip?: boolean; rich?: boolean }) {
   const today = useToday();
   const thisMonday = mondayOf(today);
   const range = useMemo(() => forecastRange(plan, today), [plan, today]);
@@ -103,7 +104,7 @@ export function PlanWeekView({ plan, runs, hideStrip }: { plan: Plan; runs: Run[
   const pct = planned ? Math.min(1, fw.actualKm / planned) : 0;
   const idx = fw.week ? plan.weeks.indexOf(fw.week) : -1;
   return (
-    <div className="pwv" tabIndex={0} onKeyDown={onKey}>
+    <div className={"pwv" + (rich ? " pwv-rich" : "")} tabIndex={0} onKeyDown={onKey}>
       <div className="pwv-head">
         <button className="btn icon pwv-arrow" onClick={() => go(-1)} disabled={monday <= range.first} aria-label="Previous week">
           ‹
@@ -172,6 +173,20 @@ export function PlanWeekView({ plan, runs, hideStrip }: { plan: Plan; runs: Run[
                 {!d.race && t !== "rest" && <PracticeTag text={d.text} />}
               </span>
               {d.pace && t !== "rest" && <span className="pwv-pace num">{/\d:\d\d/.test(d.pace) ? `${d.pace}/km` : d.pace}</span>}
+              {rich && fw.week && !d.race && t !== "rest" && (d.km ?? 0) > 0 && (
+                <span className="pwv-shape">
+                  <EffortProfile text={d.text} kind={d.kind} plan={plan} height={34} />
+                  {segmentsOf(d.text, plan).map((sg, j) => (
+                    <span key={j} className={`pwv-seg seg-${sg.kind}`}>
+                      <span>
+                        {sg.label}
+                        {sg.detail ? <small> {sg.detail}</small> : null}
+                      </span>
+                      {sg.km ? <span className="num">{sg.km >= 9.95 ? Math.round(sg.km) : Math.round(sg.km * 10) / 10} km</span> : null}
+                    </span>
+                  ))}
+                </span>
+              )}
               <span className="pwv-tags">
                 {d.strength && <span className="wk-tag">Strength {d.strength}</span>}
                 {d.edited && <span className="wk-tag edited">Changed</span>}
@@ -288,7 +303,7 @@ export function PlanWeeksChart({ plan, runs }: { plan: Plan; runs: Run[] }) {
           ‹
         </button>
         <div className="pwc-chart">
-          <BarChart bars={bars} height={95} unit=" km" axis showValues={false} onBar={(k) => window.dispatchEvent(new CustomEvent("cc:plan-week-go", { detail: shown[k].monday }))} />
+          <BarChart bars={bars} height="fill" unit=" km" axis showValues={false} onBar={(k) => window.dispatchEvent(new CustomEvent("cc:plan-week-go", { detail: shown[k].monday }))} />
         </div>
         <button type="button" className="pwc-nav" onClick={() => setStart(Math.min(weeks.length - SPAN, lo + 8))} disabled={lo + SPAN >= weeks.length} aria-label="Later weeks">
           ›

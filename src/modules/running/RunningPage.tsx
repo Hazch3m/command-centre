@@ -8,7 +8,6 @@ import { useQuery } from "../../core/useQuery";
 import { loadOverrides, type Run } from "./strava";
 import type { Plan } from "./plan";
 import { WeekProgress } from "../../phone/WeekProgress";
-import { Session } from "../../phone/Today";
 import { WeekAhead } from "../../phone/WeekAhead";
 import { ErrorNote } from "../../shell/ui";
 import { mondayOf, upcomingRaces, weekFor } from "./plan";
@@ -59,11 +58,17 @@ const PLAN_VIEWS = [
   { id: "list", label: "All weeks" },
   { id: "six", label: "6 weeks" },
 ] as const;
+const PROG_VIEWS = [
+  { id: "pbs", label: "Personal bests" },
+  { id: "races", label: "Races & benchmarks" },
+  { id: "history", label: "Mileage & marathon blocks" },
+] as const;
 const EDIT_VIEWS = [
   { id: "build", label: "Build a plan" },
   { id: "races", label: "Races" },
   { id: "import", label: "Import CSV" },
   { id: "adjust", label: "Adjust" },
+  { id: "targets", label: "Targets" },
   { id: "refresh", label: "Refresh & export" },
   { id: "about", label: "About this plan" },
   { id: "weeks", label: "Edit week by week" },
@@ -125,8 +130,7 @@ function PlanHome({ plan, runs }: { plan: Plan; runs: Run[] }) {
     <div className="plan-home2">
       <div className="ph-main">
         <PlanWeeksChart plan={plan} runs={runs} />
-        <PlanWeekView plan={plan} runs={runs} hideStrip />
-        <NextSession plan={plan} runs={runs} />
+        <PlanWeekView plan={plan} runs={runs} hideStrip rich />
       </div>
       <aside className={`ph-side side-${side}`}>
         <nav className="segmented small-seg ph-tabs" role="tablist">
@@ -147,25 +151,6 @@ function PlanHome({ plan, runs }: { plan: Plan; runs: Run[] }) {
           {(side === "goal" || side === "ready") && <GoalCarousel plan={plan} split />}
         </div>
       </aside>
-    </div>
-  );
-}
-
-/** The next run in full under the week: its parts, lengths and paces. */
-function NextSession({ plan, runs }: { plan: Plan; runs: Run[] }) {
-  const today = useToday();
-  const version = useDataVersion("running");
-  const { data: overrides } = useQuery(loadOverrides, [version]);
-  const d = useMemo(() => {
-    const m = mondayOf(today);
-    const days = [...forecastWeek(plan, m, runs, overrides).days, ...forecastWeek(plan, addDays(m, 7), runs, overrides).days];
-    return days.find((x) => x.date >= today && (x.km ?? 0) > 0 && !/^rest\b/i.test(x.text) && !(x.date === today && x.runs.length)) ?? null;
-  }, [plan, runs, overrides, today]);
-  if (!d) return null;
-  const label = d.date === today ? "Today" : d.date === addDays(today, 1) ? "Tomorrow" : new Date(d.date + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long" });
-  return (
-    <div className="ph-next pl-embed">
-      <Session d={d} label={`Next run · ${label}`} />
     </div>
   );
 }
@@ -199,6 +184,7 @@ export function RunningPage() {
   }, []);
   const [view, setView] = useState<(typeof PLAN_VIEWS)[number]["id"]>("week");
   const [editView, setEditView] = useState<(typeof EDIT_VIEWS)[number]["id"]>("build");
+  const [progView, setProgView] = useState<(typeof PROG_VIEWS)[number]["id"]>("pbs");
 
   const data = useMemo(() => {
     if (!plan) return null;
@@ -297,6 +283,12 @@ export function RunningPage() {
             {editView === "races" && <RaceManager plan={plan} />}
             {editView === "import" && <ImportPlan plan={plan} />}
             {editView === "adjust" && <PlanSettings plan={plan} />}
+            {editView === "targets" && (
+              <div className="targets-page">
+                <p className="muted small">How runs are judged and what the watch is told: pace or heart rate, and how strict to be on easy days.</p>
+                <TargetPrefs />
+              </div>
+            )}
             {editView === "refresh" && <PlanTools plan={plan} />}
             {editView === "about" && <AboutPlan plan={plan} />}
             {editView === "weeks" && <PlanEditor plan={plan} />}
@@ -313,12 +305,6 @@ export function RunningPage() {
                   </button>
                 ))}
               </span>
-              <details className="fold targets-fold">
-                <summary>
-                  Targets <span className="muted small">{plan.prefs?.mode === "hr" ? "heart rate" : "pace"} · easy runs {plan.prefs?.easyTarget === "feel" ? "by feel" : plan.prefs?.easyTarget === "wide" ? "wider range" : "plan's range"}{plan.prefs?.easyChecks ? "" : ", not judged"}</span>
-                </summary>
-                <TargetPrefs />
-              </details>
             </div>
             {/* The week (or weeks) first and widest; how the plan's going alongside. */}
             {view === "week" ? (
@@ -340,136 +326,151 @@ export function RunningPage() {
             )}
           </>
         )}
-        {tab === "progress" && <PbsTab />}
-        {tab === "progress" && <h3>Races</h3>}
         {tab === "progress" && (
           <>
-            <div className="tiles">
-              {data.upcoming.slice(0, 4).map((r) => (
-                <Tile key={r.name} label={r.name} value={`${r.days} days`} note={`${r.approx ? "≈ " : ""}${r.when} · target ${r.target}`} />
-              ))}
+            <div className="plan-view-switch">
+              <span className="segmented small-seg prog-views">
+                {PROG_VIEWS.map((v) => (
+                  <button key={v.id} className={progView === v.id ? "on" : ""} onClick={() => setProgView(v.id)}>
+                    {v.label}
+                  </button>
+                ))}
+              </span>
             </div>
-            <h3>Benchmarks</h3>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Checkpoint</th>
-                  <th>Date</th>
-                  <th>On track</th>
-                  <th>Behind</th>
-                  <th>Result</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {plan.benchmarks.map((b) => {
-                  const r = b.date && b.date <= today ? resultOn(runs, b.date) : null;
-                  const status = judgeBenchmark(b, r ? r.elapsed_time : null);
-                  return (
-                    <tr key={b.name}>
-                      <td>{b.name}</td>
-                      <td className="nowrap">{b.when}</td>
-                      <td>{b.onTrack}</td>
-                      <td>{b.behind}</td>
-                      <td className="num-col">{r ? duration(r.elapsed_time) : "–"}</td>
-                      <td>
-                        <span className={`status status-${status}`}>{STATUS_LABEL[status]}</span>
-                      </td>
+            {progView === "pbs" && <PbsTab />}
+            {progView === "races" && (
+              <div className="prog-races">
+                <div className="prog-col">
+                  <h3>Coming up</h3>
+                  <div className="tiles">
+                    {data.upcoming.slice(0, 4).map((r) => (
+                      <Tile key={r.name} label={r.name} value={`${r.days} days`} note={`${r.approx ? "≈ " : ""}${r.when} · target ${r.target}`} />
+                    ))}
+                  </div>
+                  <h3>Benchmarks</h3>
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Checkpoint</th>
+                        <th>Date</th>
+                        <th>On track</th>
+                        <th>Behind</th>
+                        <th>Result</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {plan.benchmarks.map((b) => {
+                        const r = b.date && b.date <= today ? resultOn(runs, b.date) : null;
+                        const status = judgeBenchmark(b, r ? r.elapsed_time : null);
+                        return (
+                          <tr key={b.name}>
+                            <td>{b.name}</td>
+                            <td className="nowrap">{b.when}</td>
+                            <td>{b.onTrack}</td>
+                            <td>{b.behind}</td>
+                            <td className="num-col">{r ? duration(r.elapsed_time) : "–"}</td>
+                            <td>
+                              <span className={`status status-${status}`}>{STATUS_LABEL[status]}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  <p className="muted small">Results are read from your runs: the run marked as a race on that day, or the longest run that day.</p>
+                </div>
+                <div className="prog-col">
+                  <h3>Every race, as a marathon equivalent</h3>
+                  <p className="muted small">Shorter races converted with Riegel's formula (exponent 1.06). Shorter bars are faster; the dashed line is your best. Green bars are actual marathons.</p>
+                  <BarChart
+                    bars={data.races.map((r) => ({
+                      label: r.date.slice(2, 4) + "/" + r.date.slice(5, 7),
+                      value: r.equiv / 60,
+                      highlight: r.km > 42,
+                      title: `${r.name} (${r.date}): ${duration(r.time)} → marathon ${duration(r.equiv)}`,
+                    }))}
+                    height={180}
+                    min={data.races.length ? Math.floor((Math.min(...data.races.map((r) => r.equiv)) / 60) * 0.9) : 0}
+                    refLine={data.races.length ? { value: Math.min(...data.races.map((r) => r.equiv)) / 60, label: `Best: ${duration(Math.min(...data.races.map((r) => r.equiv)))}` } : null}
+                  />
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Race</th>
+                        <th className="num-col">Time</th>
+                        <th className="num-col">Pace</th>
+                        <th className="num-col">Marathon equivalent</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...data.races].reverse().map((r) => (
+                        <tr key={r.id}>
+                          <td className="nowrap">{r.date}</td>
+                          <td>{r.name}</td>
+                          <td className="num-col">{duration(r.time)}</td>
+                          <td className="num-col">{pace(r.km * 1000, r.time)}/km</td>
+                          <td className="num-col">{duration(r.equiv)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            {progView === "history" && (
+              <div className="prog-history">
+                <div className="tiles">
+                  <Tile label="Average week, last 52" value={`${data.year.avgKm.toFixed(0)} km`} note="Including breaks and travel" />
+                  <Tile label="Weeks under 15 km" value={data.year.weeksUnder15} note="Last 52 weeks; the plan's target is none" />
+                  <Tile label="Runs of 30 km+" value={data.year.runs30Plus} note="Last 52 weeks" />
+                  <Tile
+                    label="Best marathon"
+                    value={(() => {
+                      const m = data.races.filter((r) => r.km > 42).sort((a, b) => a.time - b.time)[0];
+                      return m ? duration(m.time) : "–";
+                    })()}
+                    note="elapsed time"
+                  />
+                </div>
+                <h3>Kilometres per week since {data.sinceLabel}</h3>
+                <p className="muted small">Bars: what you ran; faint bars: the weeks your plan has ahead (scroll right). Bands: the plan's target for that week. Hover for details.</p>
+                <ScrollBars bars={data.weekly} height={220} unit=" km" perBar={16} focus={data.nowIndex} showValues={false} />
+
+                <h3>Marathon blocks (16 weeks before race day)</h3>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Block</th>
+                      <th>Race day</th>
+                      <th className="num-col">Avg km/week</th>
+                      <th className="num-col">Weeks under 30 km</th>
+                      <th className="num-col">Runs of 30 km+</th>
+                      <th className="num-col">Longest</th>
+                      <th>Result</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            <p className="muted small">Results are read from your runs: the run marked as a race on that day, or the longest run that day.</p>
-          </>
-        )}
+                  </thead>
+                  <tbody>
+                    {data.blocks.map((b) => (
+                      <tr key={b.name}>
+                        <td>{b.name}</td>
+                        <td className="nowrap">{fmtDate(b.date)} {b.date.slice(0, 4)}</td>
+                        <td className="num-col">{b.avgKm.toFixed(0)}</td>
+                        <td className="num-col">{b.weeksUnder30}</td>
+                        <td className="num-col">{b.runs30Plus}</td>
+                        <td className="num-col">{b.longest.toFixed(1)} km</td>
+                        <td>{b.result}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
 
-        {tab === "progress" && (
-          <>
-            <div className="tiles">
-              <Tile label="Average week, last 52" value={`${data.year.avgKm.toFixed(0)} km`} note="Including breaks and travel" />
-              <Tile label="Weeks under 15 km" value={data.year.weeksUnder15} note="Last 52 weeks; the plan's target is none" />
-              <Tile label="Runs of 30 km+" value={data.year.runs30Plus} note="Last 52 weeks" />
-              <Tile
-                label="Best marathon"
-                value={(() => {
-                  const m = data.races.filter((r) => r.km > 42).sort((a, b) => a.time - b.time)[0];
-                  return m ? duration(m.time) : "–";
-                })()}
-                note="elapsed time"
-              />
-            </div>
-            <h3>Kilometres per week since {data.sinceLabel}</h3>
-            <p className="muted small">Bars: what you ran; faint bars: the weeks your plan has ahead (scroll right). Bands: the plan's target for that week. Hover for details.</p>
-            <ScrollBars bars={data.weekly} height={220} unit=" km" perBar={16} focus={data.nowIndex} showValues={false} />
-
-            <h3>Marathon blocks (16 weeks before race day)</h3>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Block</th>
-                  <th>Race day</th>
-                  <th className="num-col">Avg km/week</th>
-                  <th className="num-col">Weeks under 30 km</th>
-                  <th className="num-col">Runs of 30 km+</th>
-                  <th className="num-col">Longest</th>
-                  <th>Result</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.blocks.map((b) => (
-                  <tr key={b.name}>
-                    <td>{b.name}</td>
-                    <td className="nowrap">{fmtDate(b.date)} {b.date.slice(0, 4)}</td>
-                    <td className="num-col">{b.avgKm.toFixed(0)}</td>
-                    <td className="num-col">{b.weeksUnder30}</td>
-                    <td className="num-col">{b.runs30Plus}</td>
-                    <td className="num-col">{b.longest.toFixed(1)} km</td>
-                    <td>{b.result}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            <h3>Every race, as a marathon equivalent</h3>
-            <p className="muted small">Shorter races converted with Riegel's formula (exponent 1.06). Shorter bars are faster; the dashed line is your best. Green bars are actual marathons.</p>
-            <BarChart
-              bars={data.races.map((r) => ({
-                label: r.date.slice(2, 4) + "/" + r.date.slice(5, 7),
-                value: r.equiv / 60,
-                highlight: r.km > 42,
-                title: `${r.name} (${r.date}): ${duration(r.time)} → marathon ${duration(r.equiv)}`,
-              }))}
-              height={180}
-              min={data.races.length ? Math.floor((Math.min(...data.races.map((r) => r.equiv)) / 60) * 0.9) : 0}
-              refLine={data.races.length ? { value: Math.min(...data.races.map((r) => r.equiv)) / 60, label: `Best: ${duration(Math.min(...data.races.map((r) => r.equiv)))}` } : null}
-            />
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Race</th>
-                  <th className="num-col">Time</th>
-                  <th className="num-col">Pace</th>
-                  <th className="num-col">Marathon equivalent</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...data.races].reverse().map((r) => (
-                  <tr key={r.id}>
-                    <td className="nowrap">{r.date}</td>
-                    <td>{r.name}</td>
-                    <td className="num-col">{duration(r.time)}</td>
-                    <td className="num-col">{pace(r.km * 1000, r.time)}/km</td>
-                    <td className="num-col">{duration(r.equiv)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              </div>
+            )}
             {!runs.length && <p className="muted">Connect Garmin in Settings to fill these in.</p>}
           </>
         )}
-
 
         {tab === "plan" && view !== "week" && (
           <details className="fold">

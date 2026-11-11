@@ -7,7 +7,7 @@ import { useLayoutEffect, useRef, useState } from "react";
  */
 export function useBox(fill: boolean) {
   const ref = useRef<HTMLDivElement>(null);
-  const [box, setBox] = useState({ w: 0, h: 0 });
+  const [box, setBox] = useState({ w: 0, h: 0, scale: 1 });
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -16,7 +16,9 @@ export function useBox(fill: boolean) {
       const cs = getComputedStyle(el);
       const px = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
       const py = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
-      setBox({ w: Math.max(0, Math.round(el.clientWidth - px)), h: Math.max(0, Math.round(el.clientHeight - py)) });
+      // A page can make its fixed-height charts shorter (a laptop screen): --chart-scale: 0.7.
+      const scale = parseFloat(cs.getPropertyValue("--chart-scale")) || 1;
+      setBox({ w: Math.max(0, Math.round(el.clientWidth - px)), h: Math.max(0, Math.round(el.clientHeight - py)), scale });
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -75,13 +77,24 @@ export function BarChart({
   const fill = height === "fill";
   const [ref, box] = useBox(fill);
   const W = box.w || 1000;
-  const H = fill ? Math.max(40, box.h - READOUT) : height;
+  const H = fill ? Math.max(40, box.h - READOUT) : Math.round(height * box.scale);
   const pad = { top: showValues ? 16 : 8, bottom: 18, left: axis ? 34 : 0, right: 0 };
   const top = Math.max(min + 1, ...bars.map((b) => Math.max(b.value, b.targetMax ?? b.target ?? 0)), refLine?.value ?? 0);
   const max = min + (top - min) * 1.08;
   const bw = (W - pad.left - pad.right) / Math.max(1, bars.length);
   const y = (v: number) => pad.top + (H - pad.top - pad.bottom) * (1 - (Math.max(v, min) - min) / (max - min));
   const h = hover != null ? bars[hover] : null;
+  // Axis labels: as many as fit, left to right, so neighbours never run into each other.
+  const labelled = new Set<number>();
+  let lastRight = -Infinity;
+  bars.forEach((b, i) => {
+    if (!b.label || i % labelEvery !== 0) return;
+    const half = (b.label.length * 6.4) / 2;
+    const cx = pad.left + i * bw + bw / 2;
+    if (cx - half < lastRight + 5) return;
+    labelled.add(i);
+    lastRight = cx + half;
+  });
   return (
     <div className={"chart" + (fill ? " chart-fill" : "")} ref={ref} onMouseLeave={() => setHover(null)}>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} role="img">
@@ -124,7 +137,7 @@ export function BarChart({
                   {b.value.toFixed(digits)}
                 </text>
               )}
-              {i % Math.max(labelEvery, Math.ceil(24 / bw)) === 0 && (
+              {labelled.has(i) && (
                 <text x={x + bw / 2} y={H - 4} className="chart-label" textAnchor="middle">
                   {b.label}
                 </text>
@@ -195,7 +208,7 @@ export function LineChart({
   const fill = height === "fill";
   const [ref, box] = useBox(fill);
   const W = box.w || 1000;
-  const H = fill ? Math.max(50, box.h - READOUT) : height;
+  const H = fill ? Math.max(50, box.h - READOUT) : Math.round(height * box.scale);
   const pad = { top: 14, bottom: 20, left: format ? 46 : 34, right: 8 };
   const fmt = format ?? ((v: number) => v.toFixed(digits));
   const x0 = dayNum(from);
@@ -289,10 +302,17 @@ export function LineChart({
         {today && today >= from && today <= to && <line x1={X(today)} x2={X(today)} y1={pad.top} y2={H - pad.bottom} className="chart-today" />}
         {markers
           .filter((m) => m.x >= from && m.x <= to)
-          .map((m) => (
-            <g key={m.x}>
+          .sort((a, b) => (a.x < b.x ? -1 : 1))
+          .map((m, i, all) => {
+            // Labels of markers close together step down a line each, so they never overlap.
+            let row = 0;
+            for (let k = i - 1; k >= 0 && X(m.x) - X(all[k].x) < Math.max(70, m.label.length * 6.2); k--) row++;
+            return { m, row: row % 3 };
+          })
+          .map(({ m, row }) => (
+            <g key={m.x + m.label}>
               <line x1={X(m.x)} x2={X(m.x)} y1={pad.top} y2={H - pad.bottom} className="chart-marker" />
-              <text x={X(m.x) - 4} y={pad.top + 2} className="chart-label chart-marker-label" textAnchor="end">
+              <text x={X(m.x) - 4} y={pad.top + 2 + row * 12} className="chart-label chart-marker-label" textAnchor="end">
                 {m.label}
               </text>
             </g>
@@ -359,7 +379,7 @@ export function XYChart({
   const [ref, box] = useBox(false);
   const [hover, setHover] = useState<number | null>(null);
   const W = box.w || 1000;
-  const H = height;
+  const H = Math.round(height * box.scale);
   const pad = { top: 8, bottom: 16, left: 46, right: 6 };
   if (points.length < 2) return null;
   const xs = points.map((p) => p[0]);

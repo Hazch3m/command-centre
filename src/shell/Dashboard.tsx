@@ -140,7 +140,7 @@ function PlannerPage() {
   };
   return (
     <div className="tab-page tab-page-planner">
-      <nav className="page-tabs planner-tabs" role="tablist" aria-label="Planner">
+      <nav className="segmented page-tabs planner-tabs" role="tablist" aria-label="Planner">
         {subs.map((m) => (
           <button key={m.id} type="button" role="tab" aria-selected={sub === m.id} className={sub === m.id ? "on" : ""} onClick={() => pick(m.id)}>
             {m.page!.label}

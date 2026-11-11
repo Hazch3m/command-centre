@@ -111,11 +111,11 @@ export function BuildingCard({ f, runs, details, today }: { f: Fitness; runs: Ru
   const h = hover != null ? weeks[hover] : null;
 
   return (
-    <section className="hm-sec hm-build">
+    <section className="hv-sec hv-build">
       <header>
         <h2>Are you building?</h2>
         <span className={`build-pill b-${status}`}>{STATUS[status].label}</span>
-        <span className="hm-sub">{STATUS[status].text}</span>
+        <span className="hv-sub">{STATUS[status].text}</span>
       </header>
       <div className="build-facts">
         <span>
@@ -228,13 +228,13 @@ export function RaceEquivalence({ f, runs, plan, today, news }: { f: Fitness; ru
   const strongest = rows.find((r) => r.v === top)!;
   const now = f.predictionBasis?.vdot ?? f.current ?? null;
   return (
-    <section className="hm-sec hm-equiv">
+    <section className="hv-sec hv-equiv">
       <header>
         <h2>Race times</h2>
-        <span className="hm-sub">now ({f.predictions[0]?.source === "garmin" ? "Garmin" : "your runs"}), your best race in 2 years, and what your {strongest.name} is worth</span>
+        <span className="hv-sub">now ({f.predictions[0]?.source === "garmin" ? "Garmin" : "your runs"}), your best race in 2 years, and what your {strongest.name} is worth</span>
       </header>
       {news}
-      <table className="hm-table hm-equiv-table">
+      <table className="hv-table hv-equiv-table">
         <thead>
           <tr>
             <th />
@@ -250,7 +250,7 @@ export function RaceEquivalence({ f, runs, plan, today, news }: { f: Fitness; ru
             const eq = predictTime(r.km * 1000, top);
             const gap = r.race ? r.race.time - eq : null;
             return (
-              <tr key={r.name} className={r.race ? "hm-click" : ""} onClick={r.race ? () => openRun(r.race!.id) : undefined}>
+              <tr key={r.name} className={r.race ? "hv-click" : ""} onClick={r.race ? () => openRun(r.race!.id) : undefined}>
                 <td>
                   <b>{r.name}</b>
                 </td>
@@ -277,7 +277,7 @@ export function RaceEquivalence({ f, runs, plan, today, news }: { f: Fitness; ru
                   )}
                 </td>
                 <td className="r num">
-                  {r.v != null && <span className={"hm-vdot " + (r.v >= top - 0.3 ? "best" : r.v >= top - 1.5 ? "near" : "far")}>{r.v.toFixed(1)}</span>}
+                  {r.v != null && <span className={"hv-vdot " + (r.v >= top - 0.3 ? "best" : r.v >= top - 1.5 ? "near" : "far")}>{r.v.toFixed(1)}</span>}
                 </td>
                 <td className="r num">{duration(eq)}</td>
                 <td className={"r num " + (gap == null ? "muted" : gap <= 5 ? "up" : gap / eq > 0.03 ? "down" : "")}>{gap == null ? "–" : gap <= 5 ? "★ best" : `−${duration(gap)}`}</td>
@@ -286,7 +286,7 @@ export function RaceEquivalence({ f, runs, plan, today, news }: { f: Fitness; ru
           })}
         </tbody>
       </table>
-      <p className="hm-note">
+      <p className="hv-note">
         Strongest: <b>{strongest.name}</b> (VDOT {top.toFixed(1)}).
         {now != null ? ` Your fitness now: VDOT ${now.toFixed(1)}${now > top + 0.3 ? ", above your best race: a PB is in your legs" : now < top - 1 ? ", below your best race" : ", about your best race"}.` : ""}{" "}
         {(() => {
