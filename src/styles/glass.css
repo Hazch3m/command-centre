@@ -195,12 +195,12 @@
 }
 
 /* Today on the phone: the run, the week and the build all fit on the first screen. */
-:root.phone-root .p-app:not(.p-wide) [data-pane="today"] .p-title h1 { font-size: 2rem; }
+:root.phone-root .p-app:not(.p-wide) [data-pane="today"] .p-title h1 { font-size: 1.75rem; }
 :root.phone-root .p-app:not(.p-wide) [data-pane="today"] .p-title { padding-bottom: 0.4rem; }
-:root.phone-root .p-app:not(.p-wide) [data-pane="today"] .p-screen { gap: 0.7rem; }
+:root.phone-root .p-app:not(.p-wide) [data-pane="today"] .p-screen { gap: 0.6rem; }
 :root.phone-root .p-app:not(.p-wide) [data-pane="today"] .p-screen > * { margin-bottom: 0; }
 .p-session.p-session-c { padding: 0.7rem 0.9rem 0.75rem; gap: 0.4rem; }
-.p-session-c .p-session-km { font-size: 2.7rem; }
+.p-session-c .p-session-km { font-size: 2.5rem; }
 .wp.wp-c { padding: 0.65rem 0.9rem 0.7rem; gap: 0.4rem; margin-bottom: 0; }
 .wp-c .db-bar { height: 26px !important; }
 .wa.compact { padding-top: 0.75rem; padding-bottom: 0.7rem; gap: 0.3rem; }
