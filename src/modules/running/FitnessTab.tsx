@@ -197,7 +197,7 @@ export function FitnessTab({ f }: { f: Fitness }) {
         series={vo2Series(f, from, lastMs)}
         from={from}
         to={lastMs}
-        height={185}
+        height="fill"
         today={today}
         markers={f.config.projection.milestones.map((m) => ({ x: m.date, label: m.label.split(" · ").pop() ?? m.label }))}
       />
@@ -268,7 +268,7 @@ export function FitnessTab({ f }: { f: Fitness }) {
       <LineChart
         from={loadFrom}
         to={today}
-        height={115}
+        height="fill"
         digits={0}
         yMin={0}
         series={[
@@ -291,7 +291,7 @@ export function FitnessTab({ f }: { f: Fitness }) {
       <LineChart
         from={from}
         to={today}
-        height={115}
+        height="fill"
         digits={2}
         unit=" m/beat"
         series={[

@@ -353,7 +353,7 @@ function HealthCharts({ rows, today }: { rows: HealthDay[]; today: string }) {
       <LineChart
         from={from}
         to={today}
-        height={150}
+        height="fill"
         digits={0}
         unit=" ms"
         series={[
@@ -366,14 +366,14 @@ function HealthCharts({ rows, today }: { rows: HealthDay[]; today: string }) {
       </section>
       <section className="hc">
       <h3>Resting heart rate</h3>
-      <LineChart from={from} to={today} height={130} digits={0} unit=" bpm" series={[{ name: "Resting HR", kind: "line", className: "s-acute", points: pts("rhr") }]} />
+      <LineChart from={from} to={today} height="fill" digits={0} unit=" bpm" series={[{ name: "Resting HR", kind: "line", className: "s-acute", points: pts("rhr") }]} />
       </section>
       <section className="hc">
       <h3>Sleep</h3>
       <LineChart
         from={from}
         to={today}
-        height={130}
+        height="fill"
         digits={1}
         series={[
           { name: "Hours", kind: "dots", className: "s-est", points: pts("sleep_secs", 1 / 3600) },
@@ -383,7 +383,7 @@ function HealthCharts({ rows, today }: { rows: HealthDay[]; today: string }) {
       </section>
       <section className="hc">
       <h3>VO2 max (Garmin)</h3>
-      <LineChart from={from} to={today} height={130} series={[{ name: "VO2 max", kind: "line", className: "s-trend", points: pts("vo2") }]} />
+      <LineChart from={from} to={today} height="fill" series={[{ name: "VO2 max", kind: "line", className: "s-trend", points: pts("vo2") }]} />
       </section>
       {last && (
         <section className="hc hc-preds">

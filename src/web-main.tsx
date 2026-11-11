@@ -7,6 +7,7 @@ import { isLinked, loadLocal, phoneState, refresh, signInWithAppleWeb } from "./
 import { Dashboard } from "./shell/Dashboard";
 import "./styles/phone-app.css";
 import "./styles/web.css";
+import "./styles/fit.css";
 
 /**
  * Pacelife on the web (pacelife.run/web): the desktop view of your account, for looking at the

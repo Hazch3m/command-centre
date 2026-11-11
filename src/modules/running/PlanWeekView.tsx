@@ -303,7 +303,7 @@ export function PlanWeeksChart({ plan, runs }: { plan: Plan; runs: Run[] }) {
           ‹
         </button>
         <div className="pwc-chart">
-          <BarChart bars={bars} height={95} unit=" km" axis showValues={false} onBar={(k) => window.dispatchEvent(new CustomEvent("cc:plan-week-go", { detail: shown[k].monday }))} />
+          <BarChart bars={bars} height="fill" unit=" km" axis showValues={false} onBar={(k) => window.dispatchEvent(new CustomEvent("cc:plan-week-go", { detail: shown[k].monday }))} />
         </div>
         <button type="button" className="pwc-nav" onClick={() => setStart(Math.min(weeks.length - SPAN, lo + 8))} disabled={lo + SPAN >= weeks.length} aria-label="Later weeks">
           ›
