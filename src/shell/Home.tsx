@@ -11,7 +11,7 @@ import { pace } from "../modules/running/stats";
 import { loadDetails, loadOverrides } from "../modules/running/strava";
 import { useRunningData } from "../modules/running/useRunning";
 import { predictionChange } from "../modules/running/goalTrend";
-import { EffortProfile, segmentsOf, zoneOf } from "../phone/EffortProfile";
+import { segmentsOf, zoneOf } from "../phone/EffortProfile";
 import { sessionTitle } from "../phone/Today";
 import { BuildingCard, RaceEquivalence } from "./HomeCharts";
 import { useNav } from "./nav";
@@ -92,163 +92,159 @@ export function Home() {
   const h = latestHealth(health);
   const left = fw.days.filter((d) => d.date >= today && isRun(d) && !d.runs.length).reduce((a, d) => a + (d.km ?? 0), 0);
 
+  const maxKm = Math.max(8, ...fw.days.map((d) => Math.max(d.km ?? 0, d.actualKm)));
+  const sleep = h.sleep_secs != null ? `${Math.floor(h.sleep_secs / 3600)}:${String(Math.round((h.sleep_secs % 3600) / 60)).padStart(2, "0")}` : null;
+
   return (
     <div className="hv">
-      {/* One line: where you are this week, the race you're building to, how you've recovered. */}
-      <header className="hv-head">
-        <div className="hv-wk">
-          <span className="hv-eyebrow">
-            {fw.week ? `Week ${fw.week.week}` : "This week"}
-            {fw.week?.phase ? ` · ${fw.week.phase.replace(/\s*\(.*\)\s*$/, "")}` : ""} · {fmt(monday)} – {fmt(addDays(monday, 6))}
-          </span>
-          <span className="hv-km">
-            <b className="num">{fw.actualKm.toFixed(fw.actualKm < 10 ? 1 : 0)}</b> of {Math.round(pk)} km
-            {left > 0 && <small> · {Math.round(left)} km to go</small>}
-          </span>
+      <div className="hv-main">
+        {/* The week as a chart: a bar a day, the outline what's planned and the fill what you ran. */}
+        <section className="hv-sec hv-week home-week" aria-label="This week">
+          <header>
+            <h2>{fw.week ? `Week ${fw.week.week}` : "This week"}</h2>
+            <span className="hv-sub">
+              {fw.week?.phase ? `${fw.week.phase.replace(/\s*\(.*\)\s*$/, "")} · ` : ""}
+              {fmt(monday)} – {fmt(addDays(monday, 6))}
+            </span>
+            <span className="hv-week-km">
+              <b className="num">{fw.actualKm.toFixed(fw.actualKm < 10 ? 1 : 0)}</b> of {Math.round(pk)} km
+              {left > 0 && <small> · {Math.round(left)} to go</small>}
+            </span>
+          </header>
           <span className="hv-bar" aria-hidden="true">
             <i style={{ width: `${pct * 100}%` }} />
           </span>
-        </div>
-        {goal && (
-          <button type="button" className="hv-race" onClick={() => go("running")}>
-            <span className="hv-eyebrow">Building to</span>
-            <b>{goal.name}</b>
-            <small>
-              <span className="num">{goal.days}</span> days{goal.target ? ` · goal ${goal.target}` : ""}
-            </small>
-          </button>
-        )}
-        <div className="hv-health" role="group" aria-label="Recovery">
-          {h.readiness != null && (
-            <span>
-              <small>Readiness</small>
-              <b className="num">{h.readiness}</b>
-            </span>
-          )}
-          {h.hrv != null && (
-            <span>
-              <small>HRV</small>
-              <b className="num">{Math.round(h.hrv)}</b>
-            </span>
-          )}
-          {h.rhr != null && (
-            <span>
-              <small>RHR</small>
-              <b className="num">{Math.round(h.rhr)}</b>
-            </span>
-          )}
-          {h.sleep_secs != null && (
-            <span>
-              <small>Sleep</small>
-              <b className="num">
-                {Math.floor(h.sleep_secs / 3600)}:{String(Math.round((h.sleep_secs % 3600) / 60)).padStart(2, "0")}
-              </b>
-            </span>
-          )}
-        </div>
-      </header>
-
-      <PredictionNews runs={runs} today={today} />
-
-      {/* This week, day by day, with each session's shape. */}
-      <section className="hv-week home-week" aria-label="This week">
-        {fw.days.map((d, i) => {
-          const run = isRun(d) || !!d.race;
-          const z = d.race ? "race" : run ? zoneOf(d.text, d.kind) : "rest";
-          const work = run && !d.race ? segmentsOf(d.text, plan).find((x) => x.kind === "work") : undefined;
-          return (
-            <button type="button" key={d.date} className={`hv-day z-${z}` + (d.date === today ? " today" : "") + (d.runs.length ? " done" : d.date < today && run ? " missed" : "")} onClick={() => openDay(go, d.date)}>
-              <span className="hv-day-top">
-                <b>{d.date === today ? "Today" : DOW[i]}</b> <span>{parseKey(d.date).getDate()}</span>
-                {d.runs.length > 0 && <span className="hv-tick">✓ {d.actualKm.toFixed(1)}</span>}
-              </span>
-              {run ? (
-                <>
-                  <span className="hv-day-km num">
-                    {d.km}
-                    <small> km</small>
+          <div className="hv-days">
+            {fw.days.map((d, i) => {
+              const run = isRun(d) || !!d.race;
+              const z = d.race ? "race" : run ? zoneOf(d.text, d.kind) : "rest";
+              const work = run && !d.race ? segmentsOf(d.text, plan).find((x) => x.kind === "work") : undefined;
+              const plannedKm = d.km ?? 0;
+              return (
+                <button type="button" key={d.date} className={`hv-day z-${z}` + (d.date === today ? " today" : "") + (d.runs.length ? " done" : d.date < today && run ? " missed" : "")} onClick={() => openDay(go, d.date)}>
+                  <span className="hv-day-col">
+                    <span className="hv-day-num num">{d.runs.length ? d.actualKm.toFixed(1) : run ? plannedKm : ""}</span>
+                    <span className="hv-day-bars">
+                      {plannedKm > 0 && <i className="hv-day-plan" style={{ height: `${(plannedKm / maxKm) * 100}%` }} />}
+                      {d.actualKm > 0 && <i className="hv-day-done" style={{ height: `${(d.actualKm / maxKm) * 100}%` }} />}
+                    </span>
                   </span>
-                  <span className="hv-day-title">{d.race ? d.race.name : sessionTitle(d.text, d.kind)}</span>
+                  <span className="hv-day-top">
+                    <b>{d.date === today ? "Today" : DOW[i]}</b> <span>{parseKey(d.date).getDate()}</span>
+                    {d.runs.length > 0 && <span className="hv-tick">✓</span>}
+                  </span>
+                  <span className="hv-day-title">{run ? (d.race ? d.race.name : sessionTitle(d.text, d.kind)) : "Rest"}</span>
                   {work && <span className="hv-day-work">{work.label}</span>}
-                  {!d.race && <EffortProfile text={d.text} kind={d.kind} plan={plan} height={30} />}
-                </>
-              ) : (
-                <span className="hv-day-rest">Rest</span>
-              )}
-            </button>
-          );
-        })}
-      </section>
+                </button>
+              );
+            })}
+          </div>
+        </section>
 
-      <CoachCard plan={plan} runs={runs} wide />
+        <CoachCard plan={plan} runs={runs} wide />
 
-      <div className="hv-body">
-        <div className="hv-col hv-main">
+        <div className="hv-pair">
           {f && details && <BuildingCard f={f} runs={runs} details={details} today={today} />}
-          <section className="hv-sec hv-runs">
-            <header>
-              <h2>Recent runs</h2>
-              <button type="button" className="hv-link" onClick={() => go("running")}>
-                All runs ›
-              </button>
-            </header>
-            <table className="hv-table">
-              <tbody>
-                {recent.map((r) => (
-                  <tr key={r.id} className="hv-click" onClick={() => openRun(r.id)}>
-                    <td className="nowrap muted">{r.date === today ? "Today" : fmt(r.date)}</td>
-                    <td className="hv-name">{r.name}</td>
-                    <td className="r num">{(r.distance / 1000).toFixed(1)} km</td>
-                    <td className="r num">{pace(r.distance, r.moving_time)}/km</td>
-                    <td className="r num muted">{r.avg_hr ? `${Math.round(r.avg_hr)} bpm` : ""}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
-        </div>
-
-        <div className="hv-col hv-side">
-          <section className="hv-sec hv-next">
-            <header>
-              <h2>Coming up</h2>
-              <button type="button" className="hv-link" onClick={() => go("running")}>
-                Plan ›
-              </button>
-            </header>
-            <ul className="hv-list">
-              {keys.length === 0 && <li className="muted">No key sessions in the next two weeks.</li>}
-              {keys.map((d) => (
-                <li key={d.date}>
-                  <button type="button" onClick={() => openDay(go, d.date)} className={`z-${d.race ? "race" : zoneOf(d.text, d.kind)}`}>
-                    <span className="hv-when">
-                      {d.date === today ? "Today" : DOW[(parseKey(d.date).getDay() + 6) % 7]} <small>{parseKey(d.date).getDate()}</small>
-                    </span>
-                    <span className="hv-what" title={d.text}>
-                      <b>{d.race ? d.race.name : sessionTitle(d.text, d.kind)}</b>
-                      <small>{d.text}</small>
-                    </span>
-                    <span className="num hv-list-km">{d.km} km</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-            {races.length > 0 && (
-              <ul className="hv-races">
-                {races.slice(0, 3).map((r) => (
-                  <li key={r.name + r.date}>
-                    <span className={`hv-pri pri-${priorityOf(r)}`}>{priorityOf(r)}</span>
-                    <span className="hv-race-name">{r.name}</span>
-                    <span className="muted">{r.target ?? ""}</span>
-                    <span className="num">{r.days} d</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
           {f && <RaceEquivalence f={f} runs={runs} plan={plan} today={today} />}
         </div>
       </div>
+
+      {/* The dashboard down the side: the race, recovery, what's next, the last few runs. */}
+      <aside className="hv-dash" aria-label="Dashboard">
+        {goal && (
+          <button type="button" className="hv-tile hv-race" onClick={() => go("running")}>
+            <span className="hv-eyebrow">Building to</span>
+            <b>{goal.name}</b>
+            <span className="hv-race-days">
+              <b className="num">{goal.days}</b> days{goal.target ? ` · goal ${goal.target}` : ""}
+            </span>
+          </button>
+        )}
+        <PredictionNews runs={runs} today={today} />
+        {(h.readiness != null || h.hrv != null || h.rhr != null || sleep) && (
+          <button type="button" className="hv-tile hv-health" onClick={() => go("health")} aria-label="Recovery">
+            {h.readiness != null && (
+              <span>
+                <small>Readiness</small>
+                <b className="num">{h.readiness}</b>
+              </span>
+            )}
+            {h.hrv != null && (
+              <span>
+                <small>HRV</small>
+                <b className="num">{Math.round(h.hrv)}</b>
+              </span>
+            )}
+            {h.rhr != null && (
+              <span>
+                <small>Resting HR</small>
+                <b className="num">{Math.round(h.rhr)}</b>
+              </span>
+            )}
+            {sleep && (
+              <span>
+                <small>Sleep</small>
+                <b className="num">{sleep}</b>
+              </span>
+            )}
+          </button>
+        )}
+        <section className="hv-tile hv-sec hv-next">
+          <header>
+            <h2>Coming up</h2>
+            <button type="button" className="hv-link" onClick={() => go("running")}>
+              Plan ›
+            </button>
+          </header>
+          <ul className="hv-list">
+            {keys.length === 0 && <li className="muted">No key sessions in the next two weeks.</li>}
+            {keys.map((d) => (
+              <li key={d.date}>
+                <button type="button" onClick={() => openDay(go, d.date)} className={`z-${d.race ? "race" : zoneOf(d.text, d.kind)}`} title={d.text}>
+                  <span className="hv-when">
+                    {d.date === today ? "Today" : DOW[(parseKey(d.date).getDay() + 6) % 7]} <small>{parseKey(d.date).getDate()}</small>
+                  </span>
+                  <span className="hv-what">
+                    <b>{d.race ? d.race.name : sessionTitle(d.text, d.kind)}</b>
+                  </span>
+                  <span className="num hv-list-km">{d.km} km</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          {races.length > 0 && (
+            <ul className="hv-races">
+              {races.slice(0, 3).map((r) => (
+                <li key={r.name + r.date}>
+                  <span className={`hv-pri pri-${priorityOf(r)}`}>{priorityOf(r)}</span>
+                  <span className="hv-race-name">{r.name}</span>
+                  <span className="num">{r.days} d</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+        <section className="hv-tile hv-sec hv-runs">
+          <header>
+            <h2>Recent runs</h2>
+            <button type="button" className="hv-link" onClick={() => go("running")}>
+              All ›
+            </button>
+          </header>
+          <table className="hv-table">
+            <tbody>
+              {recent.map((r) => (
+                <tr key={r.id} className="hv-click" onClick={() => openRun(r.id)} title={r.name}>
+                  <td className="nowrap muted">{r.date === today ? "Today" : fmt(r.date)}</td>
+                  <td className="r num">{(r.distance / 1000).toFixed(1)} km</td>
+                  <td className="r num">{pace(r.distance, r.moving_time)}/km</td>
+                  <td className="r num muted">{r.avg_hr ? Math.round(r.avg_hr) : ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      </aside>
     </div>
   );
 }

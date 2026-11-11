@@ -57,6 +57,7 @@ export function Training() {
   const thisMonday = mondayOf(today);
   const [monday, setMonday] = useState(thisMonday);
   const [sel, setSel] = useState(today);
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [view, setView] = useState<View>(() => viewOf(sessionStorage.getItem("cc-plan-view")));
   const pickView = (raw: string) => {
     const v = viewOf(raw);
@@ -271,8 +272,16 @@ export function Training() {
       </div>
       {fw.week || day.km || day.runs.length || day.race ? (
         <>
-          <Session d={day} label={dayName(day.date, today)} />
-          {fw.week && day.date >= today && !day.runs.length && <SessionBump plan={plan} d={day} week={fw} />}
+          {/* The run at a glance, so the week's list shows under it; tap it for the whole session. */}
+          <Session d={day} label={dayName(day.date, today)} compact={expanded !== day.date} onOpen={() => setExpanded(day.date)} />
+          {expanded === day.date && (
+            <>
+              {fw.week && day.date >= today && !day.runs.length && <SessionBump plan={plan} d={day} week={fw} />}
+              <button type="button" className="p-link p-less" onClick={() => setExpanded(null)}>
+                Show less
+              </button>
+            </>
+          )}
         </>
       ) : fw.block ? (
         <div className="p-hint center">{`${fw.block.key}. No day-by-day sessions this far out yet.`}</div>

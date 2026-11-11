@@ -191,7 +191,7 @@ export function WeekAhead({ plan, monday: given, onDay, compact, onOpen }: { pla
       )}
 
       {weeks.length > 1 && (
-        <div className="wa-line" aria-hidden="true">
+        <div className="wa-line" aria-hidden="true" key={race ? raceKey(race) : "none"}>
           <span className="wa-track">
             {segs.map((s) => (
               <i key={s.from} style={{ left: `${(s.from / n) * 100}%`, width: `${((s.to - s.from + 1) / n) * 100}%`, background: s.colour, opacity: idx >= 0 && s.to < idx ? 0.55 : 1 }} />

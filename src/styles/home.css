@@ -1,13 +1,10 @@
-/* ---- Web / PC home: one page, no boxed panels. Sections sit on the page, split by hairlines;
-   nothing is clipped – if a screen is too short the page scrolls rather than cutting text off. ---- */
+/* ---- Web / PC home: the week as a chart in the centre, a small dashboard down the right ---- */
 .tab-page.tab-page-home { overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; }
 .hv {
-  --hm-z-easy: #2e9e5b; --hm-z-long: #4f6bed; --hm-z-work: #e07a24; --hm-z-race: #e8344e;
-  /* The session shapes colour each part by its zone. */
-  --z-easy: #2e9e5b; --z-long: #4f6bed; --z-threshold: #e07a24; --z-vo2: #e8504e; --z-race: #e8344e; --z-rest: color-mix(in srgb, currentColor 25%, transparent);
-  display: flex; flex-direction: column; gap: 12px;
-  min-height: 100%; box-sizing: border-box;
-  padding: 2px 4px 8px; font-size: 13px; color: var(--text);
+  --hv-z-easy: #2e9e5b; --hv-z-long: #4f6bed; --hv-z-work: #e07a24; --hv-z-race: #e8344e;
+  display: grid; grid-template-columns: minmax(0, 1fr) 19rem; gap: 14px; align-items: start;
+  max-width: 1400px; width: 100%; margin: 0 auto; box-sizing: border-box;
+  padding: 2px 2px 14px; font-size: 13px; color: var(--text);
 }
 .hv .num { font-variant-numeric: tabular-nums; }
 .hv .muted { color: var(--text-2); }
@@ -15,84 +12,79 @@
 .hv .up { color: #2e9e5b; }
 .hv .down { color: #e8634e; }
 .hv small { font-size: 0.86em; }
-.hv-eyebrow { font-size: 11px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); }
-
-/* Head: the week, the race, recovery */
-.hv-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 28px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
-.hv-wk { display: flex; flex-direction: column; gap: 3px; flex: 1 1 260px; min-width: 0; }
-.hv-km { font-size: 15px; color: var(--text-2); }
-.hv-km b { font-size: 26px; font-weight: 750; color: var(--text); line-height: 1; margin-right: 2px; }
-.hv-bar { display: block; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--text) 9%, transparent); overflow: hidden; max-width: 420px; }
-.hv-bar i { display: block; height: 100%; border-radius: 3px; background: var(--c-running); }
-.hv-race { display: flex; flex-direction: column; gap: 1px; align-items: flex-start; text-align: left; background: none; border: 0; padding: 0 0 0 16px; border-left: 3px solid var(--hm-z-race); font: inherit; color: var(--text); cursor: pointer; min-width: 0; }
-.hv-race b { font-size: 15px; font-weight: 700; }
-.hv-race small { color: var(--text-2); font-size: 12px; }
-.hv-race small .num { color: var(--text); font-weight: 700; }
-.hv-health { display: flex; gap: 18px; flex-wrap: wrap; }
-.hv-health span { display: flex; flex-direction: column; line-height: 1.15; }
-.hv-health small { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2); }
-.hv-health b { font-size: 17px; font-weight: 700; }
-
-.hv .home-pred-news { margin: -4px 0 0; width: auto; align-self: flex-start; }
-
-/* The week: seven columns, split by hairlines */
-.hv-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-bottom: 1px solid var(--line); padding-bottom: 10px; }
-.hv-day {
-  --z: color-mix(in srgb, var(--text) 25%, transparent);
-  display: flex; flex-direction: column; gap: 2px; align-items: stretch; text-align: left; min-width: 0;
-  padding: 2px 10px 4px; border: 0; border-left: 1px solid var(--line); background: none;
-  color: var(--text); font: inherit; cursor: pointer; border-radius: 0;
-}
-.hv-day:first-child { border-left: 0; padding-left: 2px; }
-.hv-day:hover { background: color-mix(in srgb, var(--z) 7%, transparent); }
-.hv-day.z-easy { --z: var(--hm-z-easy); }
-.hv-day.z-long { --z: var(--hm-z-long); }
-.hv-day.z-threshold, .hv-day.z-vo2 { --z: var(--hm-z-work); }
-.hv-day.z-race { --z: var(--hm-z-race); }
-.hv-day-top { display: flex; align-items: baseline; gap: 4px; font-size: 12px; color: var(--text-2); }
-.hv-day-top b { color: var(--text); }
-.hv-day.today .hv-day-top b { color: var(--c-running); }
-.hv-day.today { box-shadow: inset 0 3px 0 var(--c-running); }
-.hv-tick { margin-left: auto; font-size: 11px; font-weight: 650; color: #2e9e5b; white-space: nowrap; }
-.hv-day-km { font-size: 20px; font-weight: 750; color: var(--z); line-height: 1.15; }
-.hv-day-km small { font-size: 11px; color: var(--text-2); font-weight: 600; }
-.hv-day-title { font-size: 12.5px; font-weight: 650; line-height: 1.25; overflow-wrap: anywhere; }
-.hv-day-work { font-size: 11.5px; color: var(--z); font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
-.hv-day-rest { font-size: 12.5px; color: var(--text-2); margin-top: 4px; }
-.hv-day.missed { opacity: 0.55; }
-.hv-day svg.effort { height: 30px; margin-top: 4px; }
-.hv-day .effort .effort-b { fill: var(--z, currentColor); }
-.hv-day .effort .effort-b.z-easy:not(:only-child) { fill: color-mix(in srgb, var(--text) 20%, transparent); }
-
-/* Body: two columns split by a hairline */
-.hv-body { flex: 1 0 auto; min-height: 340px; display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 0 26px; }
-.hv-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; min-height: 0; }
-.hv-side { border-left: 1px solid var(--line); padding-left: 26px; }
-.hv-sec { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.hv-eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); }
+.hv-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.hv-main > .hv-sec, .hv-pair > .hv-sec, .hv-tile { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; box-sizing: border-box; }
+.hv-main .coach { margin: 0; }
+.hv-sec { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .hv-sec > header { display: flex; align-items: baseline; gap: 4px 10px; flex-wrap: wrap; }
-.hv-sec h2 { margin: 0; font-size: 14px; font-weight: 750; }
+.hv-sec h2 { margin: 0; font-size: 14.5px; font-weight: 750; }
 .hv-sub { font-size: 12px; color: var(--text-2); }
 .hv-link { margin-left: auto; background: none; border: 0; padding: 0; font: inherit; font-size: 12px; font-weight: 650; color: var(--c-running); cursor: pointer; }
-.hv-note { white-space: normal; overflow: visible; text-overflow: clip; display: block; margin: 0; font-size: 12px; color: var(--text-2); line-height: 1.4; }
+.hv-note { margin: 0; font-size: 12px; color: var(--text-2); line-height: 1.4; }
 
-/* Are you building: the chart takes the height that's left */
-.hv-build { flex: 1 1 auto; min-height: 220px; }
-.hv-build .build-facts { display: flex; flex-wrap: wrap; gap: 2px 18px; font-size: 12px; color: var(--text-2); }
-.hv-build .build-facts b { color: var(--text); font-size: 14px; }
-.hv-build .chart { flex: 1 1 auto; min-height: 120px; background: none; border: 0; padding: 0; display: flex; flex-direction: column; }
+/* The week chart */
+.hv-week-km { margin-left: auto; font-size: 13px; color: var(--text-2); }
+.hv-week-km b { font-size: 20px; font-weight: 750; color: var(--text); margin-right: 2px; }
+.hv-bar { display: block; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--text) 9%, transparent); overflow: hidden; }
+.hv-bar i { display: block; height: 100%; border-radius: 2px; background: var(--c-running); }
+.hv-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.hv-day {
+  --z: color-mix(in srgb, var(--text) 22%, transparent);
+  display: flex; flex-direction: column; align-items: stretch; gap: 2px; min-width: 0; text-align: center;
+  padding: 4px 4px 6px; border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; cursor: pointer;
+}
+.hv-day:hover { background: color-mix(in srgb, var(--z) 8%, transparent); }
+.hv-day.today { background: color-mix(in srgb, var(--c-running) 9%, transparent); }
+.hv-day.z-easy { --z: var(--hv-z-easy); }
+.hv-day.z-long { --z: var(--hv-z-long); }
+.hv-day.z-threshold, .hv-day.z-vo2 { --z: var(--hv-z-work); }
+.hv-day.z-race { --z: var(--hv-z-race); }
+.hv-day-col { display: flex; flex-direction: column; align-items: center; gap: 3px; height: clamp(110px, 15vw, 190px); }
+.hv-day-num { font-size: 13px; font-weight: 750; color: var(--z); min-height: 1.2em; }
+.hv-day-bars { position: relative; flex: 1; width: min(100%, 4.2rem); border-bottom: 2px solid color-mix(in srgb, var(--text) 14%, transparent); }
+.hv-day-bars i { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 7px 7px 0 0; }
+.hv-day-plan { border: 1.5px dashed color-mix(in srgb, var(--z) 75%, transparent); border-bottom: 0; background: color-mix(in srgb, var(--z) 13%, transparent); }
+.hv-day-done { background: var(--z); }
+.hv-day.missed .hv-day-plan { opacity: 0.45; }
+.hv-day-top { font-size: 12px; color: var(--text-2); margin-top: 3px; }
+.hv-day-top b { color: var(--text); }
+.hv-day.today .hv-day-top b { color: var(--c-running); }
+.hv-tick { color: #2e9e5b; font-weight: 800; }
+.hv-day-title { font-size: 12px; font-weight: 650; line-height: 1.25; overflow-wrap: anywhere; }
+.hv-day.z-rest .hv-day-title { font-weight: 500; color: var(--text-2); }
+.hv-day-work { font-size: 11px; color: var(--z); font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+
+/* Building and race times, side by side */
+.hv-pair { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.hv-build .build-facts { display: flex; flex-wrap: wrap; gap: 2px 16px; font-size: 12px; color: var(--text-2); }
+.hv-build .build-facts b { color: var(--text); font-size: 13.5px; }
+.hv-build .chart { flex: none; width: 100%; aspect-ratio: 2.1 / 1; min-height: 0; overflow: hidden; background: none; border: 0; padding: 0; display: flex; flex-direction: column; }
 .hv-build .chart svg { display: block; }
 .hv-build .chart-readout { min-height: 1.3em; font-size: 11.5px; color: var(--text-2); }
-.hv-build .build-legend { display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: 11px; color: var(--text-2); }
+.hv-build .build-legend { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 11px; color: var(--text-2); }
 
-/* Tables and lists */
+/* The dashboard column */
+.hv-dash { display: flex; flex-direction: column; gap: 10px; min-width: 0; position: sticky; top: 0; }
+.hv-tile { text-align: left; color: var(--text); font: inherit; }
+button.hv-tile { cursor: pointer; }
+.hv-race { display: flex; flex-direction: column; gap: 2px; border-left: 4px solid var(--hv-z-race); }
+.hv-race > b { font-size: 16px; font-weight: 750; line-height: 1.2; }
+.hv-race-days { font-size: 12.5px; color: var(--text-2); }
+.hv-race-days b { font-size: 18px; color: var(--text); }
+.hv-health { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+.hv-health span { display: flex; flex-direction: column; line-height: 1.15; }
+.hv-health small { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2); }
+.hv-health b { font-size: 19px; font-weight: 750; }
+.hv .home-pred-news { margin: 0; width: 100%; text-align: left; white-space: normal; border-radius: 12px; }
+
 .hv-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-.hv-table th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2); font-weight: 650; text-align: left; padding: 2px 6px 4px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-.hv-table td { padding: 4px 6px; border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent); vertical-align: baseline; }
+.hv-table th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-2); font-weight: 650; text-align: left; padding: 2px 5px 4px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.hv-table td { padding: 4px 5px; border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent); vertical-align: baseline; }
 .hv-table th:first-child, .hv-table td:first-child { padding-left: 0; }
 .hv-table th:last-child, .hv-table td:last-child { padding-right: 0; }
 .hv-table tr:last-child td { border-bottom: 0; }
 .hv-table .r { text-align: right; white-space: nowrap; }
-.hv-name { width: 100%; overflow-wrap: anywhere; }
 .hv-click { cursor: pointer; }
 .hv-click:hover td { background: color-mix(in srgb, var(--c-running) 7%, transparent); }
 .hv-vdot { font-weight: 700; }
@@ -103,51 +95,30 @@
 .hv-list, .hv-races { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .hv-list button {
   --z: var(--text-2);
-  width: 100%; display: grid; grid-template-columns: 3.2rem minmax(0, 1fr) auto; gap: 10px; align-items: baseline;
+  width: 100%; display: grid; grid-template-columns: 3.1rem minmax(0, 1fr) auto; gap: 8px; align-items: baseline;
   text-align: left; padding: 5px 0 5px 8px; border: 0; border-left: 3px solid var(--z); border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
   background: none; color: var(--text); font: inherit; cursor: pointer;
 }
 .hv-list li:last-child button { border-bottom: 0; }
 .hv-list button:hover { background: color-mix(in srgb, var(--z) 7%, transparent); }
-.hv-list button.z-easy { --z: var(--hm-z-easy); }
-.hv-list button.z-long { --z: var(--hm-z-long); }
-.hv-list button.z-threshold, .hv-list button.z-vo2 { --z: var(--hm-z-work); }
-.hv-list button.z-race { --z: var(--hm-z-race); }
+.hv-list button.z-easy { --z: var(--hv-z-easy); }
+.hv-list button.z-long { --z: var(--hv-z-long); }
+.hv-list button.z-threshold, .hv-list button.z-vo2 { --z: var(--hv-z-work); }
+.hv-list button.z-race { --z: var(--hv-z-race); }
 .hv-when { font-weight: 700; font-size: 12px; white-space: nowrap; }
 .hv-when small { font-weight: 500; color: var(--text-2); }
-.hv-what { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
-.hv-what b { font-size: 12.5px; }
-.hv-what small { font-size: 11.5px; color: var(--text-2); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.hv-what { min-width: 0; font-size: 12.5px; overflow-wrap: anywhere; }
 .hv-list-km { font-weight: 700; color: var(--z); white-space: nowrap; }
-.hv-races { margin-top: 6px; }
-.hv-races li { display: grid; grid-template-columns: 1.4rem minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 3px 0; font-size: 12.5px; }
+.hv-races { margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--line); }
+.hv-races li { display: grid; grid-template-columns: 1.4rem minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 3px 0; font-size: 12.5px; }
 .hv-race-name { font-weight: 650; overflow-wrap: anywhere; }
-.hv-races .num { text-align: right; font-weight: 650; white-space: nowrap; min-width: 2.6rem; }
+.hv-races .num { text-align: right; font-weight: 650; white-space: nowrap; }
 .hv-pri { font-size: 10px; font-weight: 800; width: 1.3rem; height: 1.3rem; border-radius: 6px; display: grid; place-items: center; background: var(--card-2); color: var(--text-2); }
 .hv-pri.pri-A { background: color-mix(in srgb, #e8344e 18%, transparent); color: #e8344e; }
 .hv-pri.pri-B { background: color-mix(in srgb, #e07a24 18%, transparent); color: #e07a24; }
 
-/* Shorter screens (laptops): a size smaller, still nothing cut off */
-@media (max-height: 820px) {
-  .hv { gap: 9px; font-size: 12.5px; }
-  .hv-head { padding-bottom: 7px; }
-  .hv-km b { font-size: 22px; }
-  .hv-health b { font-size: 15px; }
-  .hv-week { padding-bottom: 7px; }
-  .hv-day-km { font-size: 17px; }
-  .hv-day svg.effort { height: 24px; margin-top: 2px; }
-  .hv-table td { padding: 3px 6px; }
-  .hv-list button { padding: 4px 0 4px 8px; }
-  .hv-col { gap: 10px; }
-  .hv-build { min-height: 190px; }
-}
-/* Narrow windows: one column */
-@media (max-width: 1000px) {
-  .hv-body { grid-template-columns: minmax(0, 1fr); gap: 16px; }
-  .hv-side { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 12px; }
-  .hv-build { min-height: 260px; }
-}
-@media (max-width: 720px) {
-  .hv-week { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 10px; }
-  .hv-day:nth-child(5) { border-left: 0; padding-left: 2px; }
+@media (max-width: 1180px) { .hv-pair { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 900px) {
+  .hv { grid-template-columns: minmax(0, 1fr); }
+  .hv-dash { position: static; }
 }
