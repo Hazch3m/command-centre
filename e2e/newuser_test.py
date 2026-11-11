@@ -86,7 +86,10 @@ try:
         check(pp.locator(".p-start-step").count() >= 2, "new: getting started steps")
 
         # Every tab renders with nothing in it.
-        for t in ["Today", "Planner", "Plan", "Runs", "Stats"]:
+        check(pp.locator(".p-tabs [role=tab]").count() == 4, "new: four tabs (no Planner until you turn it on)")
+        tw = pp.evaluate("() => { const t = [...document.querySelectorAll('.p-tabs [role=tab]')].map(e => e.getBoundingClientRect()); return [Math.round(t[0].left), Math.round(t[t.length - 1].right), innerWidth]; }")
+        check(tw[0] < 20 and tw[1] > tw[2] - 20, f"new: the four tabs span the bar ({tw})")
+        for t in ["Today", "Plan", "Runs", "Stats"]:
             tab(t)
             shot(f"n03-empty-{t.lower()}")
             check(len(text().strip()) > 20, f"new: {t} has something to say with no data")
@@ -147,7 +150,7 @@ try:
         print("has paces in week:", bool(re.search(r"\d:\d\d", wk)))
 
         # Every Plan view.
-        for v in ["Plan", "Progress"]:
+        for v in ["Plan", "Progress", "Races"]:
             pp.locator(".p-subnav").get_by_role("tab", name=v, exact=True).click()
             pp.wait_for_timeout(1500)
             shot(f"n08-plan-{v.split()[0].lower()}")

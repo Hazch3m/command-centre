@@ -58,6 +58,8 @@ try:
         b = p.chromium.launch()
         ph = b.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2, is_mobile=True, has_touch=True, timezone_id="Europe/Zurich")
         ph.add_init_script(FAKE_NATIVE)
+        # The Planner tab is off unless you turn it on; this run has it on (the new-user run has it off).
+        ph.add_init_script("try { localStorage.setItem('cc-show-planner', '1'); } catch (e) {}")
         pp = ph.new_page()
         pp.on("pageerror", lambda e: errors.append("phone: " + str(e)))
         pp.on("console", lambda m: m.type == "error" and errors.append("phone console: " + m.text[:300]))
@@ -258,8 +260,8 @@ try:
         # Plan views along the top.
         if pp.locator(".p-subnav button").count() != 4:
             print("plan pane:", pp.locator(".p-pane.on").inner_text()[:400].replace("\n", " | "))
-        check(pp.locator(".p-subnav button").count() == 3, "Plan: three views along the top")
-        for i, name in enumerate(["Week", "Plan", "Progress"]):
+        check(pp.locator(".p-subnav button").count() == 4, "Plan: four views along the top")
+        for i, name in enumerate(["Week", "Plan", "Progress", "Races"]):
             pp.locator(".p-subnav").get_by_role("tab", name=name, exact=True).click()
             pp.wait_for_timeout(1500)
             pp.screenshot(path=f"{out}/08-plan-{i}-{name.split()[0].lower()}.png", full_page=True)
@@ -282,13 +284,17 @@ try:
                     pp.wait_for_timeout(1200)
                 print("week ahead:", pp.locator(".p-pane.on .wa").inner_text().replace("\n", " | ")[:300] if pp.locator(".p-pane.on .wa").count() else None)
                 check(pp.locator(".p-pane.on .lfw-strip").count() == 1, "Plan week: load focus % for the week")
-                check(pp.locator(".p-pane.on .lf-row2").count() == 3, "Plan week: 4-week load focus card")
+                box = pp.evaluate("""() => { const b = document.querySelector('.p-pane.on .p-daybars'); const s = document.querySelector('.p-pane.on .p-session'); return b && s ? [Math.round(b.getBoundingClientRect().bottom), Math.round(s.getBoundingClientRect().top)] : null; }""")
+                check(bool(box) and box[0] <= box[1], f"Plan week: the session sits under the day bars, not over them ({box})")
                 print("week focus:", pp.locator(".p-pane.on .lfw-strip").inner_text().replace("\n", " ") if pp.locator(".p-pane.on .lfw-strip").count() else None)
                 if pp.locator(".p-pane.on .lf").count():
                     pp.locator(".p-pane.on .lf").scroll_into_view_if_needed()
                     pp.screenshot(path=f"{out}/08-plan-0b-load-focus.png")
                     pp.evaluate("window.scrollTo(0,0)")
+            if name == "Races":
+                check(pp.locator(".p-pane.on .fp-table .fp-row").count() == 4, "Races: race predictor")
             if name == "Plan":
+                check(pp.locator(".p-pane.on .lf-row2").count() == 3, "Plan: 4-week load focus card")
                 check(pp.locator(".p-pane.on .wa").count() == 1, "Plan: the build to your race")
                 check(pp.locator(".p-pane.on .pp-week.pick").count() > 3, "Plan: weeks to pick")
                 n = pp.locator(".p-pane.on .lfw-row").count()
@@ -301,7 +307,8 @@ try:
         check(pp.locator(".gc-card").count() >= 3, "Progress: goals to swipe across")
         print("goal cards:", [c.replace("\n", " | ")[:120] for c in pp.locator(".gc-card").all_inner_texts()])
         check(pp.locator(".gc-card .pt-chart").count() >= 1, "Progress: the line to race day on the cards")
-        check(pp.locator(".fp-table .fp-row").count() == 4, "Progress: race predictor")
+        pp.locator(".p-subnav").get_by_role("tab", name="Progress", exact=True).click()
+        pp.wait_for_timeout(1200)
         pp.screenshot(path=f"{out}/08-plan-3a-progress-top.png")
         if pp.locator(".rr2").count():
             pp.locator(".rr2-seg button", has_text="Ready today").click()
@@ -446,6 +453,13 @@ try:
                 print("plan day picked:", pp.locator(".p-pane.on .db-day.on").get_attribute("aria-label") if pp.locator(".p-pane.on .db-day.on").count() else None)
                 pp.screenshot(path=f"{out}/03f-session-from-today.png")
             elif pp.locator(".p-pane.on .wa.compact").count():
+                pp.evaluate("window.scrollTo(0,0)")
+                if pp.locator(".p-pane.on .p-donetile-main").count():
+                    pp.locator(".p-pane.on .p-donetile-main").click()
+                    pp.wait_for_timeout(700)
+                fit = pp.evaluate("""() => { const w = document.querySelector('.p-pane.on .wa'); const t = document.querySelector('.p-tabs'); return [Math.round(w.getBoundingClientRect().bottom), Math.round(t.getBoundingClientRect().top)]; }""")
+                check(fit[0] <= fit[1], f"Today: the run, the week and the build fit on the first screen ({fit})")
+                pp.screenshot(path=f"{out}/03a3-today-fit.png")
                 check(pp.locator(".p-pane.on .wp .db-day").count() == 7, "Today: week progress has a mileage bar per day")
                 print("brief:", pp.locator(".p-pane.on .p-brief").inner_text().replace("\n", " ") if pp.locator(".p-pane.on .p-brief").count() else None)
                 pp.locator(".p-pane.on .wa.compact").click()
@@ -573,14 +587,14 @@ try:
             wp.wait_for_timeout(2000)
             check(wp.locator(".card-calendar, .card-tasks, .card-checklist").count() == 0, "web: overview is running-only by default")
             check(wp.locator(".home-kpis").count() == 0, "web: no numbers row on home")
-            check(wp.locator(".hm-day").count() == 7, "web: home page week")
-            check(wp.locator(".hm-runs tbody tr").count() >= 3, "web: home page recent runs")
-            check(wp.locator(".hm-build svg rect").count() > 10, "web: home building chart")
-            check(wp.locator(".hm-equiv tbody tr").count() == 4, "web: home races against your best")
+            check(wp.locator(".hv-day").count() == 7, "web: home page week")
+            check(wp.locator(".hv-runs tbody tr").count() >= 3, "web: home page recent runs")
+            check(wp.locator(".hv-build svg rect").count() > 10, "web: home building chart")
+            check(wp.locator(".hv-equiv tbody tr").count() == 4, "web: home races against your best")
             check(wp.locator(".home-card").count() == 0, "web: home has no boxed panels")
             clipped = wp.evaluate("""() => [...document.querySelectorAll('.hm *')].filter(e => e.children.length === 0 && e.textContent.trim() && (e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflow !== 'visible')).map(e => e.textContent.trim().slice(0, 30)).slice(0, 8)""")
             print("home clipped text:", clipped)
-            print("build:", wp.locator(".hm-build header").inner_text().replace("\n", " "), "|", wp.locator(".hm-equiv").inner_text().replace("\n", " | ")[:400])
+            print("build:", wp.locator(".hv-build header").inner_text().replace("\n", " "), "|", wp.locator(".hv-equiv").inner_text().replace("\n", " | ")[:400])
             wp.screenshot(path=f"{out}/30-web-overview.png")
             wp.screenshot(path=f"{out}/30b-web-home-full.png", full_page=True)
             bv = wp.get_by_role("button", name="Board view")
