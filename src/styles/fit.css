@@ -1,0 +1,156 @@
+/* ---- Web / PC: every page fits a laptop screen ---------------------------------------------
+   Loaded last. Pages are laid out to fill the window (charts take what's left) instead of stacking
+   down the page; under ~860px of height type and spacing tighten a step. Lists and forms (Runs,
+   Edit plan) still scroll: they're as long as their content. */
+
+/* Planner's sub-tabs are a segmented control like every other page's. */
+.planner-tabs.segmented { align-self: flex-start; margin: 0 0 0.6rem; }
+
+/* Charts that take the space they're given on a wide screen keep a fixed height when the page stacks. */
+.hc .chart-fill, .gp-chart .chart-fill, .sv-main .chart-fill, .shape-weekly .chart-fill, .fit-card .chart-fill { flex: none; height: 170px; }
+.pwc-chart .chart-fill { flex: none; height: 115px; }
+
+@media (min-width: 1001px) {
+  /* ---------- Shared: a tighter page frame ---------- */
+  .subpage { padding: 0.8rem 1.1rem 0.9rem; }
+  .subpage .page-head { align-items: center; }
+  .subpage .page-head h1 { font-size: 1.15rem; line-height: 1.15; }
+  .subpage .page-tabs { margin: 0; }
+  .subpage .page-body { margin-top: 0.6rem; }
+  .subpage .plan-view-switch { margin: 0 0 0.5rem; }
+
+  /* ---------- Training → Plan: weekly km, then the week filling the rest ---------- */
+  .plan-toolbar { margin: 0 0 0.4rem; }
+  .ph-main .pwc { flex: 1 1 9rem; min-height: 8.5rem; max-height: 20rem; height: auto; }
+  .ph-main .pwc-body { flex: 1; min-height: 0; }
+  .ph-main .pwc-chart { display: flex; flex-direction: column; min-height: 0; }
+  .ph-main .pwc-chart .chart-fill { flex: 1; min-height: 0; height: auto; }
+  .ph-main .pwv.pwv-rich { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  .pwv-rich .pwv-days { flex: 1 1 auto; min-height: 0; max-height: none; align-items: stretch; }
+  .pwv-rich .pwv-day { justify-content: flex-start; min-height: 0; }
+  .pwv-rich .pwv-foot { flex: none; }
+  .pwv {
+    --z-easy: #2e9e5b; --z-long: #4f6bed; --z-threshold: #e07a24; --z-vo2: #e8504e; --z-race: #e8344e;
+    --z-rest: color-mix(in srgb, currentColor 25%, transparent);
+  }
+  .pwv-shape { display: flex; flex-direction: column; gap: 2px; margin-top: 0.3rem; min-width: 0; align-self: stretch; text-align: left; }
+  .pwv-shape svg.effort { display: block; width: 100%; height: 30px; margin-bottom: 3px; }
+  .pwv-shape .effort-b { fill: var(--z, currentColor); }
+  .pwv-shape .effort .effort-b.z-easy:not(:only-child) { fill: color-mix(in srgb, var(--text) 20%, transparent); }
+  .pwv-seg { display: flex; justify-content: space-between; gap: 6px; font-size: 0.7rem; line-height: 1.3; color: var(--text-2); }
+  .pwv-seg > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+  .pwv-seg small { font-size: 0.92em; opacity: 0.85; }
+  .pwv-seg .num { white-space: nowrap; }
+  .pwv-seg.seg-work { color: var(--text); font-weight: 600; }
+
+  /* ---------- Training → Trends & load ---------- */
+  .tl-grid .rz-paces { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.3rem; }
+  .tl-grid .rz-pace { padding: 0.3rem 0.5rem; }
+  .tl-grid .rz-pace small { display: none; }
+  .tl-grid .xp-btn { display: none; }
+  .tl-grid section:has(.rz-runs) { display: none; }
+  .tl-grid .tl-chart { width: 100%; height: calc(50vh - 12.5rem); min-height: 6rem; }
+
+  /* ---------- Training → Races & PBs: three views, each a screen ---------- */
+  .tab-page-running .subpage:has(.pbs),
+  .tab-page-running .subpage:has(.prog-races),
+  .tab-page-running .subpage:has(.prog-history) { display: flex; flex-direction: column; overflow: hidden; }
+  .tab-page-running .subpage:has(.pbs) > .page-body,
+  .tab-page-running .subpage:has(.prog-races) > .page-body,
+  .tab-page-running .subpage:has(.prog-history) > .page-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .pbs { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(15rem, 0.32fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 0.7rem 0.8rem; --chart-scale: 0.85; }
+  .pbs > .pb-grid { grid-column: 1; grid-row: 1; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.3rem; margin: 0; }
+  .pbs > .pb-detail { grid-column: 2; grid-row: 1 / span 2; min-height: 0; margin: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .pbs > :not(.pb-grid):not(.pb-detail) { grid-column: 1; grid-row: 2; min-height: 0; overflow-y: auto; scrollbar-width: thin; margin: 0; }
+  .pbs .pb-card { position: relative; padding: 0.3rem 0.55rem 0.35rem; gap: 0; border-radius: 9px; }
+  .pbs .pb-card .label { font-size: 0.58rem; }
+  .pbs .pb-card b { font-size: 0.98rem; line-height: 1.15; }
+  .pbs .pb-card small { font-size: 0.66rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pbs .pb-card .pill { position: absolute; top: 0.25rem; right: 0.3rem; margin: 0; font-size: 0.56rem; padding: 0 0.3rem; }
+  .pbs .pb-detail > .chart { flex: none; }
+  .pbs .pb-lists { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+  .prog-races { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; }
+  .prog-col { min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow-y: auto; scrollbar-width: thin; }
+  .prog-col h3:first-child { margin-top: 0; }
+  .prog-races .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .prog-history { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; scrollbar-width: thin; }
+  .prog-races, .prog-history { --chart-scale: 0.75; }
+
+  /* ---------- Fitness: overview on one screen ---------- */
+  .tab-page-fitness .subpage:has(.fit-dash) { display: flex; flex-direction: column; overflow: hidden; }
+  .tab-page-fitness .subpage:has(.fit-dash) > .page-body,
+  .tab-page-fitness .subpage:has(.fit-dash) .fit-body { flex: 1; min-height: 0; display: flex; flex-direction: column; margin-top: 0.5rem; }
+  .fit-dash { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+  .fit-dash > .tiles { flex: none; margin: 0; gap: 8px; }
+  .fit-dash > .tiles .tile { padding: 0.4rem 0.7rem; }
+  .fit-dash > .tiles .tile-value { font-size: 1.05rem; }
+  .fit-dash .fit-grid { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1.25fr) minmax(0, 1fr) auto; gap: 8px; }
+  .fit-dash .fit-card { min-height: 0; overflow: hidden; }
+  .fit-dash .fit-card .chart-fill { flex: 1; min-height: 0; height: auto; }
+  .fit-dash .fit-card .table { font-size: 0.8rem; }
+  .fit-dash .fit-card h3 { font-size: 0.85rem; }
+  .fit-dash .fit-why { flex: none; }
+  .fit-dash .fit-pred, .fit-dash .fit-shoes { overflow-y: auto; scrollbar-width: thin; }
+  .fit-dash .fit-keys, .fit-dash .fit-set { grid-column: span 6; }
+
+  /* Path to the goal: targets across the top; the path and its months side by side */
+  .tab-page-fitness .subpage:has(.goal-path), .tab-page-fitness .subpage:has(.shape-view) { display: flex; flex-direction: column; overflow: hidden; }
+  .tab-page-fitness .subpage:has(.goal-path) > .page-body, .tab-page-fitness .subpage:has(.shape-view) > .page-body { flex: 1; min-height: 0; display: flex; flex-direction: column; margin-top: 0.5rem; }
+  .goal-path, .shape-view { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+  .goal-path > .lead, .shape-view > .lead { margin: 0; font-size: 0.85rem; padding: 0.4rem 0.8rem; }
+  .goal-path .goal-targets { flex: none; margin: 0; gap: 0.5rem; }
+  .goal-path .goal-card { padding: 0.4rem 0.7rem; }
+  .goal-path .pred-table td { padding: 0.12rem 0.2rem; font-size: 0.8rem; }
+  .gp-row, .sv-row { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 0.9rem; }
+  .gp-chart, .sv-main { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+  .gp-chart .goal-bar { margin: 0; }
+  .gp-chart h3, .gp-months h3, .sv-main h3, .shape-weekly h3 { margin: 0; font-size: 0.85rem; }
+  .gp-chart .chart-fill, .sv-main .chart-fill, .sv-row .shape-weekly .chart-fill { flex: 1; min-height: 0; height: auto; }
+  .gp-chart > p, .sv-note { margin: 0; font-size: 0.7rem; line-height: 1.35; }
+  .gp-months { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 0.3rem; overflow-y: auto; scrollbar-width: thin; }
+  .gp-months .table { font-size: 0.76rem; }
+  .gp-months .table td, .gp-months .table th { padding-top: 0.2rem; padding-bottom: 0.2rem; }
+  .shape-view .shape-controls { margin: 0; gap: 0.4rem 1rem; }
+  .shape-view .shape-advanced { margin: 0; position: absolute; right: 1.2rem; }
+  .shape-view { position: relative; }
+  .shape-view > .tiles { flex: none; margin: 0; gap: 0.5rem; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .shape-view > .tiles .tile { padding: 0.35rem 0.6rem; }
+  .shape-view > .tiles .tile-value { font-size: 1.05rem; }
+  .shape-view > .tiles .small { font-size: 0.68rem; line-height: 1.3; }
+  .sv-row .shape-weekly { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 0.25rem; margin: 0; }
+  .sv-row .shape-weekly-head { margin: 0; }
+
+  /* ---------- Health: numbers across the top, charts in a grid that fills the rest ---------- */
+  .card-page.card-health { display: flex; flex-direction: column; min-height: 0; }
+  .card-page.card-health .card-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+  .card-page.card-health .hm-grid { flex: none; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.5rem; }
+  .card-page.card-health .hm { padding: 0.45rem 0.65rem; min-height: 0; }
+  .card-page.card-health .hm .spark { display: none; }
+  .card-page.card-health .health-charts { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 0.6rem; }
+  .card-page.card-health .hc { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 0.25rem; overflow: hidden; }
+  .card-page.card-health .hc h3 { margin: 0; font-size: 0.85rem; }
+  .card-page.card-health .hc:first-child { grid-column: span 2; }
+  .card-page.card-health .hc .chart-fill { flex: 1; min-height: 0; height: auto; }
+  .card-page.card-health .hc .table { font-size: 0.8rem; }
+
+  /* ---------- Analysis: the side column fits without scrolling ---------- */
+  .ana-side { gap: 8px; }
+  .ana-panel { padding: 8px 12px; }
+  .ana-panel h4 { margin: 0 0 4px; font-size: 0.85rem; }
+  .ana-big b { font-size: 1.2rem; display: inline; margin-right: 0.5rem; }
+  .ana-calc { padding: 1px 0; font-size: 0.74rem; }
+  .ana-mini { font-size: 0.74rem; }
+  .ana-mini td { padding: 1.5px 0; }
+}
+
+/* ---------- Shorter screens: a step smaller ---------- */
+@media (min-width: 1001px) and (max-height: 860px) {
+  .tab-page { padding: 0.45rem 0.7rem 0.6rem; }
+  .subpage { padding: 0.6rem 0.9rem 0.7rem; }
+  .subpage .page-head h1 { font-size: 1.05rem; }
+  .subpage .train-title .small, .subpage .page-head .muted.small { font-size: 0.7rem; }
+  .tab-page-running { --chart-scale: 0.75; }
+}
+  .fit-dash { --chart-scale: 0.62; }
+  .card-page.card-health { --chart-scale: 0.85; }
+}

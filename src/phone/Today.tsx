@@ -82,7 +82,7 @@ export function Session({ d, label, next, brief, compact, onOpen }: { d: Forecas
             </span>
           )}
           <span className="p-session-what">
-            <span className="p-session-text">{rest ? (next && next.km ? `Tomorrow: ${next.km} km ${next.race ? "race" : sessionTitle(next.text, next.kind).toLowerCase()}` : "Recovery is training too.") : detail}</span>
+            <span className="p-session-text">{rest ? (next && next.km ? `Tomorrow: ${next.km} km ${next.race ? "race" : sessionTitle(next.text, next.kind).toLowerCase()}` : "Recovery is training too.") : detail.charAt(0).toUpperCase() + detail.slice(1)}</span>
             {!rest && d.pace && <span className="p-session-pace num">{/\d:\d\d/.test(d.pace) ? `${d.pace}/km` : d.pace}</span>}
           </span>
           <span className="p-chev" aria-hidden="true">

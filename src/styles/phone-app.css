@@ -5422,3 +5422,7 @@ svg.effort {
 .wp-c .wp-cheer { font-size: 0.8rem; line-height: 1.3; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .wp-c .db-km { font-size: 0.66rem; min-height: 0.8rem; }
 .lfw-more { align-self: center; margin: 0.4rem auto 0; display: block; }
+/* Rest days: a low stub instead of an empty column */
+.db-day.z-rest .db-bar { background: none; }
+.db-day.z-rest .db-bar::after { content: ""; position: absolute; left: 22%; right: 22%; bottom: 0; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--text) 12%, transparent); }
+.p-weekprog .p-bar { min-width: 0; }

@@ -253,6 +253,9 @@ export function Training() {
         <span className="num">
           <b>{fw.actualKm.toFixed(0)}</b> / {fw.plannedKm ?? "–"} km
         </span>
+        <span className="p-bar">
+          <span style={{ width: `${(fw.plannedKm ? Math.min(1, fw.actualKm / fw.plannedKm) : 0) * 100}%` }} />
+        </span>
         {monday !== thisMonday && (
           <button className="p-link" onClick={() => setMonday(thisMonday)}>
             This week
