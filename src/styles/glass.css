@@ -1,0 +1,207 @@
+/* =====================================================================
+   Pacelife, glass edition.
+   The page sits on a lake-at-dawn colour field (glacier teal, lake blue, alpenglow pink and
+   apricot); every surface is frosted glass over it, so the colour shows through everything.
+   Bars that float (the tab bar, the header buttons) are thicker "liquid" glass with a bright
+   rim and a lens for the selected tab. Loaded last; tokens first, then surfaces.
+   ===================================================================== */
+
+:root.phone-root[data-theme="light"] {
+  --bg: #e4ecf7;
+  --glass: rgba(255, 255, 255, 0.58);
+  --glass-2: rgba(255, 255, 255, 0.4);
+  --glass-thick: rgba(255, 255, 255, 0.8);
+  --glass-rim: rgba(255, 255, 255, 0.85);
+  --glass-rim-low: rgba(255, 255, 255, 0.3);
+  --glass-shadow: 0 10px 30px rgba(38, 56, 110, 0.13), 0 1px 2px rgba(38, 56, 110, 0.08);
+  --card: var(--glass);
+  --card-2: rgba(255, 255, 255, 0.46);
+  --line: rgba(28, 48, 92, 0.1);
+  --line-2: rgba(28, 48, 92, 0.16);
+  --track: rgba(28, 48, 92, 0.1);
+  --hover: rgba(255, 255, 255, 0.35);
+  --muted: #5b6880;
+  --field-1: #7ad7c9;
+  --field-2: #8fa6ff;
+  --field-3: #ffb79a;
+  --field-4: #f2a3d2;
+  --field-base: linear-gradient(170deg, #d6ebf7 0%, #e7e3fa 55%, #f8e4e4 100%);
+  --field-glow: 0.85;
+}
+:root.phone-root:not([data-theme="light"]) {
+  --bg: #0b1430;
+  --glass: rgba(30, 44, 78, 0.5);
+  --glass-2: rgba(30, 44, 78, 0.36);
+  --glass-thick: rgba(34, 48, 84, 0.82);
+  --glass-rim: rgba(255, 255, 255, 0.16);
+  --glass-rim-low: rgba(255, 255, 255, 0.05);
+  --glass-shadow: 0 12px 34px rgba(0, 0, 0, 0.35);
+  --card: var(--glass);
+  --card-2: rgba(255, 255, 255, 0.07);
+  --line: rgba(255, 255, 255, 0.09);
+  --line-2: rgba(255, 255, 255, 0.15);
+  --track: rgba(255, 255, 255, 0.1);
+  --field-1: #0f7f86;
+  --field-2: #3b47c4;
+  --field-3: #b4486a;
+  --field-4: #6a2f9e;
+  --field-base: linear-gradient(170deg, #0a1734 0%, #120f33 60%, #1c0f2c 100%);
+  --field-glow: 0.7;
+}
+:root.phone-root {
+  --blur: blur(22px) saturate(170%);
+  --blur-thick: blur(28px) saturate(190%);
+}
+
+/* The colour field: fixed behind everything (a fixed layer, since iOS ignores fixed backgrounds). */
+:root.phone-root body {
+  background: var(--bg);
+}
+:root.phone-root body::before {
+  content: "";
+  position: fixed;
+  inset: -10vh -10vw;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 1;
+  background:
+    radial-gradient(42rem 34rem at 8% 2%, color-mix(in srgb, var(--field-1) calc(var(--field-glow) * 100%), transparent) 0%, transparent 62%),
+    radial-gradient(40rem 36rem at 100% 14%, color-mix(in srgb, var(--field-2) calc(var(--field-glow) * 100%), transparent) 0%, transparent 62%),
+    radial-gradient(46rem 38rem at 88% 98%, color-mix(in srgb, var(--field-3) calc(var(--field-glow) * 100%), transparent) 0%, transparent 60%),
+    radial-gradient(38rem 32rem at 0% 82%, color-mix(in srgb, var(--field-4) calc(var(--field-glow) * 100%), transparent) 0%, transparent 58%),
+    var(--field-base);
+}
+
+/* ---- Frosted surfaces ---- */
+:root.phone-root :is(
+    .p-group, .p-tile, .p-race, .p-total, .p-runcard, .p-more, .p-lastrun, .p-wchart, .p-start-step,
+    .pt-card, .gc-card, .wp, .coach-box, .coach-review, .hp-strip, .wc-option, .p-subnav, .p-note,
+    .p-session.rt-rest, .p-session.z-rest, .p-sheet, .p-embed > .card, .lfw, .lf-card, .fp-table, .p-tl
+  ) {
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-rim-low);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+}
+:root.phone-root .p-group {
+  border-radius: 22px;
+}
+
+/* The run of the day: tinted glass in its zone's colour. */
+:root.phone-root .p-session:not(.rt-rest):not(.z-rest) {
+  background:
+    radial-gradient(120% 110% at 100% 0%, color-mix(in srgb, var(--z, var(--accent)) 46%, transparent) 0%, transparent 62%),
+    linear-gradient(160deg, color-mix(in srgb, var(--z, var(--accent)) 24%, var(--glass)) 0%, var(--glass) 75%);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 1px solid color-mix(in srgb, var(--z, var(--accent)) 30%, var(--glass-rim-low));
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--z, var(--accent)) 22%, transparent), inset 0 1px 0 var(--glass-rim);
+}
+
+/* The build card keeps its deep colour, with a glass sheen on top. */
+:root.phone-root .wa {
+  box-shadow: 0 16px 36px color-mix(in srgb, var(--accent) 26%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+:root.phone-root .wa::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 55% 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent);
+  border-radius: inherit;
+}
+
+/* Sub-tabs: a glass track with a lens on the one you're on. */
+:root.phone-root .p-subnav {
+  border-radius: 22px;
+}
+:root.phone-root .p-subnav button.on {
+  background: var(--glass-thick);
+  color: var(--accent);
+  box-shadow: 0 4px 14px rgba(38, 56, 110, 0.14), inset 0 1px 0 var(--glass-rim), inset 0 -1px 0 var(--glass-rim-low);
+}
+
+/* ---- Liquid glass bars ---- */
+/* Header: clear glass that frosts what scrolls under it. */
+:root.phone-root .p-head {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 55%, transparent), color-mix(in srgb, var(--bg) 0%, transparent));
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  backdrop-filter: blur(16px) saturate(160%);
+  border-bottom: 0;
+}
+:root.phone-root :is(.p-gear, .p-refresh, .p-round, .p-back) {
+  background: var(--glass-thick);
+  -webkit-backdrop-filter: var(--blur-thick);
+  backdrop-filter: var(--blur-thick);
+  border: 1px solid var(--glass-rim-low);
+  box-shadow: 0 6px 18px rgba(38, 56, 110, 0.14), inset 0 1px 0 var(--glass-rim), inset 0 -1px 0 var(--glass-rim-low);
+}
+
+/* Tab bar: a floating capsule of thick glass; the selected tab sits in a lens. */
+:root.phone-root .p-app:not(.p-wide) .p-tabs {
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: calc(env(safe-area-inset-bottom) * 0.6 + 0.5rem);
+  padding: 0.35rem;
+  border-radius: 32px;
+  border: 1px solid var(--glass-rim-low);
+  background: var(--glass-thick);
+  -webkit-backdrop-filter: var(--blur-thick);
+  backdrop-filter: var(--blur-thick);
+  box-shadow: 0 14px 40px rgba(30, 44, 90, 0.22), inset 0 1px 0 var(--glass-rim), inset 0 -1px 0 var(--glass-rim-low);
+}
+:root.phone-root .p-app:not(.p-wide) .p-tab-ind {
+  top: 0.35rem;
+  bottom: 0.35rem;
+  left: 0.35rem;
+  width: calc((100% - 0.7rem) / var(--tabs, 5));
+  padding: 0;
+}
+:root.phone-root .p-tab-ind::before,
+:root.phone-root .p-tab-ind > * {
+  border-radius: 26px !important;
+}
+:root.phone-root .p-tab-ind::before {
+  background: color-mix(in srgb, var(--accent) 16%, var(--glass-thick)) !important;
+  box-shadow: inset 0 1px 0 var(--glass-rim), inset 0 -1px 0 var(--glass-rim-low), 0 3px 10px rgba(38, 56, 110, 0.14) !important;
+}
+:root.phone-root .p-app:not(.p-wide) {
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+}
+
+/* ---- More colour: headings, numbers and lines pick up the field ---- */
+:root.phone-root .p-title h1 {
+  background: linear-gradient(100deg, var(--text) 0%, color-mix(in srgb, var(--accent) 70%, var(--text)) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+:root.phone-root .db-done,
+:root.phone-root .hv-day-done {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root.phone-root {
+    --glass: var(--bg);
+    --glass-thick: var(--bg);
+  }
+  :root.phone-root * {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
+
+/* Today on the phone: the run, the week and the build all fit on the first screen. */
+:root.phone-root .p-app:not(.p-wide) [data-pane="today"] .p-title h1 { font-size: 1.75rem; }
+:root.phone-root .p-app:not(.p-wide) [data-pane="today"] .p-title { padding-bottom: 0.4rem; }
+:root.phone-root .p-app:not(.p-wide) [data-pane="today"] .p-screen { gap: 0.6rem; }
+:root.phone-root .p-app:not(.p-wide) [data-pane="today"] .p-screen > * { margin-bottom: 0; }
+.p-session.p-session-c { padding: 0.7rem 0.9rem 0.75rem; gap: 0.4rem; }
+.p-session-c .p-session-km { font-size: 2.5rem; }
+.wp.wp-c { padding: 0.65rem 0.9rem 0.7rem; gap: 0.4rem; margin-bottom: 0; }
+.wp-c .db-bar { height: 26px !important; }
+.wa.compact { padding-top: 0.75rem; padding-bottom: 0.7rem; gap: 0.3rem; }
+.wa.compact .wa-pager button { height: 1.25rem; width: 1.7rem; font-size: 0.95rem; }

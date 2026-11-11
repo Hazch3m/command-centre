@@ -1,0 +1,132 @@
+/* =====================================================================
+   The app on a computer (pacelife.run/web): the same screens as the iPhone, laid out wide.
+   Tabs become a glass side bar; each page flows into columns of phone-width cards, so charts
+   keep the shape they were drawn for and nothing is stretched into a flat band.
+   ===================================================================== */
+
+:root.phone-root body:has(.p-wide) {
+  overflow-y: auto;
+}
+:root.phone-root:has(.p-wide) {
+  font-size: calc(clamp(14px, calc(100vw / 92), 17px) * var(--scale, 1));
+}
+.p-app.p-wide {
+  --side: 13.5rem;
+  display: grid;
+  grid-template-columns: var(--side) minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  grid-template-areas: "side head" "side main";
+  min-height: 100dvh;
+  padding-bottom: 0;
+}
+.p-wide > .p-head { grid-area: head; padding: 0.9rem 2rem 0.3rem; }
+.p-wide > .p-main { grid-area: main; min-width: 0; padding: 0 2rem 3rem; }
+.p-wide > :not(.p-head):not(.p-main):not(.p-tabs) { grid-column: 2; }
+
+/* Side bar: thick glass, full height, tabs as rows */
+.p-wide > .p-tabs {
+  grid-area: side;
+  position: sticky;
+  top: 0;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  align-self: start;
+  height: 100dvh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1.1rem 0.75rem;
+  border: 0;
+  border-right: 1px solid var(--glass-rim-low);
+  border-radius: 0;
+  background: var(--glass-thick);
+  -webkit-backdrop-filter: var(--blur-thick);
+  backdrop-filter: var(--blur-thick);
+  box-shadow: inset -1px 0 0 var(--glass-rim-low);
+}
+.p-wide .p-tab-ind { display: none; }
+.p-side-brand { display: flex; align-items: center; gap: 0.55rem; padding: 0 0.6rem 1rem; font-family: var(--display); font-size: 1.45rem; font-weight: 700; letter-spacing: 0.01em; color: var(--text); }
+.p-side-brand img { width: 1.9rem; height: 1.9rem; border-radius: 9px; }
+.p-wide .p-tab {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  text-align: left;
+}
+.p-wide .p-tab span { font-size: 0.95rem; font-weight: 600; }
+.p-wide .p-tab svg { width: 1.25rem; height: 1.25rem; flex: none; }
+.p-wide .p-tab:hover { background: var(--hover); }
+.p-wide .p-tab.on {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--glass-thick));
+  box-shadow: inset 0 1px 0 var(--glass-rim), 0 3px 10px rgba(38, 56, 110, 0.12);
+}
+.p-wide .p-tab-extra:first-of-type,
+.p-wide .p-tab:not(.p-tab-extra) + .p-tab-extra { margin-top: 0.9rem; }
+
+/* Pages: a title row, then columns of cards */
+.p-wide .p-pane.on { max-width: 1560px; margin: 0 auto; }
+.p-wide .p-title { padding: 0.2rem 0 1rem; display: flex; align-items: baseline; gap: 0.9rem; }
+.p-wide .p-title h1 { font-size: 2.6rem; }
+.p-wide .p-pane:not(.p-pushed) .p-screen {
+  display: block;
+  padding: 0 0 1rem;
+  columns: 23rem 3;
+  column-gap: 1.4rem;
+}
+.p-wide .p-pane:not(.p-pushed) .p-screen > * {
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+}
+.p-wide .p-screen > .p-subnav {
+  column-span: all;
+  max-width: 34rem;
+  margin-bottom: 1.1rem;
+}
+.p-wide .p-screen > * + * { margin-top: 0; }
+.p-wide .p-screen > :not(.p-subnav) { margin-bottom: 1.2rem; display: block; width: 100%; }
+.p-wide .p-section { margin-left: 0; margin-right: 0; }
+.p-wide .p-section, .p-wide .p-padded { padding-left: 0; padding-right: 0; }
+
+/* Pages opened from the side bar or a row: one wide column, full desktop pages inside */
+.p-wide .p-pushed { max-width: 1280px; }
+.p-wide .p-embed { zoom: 1 !important; }
+.p-wide .p-wide-page { padding-bottom: 2rem; }
+.p-wide .p-back { display: none; }
+
+/* Run view: a centred sheet instead of full screen */
+:root.phone-root:has(.p-wide) .run-modal {
+  width: min(1100px, 94vw);
+  max-width: min(1100px, 94vw);
+  height: min(92dvh, 1100px);
+  max-height: 92dvh;
+  margin: auto;
+  inset: 0;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(20, 30, 60, 0.35);
+}
+
+/* Refresh notes float at the top right instead of pushing the page */
+.p-wide .p-note { position: fixed; top: 1rem; right: 1.5rem; z-index: 50; max-width: 26rem; }
+
+@media (max-width: 760px) {
+  .p-app.p-wide { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "main"; padding-bottom: 6rem; }
+  .p-wide > .p-tabs { position: fixed; top: auto; left: 0.6rem; right: 0.6rem; bottom: 0.6rem; height: auto; flex-direction: row; border-radius: 30px; padding: 0.35rem; }
+  .p-wide .p-side-brand, .p-wide .p-tab-extra { display: none; }
+  .p-wide .p-tab { flex-direction: column; gap: 0.15rem; padding: 0.4rem 0; text-align: center; justify-content: center; }
+  .p-wide .p-tab span { font-size: 0.68rem; }
+  .p-wide > .p-head, .p-wide > .p-main { padding-left: 1rem; padding-right: 1rem; }
+}
+
+/* Stats: the full Fitness page has its own place in the side bar, so it isn't repeated here. */
+.p-wide [data-pane="stats"] .p-screen > .p-embed:last-child { display: none; }
+.p-wide .p-head-right { margin-left: auto; }
+.p-wide .p-pushed :is(.fit-card, .card, .tile-body) { overflow-x: auto; }

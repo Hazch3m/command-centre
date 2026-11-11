@@ -27,6 +27,7 @@ import { Planner, plannerView } from "./Planner";
 import { useSwipe } from "./swipe";
 import { plannerShown, setPlannerShown } from "./plannerPref";
 import { WorkoutCreator } from "./WorkoutCreator";
+import { Analysis } from "../modules/running/Analysis";
 import { ACCENTS, phoneLook, setPhoneLook, type PhoneLook } from "../core/appearance";
 
 const ALL_TABS: { id: Tab; label: string; icon: string }[] = [
@@ -39,6 +40,12 @@ const ALL_TABS: { id: Tab; label: string; icon: string }[] = [
 
 let TABS = ALL_TABS.filter((t) => t.id !== "planner" || plannerShown());
 if (typeof window !== "undefined") window.addEventListener("cc:tabs-changed", () => (TABS = ALL_TABS.filter((t) => t.id !== "planner" || plannerShown())));
+/** On a computer the side bar also opens these pages directly. */
+const WIDE_EXTRA: { id: Exclude<Pushed, null>; label: string; icon: string }[] = [
+  { id: "fitness", label: "Fitness", icon: "M3 12h4l3-8 4 16 3-8h4" },
+  { id: "health", label: "Health", icon: "M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" },
+  { id: "analysis", label: "Analysis", icon: "M4 20V10M10 20V4M16 20v-7M22 20H2" },
+];
 const PUSHED: Record<Exclude<Pushed, null>, { title: string; module: string | null }> = {
   health: { title: "Health", module: "health" },
   fitness: { title: "Fitness", module: "fitness" },
@@ -52,9 +59,15 @@ const PUSHED: Record<Exclude<Pushed, null>, { title: string; module: string | nu
   workout: { title: "Create a workout", module: null },
   watch: { title: "Watch workouts", module: "watch" },
   weather: { title: "Weather", module: "weather" },
+  analysis: { title: "Analysis", module: null },
 };
 const PUSHED_PAGE: Partial<Record<Exclude<Pushed, null>, () => ReactNode>> = {
   adjust: () => <PlanAdjustPage />,
+  analysis: () => (
+    <div className="p-wide-page">
+      <Analysis />
+    </div>
+  ),
   pbs: () => <div className="p-embed"><PbsTab /></div>,
   calendar: () => <Calendar />,
   tasks: () => <Tasks />,
@@ -93,7 +106,8 @@ function SyncLine({ onRefresh, busy }: { onRefresh: () => void; busy: boolean })
   );
 }
 
-export function PhoneApp() {
+/** The app; `wide` is the same app laid out for a computer (pacelife.run/web): tabs down the side, pages in columns. */
+export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
   // Re-render when the Planner tab is switched on or off.
   const [, setTabsVer] = useState(0);
   useEffect(() => {
@@ -143,7 +157,7 @@ export function PhoneApp() {
     return () => window.clearTimeout(t);
   }, [tab]);
   const ptrRef = useRef<HTMLDivElement | null>(null);
-  const ptr = usePullRefresh(mainRef, ptrRef, () => askPc(), !pushed);
+  const ptr = usePullRefresh(mainRef, ptrRef, () => askPc(), !pushed && !wide);
   const pane = (id: string) => mainRef.current?.querySelector<HTMLElement>(`:scope > [data-pane="${id}"]`) ?? null;
   const onSwipe = useCallback(
     (d: 1 | -1) => {
@@ -155,7 +169,7 @@ export function PhoneApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [tab, pushed],
   );
-  useSwipe(mainRef, onSwipe, (d) => (pushed ? d === -1 : TABS.findIndex((x) => x.id === tab) + d >= 0 && TABS.findIndex((x) => x.id === tab) + d < TABS.length), {
+  useSwipe(mainRef, onSwipe, (d) => (wide ? false : pushed ? d === -1 : TABS.findIndex((x) => x.id === tab) + d >= 0 && TABS.findIndex((x) => x.id === tab) + d < TABS.length), {
     target: () => pane(pushed ? "pushed" : tab),
     peer: (d) => (pushed ? (d === -1 ? pane(tab) : null) : TABS[TABS.findIndex((x) => x.id === tab) + d] ? pane(TABS[TABS.findIndex((x) => x.id === tab) + d].id) : null),
   });
@@ -255,7 +269,7 @@ export function PhoneApp() {
   return (
     <PhoneNav.Provider value={phoneNav}>
       <NavContext.Provider value={cardNav}>
-        <div className="p-app">
+        <div className={"p-app" + (wide ? " p-wide" : "")}>
           <header className="p-head">
             {pushed ? (
               <button className="p-back" onClick={() => setPushed(null)}>
@@ -304,14 +318,29 @@ export function PhoneApp() {
           <AutoReview />
           <nav className="p-tabs" role="tablist" style={{ ["--tabs" as string]: TABS.length }}>
             <span className={"p-tab-ind" + (pushed ? " off" : "")} style={{ transform: `translateX(${TABS.findIndex((x) => x.id === tab) * 100}%)` }} aria-hidden="true" />
+            {wide && (
+              <span className="p-side-brand" aria-hidden="true">
+                <img src="icon-192.png" alt="" />
+                Pacelife
+              </span>
+            )}
             {TABS.map((t) => (
-              <button key={t.id} role="tab" aria-selected={tab === t.id} className={`p-tab tab-${t.id}` + (tab === t.id ? " on" : "")} onClick={() => setTab(t.id)}>
+              <button key={t.id} role="tab" aria-selected={!pushed && tab === t.id} className={`p-tab tab-${t.id}` + (!pushed && tab === t.id ? " on" : "")} onClick={() => (setPushed(null), setTab(t.id))}>
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d={t.icon} />
                 </svg>
                 <span>{t.label}</span>
               </button>
             ))}
+            {wide &&
+              WIDE_EXTRA.map((t) => (
+                <button key={t.id} className={`p-tab p-tab-extra` + (pushed === t.id ? " on" : "")} onClick={() => push(t.id)}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d={t.icon} />
+                  </svg>
+                  <span>{t.label}</span>
+                </button>
+              ))}
           </nav>
           <RunViewHost />
         </div>

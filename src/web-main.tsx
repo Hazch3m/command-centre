@@ -4,15 +4,20 @@ import { StrictMode, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { boot, showFatal } from "./boot";
 import { isLinked, loadLocal, phoneState, refresh, signInWithAppleWeb } from "./core/backend.phone";
-import { Dashboard } from "./shell/Dashboard";
+import { PhoneApp } from "./phone/PhoneApp";
+import { applyPhoneLook } from "./core/appearance";
+import "./styles/phone.css";
 import "./styles/phone-app.css";
+import "./styles/glass.css";
+import "./styles/wide.css";
 import "./styles/web.css";
-import "./styles/fit.css";
 
 /**
  * Pacelife on the web (pacelife.run/web): the desktop view of your account, for looking at the
  * plan, runs and Runalyze-style analysis on a big screen. Same account and data as the iPhone app.
  */
+// The same app as on the iPhone, laid out for a computer, in your colours from the first frame.
+applyPhoneLook();
 const el = document.getElementById("root")!;
 const root = createRoot(el);
 
@@ -82,7 +87,7 @@ async function start() {
   await boot({ withInit: false });
   root.render(
     <StrictMode>
-      <Dashboard />
+      <PhoneApp wide />
     </StrictMode>,
   );
 }
