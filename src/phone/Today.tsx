@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState, type ReactNode } from "react";
-import { WeekAhead } from "./WeekAhead";
+import { openPlanDay, WeekAhead } from "./WeekAhead";
 import { WeekProgress } from "./WeekProgress";
 import { kvGet, kvSet } from "../core/db";
 import { notifyChanged } from "../core/events";
@@ -12,7 +12,7 @@ import { forecastWeek, type ForecastDay } from "../modules/running/forecast";
 import { mondayOf, upcomingRaces } from "../modules/running/plan";
 import { openRun } from "../modules/running/RunView";
 import { SendToWatch } from "../modules/watch/SendToWatch";
-import { RUN_TYPE_LABEL, typeOfDay } from "../modules/running/runType";
+import { typeOfDay } from "../modules/running/runType";
 import { duration, km, pace } from "../modules/running/stats";
 import { loadDetails, loadOverrides } from "../modules/running/strava";
 import { sessionKindOf } from "../modules/running/planBuilder";
@@ -26,8 +26,11 @@ import { plannerView } from "./Planner";
 import { weatherModule } from "../modules/weather";
 import { isEmptyPlan } from "../core/account";
 import { CountUp, Section, usePhoneNav } from "./common";
-import { DrawnTick, StreakIcon, ZoneIcon } from "./icons";
+import { DrawnTick, ZoneIcon } from "./icons";
 import { HealthPanel } from "./HealthPanel";
+import { plannerShown } from "./plannerPref";
+import { latest as latestHealth, loadHealth } from "../modules/health/data";
+import { useWeatherBrief } from "../modules/weather";
 import { PlannedFocus, RunFocus } from "./Focus";
 import type { Run } from "../modules/running/strava";
 
@@ -49,7 +52,7 @@ export function sessionTitle(text: string, kind?: string): string {
 /** The session without its distance up front ("13 km with 3 km warm-up, …" → "3 km warm-up, …"). */
 const detailOf = (text: string) => text.replace(/^\d+(?:\.\d+)?\s*km\s+(?:with\s+)?/i, "").replace(/^(?:VO2 max|Threshold tempo|Threshold|Hill strength|Race pace):\s*/i, "");
 
-export function Session({ d, label, next }: { d: ForecastDay; label: string; next?: ForecastDay }) {
+export function Session({ d, label, next, brief }: { d: ForecastDay; label: string; next?: ForecastDay; brief?: ReactNode }) {
   const { plan } = useRunningData();
   const t = typeOfDay(d.kind);
   const rest = t === "rest" || !d.km;
@@ -67,6 +70,7 @@ export function Session({ d, label, next }: { d: ForecastDay; label: string; nex
           </span>
         )}
       </div>
+      {brief}
       {rest ? (
         <div className="p-session-km rest">Rest</div>
       ) : (
@@ -189,6 +193,31 @@ export function LastRun() {
   );
 }
 
+/** Readiness and the weather, in a line on today's run. */
+function TodayBrief() {
+  const hv = useDataVersion("health");
+  const h = latestHealth(useQuery(() => loadHealth(3), [hv]).data ?? []);
+  const w = useWeatherBrief();
+  const nav = usePhoneNav();
+  if (h.readiness == null && !w) return null;
+  return (
+    <div className="p-brief">
+      {h.readiness != null && (
+        <button type="button" onClick={() => nav.push("health")}>
+          Readiness <b className="num">{h.readiness}</b>
+          {h.readiness_level ? <small> {h.readiness_level.toLowerCase()}</small> : null}
+        </button>
+      )}
+      {w && (
+        <button type="button" onClick={() => nav.push("weather")}>
+          {w.icon} <b className="num">{w.temp}°</b> <small>{w.text}</small>
+          {w.best && <small> · best {w.best}</small>}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function Today() {
   const today = useToday();
   const now = useNow("minute");
@@ -221,39 +250,21 @@ export function Today() {
   const [editing, setEditing] = useState(false);
   const uv = useDataVersion("ui");
   const layout = fixLayout(useQuery(loadLayout, [uv]).data);
-  const streak = useMemo(() => weekStreak(runs, today), [runs, today]);
   const [openDone, setOpenDone] = useState(false);
   const done = !!todayRun && todayRun.runs.length > 0;
 
   const blocks: Record<BlockId, ReactNode> = {
-    session: todayRun && !isEmptyPlan(plan) && (done && !openDone ? <DoneToday d={todayRun} next={tomorrowRun} onOpen={() => setOpenDone(true)} /> : <Session d={todayRun} label={dayGreeting(now)} next={tomorrowRun} />),
-    progress: plan && week && !isEmptyPlan(plan) && <WeekProgress plan={plan} fw={week} runs={runs} today={today} overrides={overrides} />,
-    ahead: plan && !isEmptyPlan(plan) && <WeekAhead plan={plan} />,
+    session: todayRun && !isEmptyPlan(plan) && (
+      <div className="p-today-run">
+        {done && !openDone ? <DoneToday d={todayRun} next={tomorrowRun} onOpen={() => setOpenDone(true)} /> : <Session d={todayRun} label={dayGreeting(now)} next={tomorrowRun} brief={<TodayBrief />} />}
+      </div>
+    ),
+    progress: plan && week && !isEmptyPlan(plan) && <WeekProgress plan={plan} fw={week} runs={runs} today={today} overrides={overrides} onDay={(d) => openPlanDay(nav, d)} />,
+    ahead: plan && !isEmptyPlan(plan) && <WeekAhead plan={plan} compact onOpen={() => (window.dispatchEvent(new CustomEvent("cc:plan-view", { detail: "plan" })), nav.setTab("training"))} />,
     lastrun: <LastRun />,
     tiles: (
       <>
       <HealthPanel today={today} />
-      <div className="p-tiles one">
-        <button className="p-tile" onClick={() => nav.setTab("training")}>
-          <span className="p-eyebrow">This week</span>
-          <span className="p-big num">
-            {week ? <CountUp value={week.actualKm} /> : "–"}
-            <small> / {week?.plannedKm ?? "–"} km</small>
-          </span>
-          {week && <WeekBars days={week.days} today={today} />}
-          {streak >= 2 && (
-            <span className="p-streak">
-              <StreakIcon size={14} />
-              {streak} weeks in a row
-            </span>
-          )}
-          {tomorrowRun && (
-            <span className="p-tile-note">
-              Tomorrow: {tomorrowRun.km ? `${tomorrowRun.km} km ${RUN_TYPE_LABEL[typeOfDay(tomorrowRun.kind)].toLowerCase()}` : "rest"}
-            </span>
-          )}
-        </button>
-      </div>
       </>
     ),
     workout: (
@@ -380,6 +391,8 @@ export function Today() {
       <GettingStarted />
       {layout.order
         .filter((id) => !layout.hidden.includes(id))
+        // Calendar, to-do and habits only when the Planner is switched on.
+        .filter((id) => plannerShown() || (id !== "habits" && id !== "todo" && id !== "coming"))
         .map((id) => (
           <Fragment key={id}>{blocks[id]}</Fragment>
         ))}
@@ -401,25 +414,6 @@ export function Today() {
 
 const dayGreeting = (now: Date) => (now.getHours() < 12 ? "This morning" : now.getHours() < 17 ? "Today" : "This evening");
 
-/** The week at a glance: a bar a day, as tall as planned, coloured by its zone, solid once run. */
-function WeekBars({ days, today }: { days: ForecastDay[]; today: string }) {
-  const max = Math.max(1, ...days.map((d) => Math.max(d.km ?? 0, d.runs.reduce((a, r) => a + r.distance / 1000, 0))));
-  return (
-    <span className="p-weekdots" aria-hidden="true">
-      {days.map((d) => {
-        const ran = d.runs.reduce((a, r) => a + r.distance / 1000, 0);
-        const z = d.race ? "race" : zoneOf(d.text, d.kind);
-        const h = Math.max(ran, d.km ?? 0) / max;
-        return (
-          <span key={d.date} className={`p-wd z-${z}` + (ran ? " ran" : "") + (d.date === today ? " today" : "")}>
-            <i style={{ height: `${Math.max(8, h * 100)}%` }} />
-            <b>{"MTWTFSS"[(new Date(d.date + "T12:00").getDay() + 6) % 7]}</b>
-          </span>
-        );
-      })}
-    </span>
-  );
-}
 
 /** Weeks in a row (Monday to Sunday) with at least one run, counting this week once you've run in it. */
 export function weekStreak(runs: Pick<Run, "date">[], today: string): number {

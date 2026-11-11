@@ -41,7 +41,7 @@ const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
  * The week ahead and the build to your race, Runna-style: where this week sits in the whole plan
  * (phases along a line, you on it, the race at the end), the countdown, and the week's key sessions.
  */
-export function WeekAhead({ plan, monday: given, onDay }: { plan: Plan; monday?: string; onDay?: (date: string) => void }) {
+export function WeekAhead({ plan, monday: given, onDay, compact, onOpen }: { plan: Plan; monday?: string; onDay?: (date: string) => void; compact?: boolean; onOpen?: () => void }) {
   const today = useToday();
   const nav = usePhoneNav();
   const { runs = [] } = useRunningData();
@@ -115,14 +115,14 @@ export function WeekAhead({ plan, monday: given, onDay }: { plan: Plan; monday?:
   const label = (text: string, kind: string) => (kind === "long" ? "Long run" : kind === "race" ? "Race" : /^([A-Z0-9][\w\s-]{1,18}):/.exec(text)?.[1] ?? sessionKindOf(text) ?? (/hill/i.test(text) ? "Hills" : /fartlek/i.test(text) ? "Fartlek" : /stride/i.test(text) ? "Strides" : /tempo/i.test(text) ? "Tempo" : "Session"));
 
   return (
-    <section className="wa" aria-label="Week ahead">
+    <section className={"wa" + (compact ? " compact" : "") + (onOpen ? " wa-tap" : "")} aria-label="Week ahead" onClick={onOpen} role={onOpen ? "button" : undefined}>
       <div className="wa-top">
         <span className="wa-eyebrow">
           {idx >= 0 ? `Week ${idx + 1} of ${weeks.length}` : tuneUp && weeks[0] && weeks[0].start > monday ? `Block starts ${parseKey(weeks[0].start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : isThis ? "This week" : "Week"}
           {cur ? ` · ${cur.name}` : ""}
         </span>
         {race && (
-          <button type="button" className="wa-race" onClick={() => nav.push("fitness")}>
+          <button type="button" className="wa-race" onClick={(e) => (e.stopPropagation(), nav.push("fitness"))}>
             <span className="wa-days num">{daysTo}</span>
             <small>{daysTo === 1 ? "day" : "days"} to go</small>
           </button>
@@ -137,7 +137,7 @@ export function WeekAhead({ plan, monday: given, onDay }: { plan: Plan; monday?:
         </span>
       )}
 
-      {races.length > 1 && (
+      {!compact && races.length > 1 && (
         <div className="wa-picks" data-noswipe role="tablist" aria-label="Race to highlight">
           {races.map((r) => (
             <button
@@ -186,7 +186,7 @@ export function WeekAhead({ plan, monday: given, onDay }: { plan: Plan; monday?:
         </div>
       )}
 
-      <div className="wa-stats">
+      {!compact && <div className="wa-stats">
         <span>
           <b className="num">{fw.plannedKm ?? "–"}</b>
           <small>km planned</small>
@@ -205,9 +205,9 @@ export function WeekAhead({ plan, monday: given, onDay }: { plan: Plan; monday?:
             <small>km done</small>
           </span>
         )}
-      </div>
+      </div>}
 
-      {key.length > 0 && (
+      {!compact && key.length > 0 && (
         <div className="wa-keys">
           {key.map((d) => {
             const i = fw.days.indexOf(d);
@@ -227,7 +227,7 @@ export function WeekAhead({ plan, monday: given, onDay }: { plan: Plan; monday?:
           })}
         </div>
       )}
-      {summary && <p className="wa-note">{summary}</p>}
+      {!compact && summary && <p className="wa-note">{summary}</p>}
     </section>
   );
 }

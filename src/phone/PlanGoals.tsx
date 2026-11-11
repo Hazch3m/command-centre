@@ -260,7 +260,7 @@ export function FitnessPredictor({ plan }: { plan: Plan }) {
 }
 
 /** Every week of the plan, planned against done: the weeks ahead too. */
-export function PlanWeeksChart({ plan, first, last }: { plan: Plan; first: string; last: string }) {
+export function PlanWeeksChart({ plan, first, last, sel, onPick }: { plan: Plan; first: string; last: string; sel?: string; onPick?: (monday: string) => void }) {
   const today = useToday();
   const { runs = [] } = useRunningData();
   const rv = useDataVersion("running");
@@ -287,7 +287,7 @@ export function PlanWeeksChart({ plan, first, last }: { plan: Plan; first: strin
       )}
       <div className="pp-weeks" data-noswipe>
         {weeks.map((w) => (
-          <div key={w.monday} className={"pp-week" + (w.monday === thisMonday ? " now" : "") + (w.monday > thisMonday ? " future" : "")} title={`${w.label}: ${w.done.toFixed(0)} of ${w.planned} km`}>
+          <div key={w.monday} className={"pp-week" + (w.monday === thisMonday ? " now" : "") + (w.monday > thisMonday ? " future" : "") + (w.monday === sel ? " sel" : "") + (onPick ? " pick" : "")} title={`${w.label}: ${w.done.toFixed(0)} of ${w.planned} km`} onClick={onPick ? () => onPick(w.monday) : undefined} role={onPick ? "button" : undefined}>
             <span className="pp-bars">
               <i className="pp-plan" style={{ height: `${(w.planned / max) * 100}%` }} />
               <i className={"pp-done" + (w.planned && w.done >= w.planned * 0.9 ? " hit" : "")} style={{ height: `${(w.done / max) * 100}%` }} />
