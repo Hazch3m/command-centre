@@ -62,7 +62,8 @@ export function Runs() {
   const feed = useMemo(() => [...runs].sort((a, b) => (a.start_local < b.start_local ? 1 : -1)), [runs]);
 
   return (
-    <div className="p-screen">
+    <div className="p-screen p-runs-screen">
+      <div className="p-runside">
       <div className="p-totals">
         {(
           [
@@ -150,6 +151,9 @@ export function Runs() {
         </Section>
       )}
 
+      </div>
+      {/* On the phone these wrappers don't exist (display: contents); on a computer the summary sits on the left and your runs in a grid on the right. */}
+      <div className="p-runlist">
       <Section title="Your runs">
         {feed.length === 0 && <div className="p-hint">No runs yet. They arrive from Garmin or Apple Health once connected (Settings → Account).</div>}
       </Section>
@@ -161,6 +165,7 @@ export function Runs() {
           Show more runs
         </button>
       )}
+      </div>
     </div>
   );
 }

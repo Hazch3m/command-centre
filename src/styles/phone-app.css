@@ -70,7 +70,6 @@
 @keyframes p-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
   }
 }
 .p-screen {
@@ -1589,16 +1588,15 @@ svg.effort {
 .p-pane.slide-from-left {
   animation: p-from-left 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+/* Opacity only, for the same reason as the cards. */
 @keyframes p-from-right {
   from {
-    opacity: 0.2;
-    transform: translateX(28px);
+    opacity: 0.35;
   }
 }
 @keyframes p-from-left {
   from {
-    opacity: 0.2;
-    transform: translateX(-28px);
+    opacity: 0.35;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -2259,9 +2257,10 @@ svg.effort {
   }
 }
 
-/* Cards rise in one after another the first time a page opens. */
+/* Cards fade in one after another the first time a page opens. Opacity only: a moving card's text is
+   redrawn when it stops on iPhone, which reads as a little jump. */
 .p-pane .p-screen > * {
-  animation: rise-in 0.48s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  animation: rise-in 0.32s ease-out backwards;
 }
 .p-pane .p-screen > :nth-child(2) { animation-delay: 0.04s; }
 .p-pane .p-screen > :nth-child(3) { animation-delay: 0.08s; }
@@ -2272,9 +2271,9 @@ svg.effort {
 @keyframes rise-in {
   from {
     opacity: 0;
-    transform: translateY(14px) scale(0.985);
   }
 }
+
 
 /* Everything you can tap gives a little under your thumb. */
 .p-row-btn,

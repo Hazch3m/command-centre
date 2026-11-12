@@ -185,6 +185,28 @@
   background: color-mix(in srgb, var(--accent) 16%, var(--glass-thick)) !important;
   box-shadow: inset 0 1px 0 var(--glass-rim), inset 0 -1px 0 var(--glass-rim-low), 0 3px 10px rgba(38, 56, 110, 0.14) !important;
 }
+/* Press the bar and the lens lifts off it, swells, and follows your finger; let go and it settles on a tab. */
+:root.phone-root .p-tab-ind::before {
+  transition: transform 0.32s cubic-bezier(0.3, 1.5, 0.5, 1), background-color 0.2s, box-shadow 0.2s;
+}
+:root.phone-root .p-tab-ind.lift {
+  z-index: 3;
+}
+:root.phone-root .p-tab-ind.lift::before {
+  transform: scale(1.14, 1.24);
+  background: color-mix(in srgb, var(--accent) 7%, rgba(255, 255, 255, 0.16)) !important;
+  -webkit-backdrop-filter: saturate(1.9) brightness(1.06);
+  backdrop-filter: saturate(1.9) brightness(1.06);
+  box-shadow: 0 10px 26px rgba(20, 40, 60, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.75), inset 0 2px 3px rgba(255, 255, 255, 0.85), inset 0 -2px 4px rgba(20, 40, 60, 0.12) !important;
+}
+:root.phone-root .p-tab-ind.drag {
+  transition: opacity 0.2s;
+}
+:root.phone-root .p-app:not(.p-wide) .p-tabs {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
 :root.phone-root .p-app:not(.p-wide) {
   padding-bottom: calc(6rem + env(safe-area-inset-bottom));
 }
@@ -223,3 +245,27 @@
 .wp-c .db-bar { height: 26px !important; }
 .wa.compact { padding-top: 0.75rem; padding-bottom: 0.7rem; gap: 0.3rem; }
 .wa.compact .wa-pager button { height: 1.25rem; width: 1.7rem; font-size: 0.95rem; }
+
+/* Adjust plan: a clear coral button under the Plan tabs. */
+:root.phone-root .p-adjust-cta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 0;
+  border-radius: 18px;
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 78%, #ffb38a));
+  color: var(--on-accent, #fff);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 32%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+:root.phone-root .p-adjust-cta:active { transform: scale(0.985); }
+:root.phone-root .p-adjust-cta svg { width: 1.6rem; height: 1.6rem; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+:root.phone-root .p-adjust-cta span:not(.p-chev) { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; flex: 1; }
+:root.phone-root .p-adjust-cta b { font-size: 1.05rem; font-weight: 750; }
+:root.phone-root .p-adjust-cta small { font-size: 0.8rem; opacity: 0.9; }
+:root.phone-root .p-adjust-cta .p-chev { color: inherit; font-size: 1.4rem; opacity: 0.9; }
+.p-wide .p-adjust-cta { max-width: 34rem; }
