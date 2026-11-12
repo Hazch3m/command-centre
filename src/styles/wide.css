@@ -24,14 +24,16 @@
 .p-wide > :not(.p-head):not(.p-main):not(.p-tabs) { grid-column: 2; }
 
 /* Side bar: thick glass, full height, tabs as rows */
+/* Fixed to the window, so it's always beside you however far down the page you scroll. */
 .p-wide > .p-tabs {
   grid-area: side;
-  position: sticky;
+  position: fixed;
   top: 0;
-  left: auto;
+  left: 0;
   right: auto;
-  bottom: auto;
-  align-self: start;
+  bottom: 0;
+  width: var(--side);
+  z-index: 40;
   height: 100dvh;
   box-sizing: border-box;
   display: flex;
@@ -141,7 +143,7 @@
 
 @media (max-width: 760px) {
   .p-app.p-wide { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "main"; padding-bottom: 6rem; }
-  .p-wide > .p-tabs { position: fixed; top: auto; left: 0.6rem; right: 0.6rem; bottom: 0.6rem; height: auto; flex-direction: row; border-radius: 30px; padding: 0.35rem; }
+  .p-wide > .p-tabs { position: fixed; top: auto; left: 0.6rem; right: 0.6rem; bottom: 0.6rem; height: auto; width: auto; flex-direction: row; border-radius: 30px; padding: 0.35rem; }
   .p-wide .p-side-brand, .p-wide .p-tab-extra { display: none; }
   .p-wide .p-tab { flex: 1; width: auto; height: auto; flex-direction: column; gap: 0.15rem; padding: 0.4rem 0; text-align: center; justify-content: center; }
   .p-wide .p-tab span { position: static; transform: none; opacity: 1; background: none; color: inherit; padding: 0; font-size: 0.68rem; }
