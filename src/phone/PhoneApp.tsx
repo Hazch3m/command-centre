@@ -173,7 +173,11 @@ export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
       if (!d.moved && Math.abs(e.clientX - d.x0) < 6) return;
       if (!d.moved) {
         d.moved = true;
-        tabsRef.current?.setPointerCapture(e.pointerId);
+        try {
+          tabsRef.current?.setPointerCapture(e.pointerId);
+        } catch {
+          /* the pointer has gone */
+        }
         indRef.current.classList.remove("off");
         indRef.current.classList.add("drag");
       }
