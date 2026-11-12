@@ -2512,7 +2512,6 @@ svg.effort {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .p-tab-ind,
   .p-pane .p-screen > *,
   .p-ring-fill,
   .p-weekdots i,

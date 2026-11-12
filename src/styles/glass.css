@@ -199,6 +199,17 @@
   backdrop-filter: saturate(1.9) brightness(1.06);
   box-shadow: 0 10px 26px rgba(20, 40, 60, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.75), inset 0 2px 3px rgba(255, 255, 255, 0.85), inset 0 -2px 4px rgba(20, 40, 60, 0.12) !important;
 }
+:root.phone-root .p-app:not(.p-wide) .p-tab-ind {
+  will-change: transform;
+  transition: transform 0.46s cubic-bezier(0.32, 1.28, 0.5, 1), opacity 0.2s;
+}
+/* Gliding to a tapped tab, the lens stretches a little, like a drop of glass. */
+:root.phone-root .p-tab-ind.moving::before {
+  transform: scale(1.12, 0.94);
+}
+@media (prefers-reduced-motion: reduce) {
+  :root.phone-root .p-app:not(.p-wide) .p-tab-ind { transition: transform 0.22s ease-out, opacity 0.2s; }
+}
 :root.phone-root .p-tab-ind.drag {
   transition: opacity 0.2s;
 }
@@ -269,3 +280,31 @@
 :root.phone-root .p-adjust-cta small { font-size: 0.8rem; opacity: 0.9; }
 :root.phone-root .p-adjust-cta .p-chev { color: inherit; font-size: 1.4rem; opacity: 0.9; }
 .p-wide .p-adjust-cta { max-width: 34rem; }
+
+/* ---- As picked on the colour page: coral build card, clear headings ---- */
+:root.phone-root .p-title h1 {
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  color: var(--text);
+}
+:root.phone-root .wa {
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(255, 214, 190, 0.35) 0%, transparent 55%),
+    linear-gradient(150deg, color-mix(in srgb, var(--accent) 92%, #7a1d10) 0%, var(--accent) 55%, color-mix(in srgb, var(--accent) 80%, #ff9a70) 100%);
+  color: #fff;
+}
+/* The phases on coral: white at different strengths, so they read without fighting the card. */
+:root.phone-root .wa .wa-track i { background: rgba(255, 255, 255, 0.85) !important; border-right-color: var(--accent); }
+:root.phone-root .wa .wa-track i:nth-of-type(2) { background: rgba(255, 255, 255, 0.62) !important; }
+:root.phone-root .wa .wa-track i:nth-of-type(3) { background: rgba(255, 255, 255, 0.44) !important; }
+:root.phone-root .wa .wa-track i:nth-of-type(4) { background: rgba(255, 255, 255, 0.3) !important; }
+:root.phone-root .wa .wa-track i:nth-of-type(n + 5) { background: rgba(255, 255, 255, 0.2) !important; }
+:root.phone-root .wa .wa-phases span { color: #fff !important; filter: none; opacity: 0.92; }
+:root.phone-root .wa .wa-you { background: #fff; border-color: color-mix(in srgb, var(--accent) 70%, #5a140a); }
+/* Today's run: the zone colour comes through more, like the picker's card. */
+:root.phone-root .p-session:not(.rt-rest):not(.z-rest) {
+  background:
+    radial-gradient(120% 120% at 100% 0%, color-mix(in srgb, var(--z, var(--accent)) 60%, transparent) 0%, transparent 65%),
+    linear-gradient(160deg, color-mix(in srgb, var(--z, var(--accent)) 38%, var(--glass)) 0%, color-mix(in srgb, var(--z, var(--accent)) 14%, var(--glass)) 80%);
+}

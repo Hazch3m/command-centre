@@ -53,9 +53,9 @@ export function phoneLook(): PhoneLook {
   try {
     const v = JSON.parse(localStorage.getItem(KEY) ?? "null") as PhoneLook | null;
     if (v?.mode && v.accent) {
-      // November 2026: the new look (sea glass and coral) replaces the old default accent once.
-      if (v.accent === "sunset" && !localStorage.getItem("cc-look-2")) {
-        localStorage.setItem("cc-look-2", "1");
+      // November 2026: the new look (sea glass and coral) is applied once, whatever accent was set before.
+      if (v.accent !== "coral" && !localStorage.getItem("cc-look-3")) {
+        localStorage.setItem("cc-look-3", "1");
         const n = { ...v, accent: "coral" };
         localStorage.setItem(KEY, JSON.stringify(n));
         return n;
