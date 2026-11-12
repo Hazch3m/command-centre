@@ -2,6 +2,7 @@ import { db } from "../../core/db";
 import { notifyChanged } from "../../core/events";
 import { hkDetailsAsGarmin } from "../health/appleHealth";
 import { buildFromGarmin } from "./garminRuns";
+import type { Statement } from "../../core/backend.types";
 import { isRunType, parseActivitiesCsv, parseActivityFile, zipEntries, zipRead, type ArchiveActivity, type Track } from "./archiveFiles";
 
 /**
@@ -73,7 +74,7 @@ export async function importStravaArchive(file: Blob, onProgress?: (p: ImportPro
   const now = new Date().toISOString();
   const BATCH = 10;
   for (let i = 0; i < runs.length; i += BATCH) {
-    const stmts: { sql: string; params: unknown[] }[] = [];
+    const stmts: Statement[] = [];
     for (const a of runs.slice(i, i + BATCH)) {
       let t: Track | null = null;
       const e = a.file ? byName.get(a.file.toLowerCase()) : undefined;

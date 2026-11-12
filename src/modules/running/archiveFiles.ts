@@ -54,7 +54,7 @@ export async function zipEntries(file: Blob): Promise<ZipEntry[]> {
 }
 
 async function inflate(data: Uint8Array, format: "deflate-raw" | "gzip"): Promise<Uint8Array> {
-  const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream(format as CompressionFormat));
+  const stream = new Blob([data as Uint8Array<ArrayBuffer>]).stream().pipeThrough(new DecompressionStream(format as CompressionFormat));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
