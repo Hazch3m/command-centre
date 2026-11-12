@@ -550,7 +550,8 @@ try:
                 if name == "Today":
                     cols = wp.evaluate("() => { const s = document.querySelector('.p-pane.on .p-screen'); return s ? getComputedStyle(s).columnCount + '/' + getComputedStyle(s).columnWidth : null; }")
                     print("today columns:", cols)
-                    check(wp.locator(".p-pane.on .p-screen > *").count() >= 3, "web: Today's cards")
+                    check(wp.locator(".p-pane.on .wt-day").count() == 7, "web: Today shows the week as seven day cards")
+                    check(wp.locator(".p-pane.on .wt-panel").count() >= 3, "web: Today's panels under the week")
             wp.locator(".p-wide > .p-tabs .p-tab").filter(has_text=re.compile(r"^\s*Plan\s*$")).first.click()
             wp.wait_for_timeout(1200)
             wp.locator(".p-pane.on .p-subnav").get_by_role("tab", name="Progress", exact=True).click()
@@ -560,8 +561,8 @@ try:
             wp.locator(".p-wide > .p-tabs .p-tab").first.click()
             wp.wait_for_timeout(2000)
             wp.screenshot(path=f"{out}/30-web-home.png")
-            n = wp.evaluate("() => { const xs = new Set([...document.querySelectorAll('.p-pane.on .p-screen > *')].map(e => Math.round(e.getBoundingClientRect().left))); return xs.size; }")
-            check(n >= 2, f"web: a big screen shows the cards in columns ({n})")
+            n = wp.evaluate("() => { const xs = new Set([...document.querySelectorAll('.p-pane.on .wt-day')].map(e => Math.round(e.getBoundingClientRect().top))); return xs.size; }")
+            check(n == 1, f"web: a big screen shows the week in one row ({n})")
             if wp.locator(".p-runcard").count() or True:
                 wp.locator(".p-wide > .p-tabs .p-tab").filter(has_text=re.compile(r"^\s*Runs\s*$")).first.click()
                 wp.wait_for_timeout(1500)
