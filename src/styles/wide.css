@@ -316,3 +316,8 @@
   .p-wide .p-pane:not(.p-pushed) .p-screen.p-runs-screen { grid-template-columns: minmax(0, 1fr); }
   .p-wide .p-runs-screen > .p-runside { position: static; }
 }
+
+/* Health opened from the bar: the page has its own title, so the card's frame and "Health ›" header go. */
+.p-wide .p-pushed .card-page.card-health { background: none !important; border: 0 !important; box-shadow: none !important; padding: 0; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.p-wide .p-pushed .card-page.card-health > .card-body > .card-header { display: none; }
+.p-wide .p-pushed .card-page.card-health > .card-body { padding: 0; }
