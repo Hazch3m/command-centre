@@ -22,6 +22,7 @@ import { AccountSection } from "./Account";
 import { PlanAdjustPage } from "./PlanAdjust";
 import { Tasks } from "./Tasks";
 import { Today } from "./Today";
+import { WebToday } from "./WebToday";
 import { Training } from "./Training";
 import { Planner, plannerView } from "./Planner";
 import { useSwipe } from "./swipe";
@@ -309,8 +310,8 @@ export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
               const on = !pushed && t.id === tab;
               return (
                 <section key={t.id} data-pane={t.id} className={"p-pane" + (on ? " on" + slide : "")} aria-hidden={!on}>
-                  {t.id === "today" ? pageTitle(new Date().toLocaleDateString("en-GB", { weekday: "long" }), new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long" })) : pageTitle(t.label)}
-                  {t.id === "today" ? <Today /> : t.id === "training" ? <Training /> : t.id === "runs" ? <Runs /> : t.id === "planner" ? <Planner /> : <Stats />}
+                  {t.id === "today" && wide ? null : t.id === "today" ? pageTitle(new Date().toLocaleDateString("en-GB", { weekday: "long" }), new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long" })) : pageTitle(t.label)}
+                  {t.id === "today" ? wide ? <WebToday /> : <Today /> : t.id === "training" ? <Training /> : t.id === "runs" ? <Runs /> : t.id === "planner" ? <Planner /> : <Stats />}
                 </section>
               );
             })}
