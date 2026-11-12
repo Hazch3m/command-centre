@@ -61,6 +61,8 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
           STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
+          GARMIN_CONSUMER_KEY: ${{ secrets.GARMIN_CONSUMER_KEY }}
+          GARMIN_CONSUMER_SECRET: ${{ secrets.GARMIN_CONSUMER_SECRET }}
         run: |
           npm install --no-audit --no-fund
           set -o pipefail
@@ -76,6 +78,16 @@ jobs:
             printf '%s' "$STRAVA_CLIENT_ID" | npx wrangler secret put STRAVA_CLIENT_ID >/dev/null
             printf '%s' "$STRAVA_CLIENT_SECRET" | npx wrangler secret put STRAVA_CLIENT_SECRET >/dev/null
             echo "Strava sign-in configured"
+          else
+            echo "::warning title=Strava not set up::STRAVA_CLIENT_ID and STRAVA_CLIENT_SECRET aren't GitHub secrets, so Connect Strava can't work for new accounts."
+          fi
+          # Garmin Connect Developer Program (official API), when its secrets are set.
+          if [ -n "$GARMIN_CONSUMER_KEY" ] && [ -n "$GARMIN_CONSUMER_SECRET" ]; then
+            printf '%s' "$GARMIN_CONSUMER_KEY" | npx wrangler secret put GARMIN_CONSUMER_KEY >/dev/null
+            printf '%s' "$GARMIN_CONSUMER_SECRET" | npx wrangler secret put GARMIN_CONSUMER_SECRET >/dev/null
+            echo "Garmin API configured"
+          else
+            echo "::warning title=Garmin API not set up::GARMIN_CONSUMER_KEY and GARMIN_CONSUMER_SECRET aren't GitHub secrets yet."
           fi
           url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' deploy.log | head -1)
           echo "::notice title=Sync service address::${url:-see the deploy log}"

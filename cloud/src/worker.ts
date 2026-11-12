@@ -302,7 +302,11 @@ export class Store extends DurableObject<Env> {
           body: new URLSearchParams({ client_id: env.STRAVA_CLIENT_ID!, client_secret: env.STRAVA_CLIENT_SECRET!, code: String(body.code), grant_type: "authorization_code" }),
         });
         const t = (await r.json().catch(() => ({}))) as { access_token?: string; refresh_token?: string; expires_at?: number; athlete?: { firstname?: string; lastname?: string }; message?: string; errors?: unknown };
-        if (!t.access_token || !t.refresh_token) return err(502, `Strava didn't finish the sign-in: ${t.message ?? r.status}`);
+        if (!t.access_token || !t.refresh_token) {
+          // A new Strava API app can connect only its owner until Strava raises its athlete limit.
+          if (/limit|capacity/i.test(JSON.stringify(t))) return err(503, "Pacelife can't connect more Strava accounts yet (Strava is still reviewing it). Connect Garmin or Apple Health for now.");
+          return err(502, `Strava didn't finish the sign-in: ${t.message ?? r.status}`);
+        }
         const c = this.creds();
         if (!c) return err(409, "Account not found.");
         const athlete = [t.athlete?.firstname, t.athlete?.lastname].filter(Boolean).join(" ") || null;
@@ -464,7 +468,7 @@ export class Store extends DurableObject<Env> {
     if (path === "/strava/begin" && m === "POST") {
       // Starts Strava sign-in for this account: returns the address of Strava's page.
       const env = this.env as Env;
-      if (!env.STRAVA_CLIENT_ID || !env.STRAVA_CLIENT_SECRET) return err(501, "Strava isn't set up on the sync service yet (add STRAVA_CLIENT_ID and STRAVA_CLIENT_SECRET to the GitHub secrets).");
+      if (!env.STRAVA_CLIENT_ID || !env.STRAVA_CLIENT_SECRET) return err(501, "Connecting Strava isn't available yet. Connect Garmin or Apple Health for now.");
       const account = this.get("account");
       if (!account) return err(409, "Only for accounts.");
       const { from } = (await req.json().catch(() => ({}))) as { from?: string };
@@ -689,6 +693,11 @@ export default {
         return json(t, t.ok ? 200 : 500);
       }
       if (url.pathname.startsWith("/api/internal/")) return err(404, "unknown request");
+      if (url.pathname === "/api/whereami") {
+        // Roughly where the request came from (city level, from Cloudflare): the weather's default place.
+        const cf = (req as Request & { cf?: { city?: string; latitude?: string; longitude?: string; country?: string } }).cf;
+        return json(cf?.latitude && cf.longitude ? { name: cf.city ?? "Near you", lat: Number(cf.latitude), lon: Number(cf.longitude), auto: true } : { error: "unknown" });
+      }
       const store = (name: string) => env.STORE.get(env.STORE.idFromName(name));
 
       if (url.pathname === "/api/auth/apple" && req.method === "POST") {

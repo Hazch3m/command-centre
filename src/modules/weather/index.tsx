@@ -11,6 +11,8 @@ export interface Place {
   name: string;
   lat: number;
   lon: number;
+  /** Found from where you are, not picked. */
+  auto?: boolean;
 }
 const PLACES: Place[] = [
   { name: "Geneva", lat: 46.2044, lon: 6.1432 },
@@ -84,8 +86,31 @@ export function useWeatherBrief(): { temp: number; text: string; icon: string; b
 }
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+/** Roughly where you are (the city your connection comes from), for a place nobody has picked. */
+async function nearYou(): Promise<Place | null> {
+  try {
+    if (!/^https?:$/.test(location.protocol)) return null;
+    const r = await fetch("/api/whereami");
+    const j = (await r.json()) as Place & { error?: string };
+    return j && !j.error && Number.isFinite(j.lat) ? { name: j.name, lat: j.lat, lon: j.lon, auto: true } : null;
+  } catch {
+    return null;
+  }
+}
+let near: Promise<Place | null> | null = null;
+
 async function load(): Promise<{ place: Place; data: Forecast | null; fetchedAt: string | null; error: string | null }> {
-  const place = await kvGet<Place>("weather.place", PLACES[0]);
+  let place = await kvGet<Place | null>("weather.place", null);
+  if (!place || place.auto) {
+    // Nothing picked: the weather where you are (looked up once per app start), else Geneva.
+    const here = await (near ??= nearYou());
+    if (here && (!place || Math.abs(here.lat - place.lat) > 0.05 || Math.abs(here.lon - place.lon) > 0.05)) {
+      place = here;
+      await kvSet("weather.place", here);
+      await kvSet("weather.cache", null);
+    }
+    place ??= PLACES[0];
+  }
   const cached = await kvGet<{ data: Forecast; at: string } | null>("weather.cache", null);
   return { place, data: cached?.data ?? null, fetchedAt: cached?.at ?? null, error: null };
 }
@@ -138,10 +163,22 @@ function WeatherCard({ editing }: CardProps) {
       <>
         {header}
         <div className="weather-places">
+          <button
+            className={"chip-btn" + (place?.auto ? " on" : "")}
+            onClick={async () => {
+              near = null;
+              await kvSet("weather.place", null);
+              await kvSet("weather.cache", null);
+              setChoosing(false);
+              await notifyChanged("weather");
+            }}
+          >
+            Where I am
+          </button>
           {PLACES.map((p) => (
             <button
               key={p.name}
-              className={"chip-btn" + (place?.name === p.name ? " on" : "")}
+              className={"chip-btn" + (!place?.auto && place?.name === p.name ? " on" : "")}
               onClick={async () => {
                 await kvSet("weather.place", p);
                 await kvSet("weather.cache", null);

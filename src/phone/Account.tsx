@@ -249,7 +249,7 @@ export function GettingStarted() {
         <span className="p-start-n">{noPlan ? "2" : "✓"}</span>
         <span className="p-row-main">
           <span className="p-row-title">Build your training plan</span>
-          <span className="p-row-sub">Pick your race and how many days a week; it's built from your recent running</span>
+          <span className="p-row-sub">Pick a race, or Start running if you're new to it: walk and run to 30 minutes</span>
         </span>
       </button>
       {note && <p className="p-start-note">{note}</p>}

@@ -157,12 +157,16 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
       set({ goal: "race", raceName: r0?.name ?? "", raceDate: r0?.date ?? addDays(today, 16 * 7), dist: r0 ? distOf(r0.name, r0.km) : "marathon", target: r0?.target ?? "", tune: undefined }, false);
     } else {
       const spec = GOALS.find((x) => x.id === g)!;
+      if (g === "start" || g === "beyond5k") {
+        set({ goal: g, raceName: spec.label, target: "", weeks: spec.weeks, dist: "5k", level: "beginner", days: 3, tune: undefined }, true);
+        return;
+      }
       set({ goal: g, raceName: spec.label, target: "", weeks: spec.weeks, dist: g === "faster" ? (o.dist === "marathon" || o.dist === "half" ? "10k" : o.dist) : g === "recover" ? "10k" : "half", tune: undefined }, false);
     }
   };
   const next = (to: number) => {
     // Leaving the race step: the length, level and days follow the suggestion for that race unless you've set them.
-    if (step === 0 && to > 0 && !touched) set(isRace ? { level: rec.level, days: rec.days, weeks: recWeeks } : { level: rec.level, days: rec.days }, false);
+    if (step === 0 && to > 0 && !touched && o.goal !== "start" && o.goal !== "beyond5k") set(isRace ? { level: rec.level, days: rec.days, weeks: recWeeks } : { level: rec.level, days: rec.days }, false);
     setStep(to);
   };
   const STEPS = ["Race", "Your training", "Plan", "Review"];
@@ -278,6 +282,17 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
                   <span className="label">Faster at</span>
                   <Chips value={o.dist} options={(["5k", "10k", "half"] as RaceDist[]).map((d) => ({ v: d, l: DIST_LABEL[d] }))} onChange={(d) => set({ dist: d }, false)} />
                 </>
+              )}
+              {o.goal === "beyond5k" && (
+                <label className="pb-goal">
+                  <span className="label">Your 5k time now (sets your paces)</span>
+                  <input value={o.target} inputMode="numeric" placeholder="35:00" onChange={(e) => set({ target: e.target.value }, false)} />
+                </label>
+              )}
+              {o.goal === "start" && (
+                <p className="ps-note">
+                  No race or 5k time needed. Three sessions a week of running and walking, from 1-minute runs to 30 minutes without stopping. Run as slowly as you like.
+                </p>
               )}
               <p className="ps-note">
                 {GOALS.find((g) => g.id === o.goal)!.weeks} weeks suits this; set the length on the Plan step. It starts {fmt(firstMonday)}.
