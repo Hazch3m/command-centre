@@ -166,6 +166,33 @@ export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
   };
   // A tap: the lens sets off for the new tab straight away (on the compositor, so it glides even while the
   // page is being built), and the page follows a frame later.
+  // While the lens moves, the tabs it passes over take on the accent for a moment.
+  const sweepUntil = useRef(0);
+  const sweep = (ms: number) => {
+    const start = sweepUntil.current > performance.now();
+    sweepUntil.current = Math.max(sweepUntil.current, performance.now() + ms);
+    if (start) return;
+    const tick = () => {
+      const ind = indRef.current;
+      const nav = tabsRef.current;
+      if (!ind || !nav) return;
+      const r = ind.getBoundingClientRect();
+      const c = r.left + r.width / 2;
+      const live = performance.now() < sweepUntil.current;
+      for (const b of nav.querySelectorAll<HTMLElement>(".p-tab")) {
+        const br = b.getBoundingClientRect();
+        b.classList.toggle("lit", live && Math.abs(br.left + br.width / 2 - c) < r.width * 0.45);
+      }
+      if (live) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  };
+  const hold = useRef<number | null>(null);
+  const endPress = () => {
+    if (hold.current != null) window.clearTimeout(hold.current);
+    hold.current = null;
+    tabsRef.current?.classList.remove("press");
+  };
   const tapTab = (t: Tab) => {
     const ind = indRef.current;
     if (wide || !ind) {
@@ -178,6 +205,7 @@ export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
     if (t !== tab) {
       ind.classList.add("moving");
       window.setTimeout(() => ind.classList.remove("moving"), 380);
+      sweep(520);
     }
     requestAnimationFrame(() => {
       setPushed(null);
@@ -196,9 +224,19 @@ export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
       } catch {
         /* the pointer has gone */
       }
-      // The lens only swells here; it moves on a drag, or glides once to a tapped tab (no double motion).
+      // The bar swells a little and the lens lifts. Hold for a moment and the lens slides over to your
+      // finger; a quick tap instead glides it once to the tab (no double motion).
       ind.classList.remove("off", "drag");
       ind.classList.add("lift");
+      tabsRef.current.classList.add("press");
+      const x = e.clientX;
+      if (hold.current != null) window.clearTimeout(hold.current);
+      hold.current = window.setTimeout(() => {
+        hold.current = null;
+        if (!drag.current || drag.current.moved || !indRef.current) return;
+        indRef.current.style.transform = `translateX(${slotAt(x).px}px)`;
+        sweep(420);
+      }, 160);
     },
     onPointerMove: (e: RPointerEvent) => {
       const d = drag.current;
@@ -208,7 +246,10 @@ export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
       if (!d.moved) {
         d.moved = true;
         ind.classList.add("drag");
+        if (hold.current != null) window.clearTimeout(hold.current);
+        hold.current = null;
       }
+      sweep(250);
       const dt = Math.max(1, e.timeStamp - d.lt);
       d.v = d.v * 0.6 + ((e.clientX - d.lx) / dt) * 0.4;
       d.lx = e.clientX;
@@ -219,6 +260,7 @@ export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
     onPointerUp: (e: RPointerEvent) => {
       const d = drag.current;
       drag.current = null;
+      endPress();
       const ind = indRef.current;
       if (!d || !ind) return;
       ind.classList.remove("lift", "drag");
@@ -231,11 +273,13 @@ export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
       }
       const t = TABS[slotAt(e.clientX).i].id;
       ind.style.transform = `translateX(${TABS.findIndex((x) => x.id === t) * 100}%)`;
+      sweep(420);
       if (t !== tab || pushed) setTab(t);
       else if (pushed) setPushed(null);
     },
     onPointerCancel: () => {
       drag.current = null;
+      endPress();
       const ind = indRef.current;
       if (!ind) return;
       ind.classList.remove("lift", "drag");
