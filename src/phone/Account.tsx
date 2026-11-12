@@ -48,6 +48,7 @@ export async function connectStravaAndSync(): Promise<string> {
 
 /** More → Account: Garmin, a PC, signing out, deleting the account. */
 export function AccountSection() {
+  const nav = usePhoneNav();
   const [info, setInfo] = useState<AccountInfo | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -77,6 +78,13 @@ export function AccountSection() {
   };
   return (
     <Section title="Account">
+      <button type="button" className="p-row p-row-btn rs-entry" onClick={() => nav.push("connect")}>
+        <span className="p-row-main">
+          <span className="p-row-title">Set up your runs</span>
+          <span className="p-row-sub">How you record them, step by step, and importing your Strava archive</span>
+        </span>
+        <span className="p-chev">›</span>
+      </button>
       <div className="p-row">
         <span className="p-row-main">
           <span className="p-row-title">Garmin</span>
@@ -230,6 +238,9 @@ export function GettingStarted() {
           <span className="p-row-sub">{linked ? `${[garmin && "Garmin", health && "Apple Health", strava && "Strava"].filter(Boolean).join(" and ")} connected` : "Garmin for runs, sleep, HRV and workouts on your watch; Apple Health or Strava for any other watch or app"}</span>
           {!linked && (
             <span className="p-start-pills">
+              <button className="p-pill rs-guide" disabled={busy} onClick={() => nav.push("connect")}>
+                Help me choose
+              </button>
               <button className="p-pill" disabled={busy} onClick={go(connectAndSync)}>
                 Garmin
               </button>

@@ -23,6 +23,7 @@ import { PlanAdjustPage } from "./PlanAdjust";
 import { Tasks } from "./Tasks";
 import { Today } from "./Today";
 import { WebToday } from "./WebToday";
+import { RunSources } from "./RunSources";
 import { Training } from "./Training";
 import { Planner, plannerView } from "./Planner";
 import { useSwipe } from "./swipe";
@@ -61,9 +62,11 @@ const PUSHED: Record<Exclude<Pushed, null>, { title: string; module: string | nu
   watch: { title: "Watch workouts", module: "watch" },
   weather: { title: "Weather", module: "weather" },
   analysis: { title: "Analysis", module: null },
+  connect: { title: "Your runs", module: null },
 };
 const PUSHED_PAGE: Partial<Record<Exclude<Pushed, null>, () => ReactNode>> = {
   adjust: () => <PlanAdjustPage />,
+  connect: () => <RunSources />,
   analysis: () => (
     <div className="p-wide-page">
       <Analysis />

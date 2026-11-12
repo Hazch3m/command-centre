@@ -170,9 +170,9 @@ export function phoneMayWrite(sql: string, params: unknown[]): boolean {
     return !!key && KV_ALLOWED.some((r) => r.test(key));
   }
   if (PHONE_RUN_TABLES.has(t)) {
-    // Inserting or updating one Apple Health run (its id among the values); no deletes.
+    // Inserting or updating one Apple Health run, or one from your Strava archive (its id among the values); no deletes.
     if (/^\s*DELETE/i.test(sql)) return false;
-    return params.some((p) => typeof p === "string" && /^hk[0-9a-f]{32}$/.test(p));
+    return params.some((p) => typeof p === "string" && /^(hk[0-9a-f]{32}|sx\d{1,20})$/.test(p));
   }
   // Apple Health's days only fill gaps: never overwrite what Garmin recorded.
   if (t === "health_daily") return /^\s*INSERT/i.test(sql) && /DO UPDATE SET rhr = COALESCE\(health_daily\.rhr, excluded\.rhr\)/i.test(sql) && !/=\s*excluded\.(?!\w+\))/i.test(sql.replace(/COALESCE\(health_daily\.\w+, excluded\.\w+\)/gi, ""));
