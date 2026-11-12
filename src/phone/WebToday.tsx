@@ -49,6 +49,9 @@ function DayCard({ d, today }: { d: ForecastDay; today: string }) {
   const isToday = d.date === today;
   const past = d.date < today;
   const title = d.race ? "Race day" : rest ? (ran ? "Extra run" : "Rest") : sessionTitle(d.text, d.kind);
+  const tx0 = d.race ? `${d.race.name}${d.race.target ? `, aiming for ${d.race.target}` : ""}` : detailOf(d.text);
+  // "Easy" under "Easy run" says nothing twice.
+  const tx = title.toLowerCase().startsWith(tx0.toLowerCase().replace(/\s*run$/, "")) ? "" : tx0;
   const status = ran
     ? `Done · ${kmOf(d.runs).toFixed(1)} km, ${paceOf(d.runs)}`
     : isToday
@@ -69,8 +72,8 @@ function DayCard({ d, today }: { d: ForecastDay; today: string }) {
         <span>{dayNum(d.date)}</span>
       </span>
       <span className="wt-km num">{rest && !ran ? "Rest" : `${ran ? Math.round(kmOf(d.runs) * 10) / 10 : d.km} km`}</span>
-      <span className="wt-title">{title}</span>
-      {!rest && <span className="wt-tx">{d.race ? `${d.race.name}${d.race.target ? `, aiming for ${d.race.target}` : ""}` : detailOf(d.text)}</span>}
+      {!(rest && !ran) && <span className="wt-title">{title}</span>}
+      {!rest && tx && <span className="wt-tx">{tx}</span>}
       {ran && !rest && d.km ? <span className="wt-plan num">Planned {d.km} km</span> : null}
       <span className={`wt-st${ran ? " ok" : past && !rest ? " miss" : ""}`}>{status}</span>
     </button>
