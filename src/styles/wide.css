@@ -238,3 +238,8 @@
   .wt-row { grid-template-columns: minmax(0, 1fr); }
   .wt-day { min-height: 0; }
 }
+
+/* Health on a computer: charts two to a row, so none is a flat strip. */
+.p-wide .p-pushed .health-charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.2rem; align-items: start; }
+.p-wide .p-pushed .health-charts .hc { min-width: 0; }
+@media (max-width: 900px) { .p-wide .p-pushed .health-charts { grid-template-columns: minmax(0, 1fr); } }
