@@ -212,7 +212,7 @@
 }
 /* Pressed: a quick spring to under your finger. */
 :root.phone-root .p-app:not(.p-wide) .p-tab-ind.lift {
-  transition: transform 0.2s cubic-bezier(0.3, 1.25, 0.5, 1), opacity 0.2s;
+  transition: transform 0.26s cubic-bezier(0.3, 1.2, 0.5, 1), opacity 0.2s;
 }
 /* While your finger drags it, no transition at all: the lens is exactly where your finger is. (Needs to
    outrank the glide rule above, which has more classes.) */
@@ -338,3 +338,19 @@
 .rs-bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s; }
 .rs-entry { width: 100%; text-align: left; }
 .p-wide .rs { max-width: 46rem; }
+
+/* Pressing the bar: it swells a touch and settles back when you let go. */
+:root.phone-root .p-app:not(.p-wide) .p-tabs {
+  transition: transform 0.32s cubic-bezier(0.3, 1.35, 0.5, 1);
+}
+:root.phone-root .p-app:not(.p-wide) .p-tabs.press {
+  transform: scale(1.03);
+}
+/* Tabs the lens passes over pick up the accent, then fade back. */
+:root.phone-root .p-app:not(.p-wide) .p-tab {
+  transition: color 0.35s ease-out;
+}
+:root.phone-root .p-app:not(.p-wide) .p-tab.lit {
+  color: var(--accent);
+  transition: color 0.08s;
+}
