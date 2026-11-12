@@ -94,21 +94,22 @@
 .p-wide .p-pane.on { max-width: 1560px; margin: 0 auto; }
 .p-wide .p-title { padding: 0.2rem 0 1rem; display: flex; align-items: baseline; gap: 0.9rem; }
 .p-wide .p-title h1 { font-size: 2.6rem; }
-/* Two columns in rows: cards side by side share a top and a bottom edge, so everything lines up. */
+/* Two columns in rows: cards side by side start on the same line; short strips and link lists run the
+   full width so nothing is left stretched or dangling. */
 .p-wide .p-pane:not(.p-pushed) .p-screen {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.3rem 1.4rem;
-  align-items: stretch;
+  align-items: start;
   padding: 0 0 1.5rem;
 }
 .p-wide .p-pane:not(.p-pushed) .p-screen > * { margin: 0 !important; min-width: 0; }
-/* Full-width rows: the page's tabs, the Adjust plan button, the week switcher and wide strips. */
-.p-wide .p-pane:not(.p-pushed) .p-screen > :is(.p-subnav, .p-adjust-cta, .p-weekbar, .gc-strip, .hp-dots, .pt-picks, .p-embed, .p-start, .p-hint) { grid-column: 1 / -1; }
-/* A section's card grows to its row's height, so neighbours end on the same line. */
-.p-wide .p-pane:not(.p-pushed) .p-screen > .p-section { display: flex; flex-direction: column; }
-.p-wide .p-pane:not(.p-pushed) .p-screen > .p-section > :last-child { flex: 1 1 auto; }
-.p-wide .p-pane:not(.p-pushed) .p-screen > :is(.p-weekswipe, .lfw-strip, .wa, .pt-card, .p-group) { height: 100%; box-sizing: border-box; }
+.p-wide .p-pane:not(.p-pushed) .p-screen > :is(.p-subnav, .p-adjust-cta, .p-weekbar, .gc-strip, .hp-dots, .pt-picks, .p-embed, .p-start, .p-hint, .lfw-strip) { grid-column: 1 / -1; }
+.p-wide .p-pane:not(.p-pushed) .p-screen > .p-subnav { order: -3; }
+.p-wide .p-pane:not(.p-pushed) .p-screen > .p-adjust-cta { order: -2; }
+.p-wide .p-pane:not(.p-pushed) .p-screen > .lfw-strip { order: -1; }
+.p-wide [data-pane="stats"] .p-screen > .p-section:first-child { grid-column: 1 / -1; }
+.p-wide [data-pane="stats"] .p-screen > .p-section:first-child .p-group { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .p-wide .p-adjust-cta { max-width: none; padding: 0.7rem 1.2rem; }
 .p-wide .p-screen > .p-subnav { max-width: 34rem; }
 .p-wide .p-screen > * + * { margin-top: 0; }
