@@ -38,7 +38,7 @@ const paceOf = (speed: number) => (speed > 0 ? fmtPace(1000 / speed) : "–");
 
 /** Opens the run where it came from: Garmin Connect ("g…" ids) or Strava. */
 export function openSource(id: string) {
-  return id.startsWith("g") ? backend.openGarminActivity(id.slice(1)) : backend.openStravaActivity(id);
+  return id.startsWith("g") ? backend.openGarminActivity(id.slice(1)) : backend.openStravaActivity(id.startsWith("sx") ? id.slice(2) : id);
 }
 
 export function RunViewHost() {

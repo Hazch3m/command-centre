@@ -10,7 +10,7 @@ import { trimp } from "../modules/running/vo2";
 
 /** Where the phone is: a bottom tab, optionally with a page pushed on top (Health, Fitness). */
 export type Tab = "today" | "planner" | "training" | "runs" | "stats";
-export type Pushed = "health" | "fitness" | "plan" | "adjust" | "pbs" | "calendar" | "tasks" | "habits" | "settings" | "watch" | "weather" | "workout" | "analysis" | null;
+export type Pushed = "health" | "fitness" | "plan" | "adjust" | "pbs" | "calendar" | "tasks" | "habits" | "settings" | "watch" | "weather" | "workout" | "analysis" | "connect" | null;
 export const PhoneNav = createContext<{ tab: Tab; pushed?: Pushed; setTab: (t: Tab) => void; push: (p: Pushed) => void }>({ tab: "today", setTab: () => {}, push: () => {} });
 export const usePhoneNav = () => useContext(PhoneNav);
 
