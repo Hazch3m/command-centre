@@ -475,8 +475,9 @@ export class Store extends DurableObject<Env> {
       const state = [...crypto.getRandomValues(new Uint8Array(24))].map((x) => x.toString(16).padStart(2, "0")).join("");
       this.set("stravaState", state);
       this.set("stravaStateAt", String(Date.now()));
+      // Always pacelife.run, whichever address the app or site was opened at: Strava allows one callback domain.
       const u = new URL("https://www.strava.com/oauth/authorize");
-      for (const [k, v] of Object.entries({ client_id: env.STRAVA_CLIENT_ID, redirect_uri: `${url.origin}/api/oauth/strava/callback`, response_type: "code", approval_prompt: "auto", scope: "read,activity:read_all,profile:read_all", state: `${account}.${state}.${from === "app" ? "app" : "web"}` })) u.searchParams.set(k, v);
+      for (const [k, v] of Object.entries({ client_id: env.STRAVA_CLIENT_ID, redirect_uri: "https://pacelife.run/api/oauth/strava/callback", response_type: "code", approval_prompt: "auto", scope: "read,activity:read_all,profile:read_all", state: `${account}.${state}.${from === "app" ? "app" : "web"}` })) u.searchParams.set(k, v);
       return json({ url: u.toString() });
     }
     if (path === "/strava/disconnect" && m === "POST") {

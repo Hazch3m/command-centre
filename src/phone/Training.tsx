@@ -299,7 +299,7 @@ export function Training() {
       {fw.week || day.km || day.runs.length || day.race ? (
         <>
           {/* The run at a glance, so the week's list shows under it; tap it for the whole session. */}
-          <Session d={day} label={dayName(day.date, today)} compact={expanded !== day.date} onOpen={() => setExpanded(day.date)} />
+          <Session d={day} label={dayName(day.date, today)} compact={expanded !== day.date} onOpen={() => setExpanded(day.date)} onClose={() => setExpanded(null)} />
           {expanded === day.date && (
             <>
               {fw.week && day.date >= today && !day.runs.length && <SessionBump plan={plan} d={day} week={fw} />}

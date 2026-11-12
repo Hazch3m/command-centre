@@ -187,13 +187,13 @@
 }
 /* Press the bar and the lens lifts off it, swells, and follows your finger; let go and it settles on a tab. */
 :root.phone-root .p-tab-ind::before {
-  transition: transform 0.38s cubic-bezier(0.25, 1.8, 0.45, 1), background-color 0.2s, box-shadow 0.2s;
+  transition: transform 0.3s cubic-bezier(0.3, 1.2, 0.5, 1), background-color 0.2s, box-shadow 0.2s;
 }
 :root.phone-root .p-tab-ind.lift {
   z-index: 3;
 }
 :root.phone-root .p-tab-ind.lift::before {
-  transform: scale(calc(1.14 + var(--sx, 0)), calc(1.22 - var(--sx, 0) * 0.5));
+  transform: scale(calc(1.08 + var(--sx, 0)), calc(1.12 - var(--sx, 0) * 0.5));
   background: color-mix(in srgb, var(--accent) 7%, rgba(255, 255, 255, 0.16)) !important;
   -webkit-backdrop-filter: saturate(1.9) brightness(1.06);
   backdrop-filter: saturate(1.9) brightness(1.06);
@@ -201,11 +201,11 @@
 }
 :root.phone-root .p-app:not(.p-wide) .p-tab-ind {
   will-change: transform;
-  transition: transform 0.46s cubic-bezier(0.32, 1.28, 0.5, 1), opacity 0.2s;
+  transition: transform 0.34s cubic-bezier(0.25, 1.08, 0.4, 1), opacity 0.2s;
 }
 /* Gliding to a tapped tab, the lens stretches a little, like a drop of glass. */
 :root.phone-root .p-tab-ind.moving::before {
-  transform: scale(1.16, 0.9);
+  transform: scale(1.05, 0.97);
 }
 @media (prefers-reduced-motion: reduce) {
   :root.phone-root .p-app:not(.p-wide) .p-tab-ind { transition: transform 0.22s ease-out, opacity 0.2s; }
@@ -297,3 +297,5 @@
   background-clip: border-box;
   color: var(--text);
 }
+
+.p-session-closable { cursor: pointer; }

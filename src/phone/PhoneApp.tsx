@@ -176,12 +176,10 @@ export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
       ind.classList.add("moving");
       window.setTimeout(() => ind.classList.remove("moving"), 380);
     }
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        setPushed(null);
-        setTab(t);
-      }),
-    );
+    requestAnimationFrame(() => {
+      setPushed(null);
+      setTab(t);
+    });
   };
   const tabDrag = {
     // Press: the lens swells and springs to sit under your finger. Slide: it follows your finger exactly,
@@ -195,9 +193,9 @@ export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
       } catch {
         /* the pointer has gone */
       }
+      // The lens only swells here; it moves on a drag, or glides once to a tapped tab (no double motion).
       ind.classList.remove("off", "drag");
       ind.classList.add("lift");
-      ind.style.transform = `translateX(${slotAt(e.clientX).px}px)`;
     },
     onPointerMove: (e: RPointerEvent) => {
       const d = drag.current;
