@@ -212,7 +212,7 @@ export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
       d.v = d.v * 0.6 + ((e.clientX - d.lx) / dt) * 0.4;
       d.lx = e.clientX;
       d.lt = e.timeStamp;
-      ind.style.setProperty("--sx", String(Math.min(0.35, Math.abs(d.v) * 0.18).toFixed(3)));
+      ind.style.setProperty("--sx", String(Math.min(0.14, Math.abs(d.v) * 0.08).toFixed(3)));
       ind.style.transform = `translateX(${slotAt(e.clientX).px}px)`;
     },
     onPointerUp: (e: RPointerEvent) => {

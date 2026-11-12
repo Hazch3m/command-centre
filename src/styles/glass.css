@@ -193,7 +193,7 @@
   z-index: 3;
 }
 :root.phone-root .p-tab-ind.lift::before {
-  transform: scale(calc(1.28 + var(--sx, 0)), calc(1.42 - var(--sx, 0) * 0.6));
+  transform: scale(calc(1.14 + var(--sx, 0)), calc(1.22 - var(--sx, 0) * 0.5));
   background: color-mix(in srgb, var(--accent) 7%, rgba(255, 255, 255, 0.16)) !important;
   -webkit-backdrop-filter: saturate(1.9) brightness(1.06);
   backdrop-filter: saturate(1.9) brightness(1.06);
@@ -205,12 +205,18 @@
 }
 /* Gliding to a tapped tab, the lens stretches a little, like a drop of glass. */
 :root.phone-root .p-tab-ind.moving::before {
-  transform: scale(1.34, 0.82);
+  transform: scale(1.16, 0.9);
 }
 @media (prefers-reduced-motion: reduce) {
   :root.phone-root .p-app:not(.p-wide) .p-tab-ind { transition: transform 0.22s ease-out, opacity 0.2s; }
 }
-:root.phone-root .p-tab-ind.drag {
+/* Pressed: a quick spring to under your finger. */
+:root.phone-root .p-app:not(.p-wide) .p-tab-ind.lift {
+  transition: transform 0.2s cubic-bezier(0.3, 1.25, 0.5, 1), opacity 0.2s;
+}
+/* While your finger drags it, no transition at all: the lens is exactly where your finger is. (Needs to
+   outrank the glide rule above, which has more classes.) */
+:root.phone-root .p-app:not(.p-wide) .p-tab-ind.drag {
   transition: opacity 0.2s;
 }
 :root.phone-root .p-tab-ind.drag::before {
@@ -256,7 +262,7 @@
 .p-session.p-session-c { padding: 0.7rem 0.9rem 0.75rem; gap: 0.4rem; }
 .p-session-c .p-session-km { font-size: 2.5rem; }
 .wp.wp-c { padding: 0.65rem 0.9rem 0.7rem; gap: 0.4rem; margin-bottom: 0; }
-.wp-c .db-bar { height: 26px !important; }
+.wp-c .db-bar { height: 38px !important; }
 .wa.compact { padding-top: 0.75rem; padding-bottom: 0.7rem; gap: 0.3rem; }
 .wa.compact .wa-pager button { height: 1.25rem; width: 1.7rem; font-size: 0.95rem; }
 
