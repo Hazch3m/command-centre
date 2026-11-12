@@ -151,7 +151,7 @@ export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
   // The tab bar's lens follows your finger: press, slide along the bar, let go on a tab.
   const tabsRef = useRef<HTMLElement | null>(null);
   const indRef = useRef<HTMLSpanElement | null>(null);
-  const drag = useRef<{ id: number; x0: number; moved: boolean } | null>(null);
+  const drag = useRef<{ id: number; x0: number; moved: boolean; lx: number; lt: number; v: number } | null>(null);
   const slotAt = (x: number) => {
     const nav = tabsRef.current!;
     const ind = indRef.current!;
@@ -184,26 +184,36 @@ export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
     );
   };
   const tabDrag = {
+    // Press: the lens swells and springs to sit under your finger. Slide: it follows your finger exactly,
+    // stretching with your speed. Let go: it settles on the tab underneath.
     onPointerDown: (e: RPointerEvent) => {
-      if (e.pointerType === "mouse" || !indRef.current || !tabsRef.current) return;
-      drag.current = { id: e.pointerId, x0: e.clientX, moved: false };
-      indRef.current.classList.add("lift");
+      const ind = indRef.current;
+      if (e.pointerType === "mouse" || !ind || !tabsRef.current) return;
+      drag.current = { id: e.pointerId, x0: e.clientX, moved: false, lx: e.clientX, lt: e.timeStamp, v: 0 };
+      try {
+        tabsRef.current.setPointerCapture(e.pointerId);
+      } catch {
+        /* the pointer has gone */
+      }
+      ind.classList.remove("off", "drag");
+      ind.classList.add("lift");
+      ind.style.transform = `translateX(${slotAt(e.clientX).px}px)`;
     },
     onPointerMove: (e: RPointerEvent) => {
       const d = drag.current;
-      if (!d || d.id !== e.pointerId || !indRef.current) return;
-      if (!d.moved && Math.abs(e.clientX - d.x0) < 6) return;
+      const ind = indRef.current;
+      if (!d || d.id !== e.pointerId || !ind) return;
+      if (!d.moved && Math.abs(e.clientX - d.x0) < 3) return;
       if (!d.moved) {
         d.moved = true;
-        try {
-          tabsRef.current?.setPointerCapture(e.pointerId);
-        } catch {
-          /* the pointer has gone */
-        }
-        indRef.current.classList.remove("off");
-        indRef.current.classList.add("drag");
+        ind.classList.add("drag");
       }
-      indRef.current.style.transform = `translateX(${slotAt(e.clientX).px}px)`;
+      const dt = Math.max(1, e.timeStamp - d.lt);
+      d.v = d.v * 0.6 + ((e.clientX - d.lx) / dt) * 0.4;
+      d.lx = e.clientX;
+      d.lt = e.timeStamp;
+      ind.style.setProperty("--sx", String(Math.min(0.35, Math.abs(d.v) * 0.18).toFixed(3)));
+      ind.style.transform = `translateX(${slotAt(e.clientX).px}px)`;
     },
     onPointerUp: (e: RPointerEvent) => {
       const d = drag.current;
@@ -211,7 +221,13 @@ export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
       const ind = indRef.current;
       if (!d || !ind) return;
       ind.classList.remove("lift", "drag");
-      if (!d.moved) return;
+      ind.style.removeProperty("--sx");
+      // A tap. The bar holds the pointer, so the tab's own click may not arrive: switch here (a second
+      // switch to the same tab from the click does nothing).
+      if (!d.moved) {
+        tapTab(TABS[slotAt(e.clientX).i].id);
+        return;
+      }
       const t = TABS[slotAt(e.clientX).i].id;
       ind.style.transform = `translateX(${TABS.findIndex((x) => x.id === t) * 100}%)`;
       if (t !== tab || pushed) setTab(t);
@@ -222,6 +238,7 @@ export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
       const ind = indRef.current;
       if (!ind) return;
       ind.classList.remove("lift", "drag");
+      ind.style.removeProperty("--sx");
       ind.style.transform = `translateX(${TABS.findIndex((x) => x.id === tab) * 100}%)`;
     },
   };
