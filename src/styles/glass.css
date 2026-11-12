@@ -1,52 +1,71 @@
 /* =====================================================================
-   Pacelife, glass edition.
-   The page sits on a lake-at-dawn colour field (glacier teal, lake blue, alpenglow pink and
-   apricot); every surface is frosted glass over it, so the colour shows through everything.
+   Pacelife, glass edition: sea glass and coral (picked November 2026).
+   The page sits on a sea-glass colour field (teal into soft blue); every surface is frosted
+   glass over it, so the colour shows through everything. The accent is coral.
    Bars that float (the tab bar, the header buttons) are thicker "liquid" glass with a bright
    rim and a lens for the selected tab. Loaded last; tokens first, then surfaces.
    ===================================================================== */
 
 :root.phone-root[data-theme="light"] {
-  --bg: #e4ecf7;
-  --glass: rgba(255, 255, 255, 0.58);
-  --glass-2: rgba(255, 255, 255, 0.4);
-  --glass-thick: rgba(255, 255, 255, 0.8);
-  --glass-rim: rgba(255, 255, 255, 0.85);
-  --glass-rim-low: rgba(255, 255, 255, 0.3);
-  --glass-shadow: 0 10px 30px rgba(38, 56, 110, 0.13), 0 1px 2px rgba(38, 56, 110, 0.08);
+  --bg: #b7d3d6;
+  --glass: rgba(255, 255, 255, 0.74);
+  --glass-2: rgba(255, 255, 255, 0.5);
+  --glass-thick: rgba(255, 255, 255, 0.86);
+  --glass-rim: rgba(255, 255, 255, 0.8);
+  --glass-rim-low: rgba(255, 255, 255, 0.55);
+  --glass-shadow: 0 6px 20px rgba(20, 50, 60, 0.1), 0 1px 2px rgba(20, 50, 60, 0.06);
   --card: var(--glass);
-  --card-2: rgba(255, 255, 255, 0.46);
-  --line: rgba(28, 48, 92, 0.1);
-  --line-2: rgba(28, 48, 92, 0.16);
-  --track: rgba(28, 48, 92, 0.1);
-  --hover: rgba(255, 255, 255, 0.35);
-  --muted: #5b6880;
-  --field-1: #7ad7c9;
-  --field-2: #8fa6ff;
-  --field-3: #ffb79a;
-  --field-4: #f2a3d2;
-  --field-base: linear-gradient(170deg, #d6ebf7 0%, #e7e3fa 55%, #f8e4e4 100%);
-  --field-glow: 0.85;
+  --card-2: rgba(255, 255, 255, 0.55);
+  --line: rgba(20, 40, 55, 0.12);
+  --line-2: rgba(20, 40, 55, 0.18);
+  --track: rgba(20, 40, 55, 0.11);
+  --hover: rgba(255, 255, 255, 0.4);
+  --text: #121b24;
+  --text-2: #33424f;
+  --muted: #4a5866;
+  --z-easy: #0e8a68;
+  --z-long: #2a5fc0;
+  --z-threshold: #b86c00;
+  --z-vo2: #cf3f2a;
+  --z-race: #6d44d4;
+  --z-rest: #8a99a6;
+  /* Sea glass: teal into soft blue */
+  --field-1: #86c2b9;
+  --field-2: #a9d1c9;
+  --field-3: #93acd9;
+  --field-4: #c4d4e2;
+  --field-base: linear-gradient(160deg, #c4d4e2 0%, #a9c7cf 55%, #a7bde0 100%);
+  --field-glow: 1;
 }
 :root.phone-root:not([data-theme="light"]) {
-  --bg: #0b1430;
-  --glass: rgba(30, 44, 78, 0.5);
-  --glass-2: rgba(30, 44, 78, 0.36);
-  --glass-thick: rgba(34, 48, 84, 0.82);
+  --bg: #16323e;
+  --glass: rgba(255, 255, 255, 0.1);
+  --glass-2: rgba(255, 255, 255, 0.06);
+  --glass-thick: rgba(24, 48, 60, 0.86);
   --glass-rim: rgba(255, 255, 255, 0.16);
-  --glass-rim-low: rgba(255, 255, 255, 0.05);
-  --glass-shadow: 0 12px 34px rgba(0, 0, 0, 0.35);
+  --glass-rim-low: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
   --card: var(--glass);
   --card-2: rgba(255, 255, 255, 0.07);
-  --line: rgba(255, 255, 255, 0.09);
-  --line-2: rgba(255, 255, 255, 0.15);
-  --track: rgba(255, 255, 255, 0.1);
-  --field-1: #0f7f86;
-  --field-2: #3b47c4;
-  --field-3: #b4486a;
-  --field-4: #6a2f9e;
-  --field-base: linear-gradient(170deg, #0a1734 0%, #120f33 60%, #1c0f2c 100%);
-  --field-glow: 0.7;
+  --line: rgba(255, 255, 255, 0.13);
+  --line-2: rgba(255, 255, 255, 0.2);
+  --track: rgba(255, 255, 255, 0.12);
+  --hover: rgba(255, 255, 255, 0.06);
+  --text: #f1f6f8;
+  --text-2: #cfdbe0;
+  --muted: #a9bac2;
+  --z-easy: #3fd1aa;
+  --z-long: #6ea8ff;
+  --z-threshold: #ffb23e;
+  --z-vo2: #ff6f5a;
+  --z-race: #bb93ff;
+  --z-rest: #6f8590;
+  --field-1: #1f5b5a;
+  --field-2: #25636a;
+  --field-3: #2e4a7c;
+  --field-4: #1b2c42;
+  --field-base: linear-gradient(160deg, #1b2c42 0%, #1d4550 55%, #263f6a 100%);
+  --field-glow: 1;
 }
 :root.phone-root {
   --blur: blur(22px) saturate(170%);
@@ -65,10 +84,9 @@
   pointer-events: none;
   opacity: 1;
   background:
-    radial-gradient(42rem 34rem at 8% 2%, color-mix(in srgb, var(--field-1) calc(var(--field-glow) * 100%), transparent) 0%, transparent 62%),
-    radial-gradient(40rem 36rem at 100% 14%, color-mix(in srgb, var(--field-2) calc(var(--field-glow) * 100%), transparent) 0%, transparent 62%),
-    radial-gradient(46rem 38rem at 88% 98%, color-mix(in srgb, var(--field-3) calc(var(--field-glow) * 100%), transparent) 0%, transparent 60%),
-    radial-gradient(38rem 32rem at 0% 82%, color-mix(in srgb, var(--field-4) calc(var(--field-glow) * 100%), transparent) 0%, transparent 58%),
+    radial-gradient(70% 60% at 0% 0%, var(--field-1) 0%, transparent 70%),
+    radial-gradient(70% 60% at 100% 10%, var(--field-2) 0%, transparent 70%),
+    radial-gradient(80% 70% at 85% 100%, var(--field-3) 0%, transparent 72%),
     var(--field-base);
 }
 

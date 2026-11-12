@@ -17,9 +17,9 @@ export interface Settings {
   accent?: string;
 }
 
-const APPEARANCE_VERSION = 3;
-// Like the phone app: light, with the sunset accent.
-const DEFAULTS: Settings = { dayResetHour: 4, hideCursor: true, theme: "light", accent: "sunset", textScale: 1, appearanceVersion: APPEARANCE_VERSION };
+const APPEARANCE_VERSION = 4;
+// Like the phone app: light, with the coral accent.
+const DEFAULTS: Settings = { dayResetHour: 4, hideCursor: true, theme: "light", accent: "coral", textScale: 1, appearanceVersion: APPEARANCE_VERSION };
 
 export const TEXT_SIZES = [
   { label: "Compact", value: 0.82 },
@@ -48,7 +48,7 @@ const subs = new Set<() => void>();
 export async function loadSettings() {
   const saved = await kvGet<Partial<Settings>>("settings", {});
   current = { ...DEFAULTS, ...saved };
-  if ((saved.appearanceVersion ?? 0) < APPEARANCE_VERSION) current = { ...current, theme: "light", accent: "sunset", appearanceVersion: APPEARANCE_VERSION };
+  if ((saved.appearanceVersion ?? 0) < APPEARANCE_VERSION) current = { ...current, theme: "light", accent: "coral", appearanceVersion: APPEARANCE_VERSION };
   applyAppearance();
   subs.forEach((s) => s());
 }

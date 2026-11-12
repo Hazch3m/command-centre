@@ -10,6 +10,7 @@ export interface Accent {
   light: string;
 }
 export const ACCENTS: Accent[] = [
+  { id: "coral", name: "Coral", dark: "#ff7a63", light: "#d4513d" },
   { id: "teal", name: "Track", dark: "#3fd1aa", light: "#0e8467" },
   { id: "ocean", name: "Ocean", dark: "#5aa9ff", light: "#1d62c4" },
   { id: "sunset", name: "Sunset", dark: "#ff8c42", light: "#c25a12" },
@@ -51,18 +52,27 @@ const KEY = "cc-appearance";
 export function phoneLook(): PhoneLook {
   try {
     const v = JSON.parse(localStorage.getItem(KEY) ?? "null") as PhoneLook | null;
-    if (v?.mode && v.accent) return v;
+    if (v?.mode && v.accent) {
+      // November 2026: the new look (sea glass and coral) replaces the old default accent once.
+      if (v.accent === "sunset" && !localStorage.getItem("cc-look-2")) {
+        localStorage.setItem("cc-look-2", "1");
+        const n = { ...v, accent: "coral" };
+        localStorage.setItem(KEY, JSON.stringify(n));
+        return n;
+      }
+      return v;
+    }
   } catch {
     /* default */
   }
-  return { mode: "light", accent: "sunset" };
+  return { mode: "light", accent: "coral" };
 }
 const dark = () => globalThis.matchMedia?.("(prefers-color-scheme: dark)").matches ?? true;
 export function applyPhoneLook(l: PhoneLook = phoneLook()) {
   const theme = l.mode === "auto" ? (dark() ? "dark" : "light") : l.mode;
   document.documentElement.dataset.theme = theme;
   applyAccent(l.accent, theme);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? "#eef1f6" : "#121821");
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? "#b7d3d6" : "#16323e");
 }
 export function setPhoneLook(l: PhoneLook) {
   try {
