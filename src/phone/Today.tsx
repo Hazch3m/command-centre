@@ -52,7 +52,7 @@ export function sessionTitle(text: string, kind?: string): string {
 /** The session without its distance up front ("13 km with 3 km warm-up, …" → "3 km warm-up, …"). */
 const detailOf = (text: string) => text.replace(/^\d+(?:\.\d+)?\s*km\s+(?:with\s+)?/i, "").replace(/^(?:VO2 max|Threshold tempo|Threshold|Hill strength|Race pace):\s*/i, "");
 
-export function Session({ d, label, next, brief, compact, onOpen }: { d: ForecastDay; label: string; next?: ForecastDay; brief?: ReactNode; compact?: boolean; onOpen?: () => void }) {
+export function Session({ d, label, next, brief, compact, onOpen, onClose }: { d: ForecastDay; label: string; next?: ForecastDay; brief?: ReactNode; compact?: boolean; onOpen?: () => void; onClose?: () => void }) {
   const { plan } = useRunningData();
   const t = typeOfDay(d.kind);
   const rest = t === "rest" || !d.km;
@@ -104,7 +104,11 @@ export function Session({ d, label, next, brief, compact, onOpen }: { d: Forecas
       </div>
     );
   return (
-    <div className={`p-session z-${zone}`}>
+    <div
+      className={`p-session z-${zone}${onClose ? " p-session-closable" : ""}`}
+      // Expanded in the week: tap the card again (anywhere but its buttons) to fold it back up.
+      onClick={onClose ? (e) => !(e.target as HTMLElement).closest("button, a, input, select, textarea, label") && onClose() : undefined}
+    >
       <div className="p-session-top">
         <span className="p-session-label">{label}</span>
         {!rest && (
