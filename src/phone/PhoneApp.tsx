@@ -161,6 +161,28 @@ export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
     const px = Math.max(0, Math.min(r.width - 2 * left - w, x - r.left - left - w / 2));
     return { px, i: Math.max(0, Math.min(TABS.length - 1, Math.floor((x - r.left - left) / w))) };
   };
+  // A tap: the lens sets off for the new tab straight away (on the compositor, so it glides even while the
+  // page is being built), and the page follows a frame later.
+  const tapTab = (t: Tab) => {
+    const ind = indRef.current;
+    if (wide || !ind) {
+      setPushed(null);
+      setTab(t);
+      return;
+    }
+    ind.classList.remove("off");
+    ind.style.transform = `translateX(${TABS.findIndex((x) => x.id === t) * 100}%)`;
+    if (t !== tab) {
+      ind.classList.add("moving");
+      window.setTimeout(() => ind.classList.remove("moving"), 380);
+    }
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        setPushed(null);
+        setTab(t);
+      }),
+    );
+  };
   const tabDrag = {
     onPointerDown: (e: RPointerEvent) => {
       if (e.pointerType === "mouse" || !indRef.current || !tabsRef.current) return;
@@ -381,7 +403,7 @@ export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
               </span>
             )}
             {TABS.map((t) => (
-              <button key={t.id} role="tab" aria-selected={!pushed && tab === t.id} className={`p-tab tab-${t.id}` + (!pushed && tab === t.id ? " on" : "")} onClick={() => (setPushed(null), setTab(t.id))}>
+              <button key={t.id} role="tab" aria-selected={!pushed && tab === t.id} className={`p-tab tab-${t.id}` + (!pushed && tab === t.id ? " on" : "")} onClick={() => tapTab(t.id)}>
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d={t.icon} />
                 </svg>

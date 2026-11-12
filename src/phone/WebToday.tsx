@@ -81,7 +81,7 @@ function DayCard({ d, today }: { d: ForecastDay; today: string }) {
 }
 
 /** Weekly km as bars, the last 12 weeks, this week faded until it's done. */
-function WeeklyKm({ runs, today }: { runs: Run[]; today: string }) {
+function WeeklyKm({ runs, today, sel, onPick }: { runs: Run[]; today: string; sel: string; onPick: (monday: string) => void }) {
   const weeks = useMemo(() => {
     const m0 = mondayOf(today);
     return Array.from({ length: 12 }, (_, i) => {
@@ -107,9 +107,11 @@ function WeeklyKm({ runs, today }: { runs: Run[]; today: string }) {
       ))}
       {weeks.map((w, i) => (
         <g key={w.m}>
-          <rect x={34 + i * bw + 3} y={y(w.km)} width={bw - 6} height={Math.max(0, y(0) - y(w.km))} rx={3} className={"wt-bar" + (i === weeks.length - 1 ? " now" : "")}>
-            <title>{`Week of ${dayNum(w.m)}: ${w.km.toFixed(1)} km`}</title>
+          {/* The whole column is the target, so short weeks are as easy to pick as long ones. */}
+          <rect x={34 + i * bw} y={0} width={bw} height={H - 14} className={"wt-hit" + (w.m === sel ? " on" : "")} onClick={() => onPick(w.m)}>
+            <title>{`Week of ${dayNum(w.m)}: ${w.km.toFixed(1)} km. Show this week`}</title>
           </rect>
+          <rect x={34 + i * bw + 3} y={y(w.km)} width={bw - 6} height={Math.max(0, y(0) - y(w.km))} rx={3} className={"wt-bar" + (i === weeks.length - 1 ? " now" : "") + (w.m === sel ? " sel" : "")} pointerEvents="none" />
           {(i % 3 === 0 || i === weeks.length - 1) && (
             <text x={34 + i * bw + bw / 2} y={H - 3} textAnchor="middle">
               {i === weeks.length - 1 ? "Now" : dayNum(w.m)}
@@ -238,8 +240,8 @@ export function WebToday() {
 
       <div className="wt-row">
         <section className="wt-panel">
-          <h2>Weekly km, 12 weeks</h2>
-          <WeeklyKm runs={runs} today={today} />
+          <h2>Weekly km, 12 weeks (click a week to see it)</h2>
+          <WeeklyKm runs={runs} today={today} sel={monday} onPick={(m) => setOffset(Math.round((new Date(m + "T12:00").getTime() - new Date(mondayOf(today) + "T12:00").getTime()) / (7 * 864e5)))} />
         </section>
         <section className="wt-panel">
           <h2>This morning</h2>
