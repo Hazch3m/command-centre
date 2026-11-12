@@ -243,3 +243,76 @@
 .p-wide .p-pushed .health-charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.2rem; align-items: start; }
 .p-wide .p-pushed .health-charts .hc { min-width: 0; }
 @media (max-width: 900px) { .p-wide .p-pushed .health-charts { grid-template-columns: minmax(0, 1fr); } }
+
+/* Pages opened from the bar (Fitness, Health, Analysis): as tall as their content. They were built for a
+   fixed-height window, so their cards and bodies are let out here. */
+.p-wide .p-pushed :is(.tab-page, .card-page, .card-page > .card-body) {
+  height: auto !important;
+  max-height: none !important;
+  min-height: 0;
+  flex: none !important;
+  overflow: visible !important;
+}
+
+/* Fitness and Analysis on a computer: charts keep a shape (about 2.4 : 1, never a flat strip), two to a
+   row where they're a pair. */
+.p-wide .p-pushed .chart-fill {
+  flex: none !important;
+  height: auto !important;
+  width: 100%;
+  aspect-ratio: 2.4 / 1;
+  min-height: 0;
+  max-height: 460px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.p-wide .p-pushed .gp-row { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 1.4rem; align-items: start; }
+.p-wide .p-pushed .gp-chart, .p-wide .p-pushed .gp-months { min-width: 0; }
+.p-wide .p-pushed .sv-row { display: flex; flex-direction: column; gap: 1.2rem; }
+.p-wide .p-pushed .sv-main .chart-fill { aspect-ratio: 3 / 1; }
+.p-wide .p-pushed .shape-weekly {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: auto auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.4rem 1.4rem;
+  align-items: end;
+}
+.p-wide .p-pushed .shape-weekly .chart-fill { aspect-ratio: 2.2 / 1; align-self: start; }
+@media (max-width: 1100px) {
+  .p-wide .p-pushed .gp-row { grid-template-columns: minmax(0, 1fr); }
+  .p-wide .p-pushed .shape-weekly { grid-auto-flow: row; grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Runs: the summary (totals, weekly km, PBs) down the left, your runs in date order in a grid on the right. */
+.p-runside, .p-runlist { display: contents; }
+.p-wide .p-pane:not(.p-pushed) .p-screen.p-runs-screen {
+  columns: auto;
+  display: grid;
+  grid-template-columns: minmax(19rem, 23rem) minmax(0, 1fr);
+  gap: 1.4rem;
+  align-items: start;
+}
+.p-wide .p-runs-screen > .p-runside {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: sticky;
+  top: 1rem;
+  margin: 0;
+}
+.p-wide .p-runs-screen > .p-runside > * { margin: 0; }
+.p-wide .p-runs-screen > .p-runlist {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  gap: 1rem;
+  align-items: start;
+  margin: 0;
+}
+.p-wide .p-runlist > .p-section, .p-wide .p-runlist > .p-more { grid-column: 1 / -1; margin: 0; }
+.p-wide .p-runlist .p-runcard { margin: 0; }
+.p-wide .p-runlist .p-runcard-map { height: 9rem; }
+@media (max-width: 900px) {
+  .p-wide .p-pane:not(.p-pushed) .p-screen.p-runs-screen { grid-template-columns: minmax(0, 1fr); }
+  .p-wide .p-runs-screen > .p-runside { position: static; }
+}

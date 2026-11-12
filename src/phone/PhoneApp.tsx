@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type PointerEvent as RPointerEvent } from "react";
 import { syncAppleHealth } from "../modules/health/appleHealth";
 import { saveFocusSource, useFocusSource } from "./Focus";
 import { kvGet, kvSet } from "../core/db";
@@ -148,6 +148,57 @@ export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
     resetPageScroll();
   };
   const phoneNav = useMemo(() => ({ tab, pushed, setTab, push }), [tab, pushed]);
+  // The tab bar's lens follows your finger: press, slide along the bar, let go on a tab.
+  const tabsRef = useRef<HTMLElement | null>(null);
+  const indRef = useRef<HTMLSpanElement | null>(null);
+  const drag = useRef<{ id: number; x0: number; moved: boolean } | null>(null);
+  const slotAt = (x: number) => {
+    const nav = tabsRef.current!;
+    const ind = indRef.current!;
+    const r = nav.getBoundingClientRect();
+    const left = ind.offsetLeft;
+    const w = ind.offsetWidth;
+    const px = Math.max(0, Math.min(r.width - 2 * left - w, x - r.left - left - w / 2));
+    return { px, i: Math.max(0, Math.min(TABS.length - 1, Math.floor((x - r.left - left) / w))) };
+  };
+  const tabDrag = {
+    onPointerDown: (e: RPointerEvent) => {
+      if (e.pointerType === "mouse" || !indRef.current || !tabsRef.current) return;
+      drag.current = { id: e.pointerId, x0: e.clientX, moved: false };
+      indRef.current.classList.add("lift");
+    },
+    onPointerMove: (e: RPointerEvent) => {
+      const d = drag.current;
+      if (!d || d.id !== e.pointerId || !indRef.current) return;
+      if (!d.moved && Math.abs(e.clientX - d.x0) < 6) return;
+      if (!d.moved) {
+        d.moved = true;
+        tabsRef.current?.setPointerCapture(e.pointerId);
+        indRef.current.classList.remove("off");
+        indRef.current.classList.add("drag");
+      }
+      indRef.current.style.transform = `translateX(${slotAt(e.clientX).px}px)`;
+    },
+    onPointerUp: (e: RPointerEvent) => {
+      const d = drag.current;
+      drag.current = null;
+      const ind = indRef.current;
+      if (!d || !ind) return;
+      ind.classList.remove("lift", "drag");
+      if (!d.moved) return;
+      const t = TABS[slotAt(e.clientX).i].id;
+      ind.style.transform = `translateX(${TABS.findIndex((x) => x.id === t) * 100}%)`;
+      if (t !== tab || pushed) setTab(t);
+      else if (pushed) setPushed(null);
+    },
+    onPointerCancel: () => {
+      drag.current = null;
+      const ind = indRef.current;
+      if (!ind) return;
+      ind.classList.remove("lift", "drag");
+      ind.style.transform = `translateX(${TABS.findIndex((x) => x.id === tab) * 100}%)`;
+    },
+  };
   const mainRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -317,8 +368,8 @@ export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
             })}
           </main>
           <AutoReview />
-          <nav className="p-tabs" role="tablist" style={{ ["--tabs" as string]: TABS.length }}>
-            <span className={"p-tab-ind" + (pushed ? " off" : "")} style={{ transform: `translateX(${TABS.findIndex((x) => x.id === tab) * 100}%)` }} aria-hidden="true" />
+          <nav className="p-tabs" role="tablist" style={{ ["--tabs" as string]: TABS.length }} ref={tabsRef} {...(wide ? {} : tabDrag)}>
+            <span ref={indRef} className={"p-tab-ind" + (pushed ? " off" : "")} style={{ transform: `translateX(${TABS.findIndex((x) => x.id === tab) * 100}%)` }} aria-hidden="true" />
             {wide && (
               <span className="p-side-brand" aria-hidden="true">
                 <img src="icon-192.png" alt="" />
