@@ -7,15 +7,12 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe from outside
+      - name: Request as Claude's connector would (fake key)
         run: |
           Z64=$(printf '0%.0s' $(seq 64)); Z48=$(printf '0%.0s' $(seq 48))
-          for host in https://pacelife.run https://command-centre-sync.harryknoblauch12.workers.dev; do
-            echo "=== $host initialize (fake key)"
-            curl -sS -m 30 -i -X POST "$host/api/mcp/$Z64/$Z48" -H 'content-type: application/json' -H 'accept: application/json, text/event-stream' -H 'user-agent: Claude-User' -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"probe","version":"1"}}}' | head -c 1500; echo
-            echo "=== $host GET"
-            curl -sS -m 30 -i "$host/api/mcp/$Z64/$Z48" -H 'accept: text/event-stream' | head -c 600; echo
-            echo "=== $host well-known"
-            curl -sS -m 30 -i "$host/.well-known/oauth-protected-resource/api/mcp/$Z64/$Z48" | head -c 400; echo
-            curl -sS -m 30 -i "$host/.well-known/oauth-authorization-server" | head -c 400; echo
+          for ua in "python-httpx/0.28.1" "Claude-User/1.0" "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Claude-User/1.0; +Claude-User@anthropic.com)" "ClaudeBot/1.0" "anthropic-mcp-client/1.0"; do
+            for host in https://pacelife.run https://command-centre-sync.harryknoblauch12.workers.dev; do
+              code=$(curl -sS -m 30 -o /tmp/b -w '%{http_code}' -X POST "$host/api/mcp/$Z64/$Z48" -H 'content-type: application/json' -H "user-agent: $ua" -d '{"jsonrpc":"2.0","id":1,"method":"initialize"}')
+              echo "RESULT $host [$ua] -> $code $(head -c 90 /tmp/b | tr -d '\n')"
+            done
           done
