@@ -7,12 +7,12 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Request as Claude's connector would (fake key)
+      - name: Read pacelife.run's bot settings (read only, asked for by the owner)
+        env:
+          CF: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          Z64=$(printf '0%.0s' $(seq 64)); Z48=$(printf '0%.0s' $(seq 48))
-          for ua in "python-httpx/0.28.1" "Claude-User/1.0" "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Claude-User/1.0; +Claude-User@anthropic.com)" "ClaudeBot/1.0" "anthropic-mcp-client/1.0"; do
-            for host in https://pacelife.run https://command-centre-sync.harryknoblauch12.workers.dev; do
-              code=$(curl -sS -m 30 -o /tmp/b -w '%{http_code}' -X POST "$host/api/mcp/$Z64/$Z48" -H 'content-type: application/json' -H "user-agent: $ua" -d '{"jsonrpc":"2.0","id":1,"method":"initialize"}')
-              echo "RESULT $host [$ua] -> $code $(head -c 90 /tmp/b | tr -d '\n')"
-            done
-          done
+          api() { curl -sS -m 30 -H "Authorization: Bearer $CF" "https://api.cloudflare.com/client/v4$1"; }
+          ZONE=$(api "/zones?name=pacelife.run" | jq -r '.result[0].id // empty')
+          if [ -z "$ZONE" ]; then echo "SETTING zone not visible to the deploy token: $(api '/zones?name=pacelife.run' | jq -c '{success, errors}')"; exit 0; fi
+          echo "SETTING bot_management $(api "/zones/$ZONE/bot_management" | jq -c '{success, errors, result}')"
+          for s in security_level browser_check; do echo "SETTING $s $(api "/zones/$ZONE/settings/$s" | jq -c '{success, errors, value: .result.value}')"; done
