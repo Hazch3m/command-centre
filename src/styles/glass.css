@@ -370,3 +370,4 @@
 .cc-log { font-size: 0.78rem; color: var(--text-2); width: 100%; }
 .cc-log summary { cursor: pointer; font-weight: 600; }
 .cc-log ul { margin: 0.4rem 0 0; padding-left: 1rem; display: flex; flex-direction: column; gap: 0.2rem; overflow-wrap: anywhere; }
+.cc-key { display: block; margin-top: 0.3rem; padding: 0.45rem 0.6rem; border-radius: 10px; background: var(--card-2); border: 1px solid var(--line); font-size: 0.72rem; color: var(--text); overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; }

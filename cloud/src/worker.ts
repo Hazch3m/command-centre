@@ -865,6 +865,15 @@ export default {
         inner.pathname = `/api/mcp/${mcp[1]}/${mcp[2]}`;
         return store(mcp[1] === "main" ? "main" : "acct:" + mcp[1]).fetch(new Request(inner, req));
       }
+      // The same, with the key in a header instead of the address (Claude's "Request headers"):
+      // https://pacelife.run/api/mcp with  Authorization: Bearer <account>.<key>
+      if (/^\/api\/mcp\/?$/.test(url.pathname)) {
+        const auth = /^Bearer\s+([0-9a-f]{64}|main)\.([0-9a-f]{48})\s*$/i.exec(req.headers.get("authorization") ?? "");
+        if (!auth) return new Response(JSON.stringify({ error: "Add your Pacelife key as a header: Authorization = Bearer <key> (Pacelife → Settings → Claude)." }), { status: 401, headers: { "content-type": "application/json" } });
+        const inner = new URL(url);
+        inner.pathname = `/api/mcp/${auth[1].toLowerCase()}/${auth[2].toLowerCase()}`;
+        return store(auth[1] === "main" ? "main" : "acct:" + auth[1].toLowerCase()).fetch(new Request(inner, req));
+      }
       if (url.pathname.startsWith("/api/mcp/")) return err(404, "This connector link isn't right: copy it again from Pacelife → Settings → Claude.");
 
       const account = req.headers.get("x-cc-account");

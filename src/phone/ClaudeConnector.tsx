@@ -67,6 +67,11 @@ export function ClaudeConnector() {
                 {copied ? "Copied" : "Copy link"}
               </button>
             </div>
+            <details className="cc-log">
+              <summary>Or use a header instead of the long link</summary>
+              <p className="cc-small">URL: https://pacelife.run/api/mcp, and under Request headers add the name Authorization with this value:</p>
+              <code className="cc-key">Bearer {cur.url!.split("/api/mcp/")[1]?.replace("/", ".")}</code>
+            </details>
             <ol className="cc-steps">
               <li>In Claude (claude.ai or the app): Settings → Connectors → Add custom connector.</li>
               <li>Name it Pacelife and paste the link as the URL. Under Authentication choose <b>No sign-in</b> (the link is the key), add no headers, then Add.</li>
