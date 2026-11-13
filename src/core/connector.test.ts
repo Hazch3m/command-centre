@@ -52,8 +52,9 @@ describe("Pacelife for Claude (MCP)", () => {
 
   it("gives runs without Strava's API ones, and one copy of each run", async () => {
     const r = await tool("get_runs", { from: day(5), to: day(0) });
-    expect(r.runs.map((x: { id: string }) => x.id)).toEqual(["g1001", "g1000"]);
-    expect(r.runs[0]).toMatchObject({ km: 9, source: "Garmin" });
+    // Newest first; the Strava-API and Apple Health copies of g1000's morning are left out.
+    expect(r.runs.map((x: { id: string }) => x.id)).toEqual(["g1000", "g1001", "g1002"]);
+    expect(r.runs[0]).toMatchObject({ km: 8, source: "Garmin" });
   });
 
   it("answers the overview, progress, plan, a run and projections", async () => {
