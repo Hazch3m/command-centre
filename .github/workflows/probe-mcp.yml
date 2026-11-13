@@ -1,0 +1,21 @@
+name: Probe Claude connector
+on:
+  push:
+    paths: [".github/workflows/probe-mcp.yml"]
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe from outside
+        run: |
+          Z64=$(printf '0%.0s' $(seq 64)); Z48=$(printf '0%.0s' $(seq 48))
+          for host in https://pacelife.run https://command-centre-sync.harryknoblauch12.workers.dev; do
+            echo "=== $host initialize (fake key)"
+            curl -sS -m 30 -i -X POST "$host/api/mcp/$Z64/$Z48" -H 'content-type: application/json' -H 'accept: application/json, text/event-stream' -H 'user-agent: Claude-User' -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"probe","version":"1"}}}' | head -c 1500; echo
+            echo "=== $host GET"
+            curl -sS -m 30 -i "$host/api/mcp/$Z64/$Z48" -H 'accept: text/event-stream' | head -c 600; echo
+            echo "=== $host well-known"
+            curl -sS -m 30 -i "$host/.well-known/oauth-protected-resource/api/mcp/$Z64/$Z48" | head -c 400; echo
+            curl -sS -m 30 -i "$host/.well-known/oauth-authorization-server" | head -c 400; echo
+          done
