@@ -236,6 +236,24 @@ export interface AccountInfo {
   pc: boolean;
   last: { ranAt: string; errors: Record<string, string | null>; newRuns: number } | null;
 }
+/** Pacelife for Claude: the private connector link, when it's on. */
+export interface ConnectorState {
+  on: boolean;
+  url: string | null;
+  since?: string | null;
+}
+export async function connectorState(): Promise<ConnectorState | null> {
+  if (!link) return null;
+  const r = await api("/connector");
+  if (!r.ok) throw new Error(await errorOf(r));
+  return (await r.json()) as ConnectorState;
+}
+export async function setConnector(on: boolean): Promise<ConnectorState> {
+  const r = await api(on ? "/connector/on" : "/connector/off", { method: "POST" });
+  if (!r.ok) throw new Error(await errorOf(r));
+  return (await r.json()) as ConnectorState;
+}
+
 export async function accountInfo(): Promise<AccountInfo | null> {
   if (!link?.account) return null;
   const r = await api("/account");

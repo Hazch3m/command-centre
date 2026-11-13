@@ -354,3 +354,15 @@
   color: var(--accent);
   transition: color 0.08s;
 }
+
+/* ---- Settings → Claude ---- */
+.cc-box { padding: 0.9rem 1rem; display: flex; flex-direction: column; align-items: flex-start; gap: 0.6rem; border-radius: 18px; background: var(--glass); border: 1px solid var(--glass-rim-low); }
+.cc-box p { margin: 0; font-size: 0.88rem; line-height: 1.45; color: var(--text-2); }
+.cc-box p b { color: var(--text); }
+.cc-small { font-size: 0.8rem !important; }
+.cc-link { display: flex; flex-direction: column; align-items: flex-start; gap: 0.45rem; width: 100%; }
+.cc-link code { display: block; width: 100%; box-sizing: border-box; padding: 0.5rem 0.6rem; border-radius: 10px; background: var(--card-2); border: 1px solid var(--line); font-size: 0.72rem; color: var(--text); overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; }
+.cc-steps { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.85rem; line-height: 1.4; color: var(--text-2); }
+.cc-off { border: 0; background: none; padding: 0.2rem 0; font: inherit; font-size: 0.85rem; color: var(--z-vo2); cursor: pointer; }
+.cc-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+.cc-err { color: var(--z-vo2) !important; }

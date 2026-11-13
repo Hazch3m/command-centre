@@ -47,6 +47,8 @@ interface Ctx {
 }
 let ctx: Ctx | null = null;
 export const setContext = (c: Ctx | null) => (ctx = c);
+/** What's open now (so a reader can put it back after borrowing the context). */
+export const getContext = () => ctx;
 const need = () => {
   if (!ctx) throw new Error("no working copy open");
   return ctx;

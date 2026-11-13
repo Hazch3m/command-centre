@@ -24,6 +24,7 @@ import { Tasks } from "./Tasks";
 import { Today } from "./Today";
 import { WebToday } from "./WebToday";
 import { RunSources } from "./RunSources";
+import { ClaudeConnector } from "./ClaudeConnector";
 import { Training } from "./Training";
 import { Planner, plannerView } from "./Planner";
 import { useSwipe } from "./swipe";
@@ -620,6 +621,7 @@ function More({ push }: { push: (p: Pushed) => void }) {
       <TrainingSettings />
       <Appearance />
       <AccountSection />
+      <ClaudeConnector />
       {!hasAccount() && <PhoneFooter />}
     </div>
   );
