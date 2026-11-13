@@ -512,6 +512,6 @@ export async function mcpResponse(req: Request, open: () => Promise<Copy>, today
   }
   if (!out.length) return new Response(null, { status: 202 });
   // A session id on the first answer (the link is the key; the id only keeps clients that expect one happy).
-  const session = list.some((m) => m.method === "initialize") ? { "mcp-session-id": crypto.randomUUID() } : {};
+  const session: Record<string, string> = list.some((m) => m.method === "initialize") ? { "mcp-session-id": crypto.randomUUID() } : {};
   return new Response(JSON.stringify(Array.isArray(body) ? out : out[0]), { headers: { ...headers, ...session } });
 }
