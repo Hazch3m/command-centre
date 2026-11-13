@@ -75,7 +75,10 @@ describe("Pacelife for Claude (MCP)", () => {
   });
 
   it("refuses unknown methods and tools", async () => {
-    expect((await call({ jsonrpc: "2.0", id: 5, method: "resources/list" })).json?.error).toBeTruthy();
+    expect((await call({ jsonrpc: "2.0", id: 5, method: "sampling/createMessage" })).json?.error).toBeTruthy();
+    // Lists it doesn't offer come back empty, not as errors (some clients ask anyway).
+    expect((await call({ jsonrpc: "2.0", id: 7, method: "resources/list" })).json?.result).toEqual({ resources: [] });
+    expect((await call({ jsonrpc: "2.0", id: 8, method: "prompts/list" })).json?.result).toEqual({ prompts: [] });
     expect((await call({ jsonrpc: "2.0", id: 6, method: "tools/call", params: { name: "delete_everything" } })).json?.error).toBeTruthy();
   });
 });

@@ -243,6 +243,8 @@ export interface ConnectorState {
   since?: string | null;
   /** The last request from Claude: when, what it asked, how it went. */
   last?: { at: string; what: string; result: string; from: string } | null;
+  /** The last dozen requests, newest first. */
+  log?: { at: string; what: string; result: string; from: string }[];
 }
 /** Tries the link the way Claude would (from here): Claude's first question, and the tool list. */
 export async function testConnector(url: string): Promise<string> {

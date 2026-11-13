@@ -90,11 +90,18 @@ export function ClaudeConnector() {
                 Check the link
               </button>
               {check && <p>{check}</p>}
-              {cur.last && (
-                <p className="cc-small">
-                  Last request: {new Date(cur.last.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}, {cur.last.what}, {cur.last.result}
-                  {cur.last.from ? ` (${cur.last.from})` : ""}.
-                </p>
+              {(cur.log?.length ? cur.log : cur.last ? [cur.last] : []).length > 0 && (
+                <details className="cc-log">
+                  <summary>Recent requests to this link</summary>
+                  <ul>
+                    {(cur.log?.length ? cur.log : [cur.last!]).map((e, i) => (
+                      <li key={i}>
+                        {new Date(e.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", second: "2-digit" })}: {e.what || "?"} → {e.result}
+                        {e.from ? ` (${e.from})` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               )}
             </div>
             {!confirmOff ? (
