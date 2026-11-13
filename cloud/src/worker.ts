@@ -386,8 +386,22 @@ export class Store extends DurableObject<Env> {
     if (path.startsWith("/mcp/")) {
       const key = path.split("/")[3] ?? "";
       const want = this.get("mcpKey") ?? "";
-      if (!want || key.length !== want.length || !timingSafeEqual(key, want)) return new Response(JSON.stringify({ error: "This Pacelife connector link has been turned off or replaced. Make a new one in Pacelife → Settings → Claude." }), { status: 404, headers: { "content-type": "application/json" } });
-      return mcpResponse(req, () => this.openCopy(), url.searchParams.get("today") ?? new Date().toISOString().slice(0, 10));
+      // What Claude last asked, and how it went: shown in Settings → Claude, to see why adding it failed.
+      const peek = req.method === "POST" ? ((await req.clone().json().catch(() => null)) as { method?: string } | { method?: string }[] | null) : null;
+      const what = Array.isArray(peek) ? peek.map((x) => x.method).join(", ") : (peek?.method ?? req.method);
+      const note = (result: string) => this.set("mcpLast", JSON.stringify({ at: new Date().toISOString(), what, result, from: (req.headers.get("user-agent") ?? "").slice(0, 80) }));
+      if (!want || key.length !== want.length || !timingSafeEqual(key, want)) {
+        note("refused: an old or wrong link");
+        return new Response(JSON.stringify({ error: "This Pacelife connector link has been turned off or replaced. Make a new one in Pacelife → Settings → Claude." }), { status: 404, headers: { "content-type": "application/json" } });
+      }
+      try {
+        const r = await mcpResponse(req, () => this.openCopy(), url.searchParams.get("today") ?? new Date().toISOString().slice(0, 10));
+        note(`answered ${r.status}`);
+        return r;
+      } catch (e) {
+        note(`failed: ${String((e as Error)?.message ?? e).slice(0, 200)}`);
+        throw e;
+      }
     }
 
     // ---- No token needed --------------------------------------------------------
@@ -461,7 +475,7 @@ export class Store extends DurableObject<Env> {
     // ---- Pacelife for Claude: turned on and off in the app ------------------------------
     if (path === "/connector" && m === "GET") {
       const k = this.get("mcpKey");
-      return json({ on: !!k, url: k ? this.mcpUrl(k) : null, since: this.get("mcpSince") });
+      return json({ on: !!k, url: k ? this.mcpUrl(k) : null, since: this.get("mcpSince"), last: this.get("mcpLast") ? JSON.parse(this.get("mcpLast")!) : null });
     }
     if (path === "/connector/on" && m === "POST") {
       if (!this.creds()) return err(409, "Turn on cloud sync first: Claude reads the copy of your data that's kept there.");

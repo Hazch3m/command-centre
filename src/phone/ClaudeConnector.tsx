@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { connectorState, setConnector, type ConnectorState } from "../core/backend.phone";
+import { connectorState, setConnector, testConnector, type ConnectorState } from "../core/backend.phone";
 import { useQuery } from "../core/useQuery";
 import { Section } from "./common";
 
@@ -15,13 +15,16 @@ export function ClaudeConnector() {
   const [err, setErr] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [confirmOff, setConfirmOff] = useState(false);
-  const cur = st ?? q.data ?? null;
+  const [check, setCheck] = useState<string | null>(null);
+  // The latest from the service once it agrees with what you just did (it carries Claude's last request).
+  const cur = q.data && (!st || (q.data.on === st.on && q.data.url === st.url)) ? q.data : (st ?? q.data ?? null);
   if (q.data === null) return null; // not linked to the sync service: nothing for Claude to read
   const flip = async (on: boolean) => {
     setBusy(true);
     setErr(null);
     try {
       setSt(await setConnector(on));
+      setCheck(null);
       setTick((t) => t + 1);
       setConfirmOff(false);
     } catch (e) {
@@ -69,6 +72,31 @@ export function ClaudeConnector() {
               <li>Name it Pacelife and paste the link as the URL. Under Authentication choose <b>No sign-in</b> (the link is the key), add no headers, then Add.</li>
               <li>In a chat, turn on Pacelife under the tools menu and ask, for example: "How has my running improved this year?" or "Am I on track for my marathon goal, and what pace should I run?"</li>
             </ol>
+            <div className="cc-check">
+              <button
+                type="button"
+                className="p-pill"
+                disabled={busy}
+                onClick={async () => {
+                  setCheck("Checking…");
+                  try {
+                    setCheck(await testConnector(cur.url!));
+                  } catch (e) {
+                    setCheck(`Couldn't check: ${String((e as Error)?.message ?? e)}`);
+                  }
+                  setTick((t) => t + 1);
+                }}
+              >
+                Check the link
+              </button>
+              {check && <p>{check}</p>}
+              {cur.last && (
+                <p className="cc-small">
+                  Last request: {new Date(cur.last.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}, {cur.last.what}, {cur.last.result}
+                  {cur.last.from ? ` (${cur.last.from})` : ""}.
+                </p>
+              )}
+            </div>
             {!confirmOff ? (
               <button type="button" className="cc-off" onClick={() => setConfirmOff(true)}>
                 Turn off

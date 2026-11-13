@@ -241,6 +241,21 @@ export interface ConnectorState {
   on: boolean;
   url: string | null;
   since?: string | null;
+  /** The last request from Claude: when, what it asked, how it went. */
+  last?: { at: string; what: string; result: string; from: string } | null;
+}
+/** Tries the link the way Claude would (from here): Claude's first question, and the tool list. */
+export async function testConnector(url: string): Promise<string> {
+  const post = (body: unknown) => fetch(new URL(url).pathname, { method: "POST", headers: { "content-type": "application/json", accept: "application/json, text/event-stream" }, body: JSON.stringify(body) });
+  const a = await post({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "Pacelife check", version: "1" } } });
+  if (!a.ok) return `The link answered ${a.status}: ${((await a.json().catch(() => null)) as { error?: string } | null)?.error ?? "no reason given"}`;
+  const b = await post({ jsonrpc: "2.0", id: 2, method: "tools/list" });
+  const n = ((await b.json().catch(() => null)) as { result?: { tools?: unknown[] } } | null)?.result?.tools?.length ?? 0;
+  if (!n) return `The link answered, but listing its tools failed (${b.status}).`;
+  const c = await post({ jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "get_overview", arguments: {} } });
+  const j = (await c.json().catch(() => null)) as { result?: { isError?: boolean; content?: { text: string }[] } } | null;
+  if (!j?.result || j.result.isError) return `The link works (${n} tools), but reading your data failed: ${j?.result?.content?.[0]?.text?.slice(0, 200) ?? c.status}`;
+  return `The link works: ${n} tools, and your data reads fine.`;
 }
 export async function connectorState(): Promise<ConnectorState | null> {
   if (!link) return null;
