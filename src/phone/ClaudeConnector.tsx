@@ -66,7 +66,7 @@ export function ClaudeConnector() {
             </div>
             <ol className="cc-steps">
               <li>In Claude (claude.ai or the app): Settings → Connectors → Add custom connector.</li>
-              <li>Name it Pacelife and paste the link as the URL. Leave the advanced settings empty.</li>
+              <li>Name it Pacelife and paste the link as the URL. Under Authentication choose <b>No sign-in</b> (the link is the key), add no headers, then Add.</li>
               <li>In a chat, turn on Pacelife under the tools menu and ask, for example: "How has my running improved this year?" or "Am I on track for my marathon goal, and what pace should I run?"</li>
             </ol>
             {!confirmOff ? (
