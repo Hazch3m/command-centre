@@ -849,6 +849,10 @@ export default {
       if (account && url.pathname === "/api/claim") return err(404, "unknown request");
       return store(account ? "acct:" + account : "main").fetch(req);
     }
+    // No OAuth here (the Claude connector's private link is its key): say so plainly, instead of the web
+    // app's page, so Claude doesn't take the page for sign-in settings.
+    if (url.pathname.startsWith("/.well-known/oauth") || url.pathname.startsWith("/.well-known/openid")) return new Response(JSON.stringify({ error: "not_found" }), { status: 404, headers: { "content-type": "application/json" } });
+    if (url.pathname.startsWith("/.well-known/")) return env.ASSETS.fetch(req);
     // pacelife.run: the website (what Pacelife is) at the front; the app on the web at /web.
     // The sync service's own address keeps the phone app at "/".
     if (url.pathname === "/" && /(^|\.)pacelife\.run$/.test(url.hostname)) return env.ASSETS.fetch(new Request(new URL("/about", url), req));
