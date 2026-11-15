@@ -818,6 +818,11 @@ function FineTune({ o, h, onChange }: { o: BuildOptions; h: History; onChange: (
         <Chips value={(t.strides ?? d.strides) ? "on" : "off"} options={[{ v: "on", l: "Yes" }, { v: "off", l: "No" }]} onChange={(v) => put({ strides: v === "on" ? undefined : false })} />
       </div>
       <div className="ft-row">
+        <span className="ft-label">Strength twice a week</span>
+        <Chips value={(t.strength ?? d.strength) ? "on" : "off"} options={[{ v: "on", l: "Yes" }, { v: "off", l: "No" }]} onChange={(v) => put({ strength: v === "on" ? (d.strength ? undefined : true) : false })} />
+        <span className="ps-note">20 minutes of calves, hamstrings and hips after two easy runs: fewer injuries at high mileage.</span>
+      </div>
+      <div className="ft-row">
         <span className="ft-label">Easier week</span>
         <Chips
           value={t.cutEvery ?? d.cutEvery}

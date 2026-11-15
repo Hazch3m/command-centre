@@ -209,7 +209,7 @@ describe("plan builder: long runs and labels", () => {
     const s = r.plan.weeks.filter((w) => w.start >= from && w.start <= o.raceDate).flatMap((w) => Object.values(w.sessions) as string[]);
     expect(s.some((x) => /VO2 max: /.test(x))).toBe(true);
     expect(s.some((x) => /Threshold(?: tempo)?: /.test(x))).toBe(true);
-    expect(s.filter((x) => / with /.test(x) && !/long run/.test(x) && !/(VO2 max|Threshold|Threshold tempo|Hill strength|Race pace): |fartlek|time trial/.test(x))).toEqual([]);
+    expect(s.filter((x) => / with /.test(x) && !/long run/.test(x) && !/(VO2 max|Threshold|Threshold tempo|Hill strength|Race pace|Marathon pace): |fartlek|time trial/.test(x))).toEqual([]);
     // Every speed session has its warm-up and cool-down written in.
     expect(s.filter((x) => / with /.test(x) && !/long run|time trial/.test(x) && !/warm-up, .*cool-down$/.test(x))).toEqual([]);
   });
@@ -267,5 +267,77 @@ describe("Beyond 5k", () => {
     expect(ws[0].sessions.tue).toMatch(/fartlek/);
     expect(plan.built!.vdot).toBeGreaterThan(24);
     expect(plan.built!.vdot).toBeLessThan(30);
+  });
+});
+
+describe("plan builder: a marathon on the way, and the year-round extras", () => {
+  // Valencia in December with Edinburgh (A) in May: the critique's case.
+  const h: History = { recent4: 35, recent12: 43, peak12: 60, runsPerWeek: 5, longest8: 21, weeksRun12: 12, vdot: 56 };
+  const R = (date: string, name: string, km: number, priority: "A" | "B" | "C", target = "") => ({ date, approx: false, when: date, name, km, priority, target, role: "Tune-up" });
+  const o: BuildOptions = {
+    raceName: "Valencia",
+    raceDate: "2027-12-05",
+    dist: "marathon",
+    target: "2:39",
+    weeks: 60,
+    level: "elite",
+    days: 6,
+    longDay: "sun",
+    keepRaces: false,
+    tune: { peakKm: 111 },
+    extraRaces: [R("2027-03-28", "Aix 10k", 10, "B"), R("2027-05-30", "Edinburgh marathon", 42.2, "A", "2:49:59")],
+  };
+  const r = buildPlan({ ...BUNDLED_PLAN, races: [] }, o, h, "2026-11-15");
+  const pw = r.plan.weeks.filter((w) => w.start >= r.weeks[0].monday && w.start <= o.raceDate);
+  const at = (a: string) => r.weeks.findIndex((w) => w.around?.at === a);
+
+  it("tapers for it, races it, and recovers before building again", () => {
+    expect(["taper2", "taper1", "race", "recover1", "recover2"].map(at)).toEqual([at("taper2"), at("taper2") + 1, at("taper2") + 2, at("taper2") + 3, at("taper2") + 4]);
+    expect(r.weeks[at("race")].monday).toBe("2027-05-24");
+    const before = r.weeks[at("taper2") - 1].km;
+    expect(r.weeks[at("taper1")].km).toBeLessThan(before * 0.75);
+    // The week after: easy only, no sessions, no medium-long run.
+    const after = Object.values(pw[at("recover1")].sessions) as string[];
+    expect(after.filter((x) => / with |medium-long|MP|strides/.test(x))).toEqual([]);
+    expect(pw[at("taper1")].sessions.tue).toMatch(/^.*Marathon pace: 2 × 3 km at MP/);
+    // Volume is back to normal a week after the second easy week, and no easier week straight away.
+    expect(r.weeks[at("recover2") + 1].cut).toBe(false);
+  });
+
+  it("puts marathon pace in its long runs beforehand, growing towards 22 km", () => {
+    const mp = pw.slice(0, at("taper2")).map((w) => /last (\d+(?:\.\d+)?) at MP|(\d) × 5 km at MP/.exec(w.sessions.sun ?? "")).filter(Boolean);
+    expect(mp.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("builds to a plateau first and doesn't make every long run a huge one", () => {
+    // Most of the peak by spring, the rest after Edinburgh.
+    const spring = r.weeks.filter((w) => w.monday >= "2027-03-01" && w.monday < "2027-05-01" && !w.cut).map((w) => w.km);
+    expect(Math.max(...spring)).toBeGreaterThan(85);
+    expect(Math.max(...spring)).toBeLessThan(105);
+    const big = r.weeks.map((w, i) => (w.long >= 32 ? i : -9)).filter((i) => i >= 0);
+    expect(big.some((i, j) => j > 0 && i - big[j - 1] === 1)).toBe(false);
+    expect(r.weeks.filter((w) => w.long >= 34).length).toBeLessThan(10);
+  });
+
+  it("has strides twice a week, strength twice a week, and VO2 max reps every few weeks", () => {
+    const normal = pw.filter((_, i) => !r.weeks[i].around && r.weeks[i].phase !== "taper" && r.weeks[i].phase !== "race");
+    const count = (w: (typeof pw)[number], re: RegExp) => (Object.values(w.sessions) as string[]).filter((x) => re.test(x)).length;
+    expect(normal.filter((w) => count(w, /strides/) >= 2).length).toBeGreaterThan(normal.length * 0.8);
+    expect(normal.filter((w) => count(w, /strength \(/) === 2).length).toBeGreaterThan(normal.length * 0.7);
+    // (Edinburgh's last eight weeks are its own: marathon pace, taper and recovery.)
+    for (const [from, to] of [["2026-11-16", "2027-04-01"], ["2027-06-14", "2027-08-23"]]) {
+      const vo2 = pw.map((w, i) => (w.start >= from && w.start < to && count(w, /VO2 max: /) ? i : -1)).filter((i) => i >= 0);
+      expect(Math.max(...vo2.slice(1).map((g, j) => g - vo2[j])), from).toBeLessThanOrEqual(4);
+    }
+    const off = buildPlan({ ...BUNDLED_PLAN, races: [] }, { ...o, tune: { ...o.tune, strength: false } }, h, "2026-11-15");
+    expect(off.plan.weeks.some((w) => (Object.values(w.sessions) as string[]).some((x) => /strength \(/.test(x)))).toBe(false);
+  });
+
+  it("every session still goes to the watch", () => {
+    for (const w of pw)
+      for (const x of Object.values(w.sessions) as string[]) {
+        if (/^Rest$|race$|Marathon$|marathon$|10k$/i.test(x)) continue;
+        expect(sessionToWorkout(x), x).not.toBeNull();
+      }
   });
 });
