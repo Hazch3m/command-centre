@@ -862,6 +862,11 @@ function FineTune({ o, h, onChange }: { o: BuildOptions; h: History; onChange: (
         <span className="ps-note">20 minutes of calves, hamstrings and hips after two easy runs: fewer injuries at high mileage.</span>
       </div>
       <div className="ft-row">
+        <span className="ft-label">VO2 max sessions</span>
+        <Chips value={(t.norwegian ?? d.norwegian) ? "nor" : "mix"} options={[{ v: "mix", l: "A mix" }, { v: "nor", l: "Norwegian 4 × 4" }]} onChange={(v) => put({ norwegian: v === "nor" ? true : undefined })} />
+        <span className="ps-note">4 × 4 min hard but controlled (about 90–95% of max heart rate), 3 min jogs; 5 reps later in the plan.</span>
+      </div>
+      <div className="ft-row">
         <span className="ft-label">Easier week</span>
         <Chips
           value={t.cutEvery ?? d.cutEvery}

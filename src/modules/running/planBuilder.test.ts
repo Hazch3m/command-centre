@@ -409,3 +409,25 @@ describe("plan builder: changing the races already in your plan", () => {
     expect(r.plan.races.map((x) => x.name)).toEqual(["Edinburgh marathon", "Valencia"]);
   });
 });
+
+describe("plan builder: Norwegian 4 × 4 and doubles only when needed", () => {
+  const h: History = { recent4: 35, recent12: 43, peak12: 60, runsPerWeek: 5, longest8: 21, weeksRun12: 12, vdot: 56 };
+  const o: BuildOptions = { raceName: "Valencia", raceDate: "2027-12-05", dist: "marathon", target: "2:39", weeks: 60, level: "elite", days: 6, longDay: "sun", keepRaces: false, tune: { peakKm: 111, doubles: 1 } };
+  const all = (r: ReturnType<typeof buildPlan>) => r.plan.weeks.flatMap((w) => Object.values(w.sessions) as string[]);
+
+  it("makes every VO2 max session a 4 × 4 (or 5 × 4) min with 3 min jogs", () => {
+    const r = buildPlan({ ...BUNDLED_PLAN, races: [] }, { ...o, tune: { ...o.tune, norwegian: true } }, h, "2026-11-15");
+    const vo2 = all(r).filter((x) => /VO2 max: /.test(x));
+    expect(vo2.length).toBeGreaterThan(3);
+    for (const x of vo2) expect(x).toMatch(/VO2 max: [345] × 4 min at \d:\d\d–\d:\d\d, 3 min jog/);
+    for (const x of vo2) expect(sessionToWorkout(x), x).not.toBeNull();
+  });
+
+  it("only doubles when the easy days would otherwise be long", () => {
+    const r = buildPlan({ ...BUNDLED_PLAN, races: [] }, o, h, "2026-11-15");
+    const first = r.plan.weeks.find((w) => w.start === "2026-11-16")!;
+    expect((Object.values(first.sessions) as string[]).some((x) => /PM:/.test(x))).toBe(false);
+    // At 100+ km the double comes back.
+    expect(r.plan.weeks.some((w) => (Object.values(w.sessions) as string[]).some((x) => /PM:/.test(x)))).toBe(true);
+  });
+});

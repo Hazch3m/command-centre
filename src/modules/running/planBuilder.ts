@@ -106,6 +106,8 @@ export interface Tune {
   doubles?: 0 | 1 | 2 | 3 | 4;
   /** A short strength session (calves, hamstrings, hips, core) after two easy runs a week (default on, not for beginners). */
   strength?: boolean;
+  /** VO2 max sessions as Norwegian 4 × 4 min (about 90–95% of max heart rate, 3 min jogs) instead of a mix. */
+  norwegian?: boolean;
 }
 
 /**
@@ -243,6 +245,7 @@ export function tuneDefaults(h: History, o: BuildOptions): Required<Omit<Tune, "
     hillSprints: false,
     strides: true,
     strength: o.level !== "beginner",
+    norwegian: false,
     sharpen: true,
     doubles: 0,
     longest: L.longCap[o.dist],
@@ -484,6 +487,8 @@ function session(kind: SessionKind, v: number, o: BuildOptions, phase: Phase, t:
   const q = (w: { km: number; text: string }, whole = false): Q => ({ ...w, kind, whole });
   switch (kind) {
     case "intervals":
+      // Norwegian 4 × 4: four (later five) 4-minute reps hard but controlled, between 10K and 5K pace, 3 min jogs.
+      if (o.tune?.norwegian) return q(timed(short ? 3 : t > 0.5 && v % 2 === 1 ? 5 : 4, 4, Math.round((p.fivek + p.tenk) / 2), "", "3 min jog", 180));
       if (short) return q(reps(4, 1, p.interval, "2 min jog", 120));
       // Marathon VO2 max work is 800 m–1.2 km or 3–4 min at 5K pace with equal-ish jogs, not 200s and 400s.
       if (o.dist === "marathon")
@@ -1018,7 +1023,12 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
     // Doubles: a short easy second run on easy days (then quality days), not around the long run or a race.
     const pm: Partial<Record<DayKey, number>> = {};
     const nD = ar ? 0 : b.phase === "base" || b.phase === "build" || b.phase === "specific" ? (b.cut ? Math.min(1, T.doubles ?? 0) : (T.doubles ?? 0)) : 0;
-    if (nD > 0) {
+    // A double only when it's needed: if the easy days can take the week's km at a sensible length (up to
+    // about 14 km), one run a day does it.
+    const easyNoPm = run.filter((k) => !s[k]);
+    const leftNoPm = km - Object.values(sized).reduce((a, x) => a + (x ?? 0), 0);
+    const needed = easyNoPm.length === 0 || leftNoPm / easyNoPm.length > 14;
+    if (nD > 0 && needed) {
       const pmKm = r1(Math.max(5, Math.min(8, km * 0.065)));
       const bad = (k: DayKey) => raceDays.has(k) || near(k) || k === longAt || (longAt != null && Math.min(Math.abs(IDX(k) - IDX(longAt)), 7 - Math.abs(IDX(k) - IDX(longAt))) === 1) || !run.includes(k);
       const easyFirst = [...run.filter((k) => !s[k]), q1, q2].filter((k): k is DayKey => !!k && !bad(k));
