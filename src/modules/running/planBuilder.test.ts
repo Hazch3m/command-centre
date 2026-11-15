@@ -423,6 +423,16 @@ describe("plan builder: Norwegian 4 × 4 and doubles only when needed", () => {
     for (const x of vo2) expect(sessionToWorkout(x), x).not.toBeNull();
   });
 
+  it("does VO2 max work about every 7–10 days in winter, building from short reps to 4–5 min", () => {
+    const r = buildPlan({ ...BUNDLED_PLAN, races: [] }, o, h, "2026-11-15");
+    const winter = r.plan.weeks.filter((w) => w.start >= "2026-11-16" && w.start < "2027-03-01");
+    const vo2 = winter.map((w) => (Object.values(w.sessions) as string[]).find((x) => /VO2 max: /.test(x))).filter(Boolean) as string[];
+    expect(vo2.length).toBeGreaterThanOrEqual(Math.floor(winter.length * 0.55));
+    expect(vo2[0]).toMatch(/30 s fartlek/);
+    expect(vo2.slice(4).some((x) => /× [45] min/.test(x))).toBe(true);
+    for (const x of vo2) expect(sessionToWorkout(x), x).not.toBeNull();
+  });
+
   it("only doubles when the easy days would otherwise be long", () => {
     const r = buildPlan({ ...BUNDLED_PLAN, races: [] }, o, h, "2026-11-15");
     const first = r.plan.weeks.find((w) => w.start === "2026-11-16")!;

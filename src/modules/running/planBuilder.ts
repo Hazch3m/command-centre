@@ -488,7 +488,7 @@ function session(kind: SessionKind, v: number, o: BuildOptions, phase: Phase, t:
   switch (kind) {
     case "intervals":
       // Norwegian 4 × 4: four (later five) 4-minute reps hard but controlled, between 10K and 5K pace, 3 min jogs.
-      if (o.tune?.norwegian) return q(timed(short ? 3 : t > 0.5 && v % 2 === 1 ? 5 : 4, 4, Math.round((p.fivek + p.tenk) / 2), "", "3 min jog", 180));
+      if (o.tune?.norwegian) return q(timed(short ? 3 : t > 0.5 && v % 2 === 1 ? 5 : 4, 4, p.interval + 2, "", "3 min jog", 180));
       if (short) return q(reps(4, 1, p.interval, "2 min jog", 120));
       // Marathon VO2 max work is 800 m–1.2 km or 3–4 min at 5K pace with equal-ish jogs, not 200s and 400s.
       if (o.dist === "marathon")
@@ -568,6 +568,30 @@ function session(kind: SessionKind, v: number, o: BuildOptions, phase: Phase, t:
       return q(short ? reps(5, 0.4, race, "200 m jog", 70) : pick([() => reps(n(4, 6), 1, race, "2 min jog", 120), () => reps(n(8, 12), 0.4, race - 3, "200 m jog", 70)])());
     }
   }
+}
+
+/**
+ * The c-th VO2 max session of a season (winter or summer), building up: short reps first (30 s, 1 min),
+ * then 3 min and 1 km, then 4 × 4 building to 5 × 4, then 4 × 5 min and 1.2–1.6 km reps, which it keeps
+ * rotating. Norwegian: 4 × 4, then 5 × 4. Paced at VO2 max pace (about 95% of max heart rate by each rep's end).
+ */
+function vo2Session(c: number, p: Paces, norwegian: boolean): { km: number; text: string } {
+  const V = p.interval;
+  const fart = (n: number, sec: number, pace: number, off: string, offSec: number) =>
+    workout((n * sec) / pace, (n - 1) * offSec, `${n} × ${sec >= 60 ? `${sec / 60} min` : `${sec} s`} fartlek at ${around(pace)}, ${off}`);
+  if (norwegian) return timed(c >= 3 ? 5 : 4, 4, V + 2, "", "3 min jog", 180);
+  const steps = [
+    () => fart(16, 30, V - 8, "30 s jog", 30),
+    () => fart(12, 60, V - 4, "1 min jog", 60),
+    () => timed(5, 3, V, "", "2 min jog", 120),
+    () => reps(5, 1, V, "2 min jog", 120),
+    () => timed(4, 4, V + 2, "", "3 min jog", 180),
+    () => timed(5, 4, V + 2, "", "3 min jog", 180),
+    () => timed(4, 5, V + 3, "", "3 min jog", 180),
+    () => reps(5, 1.2, V + 1, "2:30 jog", 150),
+    () => reps(4, 1.6, V + 4, "3 min jog", 180),
+  ];
+  return steps[c < steps.length ? c : 6 + ((c - 6) % 3)]();
 }
 
 /** What a session is for, written in front of it ("VO2 max: 5 × 1 km at …"). */
@@ -862,9 +886,11 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
   const seen = new Map<SessionKind, number>();
   // Race-specific weeks, numbered (marathon pace goes in every other long run, not all of them).
   const specIdx = (i: number) => built.slice(0, i).filter((x) => x.phase === "specific" && !x.cut).length;
-  // Base and build weeks, numbered: every third has VO2 max reps as its second session.
-  const bbIdx = (i: number) => built.slice(0, i).filter((x) => (x.phase === "base" || x.phase === "build") && !x.cut && !x.around).length;
   const strength = T.strength !== false && o.level !== "beginner";
+  // VO2 max sessions this season (winter or summer); a marathon's build-up ends the season.
+  let vo2Count = 0;
+  // VO2 weeks in a row (two on, one off: about every 7–10 days).
+  let vo2Run = 0;
   const weeksOut: PlanWeek[] = [];
   const weeks: PlanWeek[] = built.map((b, i) => {
     const p = paceAt(i);
@@ -972,14 +998,31 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
         sharpenFor = nextTune.name;
       }
     }
-    // VO2 max reps every third base and build week, as the second session: a little speed all year.
-    // (Not in a week that sharpens for a short race: its race-pace session is the fast one.)
-    if (!ar && !tune && !sharpenFor && !b.cut && (b.phase === "base" || b.phase === "build") && picks.length >= 2 && kinds.has("intervals") && !picks.some((q) => q.kind === "intervals") && bbIdx(i) % 3 === 2) {
-      const v = seen.get("intervals") ?? 0;
-      seen.set("intervals", v + 1);
-      const q = session("intervals", v, o, b.phase, t, p, rp);
-      picks[1] = { ...q, text: `VO2 max: ${q.text}` };
-    }
+    // VO2 max work in the winter and summer (base and build weeks away from a marathon): about every
+    // 7–10 days, two weeks in three, in place of a progression run or a fartlek (threshold stays). It
+    // builds up through the season; marathon-specific weeks (and the weeks around one) leave it out.
+    if (pre || ar || b.phase === "specific" || b.phase === "taper" || b.phase === "race") vo2Count = 0;
+    const vo2Season = !pre && !ar && (b.phase === "base" || b.phase === "build") && kinds.has("intervals");
+    const vo2At = picks.findIndex((q) => q.kind === "intervals");
+    const nextVo2 = () => {
+      let q = vo2Session(vo2Count++, p, !!T.norwegian);
+      if (avoid.has(sessionShape(q.text))) q = vo2Session(vo2Count++, p, !!T.norwegian);
+      return q;
+    };
+    const fiveKSharpen = !!sharpenFor && !!nextTune && (raceKmFor(nextTune) ?? 10) <= 6;
+    if (vo2Season && vo2At >= 0 && !tune) {
+      picks[vo2At] = { ...nextVo2(), kind: "intervals" };
+      picks[vo2At].text = `VO2 max: ${picks[vo2At].text}`;
+      vo2Run++;
+    } else if (fiveKSharpen) vo2Run++;
+    else if (vo2Season && !tune && picks.length >= 2 && vo2Run < 2) {
+      vo2Run++;
+      // (A week sharpening for a 10k or half keeps its race-pace session; a 5k's is VO2 work already.)
+      const free = [1, 0].filter((j) => !(sharpenFor && j === 0));
+      const slot = free.find((j) => picks[j].kind === "progression" || picks[j].kind === "fartlek" || picks[j].kind === "hills") ?? free[0];
+      const q = nextVo2();
+      picks[slot] = { ...q, text: `VO2 max: ${q.text}`, kind: "intervals" };
+    } else vo2Run = 0;
     // Around a marathon on the way: marathon pace, short, in its taper and race week; something light after.
     if (ar && picks.length) {
       const mpP = mpFor(marathonsInside.find((r) => r.name === ar.race)?.target);
@@ -1094,6 +1137,8 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
               ? `Sharpening for ${sharpenFor}: one session at its pace, the rest as planned.`
             : pre && pre.d % 2 === 1
               ? `${pre.race.name} in ${pre.d} weeks: marathon pace in the long run.`
+            : picks.some((q) => q.kind === "intervals")
+              ? "VO2 max reps: run them by heart rate, reaching about 95% of your max by the end of each rep. If it feels like a threshold run, you're going too easy."
             : isRace && b.phase === "specific" && (() => {
                   const el = courseElevation(o.terrain, DIST_M[o.dist] / 1000);
                   return el.loss - el.gain > 150;
