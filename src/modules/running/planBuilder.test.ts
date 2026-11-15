@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { forecastWeek } from "./forecast";
 import { sessionToWorkout } from "../watch/importWeek";
 import { BUNDLED_PLAN, WEEK_KEYS } from "./plan";
-import { raceKey, buildPlan, doublesAdvice, LEVELS, pacesFor, recommend, type BuildOptions, type History } from "./planBuilder";
+import { raceKey, sessionShape, buildPlan, doublesAdvice, LEVELS, pacesFor, recommend, type BuildOptions, type History } from "./planBuilder";
 
 const H: History = { recent4: 40, recent12: 55, peak12: 80, runsPerWeek: 4.5, longest8: 25, weeksRun12: 12, vdot: 55 };
 const TODAY = "2026-11-03";
@@ -375,6 +375,33 @@ describe("plan builder: changing the races already in your plan", () => {
       const v = Object.values(w.sessions) as string[];
       expect(v.some((x) => /5K pace: /.test(x)) && v.some((x) => /VO2 max: /.test(x)), w.start).toBe(false);
     }
+  });
+
+  it("runs Edinburgh's marathon-pace work at your fitness, or its own goal, not Valencia's goal pace", () => {
+    const mpOf = (plan: ReturnType<typeof buildPlan>["plan"]) =>
+      plan.weeks
+        .filter((w) => w.start < "2027-05-30")
+        .flatMap((w) => Object.values(w.sessions) as string[])
+        .map((x) => /MP (\d):(\d\d)–(\d):(\d\d)/.exec(x))
+        .filter(Boolean)
+        .map((m) => (+m![1] * 60 + +m![2] + +m![3] * 60 + +m![4]) / 2);
+    const fit = mpOf(buildPlan(old, { ...o, target: "2:30" }, h, "2026-11-15").plan);
+    expect(fit.length).toBeGreaterThan(0);
+    // 2:30 is 3:33/km; fitness MP at VDOT 56–58 is about 4:00.
+    expect(Math.min(...fit)).toBeGreaterThan(230);
+    const own = mpOf(buildPlan(old, { ...o, target: "2:30", raceEdits: { [raceKey(edin)]: { target: "2:49:59" } } }, h, "2026-11-15").plan);
+    expect(own.every((x) => Math.abs(x - 241.7) <= 3)).toBe(true);
+  });
+
+  it("doesn't repeat last week's sessions in the first new week", () => {
+    const first = buildPlan(old, o, h, "2026-11-15").plan.weeks.find((w) => w.start === "2026-11-16")!;
+    // Pretend last week had exactly those sessions; the rebuilt first week must differ.
+    const lastWeek = { ...first, start: "2026-11-09", end: "2026-11-15", week: "0" };
+    const again = buildPlan({ ...old, weeks: [lastWeek, ...old.weeks.filter((w) => w.start > "2026-11-15")] }, o, h, "2026-11-15").plan.weeks.find((w) => w.start === "2026-11-16")!;
+    const shapes = (w: typeof first) => (Object.values(w.sessions) as string[]).filter((x) => / with |progression/.test(x)).map(sessionShape);
+    const before = new Set(shapes(lastWeek));
+    expect(shapes(again).filter((x) => before.has(x))).toEqual([]);
+    expect(sessionShape("11 km with 3 km warm-up, Threshold tempo: 23 min T at 3:48–3:52, 2 km cool-down")).toBe(sessionShape("11 km with 23 min T at 3:48–3:52"));
   });
 
   it("leaves out a race you remove", () => {

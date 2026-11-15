@@ -574,7 +574,20 @@ function timed(n: number, min: number, pace: number, tag: string, jog: string, j
 }
 
 /** The week's quality sessions: race pace first late in the plan, otherwise the phase's kinds in turn (no repeats in a week). */
-function pickSessions(count: number, phase: Phase, week: number, kinds: Set<SessionKind>, o: BuildOptions, t: number, p: Paces, race: number, seen: Map<SessionKind, number> = new Map()): Q[] {
+/** A session's shape without its paces, distances around it and label: "4 × 2 km at , 2 min jog". */
+export function sessionShape(text: string): string {
+  return text
+    .replace(/·.*$/, "")
+    .replace(/^\d+(?:\.\d+)? km (?:with )?/, "")
+    .replace(/\d+(?:\.\d+)? km warm-up, |, \d+(?:\.\d+)? km cool-down/g, "")
+    .replace(/^[A-Za-z0-9 ]+: /, "")
+    .replace(/(?:MP |HMP )?\d+:\d\d(?:–\d+:\d\d)?/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function pickSessions(count: number, phase: Phase, week: number, kinds: Set<SessionKind>, o: BuildOptions, t: number, p: Paces, race: number, seen: Map<SessionKind, number> = new Map(), avoid: Set<string> = new Set()): Q[] {
   let prefs = (o.dist === "marathon" || o.dist === "half" ? PREFS_LONG : PREFS)[phase].filter((k) => kinds.has(k));
   // A hilly race: hill reps come round more often in the build and race-specific weeks.
   const el = courseElevation(o.terrain, DIST_M[o.dist] / 1000);
@@ -591,9 +604,28 @@ function pickSessions(count: number, phase: Phase, week: number, kinds: Set<Sess
     }
     used.add(k);
     // Each kind steps through its variations in turn, so the same session doesn't come round again for weeks.
-    const v = seen.get(k) ?? 0;
-    seen.set(k, v + 1);
-    const q = session(k, v, o, phase, t, p, race);
+    // ...and none is the same as one from last week: the next variation, or another kind, if it would be.
+    const make = (kind: SessionKind) => {
+      for (let tries = 0; tries < 6; tries++) {
+        const v = seen.get(kind) ?? 0;
+        seen.set(kind, v + 1);
+        const q = session(kind, v, o, phase, t, p, race);
+        if (!avoid.has(sessionShape(q.text))) return q;
+      }
+      return null;
+    };
+    let q = make(k);
+    if (!q && k !== "racepace") {
+      for (const alt of prefs.filter((x) => !used.has(x) && x !== "racepace")) {
+        q = make(alt);
+        if (q) {
+          used.add(alt);
+          k = alt;
+          break;
+        }
+      }
+    }
+    q ??= session(k, seen.get(k) ?? 0, o, phase, t, p, race);
     out.push(KIND_LABEL[k] && !q.whole ? { ...q, text: `${KIND_LABEL[k]}: ${q.text}` } : q);
   }
   return out;
@@ -828,6 +860,7 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
   // Base and build weeks, numbered: every third has VO2 max reps as its second session.
   const bbIdx = (i: number) => built.slice(0, i).filter((x) => (x.phase === "base" || x.phase === "build") && !x.cut && !x.around).length;
   const strength = T.strength !== false && o.level !== "beginner";
+  const weeksOut: PlanWeek[] = [];
   const weeks: PlanWeek[] = built.map((b, i) => {
     const p = paceAt(i);
     const rp = goalPace && Math.abs(goalPace - racePaceOf(p)) < 25 ? goalPace : racePaceOf(p);
@@ -854,7 +887,8 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
     const pre = !ar && !b.cut && b.phase !== "race" && b.phase !== "taper" ? weeksBeforeMarathon(b.monday) : null;
     const mpFor = (target?: string) => {
       const sec = target ? targetTime(target, 42195) : null;
-      return sec ? sec / 42.195 : o.dist === "marathon" ? rp : p.mp;
+      // Without a goal time for it: marathon pace for your fitness that week, not your main goal's pace (months away).
+      return sec ? sec / 42.195 : p.mp;
     };
     const preMp = pre ? mpFor(pre.race.target) : 0;
     let km = b.km;
@@ -907,7 +941,10 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
       nQ = Math.max(0, nQ - 1);
       kinds.delete("racepace");
     }
-    let picks = pickSessions(nQ, qPhase, i, kinds, o, t, p, rp, seen);
+    // Last week's sessions (the week before the new plan starts, too), so this week's aren't the same.
+    const lastWeek = i > 0 ? weeksOut[i - 1]?.sessions : old.weeks.find((w) => w.start === addDays(b.monday, -7))?.sessions;
+    const avoid = new Set(Object.values(lastWeek ?? {}).map((x) => sessionShape(String(x))));
+    let picks = pickSessions(nQ, qPhase, i, kinds, o, t, p, rp, seen, avoid);
     // Before the race-specific weeks, a tune-up week keeps a short threshold session rather than race-pace work.
     if (tune && (b.phase === "base" || b.phase === "build") && picks.length) picks = [{ ...reps(4, 1, p.threshold, "90 s jog", 90), kind: "threshold" as const }].map((q) => ({ ...q, text: `Threshold: ${q.text}` }));
     // Periodised around tune-ups: the two weeks before a B race sharpen for it, one session at its pace.
@@ -915,7 +952,16 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
     let sharpenFor: string | null = null;
     if (nextTune && (b.phase === "base" || b.phase === "build") && !b.cut && picks.length) {
       const k = raceKmFor(nextTune) ?? 10;
-      const q = k <= 6 ? { ...reps(5, 1, p.fivek, "2 min jog", 120), label: "5K pace" } : k <= 12 ? { ...reps(4, 2, p.tenk, "90 s jog", 90), label: "10K pace" } : k <= 25 ? { ...hmp(reps(3, 4, p.hmp, "2 min jog", 120)), label: "Half pace" } : null;
+      // Two sharpening weeks, two different sessions: the longer reps first, shorter and quicker ones the week before.
+      const late = nextTune.date! <= addDays(b.monday, 13);
+      const q =
+        k <= 6
+          ? { ...(late ? reps(8, 0.4, p.fivek - 3, "200 m jog", 70) : reps(5, 1, p.fivek, "2 min jog", 120)), label: "5K pace" }
+          : k <= 12
+            ? { ...(late ? reps(6, 1, p.tenk, "75 s jog", 75) : reps(4, 2, p.tenk, "90 s jog", 90)), label: "10K pace" }
+            : k <= 25
+              ? { ...hmp(late ? reps(2, 5, p.hmp, "3 min jog", 180) : reps(3, 4, p.hmp, "2 min jog", 120)), label: "Half pace" }
+              : null;
       if (q) {
         picks[0] = { km: q.km, text: `${q.label}: ${q.text}`, kind: "racepace" };
         sharpenFor = nextTune.name;
@@ -1044,7 +1090,7 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
                 })()
               ? "The race drops a lot: run some easy runs and the long run downhill to get your quads used to it."
               : "";
-    return {
+    const out: PlanWeek = {
       week: String(i + 1),
       start: b.monday,
       end: addDays(b.monday, 6),
@@ -1055,6 +1101,8 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
       sessions: s,
       notes,
     };
+    weeksOut.push(out);
+    return out;
   });
   built.forEach((b, i) => (b.km = weeks[i].kmMin ?? b.km));
 
