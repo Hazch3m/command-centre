@@ -58,6 +58,16 @@ function paceIn(text: string): number | null {
 }
 
 /** Distance of a race from its name. */
+/**
+ * A race's distance: its km, or what its name says. A name that says "half" wins over a marathon distance
+ * (a race renamed "Lausanne half marathon" but left at 42.2 km is a half).
+ */
+export function raceKmFor(r: { name: string; km?: number | null }): number | null {
+  const byName = raceKm(r.name);
+  if (r.km != null && r.km > 30 && byName === 21.1) return 21.1;
+  return r.km ?? byName;
+}
+
 export function raceKm(name: string): number | null {
   if (/marathon/i.test(name) && !/half/i.test(name)) return 42.2;
   if (/half/i.test(name)) return 21.1;
@@ -238,7 +248,7 @@ export function forecastWeek(plan: Plan, monday: string, runs: Run[] = [], overr
       if (st) base.strength = st[1] as "A" | "B";
     }
     if (race) {
-      const rk = race.km ?? raceKm(race.name);
+      const rk = raceKmFor(race);
       const said = s?.key ? /about\s+([\d.]+)\s*km/i.exec(s.text) : null;
       const k = said ? num(said[1]) : rk == null ? null : rk > 40 ? rk : rk + WARM;
       days.push({ ...base, text: `${race.name} · ${race.target}`, kind: "race", km: k, pace: null });

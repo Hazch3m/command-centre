@@ -362,6 +362,21 @@ describe("plan builder: changing the races already in your plan", () => {
     expect(r.plan.previous?.races?.map((x) => x.name)).toEqual(["Edinburgh marathon", "Lausanne marathon"]);
   });
 
+  it("plans a race named as a half as a half, even if its distance says marathon", () => {
+    const halfAs42 = { ...laus, name: "Lausanne half marathon ", km: 42.2, priority: "B" as const };
+    const r = buildPlan({ ...old, races: [edin, halfAs42] }, o, h, "2026-11-15");
+    expect(r.weeks.filter((w) => w.around).every((w) => w.around!.race === "Edinburgh marathon")).toBe(true);
+  });
+
+  it("doesn't put VO2 max reps in a week that sharpens for a 5k", () => {
+    const five = R("2026-12-19", "5k", 5, "B");
+    const r = buildPlan({ ...old, races: [five, edin] }, o, h, "2026-11-15");
+    for (const w of r.plan.weeks) {
+      const v = Object.values(w.sessions) as string[];
+      expect(v.some((x) => /5K pace: /.test(x)) && v.some((x) => /VO2 max: /.test(x)), w.start).toBe(false);
+    }
+  });
+
   it("leaves out a race you remove", () => {
     const r = buildPlan(old, { ...o, raceEdits: { [raceKey(laus)]: null } }, h, "2026-11-15");
     expect(r.plan.races.map((x) => x.name)).toEqual(["Edinburgh marathon", "Valencia"]);

@@ -4,7 +4,7 @@ import { BarChart } from "../../shell/charts";
 import { ErrorNote } from "../../shell/ui";
 import { fitnessConfigChanged, loadFitnessConfig, marathonShape, saveFitnessConfig, useFitness } from "./fitness";
 import { plannedRuns } from "./FitnessPlan";
-import { raceKm } from "./forecast";
+import { raceKm, raceKmFor } from "./forecast";
 import { mondayOf, priorityOf, restorePreviousPlan, savePlan, WEEK_KEYS, type Plan, type PlanRace } from "./plan";
 import { buildPlan, raceKey, doublesAdvice, DIST_M, expectedGain, courseElevation, elevationCost, DEFAULT_WEEKS, DIST_LABEL, GOALS, LEVELS, MAX_WEEKS, pacesFor, recommend, SESSION_KINDS, summarizeHistory, tuneDefaults, type BuildOptions, type Goal, type History, type Level, type RaceDist, type SessionKind, type Tune } from "./planBuilder";
 import { raceReadiness } from "./readiness";
@@ -23,7 +23,7 @@ const PHASE_CLASS: Record<string, string> = { Base: "base", Build: "build", "Rac
 const DIST_KM: Record<RaceDist, number> = { "5k": 5, "10k": 10, half: 21.1, marathon: 42.2 };
 const TAPER_LABEL = { full: "full taper", mini: "mini taper", none: "train through" } as const;
 const DIST_CHIPS = [{ v: 5, l: "5k" }, { v: 10, l: "10k" }, { v: 21.1, l: "Half" }, { v: 42.2, l: "Marathon" }];
-const raceKmOrName = (r: PlanRace) => r.km ?? raceKm(r.name) ?? 10;
+const raceKmOrName = (r: PlanRace) => raceKmFor(r) ?? 10;
 /** "Lausanne marathon" as a half is "Lausanne half": the distance word in a race's name follows its distance. */
 const renamed = (name: string, km: number) => {
   const word = km > 30 ? "marathon" : km > 15 ? "half" : km > 7 ? "10k" : "5k";
@@ -317,7 +317,7 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
           {isRace && <div className="pb-race-list">
             {races.map((r) => {
               const on = !other && r.date === o.raceDate && r.name === o.raceName;
-              const k = r.km ?? raceKm(r.name);
+              const k = raceKmFor(r);
               return (
                 <button
                   key={`${r.date}${r.name}`}
@@ -526,7 +526,7 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
                       <div key={key} className="pb-tuneup-edit">
                         <div className="pb-tuneup">
                           <span className={"rm-pri pr-" + priorityOf(r)}>{priorityOf(r)}</span>
-                          <b>{r.name}</b> <span className="muted small">{fmt(r.date!)} · {(r.km ?? raceKm(r.name)) ?? "?"} km · {raceKmOrName(r) >= 30 ? (priorityOf(r) === "C" ? "run as training" : "taper and recovery weeks") : TAPER_LABEL[r.taper ?? defaultTaperFor(r)]}</span>
+                          <b>{r.name}</b> <span className="muted small">{fmt(r.date!)} · {(raceKmFor(r)) ?? "?"} km · {raceKmOrName(r) >= 30 ? (priorityOf(r) === "C" ? "run as training" : "taper and recovery weeks") : TAPER_LABEL[r.taper ?? defaultTaperFor(r)]}</span>
                           <button type="button" className="link-btn small" onClick={() => editRace(key, null)}>
                             remove
                           </button>

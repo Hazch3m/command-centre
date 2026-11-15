@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { parseKey, useToday } from "../../core/time";
 import { ErrorNote } from "../../shell/ui";
-import { raceKm } from "./forecast";
+import { raceKmFor } from "./forecast";
 import { priorityOf, savePlanRaces, type Plan, type PlanRace, type RacePriority } from "./plan";
 import { applyAdjust, applyRaceTapers } from "./planAdjust";
 import { raceReadiness, readinessTone } from "./readiness";
@@ -90,7 +90,7 @@ export function RaceManager({ plan }: { plan: Plan }) {
       </div>
       {rows.map(({ r, i }) => {
         const p = priorityOf(r);
-        const k = r.km ?? raceKm(r.name);
+        const k = raceKmFor(r);
         const s = scores[i];
         const isOpen = open === i;
         return (

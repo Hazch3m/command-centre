@@ -1,6 +1,6 @@
 import { addDays, diffDays } from "../../core/time";
 import { targetTime } from "./fitness";
-import { raceKm } from "./forecast";
+import { raceKmFor } from "./forecast";
 import { mondayOf, priorityOf, WEEK_KEYS, type DayKey, type Plan, type PlanRace, type PlanWeek } from "./plan";
 import { weeklyTotals } from "./stats";
 import type { Run } from "./strava";
@@ -686,7 +686,7 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
   const end = addDays(raceMonday, 6);
   const inside = old.races.filter((r) => r.date && !r.approx && r.date >= start && r.date <= end && r.date !== o.raceDate);
   const added = (o.extraRaces ?? []).filter((r) => r.date && r.date >= start && r.date < o.raceDate && !inside.some((x) => x.date === r.date && x.name === r.name));
-  const raceKmOf = (r: PlanRace) => r.km ?? raceKm(r.name) ?? 10;
+  const raceKmOf = (r: PlanRace) => raceKmFor(r) ?? 10;
   /**
    * A marathon raced inside the plan (Edinburgh before Valencia, say) gets a real taper and real recovery,
    * not a mini-taper: two weeks down before an A race (one before a B), and two easy weeks after it.
@@ -858,7 +858,7 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
     };
     const preMp = pre ? mpFor(pre.race.target) : 0;
     let km = b.km;
-    if (raceHere.length && b.phase !== "race") km = Math.round(km - raceHere.reduce((a, r) => a + (r.km ?? raceKm(r.name) ?? 10), 0));
+    if (raceHere.length && b.phase !== "race") km = Math.round(km - raceHere.reduce((a, r) => a + (raceKmFor(r) ?? 10), 0));
 
     for (const r of raceHere) s[WEEK_KEYS[diffDays(b.monday, r.date!)]] = r.name;
     // Long run: on its day unless a race is there or the day before/after.
@@ -914,7 +914,7 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
     const nextTune = T.sharpen === false || ar ? null : tuneUps.find((r) => priorityOf(r) === "B" && r.date! > addDays(b.monday, 6) && r.date! <= addDays(b.monday, 20));
     let sharpenFor: string | null = null;
     if (nextTune && (b.phase === "base" || b.phase === "build") && !b.cut && picks.length) {
-      const k = nextTune.km ?? raceKm(nextTune.name) ?? 10;
+      const k = raceKmFor(nextTune) ?? 10;
       const q = k <= 6 ? { ...reps(5, 1, p.fivek, "2 min jog", 120), label: "5K pace" } : k <= 12 ? { ...reps(4, 2, p.tenk, "90 s jog", 90), label: "10K pace" } : k <= 25 ? { ...hmp(reps(3, 4, p.hmp, "2 min jog", 120)), label: "Half pace" } : null;
       if (q) {
         picks[0] = { km: q.km, text: `${q.label}: ${q.text}`, kind: "racepace" };
@@ -922,7 +922,8 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
       }
     }
     // VO2 max reps every third base and build week, as the second session: a little speed all year.
-    if (!ar && !tune && !b.cut && (b.phase === "base" || b.phase === "build") && picks.length >= 2 && kinds.has("intervals") && !picks.some((q) => q.kind === "intervals") && bbIdx(i) % 3 === 2) {
+    // (Not in a week that sharpens for a short race: its race-pace session is the fast one.)
+    if (!ar && !tune && !sharpenFor && !b.cut && (b.phase === "base" || b.phase === "build") && picks.length >= 2 && kinds.has("intervals") && !picks.some((q) => q.kind === "intervals") && bbIdx(i) % 3 === 2) {
       const v = seen.get("intervals") ?? 0;
       seen.set("intervals", v + 1);
       const q = session("intervals", v, o, b.phase, t, p, rp);

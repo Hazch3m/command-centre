@@ -1,6 +1,6 @@
 import { addDays, diffDays } from "../../core/time";
 import { shapeFactor } from "./fitness";
-import { forecastWeek, raceKm, type ForecastDay } from "./forecast";
+import { forecastWeek, raceKmFor, type ForecastDay } from "./forecast";
 import { mondayOf, priorityOf, type Plan, type PlanRace } from "./plan";
 import { elevationCost, expectedGain } from "./planBuilder";
 import { predictTime } from "./vo2";
@@ -43,7 +43,7 @@ const interp = (pts: [number, number][], x: number) => {
 };
 
 export function raceDistance(r: Pick<PlanRace, "name" | "km">): number {
-  return r.km ?? raceKm(r.name) ?? 10;
+  return raceKmFor(r) ?? 10;
 }
 
 /** Weekly km and long run a race of this distance needs at a fitness (VDOT). */
