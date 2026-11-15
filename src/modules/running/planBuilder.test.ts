@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { forecastWeek } from "./forecast";
 import { sessionToWorkout } from "../watch/importWeek";
 import { BUNDLED_PLAN, WEEK_KEYS } from "./plan";
-import { buildPlan, doublesAdvice, LEVELS, pacesFor, recommend, type BuildOptions, type History } from "./planBuilder";
+import { raceKey, buildPlan, doublesAdvice, LEVELS, pacesFor, recommend, type BuildOptions, type History } from "./planBuilder";
 
 const H: History = { recent4: 40, recent12: 55, peak12: 80, runsPerWeek: 4.5, longest8: 25, weeksRun12: 12, vdot: 55 };
 const TODAY = "2026-11-03";
@@ -339,5 +339,31 @@ describe("plan builder: a marathon on the way, and the year-round extras", () =>
         if (/^Rest$|race$|Marathon$|marathon$|10k$/i.test(x)) continue;
         expect(sessionToWorkout(x), x).not.toBeNull();
       }
+  });
+});
+
+describe("plan builder: changing the races already in your plan", () => {
+  const h: History = { recent4: 35, recent12: 43, peak12: 60, runsPerWeek: 5, longest8: 21, weeksRun12: 12, vdot: 56 };
+  const R = (date: string, name: string, km: number, priority: "A" | "B" | "C", target = "") => ({ date, approx: false, when: date, name, km, priority, target, role: "Tune-up" });
+  const edin = R("2027-05-30", "Edinburgh marathon", 42.2, "B");
+  const laus = R("2027-10-24", "Lausanne marathon", 42.2, "A", "2:45");
+  const old = { ...BUNDLED_PLAN, races: [edin, laus] };
+  const o: BuildOptions = { raceName: "Valencia", raceDate: "2027-12-05", dist: "marathon", target: "2:39", weeks: 60, level: "elite", days: 6, longDay: "sun", keepRaces: true };
+
+  it("makes Edinburgh an A race and Lausanne a half, and undo keeps the old races", () => {
+    const r = buildPlan(old, { ...o, raceEdits: { [raceKey(edin)]: { priority: "A", target: "2:49:59" }, [raceKey(laus)]: { km: 21.1, name: "Lausanne half", priority: "B", target: "" } } }, h, "2026-11-15");
+    const names = r.plan.races.map((x) => `${x.name} ${x.priority} ${x.km ?? ""}`);
+    expect(names).toContain("Edinburgh marathon A 42.2");
+    expect(names).toContain("Lausanne half B 21.1");
+    expect(names.some((n) => n.startsWith("Lausanne marathon"))).toBe(false);
+    expect(r.weeks.some((w) => w.around?.at === "taper2")).toBe(true);
+    // Lausanne is now a half: no marathon taper or recovery around it.
+    expect(r.weeks.filter((w) => w.around).every((w) => w.around!.race === "Edinburgh marathon")).toBe(true);
+    expect(r.plan.previous?.races?.map((x) => x.name)).toEqual(["Edinburgh marathon", "Lausanne marathon"]);
+  });
+
+  it("leaves out a race you remove", () => {
+    const r = buildPlan(old, { ...o, raceEdits: { [raceKey(laus)]: null } }, h, "2026-11-15");
+    expect(r.plan.races.map((x) => x.name)).toEqual(["Edinburgh marathon", "Valencia"]);
   });
 });

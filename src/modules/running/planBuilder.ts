@@ -39,6 +39,8 @@ export interface BuildOptions {
   goal?: Goal;
   /** B and C races you add in the builder (as well as the ones already in your plan). */
   extraRaces?: PlanRace[];
+  /** Changes to races already in your plan, by raceKey: new priority, distance or goal time, or null to drop it. */
+  raceEdits?: Record<string, Partial<PlanRace> | null>;
   /** The goal race's course: a kind, or exact climb and descent in metres. */
   terrain?: Terrain;
 }
@@ -621,7 +623,20 @@ export interface BuiltWeek {
 }
 
 /** The plan built from the options, merged into the current one: weeks before it and after the race are kept. */
-export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string): { plan: Plan; weeks: BuiltWeek[] } {
+/** How the builder names a race already in the plan, for raceEdits. */
+export const raceKey = (r: Pick<PlanRace, "date" | "name">) => `${r.date ?? ""}|${r.name}`;
+
+/** The plan's races with the builder's edits applied (dropped ones left out). */
+export function editedRaces(races: PlanRace[], edits: BuildOptions["raceEdits"]): PlanRace[] {
+  if (!edits) return races;
+  return races.flatMap((r) => {
+    const e = edits[raceKey(r)];
+    return e === null ? [] : e ? [{ ...r, ...e }] : [r];
+  });
+}
+
+export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string): { plan: Plan; weeks: BuiltWeek[] } {
+  const old = o.raceEdits ? { ...old0, races: editedRaces(old0.races, o.raceEdits) } : old0;
   if (o.goal === "start") return buildStartPlan(old, o, h, today);
   if (o.goal === "beyond5k") return buildBeyond5kPlan(old, o, h, today);
   const T = o.tune ?? {};
@@ -1100,7 +1115,8 @@ export function buildPlan(old: Plan, o: BuildOptions, h: History, today: string)
   ]
     .filter((r, i, all) => all.findIndex((x) => x.date === r.date && x.name === r.name) === i)
     .sort((a, b) => (a.date ?? "9").localeCompare(b.date ?? "9"));
-  const { previous: _p, baseWeeks: _b, prefs: _q, hrZones: _h, ...prev } = old;
+  // (Undo goes back to the plan as it was, races and all.)
+  const { previous: _p, baseWeeks: _b, prefs: _q, hrZones: _h, ...prev } = old0;
   const plan: Plan = {
     ...old,
     title: isRace ? `${goalRace.name}${o.target ? ` · ${o.target}` : ""}` : `${GOALS.find((g) => g.id === goal)!.label}: ${N} weeks`,

@@ -6,7 +6,7 @@ import { fitnessConfigChanged, loadFitnessConfig, marathonShape, saveFitnessConf
 import { plannedRuns } from "./FitnessPlan";
 import { raceKm } from "./forecast";
 import { mondayOf, priorityOf, restorePreviousPlan, savePlan, WEEK_KEYS, type Plan, type PlanRace } from "./plan";
-import { buildPlan, doublesAdvice, DIST_M, expectedGain, courseElevation, elevationCost, DEFAULT_WEEKS, DIST_LABEL, GOALS, LEVELS, MAX_WEEKS, pacesFor, recommend, SESSION_KINDS, summarizeHistory, tuneDefaults, type BuildOptions, type Goal, type History, type Level, type RaceDist, type SessionKind, type Tune } from "./planBuilder";
+import { buildPlan, raceKey, doublesAdvice, DIST_M, expectedGain, courseElevation, elevationCost, DEFAULT_WEEKS, DIST_LABEL, GOALS, LEVELS, MAX_WEEKS, pacesFor, recommend, SESSION_KINDS, summarizeHistory, tuneDefaults, type BuildOptions, type Goal, type History, type Level, type RaceDist, type SessionKind, type Tune } from "./planBuilder";
 import { raceReadiness } from "./readiness";
 import { ReadinessView, useReadinessInputs } from "./ReadinessCard";
 import { useRunningData } from "./useRunning";
@@ -22,6 +22,15 @@ const PHASE_CLASS: Record<string, string> = { Base: "base", Build: "build", "Rac
 
 const DIST_KM: Record<RaceDist, number> = { "5k": 5, "10k": 10, half: 21.1, marathon: 42.2 };
 const TAPER_LABEL = { full: "full taper", mini: "mini taper", none: "train through" } as const;
+const DIST_CHIPS = [{ v: 5, l: "5k" }, { v: 10, l: "10k" }, { v: 21.1, l: "Half" }, { v: 42.2, l: "Marathon" }];
+const raceKmOrName = (r: PlanRace) => r.km ?? raceKm(r.name) ?? 10;
+/** "Lausanne marathon" as a half is "Lausanne half": the distance word in a race's name follows its distance. */
+const renamed = (name: string, km: number) => {
+  const word = km > 30 ? "marathon" : km > 15 ? "half" : km > 7 ? "10k" : "5k";
+  const re = /\bhalf[- ]marathon\b|\bhalf\b|\bmarathon\b|\b10 ?k\b|\b5 ?k\b/i;
+  return re.test(name) ? name.replace(re, word) : name;
+};
+const nearestDist = (r: PlanRace) => DIST_CHIPS.reduce((a, b) => (Math.abs(b.v - raceKmOrName(r)) < Math.abs(a.v - raceKmOrName(r)) ? b : a)).v;
 const defaultTaperFor = (r: PlanRace) => (priorityOf(r) === "A" ? "full" : priorityOf(r) === "B" ? "mini" : "none");
 
 function distOf(name: string, km?: number): RaceDist {
@@ -148,7 +157,12 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
   const isRec = o.level === rec.level && o.days === rec.days && o.weeks === recWeeks;
   const startFor = (weeks: number) => addDays(firstMonday, Math.max(0, available - weeks) * 7);
   const start = startFor(o.weeks);
-  const tuneUps = base.races.filter((r) => r.date && !r.approx && r.date >= start && r.date < o.raceDate);
+  // The races already in your plan inside this block, as they'll be (with your changes below).
+  const tuneUps = base.races
+    .filter((r) => r.date && !r.approx && r.date >= start && r.date < o.raceDate && r.date !== o.raceDate)
+    .map((r) => ({ key: raceKey(r), was: r, r: o.raceEdits?.[raceKey(r)] === null ? null : { ...r, ...(o.raceEdits?.[raceKey(r)] ?? {}) } }));
+  const editRace = (key: string, e: Partial<PlanRace> | null) =>
+    set({ raceEdits: { ...(o.raceEdits ?? {}), [key]: e === null ? null : { ...(o.raceEdits?.[key] ?? {}), ...e } } });
   const chosen = races.find((r) => r.date === o.raceDate && r.name === o.raceName);
   const raceOk = !isRace || (!!o.raceDate && o.raceDate > addDays(today, 21));
   const pickGoal = (g: Goal) => {
@@ -500,12 +514,37 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
               )}
               <div className="pb-tuneups">
                 {o.keepRaces &&
-                  tuneUps.map((r) => (
-                    <span key={r.date + r.name} className="pb-tuneup">
-                      <span className={"rm-pri pr-" + priorityOf(r)}>{priorityOf(r)}</span>
-                      {r.name} <span className="muted small">{fmt(r.date!)} · {TAPER_LABEL[r.taper ?? defaultTaperFor(r)]}</span>
-                    </span>
-                  ))}
+                  tuneUps.map(({ key, was, r }) =>
+                    r === null ? (
+                      <span key={key} className="pb-tuneup off">
+                        <s>{was.name}</s> <span className="muted small">{fmt(was.date!)} · left out</span>
+                        <button type="button" className="link-btn small" onClick={() => set({ raceEdits: Object.fromEntries(Object.entries(o.raceEdits ?? {}).filter(([k]) => k !== key)) })}>
+                          undo
+                        </button>
+                      </span>
+                    ) : (
+                      <div key={key} className="pb-tuneup-edit">
+                        <div className="pb-tuneup">
+                          <span className={"rm-pri pr-" + priorityOf(r)}>{priorityOf(r)}</span>
+                          <b>{r.name}</b> <span className="muted small">{fmt(r.date!)} · {(r.km ?? raceKm(r.name)) ?? "?"} km · {raceKmOrName(r) >= 30 ? (priorityOf(r) === "C" ? "run as training" : "taper and recovery weeks") : TAPER_LABEL[r.taper ?? defaultTaperFor(r)]}</span>
+                          <button type="button" className="link-btn small" onClick={() => editRace(key, null)}>
+                            remove
+                          </button>
+                        </div>
+                        <div className="pb-tuneup-opts">
+                          <Chips
+                            value={priorityOf(r)}
+                            options={[{ v: "A" as const, l: "A: race it" }, { v: "B" as const, l: "B: run it well" }, { v: "C" as const, l: "C: training" }]}
+                            onChange={(v) => editRace(key, { priority: v, taper: undefined })}
+                          />
+                          <Chips value={nearestDist(r)} options={DIST_CHIPS} onChange={(km) => editRace(key, { km, name: renamed(was.name, km) })} />
+                          {priorityOf(r) !== "C" && (
+                            <input className="pb-tuneup-goal" value={r.target} placeholder="Goal time" aria-label={`Goal time for ${r.name}`} onChange={(e) => editRace(key, { target: e.target.value })} />
+                          )}
+                        </div>
+                      </div>
+                    ),
+                  )}
                 {(o.extraRaces ?? []).map((r, i) => (
                   <span key={"x" + i} className="pb-tuneup">
                     <span className={"rm-pri pr-" + priorityOf(r)}>{priorityOf(r)}</span>
@@ -990,7 +1029,8 @@ function AddRace({ from, to, onAdd }: { from: string; to: string; onAdd: (r: Pla
   const [name, setName] = useState("");
   const [date, setDate] = useState(from);
   const [km, setKm] = useState(10);
-  const [pri, setPri] = useState<"B" | "C">("B");
+  const [pri, setPri] = useState<"A" | "B" | "C">("B");
+  const [target, setTarget] = useState("");
   const [taper, setTaper] = useState<"mini" | "full" | "none">("mini");
   if (!open)
     return (
@@ -1012,7 +1052,8 @@ function AddRace({ from, to, onAdd }: { from: string; to: string; onAdd: (r: Pla
         </label>
       </div>
       <Chips value={km} options={[{ v: 5, l: "5k" }, { v: 10, l: "10k" }, { v: 21.1, l: "Half" }, { v: 42.2, l: "Marathon" }]} onChange={setKm} />
-      <Chips value={pri} options={[{ v: "B" as const, l: "B: run it well" }, { v: "C" as const, l: "C: training run" }]} onChange={(v) => (setPri(v), setTaper(v === "C" ? "none" : "mini"))} />
+      <Chips value={pri} options={[{ v: "A" as const, l: "A: race it" }, { v: "B" as const, l: "B: run it well" }, { v: "C" as const, l: "C: training run" }]} onChange={(v) => (setPri(v), setTaper(v === "C" ? "none" : v === "A" ? "full" : "mini"))} />
+      {pri !== "C" && <input className="pb-tuneup-goal" value={target} placeholder="Goal time (optional)" aria-label="Goal time" onChange={(e) => setTarget(e.target.value)} />}
       <Chips value={taper} options={[{ v: "mini" as const, l: "Mini taper" }, { v: "full" as const, l: "Full taper" }, { v: "none" as const, l: "No taper" }]} onChange={setTaper} />
       <div className="inline">
         <button
@@ -1021,8 +1062,9 @@ function AddRace({ from, to, onAdd }: { from: string; to: string; onAdd: (r: Pla
           disabled={!ok}
           onClick={() => {
             const d = new Date(date + "T12:00");
-            onAdd({ name: name.trim(), date, approx: false, when: `${d.getDate()} ${MON[d.getMonth()]}`, target: "", role: pri === "B" ? "Tune-up race" : "Training race", priority: pri, taper, km });
+            onAdd({ name: name.trim(), date, approx: false, when: `${d.getDate()} ${MON[d.getMonth()]}`, target: target.trim(), role: pri === "A" ? "Key race" : pri === "B" ? "Tune-up race" : "Training race", priority: pri, taper, km });
             setName("");
+            setTarget("");
             setOpen(false);
           }}
         >
