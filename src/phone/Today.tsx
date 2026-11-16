@@ -25,7 +25,7 @@ import { PracticeTag } from "../modules/running/PracticeTag";
 import { plannerView } from "./Planner";
 import { weatherModule } from "../modules/weather";
 import { isEmptyPlan } from "../core/account";
-import { CountUp, Section, usePhoneNav } from "./common";
+import { CountUp, Section, usePhoneNav, useReadiness } from "./common";
 import { DrawnTick, ZoneIcon } from "./icons";
 import { HealthPanel } from "./HealthPanel";
 import { plannerShown } from "./plannerPref";
@@ -309,7 +309,7 @@ export function Today() {
     ),
     progress: plan && week && !isEmptyPlan(plan) && <WeekProgress compact plan={plan} fw={week} runs={runs} today={today} overrides={overrides} onDay={(d) => openPlanDay(nav, d)} />,
     ahead: plan && !isEmptyPlan(plan) && <WeekAhead plan={plan} compact onOpen={() => (window.dispatchEvent(new CustomEvent("cc:plan-view", { detail: "plan" })), nav.setTab("training"))} />,
-    lastrun: <LastRun />,
+    lastrun: !done && <LastRun />,
     tiles: (
       <>
       <HealthPanel today={today} />
@@ -407,32 +407,17 @@ export function Today() {
       </Section>
     ),
     weather: (
-      <Section
-        title="Weather"
-        action={
-          <button className="p-link" onClick={() => nav.push("weather")}>
-            Forecast ›
-          </button>
-        }
-      >
-        <div className="p-weather card card-weather">
-          <div className="card-body">
-            <weatherModule.Card editing={false} variant="tile" />
-          </div>
+      <div className="p-weather card card-weather p-home-weather">
+        <div className="card-body">
+          <weatherModule.Card editing={false} variant="tile" />
         </div>
-      </Section>
-    ),
-    race: race && (
-        <button className="p-race" onClick={() => nav.push("fitness")}>
-          <span className="p-race-days num">{race.days}</span>
-          <span className="p-race-text">
-            <span className="p-eyebrow">days to</span>
-            <b>{race.name}</b>
-            <span className="p-row-sub">Target {race.target}</span>
-          </span>
-          <span className="p-chev">›</span>
+        <button type="button" className="p-link p-home-weather-more" onClick={() => nav.push("weather")}>
+          Forecast ›
         </button>
-      ),
+      </div>
+    ),
+    race: race && plan && <RacesRow plan={plan} today={today} onOpen={() => (window.dispatchEvent(new CustomEvent("cc:plan-view", { detail: "races" })), nav.setTab("training"))} />,
+    body: <BodyRow today={today} onOpen={() => nav.push("health")} />,
   };
   return (
     <div className="p-screen">
@@ -477,6 +462,63 @@ export function weekStreak(runs: Pick<Run, "date">[], today: string): number {
 }
 
 /** Today's session, done: a small tile with a tick (tap to see the session again) and what's next. */
+/** Readiness, sleep and HRV on one line; the health page is a tap away. */
+function BodyRow({ today, onOpen }: { today: string; onOpen: () => void }) {
+  const r = useReadiness(today);
+  const hv = useDataVersion("health");
+  const rhr = useQuery(async () => (await loadHealth(3)).find((x) => x.date === today)?.rhr ?? null, [hv, today]).data;
+  const tone = r == null ? "" : r.score >= 70 ? "good" : r.score >= 45 ? "ok" : "low";
+  const sleep = r?.sleep ? `${Math.floor(r.sleep / 3600)}:${String(Math.round((r.sleep % 3600) / 60)).padStart(2, "0")}` : null;
+  return (
+    <button type="button" className="p-home-row p-body" onClick={onOpen}>
+      <span className={"p-body-score " + tone}>
+        <b className="num">{r ? r.score : "–"}</b>
+        <small>{r ? r.level || "readiness" : "readiness"}</small>
+      </span>
+      <span className="p-body-stats">
+        <span>
+          <small>Sleep</small>
+          <b className="num">{sleep ?? "–"}</b>
+        </span>
+        <span>
+          <small>HRV</small>
+          <b className="num">{r?.hrv ? Math.round(r.hrv) : "–"}</b>
+        </span>
+        <span>
+          <small>Rest HR</small>
+          <b className="num">{rhr ? Math.round(rhr) : "–"}</b>
+        </span>
+      </span>
+      <span className="p-chev">›</span>
+    </button>
+  );
+}
+
+/** The next race and, when it's a different one, the goal you're building to: one line each. */
+function RacesRow({ plan, today, onOpen }: { plan: import("../modules/running/plan").Plan; today: string; onOpen: () => void }) {
+  const all = upcomingRaces(plan, today);
+  const next = all[0];
+  const goal = all.find((r) => r.priority === "A");
+  if (!next) return null;
+  const rows = goal && goal !== next ? [next, goal] : [next];
+  return (
+    <button type="button" className="p-home-row p-races" onClick={onOpen}>
+      <span className="p-races-list">
+        {rows.map((r) => (
+          <span key={r.name + r.date} className="p-races-item">
+            <b className="num">{r.days}</b>
+            <span>
+              <small>{r.days === 1 ? "day to" : "days to"}</small>
+              <span className="p-races-name">{r.name}</span>
+            </span>
+          </span>
+        ))}
+      </span>
+      <span className="p-chev">›</span>
+    </button>
+  );
+}
+
 function DoneToday({ d, next, onOpen }: { d: ForecastDay; next?: ForecastDay; onOpen: () => void }) {
   const ranKm = d.runs.reduce((a, r) => a + r.distance / 1000, 0);
   const secs = d.runs.reduce((a, r) => a + r.moving_time, 0);
@@ -513,11 +555,13 @@ function DoneToday({ d, next, onOpen }: { d: ForecastDay; next?: ForecastDay; on
 
 // ---- Your Today page: which blocks, in what order ------------------------------------------
 
-type BlockId = "session" | "progress" | "ahead" | "lastrun" | "tiles" | "workout" | "habits" | "todo" | "coming" | "weather" | "race";
+type BlockId = "session" | "progress" | "body" | "race" | "ahead" | "lastrun" | "tiles" | "workout" | "habits" | "todo" | "coming" | "weather";
 const BLOCKS: { id: BlockId; label: string; hint: string }[] = [
   { id: "session", label: "Today's session", hint: "The run of the day, or a small tile once it's done" },
-  { id: "progress", label: "Week progress", hint: "How much of the week you've trained, each day, and your streaks" },
-  { id: "ahead", label: "Week ahead", hint: "This week's key sessions and the build to your race" },
+  { id: "progress", label: "This week", hint: "Kilometres and runs so far, each day, and your streaks" },
+  { id: "body", label: "Readiness", hint: "Readiness, sleep and HRV in one line" },
+  { id: "race", label: "Races", hint: "Days to your next race and your goal race" },
+  { id: "ahead", label: "Build to your race", hint: "This week's key sessions and the phases to your race" },
   { id: "lastrun", label: "Last run", hint: "Distance, pace and splits" },
   { id: "tiles", label: "Health & this week", hint: "Readiness, sleep, HRV, training load, trends; km so far" },
   { id: "workout", label: "Create a workout", hint: "A big button for a one-off session" },
@@ -525,14 +569,17 @@ const BLOCKS: { id: BlockId; label: string; hint: string }[] = [
   { id: "todo", label: "To do", hint: "Tasks due today" },
   { id: "coming", label: "Coming up", hint: "Calendar for today and tomorrow" },
   { id: "weather", label: "Weather", hint: "Now and the next hours" },
-  { id: "race", label: "Next race", hint: "Days to go" },
 ];
 interface Layout {
   order: BlockId[];
   hidden: BlockId[];
 }
-const DEFAULT_LAYOUT: Layout = { order: BLOCKS.map((b) => b.id), hidden: ["workout"] };
-const loadLayout = () => kvGet<Layout | null>("phone.today", null);
+// Today answers "what do I run, and how am I doing?": the session, the week, readiness, races, weather.
+// The bigger cards (the build to your race, last run, health panel) are a tap away, or added back here.
+const DEFAULT_LAYOUT: Layout = { order: BLOCKS.map((b) => b.id), hidden: ["ahead", "lastrun", "tiles", "workout"] };
+// (v2: the tidier default replaces layouts saved before it.)
+const LAYOUT_KEY = "phone.today.v2";
+const loadLayout = () => kvGet<Layout | null>(LAYOUT_KEY, null);
 /** Saved layouts pick up blocks added later (in their default place). */
 function fixLayout(l: Layout | null | undefined): Layout {
   if (!l) return DEFAULT_LAYOUT;
@@ -541,7 +588,7 @@ function fixLayout(l: Layout | null | undefined): Layout {
   return { order: known, hidden: l.hidden.filter((id) => known.includes(id)) };
 }
 async function saveLayout(l: Layout) {
-  await kvSet("phone.today", l);
+  await kvSet(LAYOUT_KEY, l);
   await notifyChanged("ui");
 }
 
