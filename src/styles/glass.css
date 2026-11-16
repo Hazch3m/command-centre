@@ -92,7 +92,7 @@
 
 /* ---- Frosted surfaces ---- */
 :root.phone-root :is(
-    .p-group, .p-tile, .p-race, .p-total, .p-runcard, .p-more, .p-lastrun, .p-wchart, .p-start-step,
+    .p-group, .p-tile, .p-race, .p-home-row, .p-total, .p-runcard, .p-more, .p-lastrun, .p-wchart, .p-start-step,
     .pt-card, .gc-card, .wp, .coach-box, .coach-review, .hp-strip, .wc-option, .p-subnav, .p-note,
     .p-session.rt-rest, .p-session.z-rest, .p-sheet, .p-embed > .card, .lfw, .lf-card, .fp-table, .p-tl
   ) {
@@ -384,9 +384,39 @@
 .p-move .link-btn { flex-basis: 100%; text-align: left; }
 
 /* A section folded away until asked for (detail that most visits don't need). */
-.p-more { margin: 0.5rem 0 1rem; }
-.p-more > summary { list-style: none; cursor: pointer; padding: 0.7rem 1rem; border-radius: 14px; background: var(--glass); font-weight: 600; font-size: 0.92rem; display: flex; justify-content: space-between; align-items: center; }
-.p-more > summary::-webkit-details-marker { display: none; }
-.p-more > summary::after { content: "›"; transform: rotate(90deg); transition: transform 0.2s; opacity: 0.6; }
-.p-more[open] > summary::after { transform: rotate(-90deg); }
-.p-more[open] > summary { margin-bottom: 0.5rem; }
+.p-fold { margin: 0.5rem 0 1rem; }
+.p-fold > summary { list-style: none; cursor: pointer; padding: 0.7rem 1rem; border-radius: 14px; background: var(--glass); font-weight: 600; font-size: 0.92rem; display: flex; justify-content: space-between; align-items: center; }
+.p-fold > summary::-webkit-details-marker { display: none; }
+.p-fold > summary::after { content: "›"; transform: rotate(90deg); transition: transform 0.2s; opacity: 0.6; }
+.p-fold[open] > summary::after { transform: rotate(-90deg); }
+.p-fold[open] > summary { margin-bottom: 0.5rem; }
+
+/* ---- Today, tidied: one-line rows under the session ----------------------------------- */
+.p-home-row {
+  display: flex; align-items: center; gap: 0.9rem; width: 100%;
+  padding: 0.8rem 1rem; margin: 0 0 0.75rem;
+  border: 0; border-radius: var(--p-radius); background: var(--p-surface);
+  color: var(--text); font: inherit; text-align: left;
+}
+.p-home-row .p-chev { margin-left: auto; opacity: 0.5; }
+.p-body-score { display: flex; flex-direction: column; min-width: 4.2rem; line-height: 1.05; }
+.p-body-score b { font-size: 1.9rem; font-weight: 800; }
+.p-body-score small { font-size: 0.72rem; color: var(--text-2, var(--text)); opacity: 0.75; text-transform: capitalize; }
+.p-body-score.good b { color: var(--run-easy, #1a9a6c); }
+.p-body-score.ok b { color: var(--run-tempo, #c98a12); }
+.p-body-score.low b { color: var(--accent); }
+.p-body-stats { display: flex; gap: 1.1rem; }
+.p-body-stats span { display: flex; flex-direction: column; line-height: 1.15; }
+.p-body-stats small { font-size: 0.7rem; opacity: 0.7; }
+.p-body-stats b { font-size: 1.05rem; font-weight: 700; }
+.p-races-list { display: flex; flex-direction: column; gap: 0.45rem; min-width: 0; }
+.p-races-item { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+.p-races-item > b { font-size: 1.55rem; font-weight: 800; min-width: 2.8rem; text-align: right; color: var(--run-race, var(--accent)); }
+.p-races-item > span { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.p-races-item small { font-size: 0.7rem; opacity: 0.7; }
+.p-races-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.p-races-item + .p-races-item > b { font-size: 1.2rem; opacity: 0.85; }
+.wp-title { font-weight: 700; font-size: 0.95rem; margin-right: auto; }
+.wp.wp-c .wp-top { align-items: baseline; }
+.p-home-weather { position: relative; margin-bottom: 0.75rem; }
+.p-home-weather-more { position: absolute; right: 1rem; bottom: 0.6rem; }

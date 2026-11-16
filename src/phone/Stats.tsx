@@ -37,7 +37,7 @@ export function Stats() {
       {plan && !isEmptyPlan(plan) && (() => {
         const r = forecastRange(plan, today);
         return r ? (
-          <details className="p-more">
+          <details className="p-fold">
             <summary>Load focus in the weeks ahead</summary>
             <PlanFocusWeeks plan={plan} first={r.first} last={r.last} />
           </details>
