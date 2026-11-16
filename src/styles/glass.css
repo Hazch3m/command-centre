@@ -371,3 +371,14 @@
 .cc-log summary { cursor: pointer; font-weight: 600; }
 .cc-log ul { margin: 0.4rem 0 0; padding-left: 1rem; display: flex; flex-direction: column; gap: 0.2rem; overflow-wrap: anywhere; }
 .cc-key { display: block; margin-top: 0.3rem; padding: 0.45rem 0.6rem; border-radius: 10px; background: var(--card-2); border: 1px solid var(--line); font-size: 0.72rem; color: var(--text); overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; }
+
+/* Moving a session to another day this week. */
+.p-move { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; margin: 0.6rem 0 0.2rem; }
+.p-move-label { font-size: 0.82rem; color: var(--text-2, var(--text)); opacity: 0.8; }
+.p-move-days { display: flex; gap: 0.3rem; }
+.p-move-day { width: 2.1rem; height: 2.1rem; border-radius: 50%; border: 1px solid var(--border, rgba(127,127,127,0.25)); background: transparent; color: inherit; font: inherit; font-size: 0.8rem; }
+.p-move-day.key { border-color: var(--accent); }
+.p-move-day.here { background: var(--accent); color: #fff; border-color: var(--accent); }
+.p-move-day:disabled:not(.here) { opacity: 0.35; }
+.p-move-day:not(:disabled):active { transform: scale(0.94); }
+.p-move .link-btn { flex-basis: 100%; text-align: left; }

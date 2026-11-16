@@ -12,6 +12,8 @@ import { ReadinessView, useReadinessInputs } from "./ReadinessCard";
 import { useRunningData } from "./useRunning";
 import { predictTime, vdot } from "./vo2";
 import { PracticeTag } from "./PracticeTag";
+import { loadGarminZones, loadZoneSettings, resolveZones } from "./hrZones";
+import { useQuery } from "../../core/useQuery";
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const fmt = (d: string) => `${parseKey(d).getDate()} ${MON[parseKey(d).getMonth()]}`;
@@ -87,6 +89,12 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
   const races = useMemo(() => base.races.filter((r) => r.date && r.date > addDays(today, 21)), [base, today]);
 
   const [o, setO] = useState<BuildOptions | null>(null);
+  // Your heart rates (Training load's zone settings, Garmin's, or worked out from your runs), for heart-rate targets.
+  const hrNow = useQuery(async () => {
+    const [s, g, c] = await Promise.all([loadZoneSettings(), loadGarminZones(), loadFitnessConfig()]);
+    const z = resolveZones(s, g, { hrMax: c.hrMax, hrRest: c.hrRest });
+    return { max: z.max, lthr: z.lthr ?? null };
+  }, []).data;
   const isRace = (o?.goal ?? "race") === "race";
   const available = o ? (isRace ? Math.max(1, diffDays(firstMonday, mondayOf(o.raceDate)) / 7 + 1) : 26) : 0;
   // What a marathon at your fitness needs each week (marathon shape's target), so the suggestion can aim for it.
@@ -126,11 +134,11 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
   const built = useMemo(() => {
     if (!o || step < 3) return null;
     try {
-      return buildPlan(base, o, atStartFor(o.raceDate)(o.weeks), today);
+      return buildPlan(base, { ...o, hr: o.hr ?? hrNow ?? undefined }, atStartFor(o.raceDate)(o.weeks), today);
     } catch (e) {
       return { error: String((e as Error).message) } as const;
     }
-  }, [base, o, atStartFor, today, step]);
+  }, [base, o, atStartFor, today, step, hrNow]);
 
   const { actual, vdotAt, ready } = useReadinessInputs(plan);
   const goalRace = o ? { date: o.raceDate, name: o.raceName || DIST_LABEL[o.dist], km: DIST_KM[o.dist], target: o.target, elevation: o.terrain ? courseElevation(o.terrain, DIST_KM[o.dist]) : undefined } : null;
@@ -504,6 +512,18 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
             </div>
           </div>
           <FineTune o={o} h={atStartFor(o.raceDate)(o.weeks)} onChange={(tune) => set({ tune })} />
+          <div className="pb-block">
+            <h4>Heart-rate targets</h4>
+            <p className="ps-note">Easy and long runs, threshold and VO2 max reps get a heart-rate range next to the pace, from these.</p>
+            <div className="pb-hr">
+              <label>
+                Max <input type="number" inputMode="numeric" min={140} max={230} value={o.hr?.max ?? hrNow?.max ?? ""} onChange={(e) => set({ hr: { max: +e.target.value, lthr: o.hr?.lthr ?? hrNow?.lthr ?? null } })} /> bpm
+              </label>
+              <label>
+                Threshold <input type="number" inputMode="numeric" min={120} max={220} value={o.hr?.lthr ?? hrNow?.lthr ?? ""} placeholder="optional" onChange={(e) => set({ hr: { max: o.hr?.max ?? hrNow?.max ?? 190, lthr: e.target.value ? +e.target.value : null } })} /> bpm
+              </label>
+            </div>
+          </div>
           {isRace && (
             <div className="pb-block">
               <h4>Other races in this time</h4>
@@ -526,7 +546,7 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
                       <div key={key} className="pb-tuneup-edit">
                         <div className="pb-tuneup">
                           <span className={"rm-pri pr-" + priorityOf(r)}>{priorityOf(r)}</span>
-                          <b>{r.name}</b> <span className="muted small">{fmt(r.date!)} · {(raceKmFor(r)) ?? "?"} km · {raceKmOrName(r) >= 30 ? (priorityOf(r) === "C" ? "run as training" : "taper and recovery weeks") : TAPER_LABEL[r.taper ?? defaultTaperFor(r)]}</span>
+                          <input className="pb-tuneup-name" value={r.name} aria-label="Race name" onChange={(e) => editRace(key, { name: e.target.value })} /> <span className="muted small">{fmt(r.date!)} · {(raceKmFor(r)) ?? "?"} km · {raceKmOrName(r) >= 30 ? (priorityOf(r) === "C" ? "run as training" : "taper and recovery weeks") : TAPER_LABEL[r.taper ?? defaultTaperFor(r)]}</span>
                           <button type="button" className="link-btn small" onClick={() => editRace(key, null)}>
                             remove
                           </button>
@@ -856,6 +876,20 @@ function FineTune({ o, h, onChange }: { o: BuildOptions; h: History; onChange: (
         <span className="ft-label">Strides after easy runs</span>
         <Chips value={(t.strides ?? d.strides) ? "on" : "off"} options={[{ v: "on", l: "Yes" }, { v: "off", l: "No" }]} onChange={(v) => put({ strides: v === "on" ? undefined : false })} />
       </div>
+      {o.dist === "marathon" && (
+        <div className="ft-row">
+          <span className="ft-label">Session structure</span>
+          <Chips
+            value={t.structure ?? "seasons"}
+            options={[
+              { v: "seasons", l: "By season" },
+              { v: "classic", l: "Rotating mix" },
+            ]}
+            onChange={(v) => put({ structure: v === "seasons" ? undefined : "classic" })}
+          />
+          <span className="ps-note">By season: VO2 max and threshold in winter and summer, threshold and marathon pace before each marathon.</span>
+        </div>
+      )}
       <div className="ft-row">
         <span className="ft-label">Strength twice a week</span>
         <Chips value={(t.strength ?? d.strength) ? "on" : "off"} options={[{ v: "on", l: "Yes" }, { v: "off", l: "No" }]} onChange={(v) => put({ strength: v === "on" ? (d.strength ? undefined : true) : false })} />

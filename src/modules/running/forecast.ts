@@ -194,11 +194,22 @@ function paceFor(plan: Plan, text: string, kind: DayKind): string | null {
     const hz = plan.hrZones?.find((h) => h.zone === z!.zone);
     if (hz) return easyish && prefs.easyTarget === "feel" ? `easy, under ${hz.range[1]} bpm` : hrText(hz.range);
   }
+  // The plan gives heart rates too (built with yours): both, pace first.
+  const hrNote = z?.hr ? planHr(z.hr) : null;
+  const both = (x: string | null) => (x && hrNote ? `${x} · ${hrNote}` : x ?? hrNote);
   if (easyish && prefs && pace) {
-    if (prefs.easyTarget === "feel") return "easy, by feel";
-    if (prefs.easyTarget === "wide") return widen(pace);
+    if (prefs.easyTarget === "feel") return both("easy, by feel");
+    if (prefs.easyTarget === "wide") return both(widen(pace));
   }
-  return pace;
+  return both(pace);
+}
+
+/** The plan's heart-rate column as a target: "135–150" → "135–150 bpm", "under 135" → "under 135 bpm". */
+function planHr(hr: string): string | null {
+  const m = /(\d{2,3})\s*[–-]\s*(\d{2,3})/.exec(hr);
+  if (m) return `${m[1]}–${m[2]} bpm`;
+  const u = /under\s+(\d{2,3})/i.exec(hr);
+  return u ? `under ${u[1]} bpm` : null;
 }
 
 export function forecastWeek(plan: Plan, monday: string, runs: Run[] = [], overrides?: Map<string, string>): ForecastWeek {
