@@ -58,6 +58,16 @@ function paceIn(text: string): number | null {
 }
 
 /** Distance of a race from its name. */
+/**
+ * A race's distance: its km, or what its name says. A name that says "half" wins over a marathon distance
+ * (a race renamed "Lausanne half marathon" but left at 42.2 km is a half).
+ */
+export function raceKmFor(r: { name: string; km?: number | null }): number | null {
+  const byName = raceKm(r.name);
+  if (r.km != null && r.km > 30 && byName === 21.1) return 21.1;
+  return r.km ?? byName;
+}
+
 export function raceKm(name: string): number | null {
   if (/marathon/i.test(name) && !/half/i.test(name)) return 42.2;
   if (/half/i.test(name)) return 21.1;
@@ -184,11 +194,22 @@ function paceFor(plan: Plan, text: string, kind: DayKind): string | null {
     const hz = plan.hrZones?.find((h) => h.zone === z!.zone);
     if (hz) return easyish && prefs.easyTarget === "feel" ? `easy, under ${hz.range[1]} bpm` : hrText(hz.range);
   }
+  // The plan gives heart rates too (built with yours): both, pace first.
+  const hrNote = z?.hr ? planHr(z.hr) : null;
+  const both = (x: string | null) => (x && hrNote ? `${x} · ${hrNote}` : x ?? hrNote);
   if (easyish && prefs && pace) {
-    if (prefs.easyTarget === "feel") return "easy, by feel";
-    if (prefs.easyTarget === "wide") return widen(pace);
+    if (prefs.easyTarget === "feel") return both("easy, by feel");
+    if (prefs.easyTarget === "wide") return both(widen(pace));
   }
-  return pace;
+  return both(pace);
+}
+
+/** The plan's heart-rate column as a target: "135–150" → "135–150 bpm", "under 135" → "under 135 bpm". */
+function planHr(hr: string): string | null {
+  const m = /(\d{2,3})\s*[–-]\s*(\d{2,3})/.exec(hr);
+  if (m) return `${m[1]}–${m[2]} bpm`;
+  const u = /under\s+(\d{2,3})/i.exec(hr);
+  return u ? `under ${u[1]} bpm` : null;
 }
 
 export function forecastWeek(plan: Plan, monday: string, runs: Run[] = [], overrides?: Map<string, string>): ForecastWeek {
@@ -238,7 +259,7 @@ export function forecastWeek(plan: Plan, monday: string, runs: Run[] = [], overr
       if (st) base.strength = st[1] as "A" | "B";
     }
     if (race) {
-      const rk = race.km ?? raceKm(race.name);
+      const rk = raceKmFor(race);
       const said = s?.key ? /about\s+([\d.]+)\s*km/i.exec(s.text) : null;
       const k = said ? num(said[1]) : rk == null ? null : rk > 40 ? rk : rk + WARM;
       days.push({ ...base, text: `${race.name} · ${race.target}`, kind: "race", km: k, pace: null });

@@ -47,7 +47,8 @@ describe("week forecast", () => {
     const f = forecastWeek(BUNDLED_PLAN, "2026-11-16"); // week 2, 63 km
     const by = Object.fromEntries(f.days.map((d) => [d.dow, d]));
     expect(by.Tue.kind).toBe("key");
-    expect(by.Tue.pace).toBe("3:46–3:50");
+    // Pace first, and the plan's heart rate for that zone after it.
+    expect(by.Tue.pace).toMatch(/^3:46–3:50( · \d+–\d+ bpm)?$/);
     expect(by.Sun.kind).toBe("long");
     expect(by.Sun.km).toBe(22);
     expect(by.Wed.strength).toBe("A");

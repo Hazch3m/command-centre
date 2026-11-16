@@ -20,9 +20,10 @@
 import { DurableObject } from "cloudflare:workers";
 import { garminExchangeTicket, garminGet, type Creds } from "./appBackend";
 import { verifyAppleToken } from "./apple";
-import { gzip, linkKeys, newSecret, packSnapshot, seal, type PhoneOp } from "../../src/core/sync";
+import { gunzip, gzip, linkKeys, newSecret, packSnapshot, seal, unpackSnapshot, unseal, type PhoneOp } from "../../src/core/sync";
 import { accountHeader, buildAccountDb } from "../../src/core/account";
 import { runCloudSync, type SyncResult } from "./cloudSync";
+import { mcpResponse } from "./connector";
 // The same (browser) build of sql.js the phone runs; the Node build would look for Node's files.
 import initSqlJs, { type SqlJsStatic } from "sql.js";
 import wasmModule from "sql.js/dist/sql-wasm.wasm";
@@ -51,6 +52,13 @@ interface Env {
   /** Pacelife's Strava API app (strava.com/settings/api), set from GitHub secrets on deploy. */
   STRAVA_CLIENT_ID?: string;
   STRAVA_CLIENT_SECRET?: string;
+}
+
+/** Compares two strings in time that doesn't depend on where they differ. */
+function timingSafeEqual(a: string, b: string) {
+  let d = a.length ^ b.length;
+  for (let i = 0; i < Math.max(a.length, b.length); i++) d |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
+  return d === 0;
 }
 
 /** Sign in with Apple on the web (the PC): the Services ID set up for it in the Apple developer account. */
@@ -160,6 +168,23 @@ export class Store extends DurableObject<Env> {
   }
 
   // ---- Sync in the cloud -----------------------------------------------------------
+
+  /** The private connector link: this store's name and the key. */
+  private mcpUrl(key: string) {
+    return `https://pacelife.run/api/mcp/${this.get("account") ?? "main"}/${key}`;
+  }
+
+  /** A fresh, read-only copy of your data (the latest synced copy, decrypted here). */
+  private async openCopy() {
+    const creds = this.creds();
+    if (!creds) throw new Error("Cloud sync is off, so there's no copy of your data to read.");
+    const box = this.readSnapshot();
+    if (!box) throw new Error("Nothing has synced yet: open Pacelife once.");
+    const keys = await linkKeys(creds.secret);
+    const { header, db: bytes } = unpackSnapshot(await gunzip(await unseal(keys.key, box)));
+    const S = await sqlJs();
+    return { db: new S.Database(bytes), files: header.files ?? {}, creds };
+  }
 
   private creds(): Creds | null {
     const c = this.get("creds");
@@ -357,6 +382,38 @@ export class Store extends DurableObject<Env> {
       return err(404, "unknown request");
     }
 
+    // ---- Pacelife for Claude: the private link is the key ------------------------------
+    if (path.startsWith("/mcp/")) {
+      const key = path.split("/")[3] ?? "";
+      const want = this.get("mcpKey") ?? "";
+      // What Claude last asked, and how it went: shown in Settings → Claude, to see why adding it failed.
+      const peek = req.method === "POST" ? ((await req.clone().json().catch(() => null)) as { method?: string } | { method?: string }[] | null) : null;
+      const what = Array.isArray(peek) ? peek.map((x) => x.method).join(", ") : (peek?.method ?? req.method);
+      const note = (result: string) => {
+        const entry = { at: new Date().toISOString(), what, result, from: (req.headers.get("user-agent") ?? "").slice(0, 80) };
+        let log: (typeof entry)[] = [];
+        try {
+          log = JSON.parse(this.get("mcpLog") ?? "[]");
+        } catch {
+          log = [];
+        }
+        this.set("mcpLog", JSON.stringify([entry, ...log].slice(0, 12)));
+        this.set("mcpLast", JSON.stringify(entry));
+      };
+      if (!want || key.length !== want.length || !timingSafeEqual(key, want)) {
+        note("refused: an old or wrong link");
+        return new Response(JSON.stringify({ error: "This Pacelife connector link has been turned off or replaced. Make a new one in Pacelife → Settings → Claude." }), { status: 404, headers: { "content-type": "application/json" } });
+      }
+      try {
+        const r = await mcpResponse(req, () => this.openCopy(), url.searchParams.get("today") ?? new Date().toISOString().slice(0, 10));
+        note(`answered ${r.status}`);
+        return r;
+      } catch (e) {
+        note(`failed: ${String((e as Error)?.message ?? e).slice(0, 200)}`);
+        throw e;
+      }
+    }
+
     // ---- No token needed --------------------------------------------------------
     if (path === "/health") return json({ ok: true, claimed: !!this.get("tokenHash") });
 
@@ -423,6 +480,27 @@ export class Store extends DurableObject<Env> {
       return new Response(out, {
         headers: { "content-type": "application/octet-stream", "x-cc-version": this.get("snapVersion") ?? "0", "x-cc-applied": this.get("snapApplied") ?? "0", "cache-control": "no-store", ...CORS },
       });
+    }
+
+    // ---- Pacelife for Claude: turned on and off in the app ------------------------------
+    if (path === "/connector" && m === "GET") {
+      const k = this.get("mcpKey");
+      return json({ on: !!k, url: k ? this.mcpUrl(k) : null, since: this.get("mcpSince"), last: this.get("mcpLast") ? JSON.parse(this.get("mcpLast")!) : null, log: JSON.parse(this.get("mcpLog") ?? "[]") });
+    }
+    if (path === "/connector/on" && m === "POST") {
+      if (!this.creds()) return err(409, "Turn on cloud sync first: Claude reads the copy of your data that's kept there.");
+      let k = this.get("mcpKey");
+      if (!k) {
+        k = [...crypto.getRandomValues(new Uint8Array(24))].map((b) => b.toString(16).padStart(2, "0")).join("");
+        this.set("mcpKey", k);
+        this.set("mcpSince", new Date().toISOString());
+      }
+      return json({ on: true, url: this.mcpUrl(k), since: this.get("mcpSince") });
+    }
+    if (path === "/connector/off" && m === "POST") {
+      this.set("mcpKey", "");
+      this.set("mcpSince", "");
+      return json({ on: false, url: null });
     }
 
     // ---- Sync in the cloud -------------------------------------------------------------
@@ -780,12 +858,34 @@ export default {
         return json(r.ok ? { blob: j.blob, account } : j, r.status);
       }
 
+      // Pacelife for Claude: /api/mcp/<account or "main">/<key>, from Claude's servers (no app headers).
+      const mcp = /^\/api\/mcp\/([0-9a-f]{64}|main)\/([0-9a-f]{48})\/?$/.exec(url.pathname);
+      if (mcp) {
+        const inner = new URL(url);
+        inner.pathname = `/api/mcp/${mcp[1]}/${mcp[2]}`;
+        return store(mcp[1] === "main" ? "main" : "acct:" + mcp[1]).fetch(new Request(inner, req));
+      }
+      // The same, with the key in a header instead of the address (Claude's "Request headers"):
+      // https://pacelife.run/api/mcp with  Authorization: Bearer <account>.<key>
+      if (/^\/api\/mcp\/?$/.test(url.pathname)) {
+        const auth = /^Bearer\s+([0-9a-f]{64}|main)\.([0-9a-f]{48})\s*$/i.exec(req.headers.get("authorization") ?? "");
+        if (!auth) return new Response(JSON.stringify({ error: "Add your Pacelife key as a header: Authorization = Bearer <key> (Pacelife → Settings → Claude)." }), { status: 401, headers: { "content-type": "application/json" } });
+        const inner = new URL(url);
+        inner.pathname = `/api/mcp/${auth[1].toLowerCase()}/${auth[2].toLowerCase()}`;
+        return store(auth[1] === "main" ? "main" : "acct:" + auth[1].toLowerCase()).fetch(new Request(inner, req));
+      }
+      if (url.pathname.startsWith("/api/mcp/")) return err(404, "This connector link isn't right: copy it again from Pacelife → Settings → Claude.");
+
       const account = req.headers.get("x-cc-account");
       if (account != null && !/^[0-9a-f]{64}$/.test(account)) return err(400, "bad account");
       // Accounts are made only by signing in, never claimed.
       if (account && url.pathname === "/api/claim") return err(404, "unknown request");
       return store(account ? "acct:" + account : "main").fetch(req);
     }
+    // No OAuth here (the Claude connector's private link is its key): say so plainly, instead of the web
+    // app's page, so Claude doesn't take the page for sign-in settings.
+    if (url.pathname.startsWith("/.well-known/oauth") || url.pathname.startsWith("/.well-known/openid")) return new Response(JSON.stringify({ error: "not_found" }), { status: 404, headers: { "content-type": "application/json" } });
+    if (url.pathname.startsWith("/.well-known/")) return env.ASSETS.fetch(req);
     // pacelife.run: the website (what Pacelife is) at the front; the app on the web at /web.
     // The sync service's own address keeps the phone app at "/".
     if (url.pathname === "/" && /(^|\.)pacelife\.run$/.test(url.hostname)) return env.ASSETS.fetch(new Request(new URL("/about", url), req));

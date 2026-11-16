@@ -1,0 +1,18 @@
+name: Probe Claude connector
+on:
+  push:
+    paths: [".github/workflows/probe-mcp.yml"]
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read pacelife.run's bot settings (read only, asked for by the owner)
+        env:
+          CF: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          api() { curl -sS -m 30 -H "Authorization: Bearer $CF" "https://api.cloudflare.com/client/v4$1"; }
+          ZONE=$(api "/zones?name=pacelife.run" | jq -r '.result[0].id // empty')
+          if [ -z "$ZONE" ]; then echo "SETTING zone not visible to the deploy token: $(api '/zones?name=pacelife.run' | jq -c '{success, errors}')"; exit 0; fi
+          echo "SETTING bot_management $(api "/zones/$ZONE/bot_management" | jq -c '{success, errors, result}')"
+          for s in security_level browser_check; do echo "SETTING $s $(api "/zones/$ZONE/settings/$s" | jq -c '{success, errors, value: .result.value}')"; done

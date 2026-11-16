@@ -1,5 +1,5 @@
 import { addDays } from "../../core/time";
-import { forecastWeek, fullWeekSessions, raceKm, type ForecastDay } from "./forecast";
+import { forecastWeek, fullWeekSessions, raceKmFor, type ForecastDay } from "./forecast";
 import { mondayOf, priorityOf, WEEK_KEYS, type DayKey, type Plan, type PlanWeek } from "./plan";
 
 /**
@@ -282,7 +282,7 @@ export function applyRaceTapers(plan: Plan): Plan {
     return withKm(d.text, Math.max(4, Math.round(d.km * f)), d.kind === "long" ? "long run" : "easy");
   };
   for (const r of races) {
-    const k = r.km ?? raceKm(r.name) ?? 10;
+    const k = raceKmFor(r) ?? 10;
     const rm = mondayOf(r.date!);
     const steps = taperSteps(r.taper!, k);
     for (const [before, f] of steps) {

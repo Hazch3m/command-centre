@@ -86,7 +86,8 @@ export function checkRun(day: ForecastDay, run: Run, detail: RunDetail | null): 
   const easy = day.kind === "easy" || day.kind === "optional" || (day.kind === "long" && !/\bat\s+\d{1,2}:\d\d/.test(day.text));
   // Your setting: no verdicts on easy, long and recovery runs.
   if (easy && day.noEasyCheck) return null;
-  const hr = hrRange(day.pace);
+  // A heart-rate target alone (heart-rate mode); pace and heart rate together are checked by pace.
+  const hr = paceRange(day.pace) ? null : hrRange(day.pace);
   if (hr) return checkHr(day, run, detail, hr, easy);
   const target = paceRange(day.pace);
   if (!target || run.distance < 1500) return null;

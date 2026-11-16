@@ -9,7 +9,8 @@ import { forecastRange, forecastWeek } from "../modules/running/forecast";
 import { mondayOf } from "../modules/running/plan";
 import { typeOfDay } from "../modules/running/runType";
 import { km } from "../modules/running/stats";
-import { loadOverrides } from "../modules/running/strava";
+import { loadOverrides, setOverride } from "../modules/running/strava";
+import type { ForecastDay, ForecastWeek } from "../modules/running/forecast";
 import { useRunningData } from "../modules/running/useRunning";
 import { TargetPrefs } from "../modules/running/TargetPrefs";
 import { AutoSyncSetting } from "../modules/watch/AutoSyncSetting";
@@ -46,6 +47,50 @@ const phase = (p: string) => p.replace(/\s*\(.*\)\s*$/, "").replace(/^Recovery a
 function showWeekdays() {
   const el = document.querySelector(".p-pane.on .p-weekdays");
   if (el) window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - 110), behavior: "smooth" });
+}
+
+/**
+ * Move a session to another day this week: the two days swap (a rest day takes this one's place).
+ * Days already run, or past, can't take part. Changed days can go back to the plan.
+ */
+function MoveSession({ d, fw, today, overrides, onMoved }: { d: ForecastDay; fw: ForecastWeek; today: string; overrides?: Map<string, string>; onMoved: (to: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  const free = (x: ForecastDay) => x.date >= today && !x.runs.length && !x.race;
+  const changed = fw.days.filter((x) => overrides?.has(x.date) && free(x));
+  if (d.race) return null;
+  const swap = async (to: ForecastDay) => {
+    setBusy(true);
+    try {
+      await Promise.all([setOverride(d.date, to.text || "Rest"), setOverride(to.date, d.text || "Rest")]);
+      onMoved(to.date);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="p-move">
+      <span className="p-move-label">Move to</span>
+      <div className="p-move-days" role="group" aria-label="Move this session to another day">
+        {fw.days.map((x) => (
+          <button
+            key={x.date}
+            type="button"
+            className={"p-move-day" + (x.date === d.date ? " here" : "") + (x.kind === "key" || x.kind === "long" ? " key" : "")}
+            disabled={busy || x.date === d.date || !free(x)}
+            title={x.text || "Rest"}
+            onClick={() => swap(x)}
+          >
+            {new Date(x.date + "T12:00").toLocaleDateString("en-GB", { weekday: "short" }).slice(0, 2)}
+          </button>
+        ))}
+      </div>
+      {changed.length > 0 && (
+        <button type="button" className="link-btn small" disabled={busy} onClick={() => Promise.all(changed.map((x) => setOverride(x.date, null)))}>
+          Put this week back as planned
+        </button>
+      )}
+    </div>
+  );
 }
 
 export function Training() {
@@ -302,6 +347,7 @@ export function Training() {
           <Session d={day} label={dayName(day.date, today)} compact={expanded !== day.date} onOpen={() => setExpanded(day.date)} onClose={() => setExpanded(null)} />
           {expanded === day.date && (
             <>
+              {fw.week && day.date >= today && !day.runs.length && <MoveSession d={day} fw={fw} today={today} overrides={overrides} onMoved={(to) => (setSel(to), setExpanded(to))} />}
               {fw.week && day.date >= today && !day.runs.length && <SessionBump plan={plan} d={day} week={fw} />}
               <button type="button" className="p-link p-less" onClick={() => setExpanded(null)}>
                 Show less
