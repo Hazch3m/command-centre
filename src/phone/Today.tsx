@@ -466,9 +466,17 @@ export function weekStreak(runs: Pick<Run, "date">[], today: string): number {
 function BodyRow({ today, onOpen }: { today: string; onOpen: () => void }) {
   const r = useReadiness(today);
   const hv = useDataVersion("health");
-  const rhr = useQuery(async () => (await loadHealth(3)).find((x) => x.date === today)?.rhr ?? null, [hv, today]).data;
+  // Last night's numbers, or the most recent ones (Garmin can be a little behind in the morning).
+  const h = useQuery(async () => {
+    const rows = (await loadHealth(3)).filter((x) => x.date <= today).sort((a, b) => b.date.localeCompare(a.date));
+    const pick = <K extends "rhr" | "hrv" | "sleep_secs">(k: K) => rows.find((x) => x[k] != null)?.[k] ?? null;
+    return { rhr: pick("rhr"), hrv: pick("hrv"), sleep: pick("sleep_secs") };
+  }, [hv, today]).data;
   const tone = r == null ? "" : r.score >= 70 ? "good" : r.score >= 45 ? "ok" : "low";
-  const sleep = r?.sleep ? `${Math.floor(r.sleep / 3600)}:${String(Math.round((r.sleep % 3600) / 60)).padStart(2, "0")}` : null;
+  const sleepS = r?.sleep ?? h?.sleep ?? null;
+  const sleep = sleepS ? `${Math.floor(sleepS / 3600)}:${String(Math.round((sleepS % 3600) / 60)).padStart(2, "0")}` : null;
+  const hrv = r?.hrv ?? h?.hrv ?? null;
+  const rhr = h?.rhr ?? null;
   return (
     <button type="button" className="p-home-row p-body" onClick={onOpen}>
       <span className={"p-body-score " + tone}>
@@ -482,7 +490,7 @@ function BodyRow({ today, onOpen }: { today: string; onOpen: () => void }) {
         </span>
         <span>
           <small>HRV</small>
-          <b className="num">{r?.hrv ? Math.round(r.hrv) : "–"}</b>
+          <b className="num">{hrv ? Math.round(hrv) : "–"}</b>
         </span>
         <span>
           <small>Rest HR</small>
@@ -498,7 +506,8 @@ function BodyRow({ today, onOpen }: { today: string; onOpen: () => void }) {
 function RacesRow({ plan, today, onOpen }: { plan: import("../modules/running/plan").Plan; today: string; onOpen: () => void }) {
   const all = upcomingRaces(plan, today);
   const next = all[0];
-  const goal = all.find((r) => r.priority === "A");
+  // The goal: an A race, else the plan's goal race (the last one).
+  const goal = all.find((r) => r.priority === "A") ?? all.find((r) => /goal/i.test(r.role ?? "")) ?? all[all.length - 1];
   if (!next) return null;
   const rows = goal && goal !== next ? [next, goal] : [next];
   return (
