@@ -27,9 +27,10 @@ describe("targets", () => {
     expect(hrRange("130–148 bpm")).toEqual([130, 148]);
   });
   it("shows easy runs as a wider range, by feel, or as a heart-rate zone", () => {
-    expect(easyDay(withPrefs({ mode: "pace", easyTarget: "exact", easyChecks: true })).pace).toBe("5:00–5:40");
-    expect(easyDay(withPrefs({ mode: "pace", easyTarget: "wide", easyChecks: true })).pace).toBe("4:45–5:55");
-    expect(easyDay(withPrefs({ mode: "pace", easyTarget: "feel", easyChecks: true })).pace).toBe("easy, by feel");
+    // Pace mode shows the plan's heart-rate range too, after the pace.
+    expect(easyDay(withPrefs({ mode: "pace", easyTarget: "exact", easyChecks: true })).pace).toBe("5:00–5:40 · 130–148 bpm");
+    expect(easyDay(withPrefs({ mode: "pace", easyTarget: "wide", easyChecks: true })).pace).toBe("4:45–5:55 · 130–148 bpm");
+    expect(easyDay(withPrefs({ mode: "pace", easyTarget: "feel", easyChecks: true })).pace).toBe("easy, by feel · 130–148 bpm");
     expect(easyDay(withPrefs({ mode: "hr", easyTarget: "exact", easyChecks: true })).pace).toBe("130–148 bpm");
   });
   it("doesn't judge easy runs when that's switched off", () => {
