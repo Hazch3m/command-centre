@@ -126,6 +126,8 @@ export function CoachCard({ plan, runs, wide }: { plan: Plan; runs: Run[]; wide?
           </b>
           {c.week.lines.length ? <Lines lines={c.week.lines} /> : <p>Nothing to judge yet: the first run of the week starts it.</p>}
         </div>
+        {/* Today's card only when it has something to say (Today already shows the run). */}
+        {(swapped || c.advice.swapWith || c.advice.tone !== "good") && (
         <div className={`coach-box tone-${c.advice.tone}`}>
           <span className="coach-eyebrow">Today</span>
           <b className="coach-verdict">{swapped ? "Swapped" : c.advice.headline}</b>
@@ -137,6 +139,7 @@ export function CoachCard({ plan, runs, wide }: { plan: Plan; runs: Run[]; wide?
           )}
           {c.recovery.level !== "unknown" && !c.recovery.reasons.length && <p className="coach-fix">Sleep, HRV and resting heart rate all look normal.</p>}
         </div>
+        )}
       </div>
       {c.review && (
         <div className="coach-review">
