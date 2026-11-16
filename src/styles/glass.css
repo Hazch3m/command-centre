@@ -92,7 +92,7 @@
 
 /* ---- Frosted surfaces ---- */
 :root.phone-root :is(
-    .p-group, .p-tile, .p-race, .p-home-row, .p-total, .p-runcard, .p-more, .p-lastrun, .p-wchart, .p-start-step,
+    .p-group, .p-tile, .p-race, .p-home-row, .p-home-weather, .p-total, .p-runcard, .p-more, .p-lastrun, .p-wchart, .p-start-step,
     .pt-card, .gc-card, .wp, .coach-box, .coach-review, .hp-strip, .wc-option, .p-subnav, .p-note,
     .p-session.rt-rest, .p-session.z-rest, .p-sheet, .p-embed > .card, .lfw, .lf-card, .fp-table, .p-tl
   ) {
@@ -418,5 +418,5 @@
 .p-races-item + .p-races-item > b { font-size: 1.2rem; opacity: 0.85; }
 .wp-title { font-weight: 700; font-size: 0.95rem; margin-right: auto; }
 .wp.wp-c .wp-top { align-items: baseline; }
-.p-home-weather { position: relative; margin-bottom: 0.75rem; }
+.p-home-weather { position: relative; margin-bottom: 0.75rem; border-radius: var(--p-radius); padding: 0.2rem 0 1.6rem; }
 .p-home-weather-more { position: absolute; right: 1rem; bottom: 0.6rem; }
