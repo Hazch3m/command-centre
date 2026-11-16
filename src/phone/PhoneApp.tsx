@@ -1,3 +1,5 @@
+import { TargetPrefs } from "../modules/running/TargetPrefs";
+import { AutoSyncSetting } from "../modules/watch/AutoSyncSetting";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type PointerEvent as RPointerEvent } from "react";
 import { syncAppleHealth } from "../modules/health/appleHealth";
 import { saveFocusSource, useFocusSource } from "./Focus";
@@ -520,6 +522,13 @@ function TrainingSettings() {
         <h2>Training</h2>
       </div>
       <PlannerToggle />
+      <div className="p-group p-look">
+        <span className="p-row-title">Pace and heart-rate targets</span>
+        <TargetPrefs compact />
+      </div>
+      <div className="p-group p-look">
+        <AutoSyncSetting />
+      </div>
       <div className="p-group p-look">
         <span className="p-row-title">Load focus values</span>
         <div className="p-seg">

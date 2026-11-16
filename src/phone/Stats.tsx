@@ -3,7 +3,9 @@ import { ModulePage } from "../shell/Dashboard";
 import { FitnessFrom } from "../modules/running/BuildPlan";
 import { Section, usePhoneNav, useReadiness } from "./common";
 import { TrainingLoad } from "./TrainingLoad";
-import { LoadFocusCard } from "./Focus";
+import { LoadFocusCard, PlanFocusWeeks } from "./Focus";
+import { forecastRange } from "../modules/running/forecast";
+import { isEmptyPlan } from "../core/account";
 import { RunalyzeMore } from "./RunalyzeMore";
 import { useRunningData } from "../modules/running/useRunning";
 
@@ -32,6 +34,15 @@ export function Stats() {
         </button>
       </Section>
       <LoadFocusCard plan={plan} />
+      {plan && !isEmptyPlan(plan) && (() => {
+        const r = forecastRange(plan, today);
+        return r ? (
+          <details className="p-more">
+            <summary>Load focus in the weeks ahead</summary>
+            <PlanFocusWeeks plan={plan} first={r.first} last={r.last} />
+          </details>
+        ) : null;
+      })()}
       <TrainingLoad />
       <RunalyzeMore />
       <Section title="Race fitness">

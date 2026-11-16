@@ -13,7 +13,6 @@ import { loadOverrides, setOverride } from "../modules/running/strava";
 import type { ForecastDay, ForecastWeek } from "../modules/running/forecast";
 import { useRunningData } from "../modules/running/useRunning";
 import { TargetPrefs } from "../modules/running/TargetPrefs";
-import { AutoSyncSetting } from "../modules/watch/AutoSyncSetting";
 import { dayName, Section, usePhoneNav } from "./common";
 import { Session } from "./Today";
 import { ZoneIcon } from "./icons";
@@ -25,7 +24,6 @@ import { isEmptyPlan } from "../core/account";
 import { PaceOnTrack } from "./PaceOnTrack";
 import { RaceManager } from "../modules/running/RaceManager";
 import { FitnessPredictor, GoalCarousel, PlanWeeksChart } from "./PlanGoals";
-import { LoadFocusCard, PlanFocusWeeks, WeekFocusStrip } from "./Focus";
 import { WeekAhead } from "./WeekAhead";
 import { DayBars } from "./DayBars";
 import { CoachCard } from "../modules/running/Coach";
@@ -259,16 +257,7 @@ export function Training() {
           <Section title="Every week" className="p-padded">
             <PlanWeeksChart plan={plan} first={range.first} last={range.last} sel={monday} onPick={setMonday} />
           </Section>
-          <LoadFocusCard plan={plan} />
-          <PlanFocusWeeks plan={plan} first={range.first} last={range.last} />
           <Section title="Your plan">
-            <button className="p-row p-row-btn" onClick={() => nav.push("adjust")}>
-              <span className="p-row-main">
-                <span className="p-row-title">Change the plan</span>
-                <span className="p-row-sub">{plan?.adjust ? `Your settings: ${Math.round(plan.adjust.volume * 100)}% mileage, ${plan.adjust.runDays ? `${plan.adjust.runDays.length} days a week` : "run days as planned"}` : plan?.built ? `Built for ${plan.built.raceName}: ${plan.built.level}, ${plan.built.days} days a week` : "Easier weeks, recovery, paces, a new build"}</span>
-              </span>
-              <span className="p-chev">›</span>
-            </button>
             <button className="p-row p-row-btn" onClick={() => nav.push("plan")}>
               <span className="p-row-main">
                 <span className="p-row-title">Every session, week by week</span>
@@ -276,12 +265,6 @@ export function Training() {
               </span>
               <span className="p-chev">›</span>
             </button>
-          </Section>
-          <Section title="Targets">
-            <TargetPrefs compact />
-          </Section>
-          <Section title="Watch">
-            <AutoSyncSetting />
           </Section>
         </>
       )}
@@ -369,7 +352,6 @@ export function Training() {
       )}
       </div>
 
-      <WeekFocusStrip fw={fw} />
 
       {/* On the screen itself (not the sliding page), and only while you're on Plan. */}
       {nav.tab === "training" &&
@@ -408,24 +390,6 @@ export function Training() {
         <div className="p-coach">
           <PlanCoach plan={plan} monday={monday} compact />
         </div>
-        <button
-          type="button"
-          className="p-row p-row-btn p-adjust-btn"
-          onClick={() => {
-            try {
-              sessionStorage.setItem("cc-adjust-view", "adjust");
-            } catch {
-              /* private mode */
-            }
-            nav.push("adjust");
-          }}
-        >
-          <span className="p-row-main">
-            <span className="p-row-title">Adjust plan</span>
-            <span className="p-row-sub">Mileage, build-up, long runs and run days, without starting a new plan</span>
-          </span>
-          <span className="p-chev">›</span>
-        </button>
       </Section>
       </>
       )}
