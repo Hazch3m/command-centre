@@ -382,3 +382,11 @@
 .p-move-day:disabled:not(.here) { opacity: 0.35; }
 .p-move-day:not(:disabled):active { transform: scale(0.94); }
 .p-move .link-btn { flex-basis: 100%; text-align: left; }
+
+/* A section folded away until asked for (detail that most visits don't need). */
+.p-more { margin: 0.5rem 0 1rem; }
+.p-more > summary { list-style: none; cursor: pointer; padding: 0.7rem 1rem; border-radius: 14px; background: var(--glass); font-weight: 600; font-size: 0.92rem; display: flex; justify-content: space-between; align-items: center; }
+.p-more > summary::-webkit-details-marker { display: none; }
+.p-more > summary::after { content: "›"; transform: rotate(90deg); transition: transform 0.2s; opacity: 0.6; }
+.p-more[open] > summary::after { transform: rotate(-90deg); }
+.p-more[open] > summary { margin-bottom: 0.5rem; }
