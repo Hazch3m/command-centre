@@ -237,7 +237,8 @@ export function forecastWeek(plan: Plan, monday: string, runs: Run[] = [], overr
     const date = addDays(monday, i);
     const dayRuns = runs.filter((r) => r.date === date);
     const actualKm = dayRuns.reduce((s, r) => s + km(r.distance), 0);
-    const race = plan.races.find((r) => r.date === date && !r.approx) ?? null;
+    // (A race with an approximate date is on its nominal date, shown as approximate.)
+    const race = plan.races.find((r) => r.date === date) ?? null;
     const base: ForecastDay = { date, dow: DOW[i], text: "", kind: "easy", km: null, pace: null, strength: null, race, actualKm, runs: dayRuns };
     const ov = overrides?.get(date);
     if (ov != null) {

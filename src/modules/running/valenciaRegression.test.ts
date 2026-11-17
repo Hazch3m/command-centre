@@ -19,7 +19,7 @@ const races = [
   R("2027-03-28", "Aix 10k", 10, "B"),
   R("2027-05-08", "Killarney half", 21.1, "B"),
   R("2027-05-30", "Edinburgh marathon", 42.2, "A", "2:49:59"),
-  R("2027-07-18", "Summer 10k", 10, "B"),
+  { ...R("2027-07-18", "Summer 10k", 10, "B"), approx: true, when: "about 18 Jul" },
   R("2027-10-24", "Lausanne half", 21.1, "B"),
 ];
 const lastWeek = { week: "1", start: "2026-11-09", end: "2026-11-15", phase: "Base", km: "52", kmMin: 52, kmMax: 52, notes: "", sessions: { mon: "5 km recovery", tue: "11 km easy", wed: "5 km easy", thu: "11 km easy", fri: "Rest", sat: "5 km easy", sun: "15 km long run" } };
@@ -79,6 +79,10 @@ const v2Type = (raw: string, zones: { t: number; mp: number; v: number }): strin
   if (/\d+ km with \d+ km at/.test(x)) return "mp";
   const pace = secs(/at (?:about )?(\d):(\d\d)/.exec(x));
   if (pace == null) return null;
+  // Short reps (1 km or less, 3 min or less) faster than threshold are 10k-pace or VO2 work: fast (v2's race-week
+  // sharpeners, taper 10k-pace reps and the recovery fartlek).
+  const short = /×\s*(?:(\d+) m\b|(0?\.\d+|1) km\b|([1-3]) min\b)/.exec(x);
+  if (short && pace < zones.t - 2) return "fast";
   const d = [
     ["threshold", Math.abs(pace - zones.t)],
     ["mp", Math.abs(pace - zones.mp)],
@@ -107,7 +111,11 @@ describe("regression: key sessions, and the spec's session rules", () => {
             ? { t: 220, mp: 232, v: 200 }
             : { t: 217, mp: 227, v: 198 };
 
-  it("key-session types match v2 in at least 80% of weeks", () => {
+  // Differences accepted as the rule's version (17 Nov): cutback after 3 build weeks (4 and 11 Jan), threshold not a
+  // steady run (28 Jun), and Valencia's longest marathon-pace long run week, threshold only (1 Nov). With the summer
+  // 10k's approximate date (± 7 days), the summer focus weeks move to 28 Jun and 2 Aug (v2: 5 and 26 Jul).
+  const accepted = new Set(["2027-01-04", "2027-01-11", "2027-06-28", "2027-11-01", "2027-07-05", "2027-07-26", "2027-08-02"]);
+  it("key-session types match v2 in at least 80% of weeks (all but the accepted differences)", () => {
     const off: string[] = [];
     for (const f of v2) {
       const w = plan.weeks.find((x) => x.start === f.start)!;
@@ -116,6 +124,7 @@ describe("regression: key sessions, and the spec's session rules", () => {
       if (ours !== theirs) off.push(`${f.start}: ${ours} vs ${theirs}`);
     }
     expect(off.length, off.join("; ")).toBeLessThanOrEqual(Math.floor(v2.length * 0.2));
+    expect(off.filter((x) => !accepted.has(x.slice(0, 10))), "unexpected differences").toEqual([]);
   });
 
   const weeks = plan.weeks.filter((w) => w.start >= "2026-11-16" && w.start <= "2027-12-05");
@@ -138,6 +147,22 @@ describe("regression: key sessions, and the spec's session rules", () => {
         expect((+m[1] * one) / 60, x).toBeGreaterThanOrEqual(15);
         expect((+m[1] * one) / 60, x).toBeLessThanOrEqual(21);
       }
+  });
+
+  it("the week of a specific block's longest marathon-pace long run has threshold only", () => {
+    for (const d of ["2027-04-19", "2027-11-01"]) {
+      const w = weeks.find((x) => x.start === d)!;
+      const keys = (Object.values(w.sessions) as string[]).filter((x) => ourType(x) && !/long run/.test(x));
+      expect(keys.map(ourType), d).toEqual(["threshold"]);
+      expect(w.sessions.sun, d).toMatch(/long run, last (2[2-5]) at MP/);
+    }
+  });
+
+  it("an approximate race is on its nominal date, flagged", () => {
+    const r = plan.races.find((x) => x.name === "Summer 10k")!;
+    expect(r.date).toBe("2027-07-18");
+    expect(r.approx).toBe(true);
+    expect(weeks.find((x) => x.start === "2027-07-12")!.sessions.sun).toMatch(/Summer 10k/);
   });
 
   it("long runs: at most 33% of the week (rounded), 36 km", () => {

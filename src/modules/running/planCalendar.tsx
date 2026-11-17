@@ -32,7 +32,7 @@ const setSettings = async (s: Partial<PlanCalSettings>) => kvSet("plan.gcal", { 
 /** What goes in the calendar for one planned day, or null for nothing. */
 export function eventFor(d: ForecastDay): { summary: string; description: string } | null {
   const strength = d.strength ? `Strength ${d.strength}` : "";
-  if (d.race) return { summary: `🏁 ${d.race.name}${d.race.target ? ` (${d.race.target})` : ""}`, description: [d.text, d.race.role].filter(Boolean).join("\n") };
+  if (d.race) return { summary: `🏁 ${d.race.name}${d.race.approx ? " (approximate date)" : ""}${d.race.target ? ` (${d.race.target})` : ""}`, description: [d.text, d.race.role].filter(Boolean).join("\n") };
   if (d.kind === "rest" || d.kind === "optional" || !d.text) return strength ? { summary: `💪 ${strength}`, description: "" } : null;
   const km = d.km != null ? ` · ≈${Math.round(d.km)} km` : "";
   const icon = d.kind === "key" ? "⚡" : d.kind === "long" ? "🛣️" : "🏃";

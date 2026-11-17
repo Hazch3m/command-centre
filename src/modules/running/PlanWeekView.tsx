@@ -7,7 +7,7 @@ import { useQuery } from "../../core/useQuery";
 import { forecastRange, forecastWeek, type ForecastDay, type ForecastWeek } from "./forecast";
 import { checkDays } from "./pace";
 import { PaceBadge } from "./PaceOnPoint";
-import { mondayOf, type Plan } from "./plan";
+import { mondayOf, raceLabel, type Plan } from "./plan";
 import { openRun, openWeek } from "./RunView";
 import { RUN_TYPE_LABEL, typeOfDay, typeOfRun, type RunType } from "./runType";
 import { km, pace } from "./stats";
@@ -169,7 +169,7 @@ export function PlanWeekView({ plan, runs, hideStrip, rich }: { plan: Plan; runs
               {fw.week && t !== "rest" && <span className={`rt-pill rt-${t}`}>{RUN_TYPE_LABEL[t]}</span>}
               {d.km ? <span className="pwv-km-big num">{d.km}<small> km</small></span> : <span className="pwv-km-big muted">{t === "rest" ? "Rest" : ""}</span>}
               <span className="pwv-text">
-                {d.race ? `${d.race.name}${d.race.target ? ` · ${d.race.target}` : ""}` : t === "rest" ? "" : d.text}
+                {d.race ? raceLabel(d.race) : t === "rest" ? "" : d.text}
                 {!d.race && t !== "rest" && <PracticeTag text={d.text} />}
               </span>
               {d.pace && t !== "rest" && <span className="pwv-pace num">{/\d:\d\d/.test(d.pace) ? `${d.pace}/km` : d.pace}</span>}

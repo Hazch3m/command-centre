@@ -638,6 +638,8 @@ export interface SeasonWeekCtx {
   norwegian?: boolean;
   /** The week's km (sessions are shortened below 80 km). */
   km?: number;
+  /** The specific block's longest marathon-pace long run is this week: threshold only. */
+  biggestMpLong?: boolean;
 }
 
 const lab = (label: string, kind: SessionKind, w: { km: number; text: string }): SeasonQ => ({ ...w, text: `${label}: ${w.text}`, kind });
@@ -718,6 +720,7 @@ export function seasonKeys(c: SeasonWeekCtx): SeasonQ[] {
       // VO2 max / 10k-pace upkeep (5 × 1 km, 6 × 1 km at 10k pace, 5 × 1.2 km).
       const up = () => (c.norwegian ? vo2(timed(4, 4, V + 2, "", "3 min jog", 180)) : [() => vo2(reps(5, 1, V - 3, "2 min jog", 120)), () => tenK(reps(6, 1, p.tenk - 3, "90 s jog", 90)), () => vo2(reps(5, 1.2, V - 2, "2:30 jog", 150))][c.upN % 3]());
       if (c.post) return c.mpLong && !c.first ? [k1, up()] : [k1];
+      if (c.biggestMpLong) return [k1];
       if (c.cut) return [k1, c.cuts % 2 === 0 ? (c.norwegian ? vo2(timed(3, 4, V + 2, "", "3 min jog", 180)) : vo2(reps(6, 0.8, V - 5, "2 min jog", 120))) : mpS(10, c.mp)];
       // Key 2: marathon pace (12 → 15 km, 2 × 8 km) with an easy long run; upkeep with a marathon-pace long run.
       const mpK: (number | [number, number])[] = [12, 15, [2, 8], 14, 12];
@@ -922,7 +925,8 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
 
   // Races inside the plan (tune-ups), worked out first: a marathon you race on the way shapes the weeks around it.
   const end = addDays(raceMonday, 6);
-  const inside = old.races.filter((r) => r.date && !r.approx && r.date >= start && r.date <= end && r.date !== o.raceDate);
+  // (A race with an approximate date is planned on its nominal date, flagged; re-plan when the date is fixed.)
+  const inside = old.races.filter((r) => r.date && r.date >= start && r.date <= end && r.date !== o.raceDate);
   const added = (o.extraRaces ?? []).filter((r) => r.date && r.date >= start && r.date < o.raceDate && !inside.some((x) => x.date === r.date && x.name === r.name));
   const raceKmOf = (r: PlanRace) => raceKmFor(r) ?? 10;
   /**
@@ -948,7 +952,7 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
         start,
         primary: { name: primaryName, date: o.raceDate },
         secondaries: secondaryAs.map((r) => ({ name: r.name, date: r.date! })),
-        others: [...(o.keepRaces ? inside : []), ...added].filter((r) => r.date && raceKmOf(r) < 30).map((r) => ({ name: r.name, date: r.date!, uncertainty: r.approx ? 7 : 0 })),
+        others: [...(o.keepRaces ? inside : []), ...added].filter((r) => r.date && raceKmOf(r) < 30).map((r) => ({ name: r.name, date: r.date! })),
         lastMarathon,
       })
     : null;
@@ -962,7 +966,7 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
         startKm,
         cap: peak,
         growth: T.growth,
-        races: [...(o.keepRaces ? inside : []), ...added].filter((r) => r.date && raceKmOf(r) < 30).map((r) => ({ date: r.date!, km: raceKmOf(r) })),
+        races: [...(o.keepRaces ? inside : []), ...added].filter((r) => r.date && raceKmOf(r) < 30).map((r) => ({ date: r.date!, km: raceKmOf(r), window: r.approx ? (r.window ?? 7) : 0 })),
       })
     : null;
   if (season) {
@@ -1036,7 +1040,7 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
   // Race-specific weeks (not the easier ones), so long runs can alternate: big, shorter, big, …
   // (Weeks with a tune-up race don't count: their long run makes way for the race.)
   const raceWeeks = new Set(
-    [...(o.keepRaces ? old.races : []), ...(o.extraRaces ?? [])].filter((r) => r.date && !r.approx && r.date >= start && r.date < o.raceDate).map((r) => mondayOf(r.date!)),
+    [...(o.keepRaces ? old.races : []), ...(o.extraRaces ?? [])].filter((r) => r.date && r.date >= start && r.date < o.raceDate).map((r) => mondayOf(r.date!)),
   );
   const specWeeks: number[] = [];
   for (let i = 0; i < N; i++) if (i >= buildN - specN && i < buildN && !(i > 0 && (i + 1) % L.cutEvery === 0 && i < buildN - 1) && !raceWeeks.has(addDays(start, i * 7))) specWeeks.push(i);
@@ -1267,6 +1271,13 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
       if (c && typeof c.longMp === "number" && built[i].long) c.longMp = Math.min(c.longMp, Math.max(0, built[i].long - 6));
       if (c && c.longMp !== null && (!built[i].long || (typeof c.longMp === "number" && c.longMp < 4))) c.longMp = null;
     });
+    // The week of a specific block's longest marathon-pace long run (Edinburgh 35 km with 22 at MP, Valencia 36 with
+    // 25) has one key session only: threshold, no VO2 max upkeep.
+    for (const ph of season.filter((x) => x.kind === "specific")) {
+      const idx = sctx.map((c, i) => (c && c.kind === "specific" && built[i].monday >= ph.from && built[i].monday <= ph.to && typeof c.longMp === "number" ? i : -1)).filter((i) => i >= 0);
+      const top = idx.sort((a, b) => (sctx[b]!.longMp as number) - (sctx[a]!.longMp as number) || built[b].long - built[a].long)[0];
+      if (top !== undefined) sctx[top]!.biggestMpLong = true;
+    }
   }
 
   const weeksOut: PlanWeek[] = [];

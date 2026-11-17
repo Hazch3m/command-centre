@@ -24,6 +24,8 @@ import { mondayOf } from "./plan";
  *  - Ramp-back after recovery: the level starts again from the last recovery week and rises by up to 25% a week
  *    (towards the phase level) until it's back to 90% of the level before the break.
  *  - Floor: 50 km outside taper, race and recovery weeks.
+ *  - A race with an approximate date counts in its nominal week; for focus weeks, every week within its window
+ *    (± days, default 7) counts as a race week.
  */
 
 export type WeekType = "start" | "build" | "cut" | "race" | "post" | "taper" | "recovery";
@@ -42,8 +44,8 @@ export interface VolumeInput {
   primary: string;
   startKm: number;
   cap: number;
-  /** B and C races in the plan: date and distance. */
-  races: { date: string; km: number }[];
+  /** B and C races in the plan: date and distance; `window`: days either side for an approximate date. */
+  races: { date: string; km: number; window?: number }[];
   /** Your own build-up rate (Fine-tune), a share a week: replaces the "half the gap" step (still within the caps). */
   growth?: number;
 }
@@ -75,7 +77,11 @@ export function seasonVolumes(input: VolumeInput): VolumeWeek[] {
   const { start, season, primary, cap } = input;
   const raceAt = new Map<string, number>();
   for (const r of input.races) raceAt.set(mondayOf(r.date), r.km);
-  const focus = focusWeeks(season, new Set(raceAt.keys()));
+  // Focus weeks keep away from every week an approximate race could fall in (and the week after it); the race's
+  // volume and sessions go in its nominal week.
+  const maybe = new Set(raceAt.keys());
+  for (const r of input.races) for (let d = -(r.window ?? 0); d <= (r.window ?? 0); d++) maybe.add(mondayOf(addDays(r.date, d)));
+  const focus = focusWeeks(season, maybe);
   const phaseIdx = (m: string) => season.findIndex((p) => p.from <= m && m <= p.to);
   const levelOf = (pi: number): number => {
     const p = season[pi];

@@ -33,11 +33,18 @@ export interface PlanRace {
   taper?: "full" | "mini" | "none";
   /** Distance in km, when the name doesn't say. */
   km?: number;
+  /** For a race with an approximate date (`approx`): days either side it could fall (default 7). The plan puts it
+   * on its nominal date; the window only keeps focus weeks away from it. */
+  window?: number;
   /** The course's climb and descent (m); slows the predicted time on a hilly course. */
   elevation?: { gain: number; loss: number; kind?: string };
 }
 
 export type RacePriority = NonNullable<PlanRace["priority"]>;
+/** A race as the plan shows it: "Summer 10k (approximate date) · 34:00". */
+export function raceLabel(r: PlanRace, withTarget = true): string {
+  return `${r.name}${r.approx ? " (approximate date)" : ""}${withTarget && r.target ? ` · ${r.target}` : ""}`;
+}
 /** A race's priority: as set, else from its role ("Main goal", "Sub-2:50 attempt") and distance. */
 export function priorityOf(r: PlanRace): RacePriority {
   if (r.priority) return r.priority;

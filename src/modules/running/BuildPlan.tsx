@@ -167,7 +167,7 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
   const start = startFor(o.weeks);
   // The races already in your plan inside this block, as they'll be (with your changes below).
   const tuneUps = base.races
-    .filter((r) => r.date && !r.approx && r.date >= start && r.date < o.raceDate && r.date !== o.raceDate)
+    .filter((r) => r.date && r.date >= start && r.date < o.raceDate && r.date !== o.raceDate)
     .map((r) => ({ key: raceKey(r), was: r, r: o.raceEdits?.[raceKey(r)] === null ? null : { ...r, ...(o.raceEdits?.[raceKey(r)] ?? {}) } }));
   const editRace = (key: string, e: Partial<PlanRace> | null) =>
     set({ raceEdits: { ...(o.raceEdits ?? {}), [key]: e === null ? null : { ...(o.raceEdits?.[key] ?? {}), ...e } } });
