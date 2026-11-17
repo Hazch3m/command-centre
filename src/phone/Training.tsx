@@ -1,4 +1,5 @@
 import { SessionBump } from "./SessionBump";
+import { fitAroundDaysOff } from "../modules/running/daysOff";
 import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSwipe } from "./swipe";
@@ -88,6 +89,77 @@ function MoveSession({ d, fw, today, overrides, onMoved }: { d: ForecastDay; fw:
         </button>
       )}
     </div>
+  );
+}
+
+/**
+ * Days you can't run this week: pick them, see the week fitted into the days left (long run on the last day you can
+ * run, sessions 48 h apart, easy km shared out), then confirm. Saved as day edits, so "Put back" undoes it.
+ */
+function DaysOff({ fw, today, overrides }: { fw: ForecastWeek; today: string; overrides?: Map<string, string> }) {
+  const [open, setOpen] = useState(false);
+  const [off, setOff] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const movable = fw.days.filter((d) => d.date >= today && !d.runs.length && !d.race);
+  const edited = fw.days.filter((d) => overrides?.has(d.date) && d.date >= today && !d.runs.length);
+  const r = useMemo(() => fitAroundDaysOff(fw.days, off, today), [fw, off, today]);
+  const short = (d: string) => new Date(d + "T12:00").toLocaleDateString("en-GB", { weekday: "short" });
+  const save = async () => {
+    setBusy(true);
+    try {
+      await Promise.all([...r.changes].map(([d, t]) => setOverride(d, t)));
+      setOpen(false);
+      setOff(new Set());
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (!open)
+    return (
+      <div className="p-daysoff-row">
+        <button type="button" className="p-link" onClick={() => setOpen(true)}>
+          Can't run some days?
+        </button>
+        {edited.length > 0 && (
+          <button type="button" className="p-link" disabled={busy} onClick={() => void Promise.all(edited.map((d) => setOverride(d.date, null)))}>
+            Put this week back as planned
+          </button>
+        )}
+      </div>
+    );
+  return (
+    <section className="p-daysoff" aria-label="Days you can't run">
+      <b>Which days can't you run?</b>
+      <div className="p-move-days" role="group">
+        {movable.map((d) => (
+          <button key={d.date} type="button" aria-pressed={off.has(d.date)} className={"p-move-day" + (off.has(d.date) ? " off" : "")} onClick={() => setOff((s) => { const n = new Set(s); if (n.has(d.date)) n.delete(d.date); else n.add(d.date); return n; })}>
+            {short(d.date).slice(0, 2)}
+          </button>
+        ))}
+      </div>
+      {r.changes.size > 0 && (
+        <>
+          <ul className="p-daysoff-list">
+            {movable.map((d) => (
+              <li key={d.date} className={r.changes.has(d.date) ? "changed" : ""}>
+                <span>{short(d.date)}</span> {r.changes.get(d.date) ?? (d.text || "Rest")}
+              </li>
+            ))}
+          </ul>
+          <p className="p-row-sub">
+            {r.before} → {r.after} km for the days left.{r.notes.length ? " " + r.notes.join(" ") : ""}
+          </p>
+        </>
+      )}
+      <div className="p-start-pills">
+        <button type="button" className="p-pill" disabled={busy || !r.changes.size} onClick={() => void save()}>
+          {busy ? "Saving…" : "Fit my week"}
+        </button>
+        <button type="button" className="p-pill p-pill-quiet" onClick={() => (setOpen(false), setOff(new Set()))}>
+          Cancel
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -329,6 +401,7 @@ export function Training() {
       <div className="p-weekdays p-daybars">
         <DayBars days={fw.days} today={today} sel={sel} onDay={setSel} height={54} />
       </div>
+      {fw.week && fw.days.some((d) => d.date >= today && !d.runs.length) && <DaysOff fw={fw} today={today} overrides={overrides} />}
       {fw.week || day.km || day.runs.length || day.race ? (
         <>
           {/* The run at a glance, so the week's list shows under it; tap it for the whole session. */}
