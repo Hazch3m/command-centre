@@ -302,6 +302,11 @@ export function Training() {
           <span className="p-row-sub">
             {fmt(monday)} – {fmt(addDays(monday, 6))}
             {fw.week ? ` · ${phase(fw.week.phase)}` : ""}
+            {fw.week?.provisional && (
+              <span className="p-prov" title={`Paces set from your projected VDOT${fw.week.vdot ? ` (${fw.week.vdot.toFixed(1)})` : ""}; your next race's result confirms them, or a Monday re-plan moves them.`}>
+                {" · "}paces provisional{fw.week.vdot ? `, VDOT ${fw.week.vdot.toFixed(1)}` : ""}
+              </span>
+            )}
           </span>
         </div>
         <button className="p-round" onClick={() => go(1)} disabled={monday >= range.last} aria-label="Next week">

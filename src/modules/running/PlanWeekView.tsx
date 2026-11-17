@@ -118,6 +118,11 @@ export function PlanWeekView({ plan, runs, hideStrip, rich }: { plan: Plan; runs
           <div className="muted small">
             {fmt(monday)} – {fmt(addDays(monday, 6))}
             {fw.week ? ` · ${phaseName(fw.week.phase)}` : ""}
+            {fw.week?.provisional && (
+              <span title={`Paces set from your projected VDOT${fw.week.vdot ? ` (${fw.week.vdot.toFixed(1)})` : ""}; your next race's result confirms them, or a Monday re-plan moves them.`}>
+                {" · "}paces provisional{fw.week.vdot ? `, VDOT ${fw.week.vdot.toFixed(1)}` : ""}
+              </span>
+            )}
           </div>
         </div>
         <div className="pwv-km">

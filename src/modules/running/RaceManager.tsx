@@ -103,6 +103,10 @@ export function RaceManager({ plan }: { plan: Plan }) {
                   {r.date ? (r.approx ? `${r.when || "Date to confirm"}` : when(r.date)) : "No date"}
                   {k ? ` · ${k} km` : ""}
                   {r.target ? ` · ${r.target}` : ""}
+                  {(() => {
+                    const t = plan.vdotTargets?.find((x) => x.date === r.date && x.name === r.name);
+                    return t ? ` · VDOT ${t.vdot.toFixed(1)} projected` : "";
+                  })()}
                   {" · "}
                   {TAPER.find((t) => t.v === (r.taper ?? "plan"))!.l.toLowerCase()}
                 </span>

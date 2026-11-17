@@ -47,6 +47,16 @@ export interface BuildOptions {
   raceEdits?: Record<string, Partial<PlanRace> | null>;
   /** The goal race's course: a kind, or exact climb and descent in metres. */
   terrain?: Terrain;
+  /**
+   * Re-plan (step 7): build from the plan's original first Monday, so the season, volume and session progressions
+   * carry on exactly as before, and replace only the weeks from the first changeable Monday.
+   */
+  anchorStart?: string;
+  /** Re-plan: your fitness now; paces from the first changeable week move by the difference from the projection. */
+  vdotNow?: number;
+  /** Re-plan after missed training: what you ran last week; the first new week is 70% of the plan (or 10% over
+   * this), the second 85%. */
+  resumeKm?: number;
 }
 
 export interface Terrain {
@@ -890,6 +900,9 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
   const firstAllowed = firstChangeableMonday(today);
   let start = addDays(raceMonday, -(o.weeks - 1) * 7);
   if (start < firstAllowed) start = firstAllowed;
+  // (A re-plan builds from the original first Monday; the weeks before the first changeable one stay as they are.)
+  const anchored = !!o.anchorStart && o.anchorStart < firstAllowed;
+  if (anchored) start = o.anchorStart!;
   // The weeks of this block you've already done stay, and the new weeks carry on numbering after them.
   const doneBefore = weeksAlreadyDone(old.weeks, start);
   const N = Math.max(1, diffDays(start, raceMonday) / 7 + 1);
@@ -919,7 +932,12 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
   const vGoal = goalSec ? vdotOf(DIST_M[o.dist], goalSec) : null;
   // Fitness you can expect to gain: about a VDOT point a month, less as it adds up (a long build gains more, but not linearly).
   const vEnd = goal === "recover" || goal === "base" || goal === "mileage" ? v0 + Math.min(1, N * 0.05) : Math.max(v0, Math.min(vGoal ?? v0 + 9, v0 + expectedGain(N, o.level)));
-  const paceAt = (i: number) => pacesFor(lerp(v0, vEnd, i / Math.max(1, N - 1)));
+  // Re-plan: from the first changeable week, the projected curve moves by how far your fitness now is from it.
+  const iNow = anchored ? diffDays(start, firstAllowed) / 7 : 0;
+  const vShift0 = anchored && o.vdotNow != null ? o.vdotNow - lerp(v0, vEnd, iNow / Math.max(1, N - 1)) : 0;
+  const vShift = Math.abs(vShift0) < 0.15 ? 0 : vShift0;
+  const vdotOfWeek = (i: number) => lerp(v0, vEnd, i / Math.max(1, N - 1)) + (i >= iNow ? vShift : 0);
+  const paceAt = (i: number) => pacesFor(vdotOfWeek(i));
   const racePaceOf = (p: Paces) => (o.dist === "marathon" ? p.mp : o.dist === "half" ? p.hmp : o.dist === "10k" ? p.tenk : p.fivek);
   const goalPace = goalSec ? goalSec / (DIST_M[o.dist] / 1000) : null;
 
@@ -969,6 +987,18 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
         races: [...(o.keepRaces ? inside : []), ...added].filter((r) => r.date && raceKmOf(r) < 30).map((r) => ({ date: r.date!, km: raceKmOf(r), window: r.approx ? (r.window ?? 7) : 0 })),
       })
     : null;
+  // Re-plan after missed training: the first new week is 70% of the plan (or 10% over what you ran, if more), the
+  // second 85%, then the plan.
+  if (vol && anchored && o.resumeKm) {
+    let k = 0;
+    for (let i = 0; i < vol.length && k < 2; i++) {
+      if (vol[i].monday < firstAllowed) continue;
+      if (vol[i].type === "taper" || vol[i].type === "recovery" || vol[i].type === "race") break;
+      const cap = Math.round(k === 0 ? Math.max(o.resumeKm * 1.1, 0.7 * vol[i].km) : 0.85 * vol[i].km);
+      k++;
+      if (vol[i].km > cap) vol[i] = { ...vol[i], km: cap };
+    }
+  }
   if (season) {
     // The goal race's specific block sets the race-specific weeks; the weeks before the first VO2 max block are the base.
     specN = season.filter((p) => p.kind === "specific" && p.race === primaryName).reduce((a, p) => a + p.weeks, 0);
@@ -1282,6 +1312,11 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
 
   const weeksOut: PlanWeek[] = [];
   let firstBump = 0;
+  // Step 6 (provisional paces): paces up to your next race (or 6 weeks, if there's none sooner) come from your
+  // fitness now; after it they're provisional, set from the projected VDOT until that race's result confirms them.
+  const from0 = anchored ? firstAllowed : start;
+  const checkpoint = [...tuneUps.map((r) => r.date!), addDays(from0, 41)].filter((d) => d >= from0).sort()[0];
+  const vdotAtDate = (d: string) => Math.round(vdotOfWeek(Math.min(N - 1, Math.max(0, Math.floor(diffDays(start, d) / 7)))) * 10) / 10;
   const weeks: PlanWeek[] = built.map((b, i) => {
     const p = paceAt(i);
     const rp = goalPace && Math.abs(goalPace - racePaceOf(p)) < 25 ? goalPace : racePaceOf(p);
@@ -1661,6 +1696,10 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
                 })()
               ? "The race drops a lot: run some easy runs and the long run downhill to get your quads used to it."
               : "";
+    // Step 6: marathon pace in a long run outside a specific block is the next A race's goal pace, provisional.
+    const mpOutside = !!sctx[i] && sctx[i]!.kind !== "specific" && sctx[i]!.kind !== "taper" && typeof sctx[i]!.longMp === "number" && / at MP /.test(s[longDay] ?? "");
+    const notesOut = mpOutside ? [notes, "Marathon pace in the long run is your next A race's goal pace: provisional until its specific block."].filter(Boolean).join(" ") : notes;
+    const vWeek = Math.round(vdotOfWeek(i) * 10) / 10;
     const out: PlanWeek = {
       week: String(doneBefore + i + 1),
       start: b.monday,
@@ -1670,7 +1709,9 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
       kmMin: total,
       kmMax: total,
       sessions: s,
-      notes,
+      notes: notesOut,
+      vdot: vWeek,
+      ...(b.monday > checkpoint ? { provisional: true } : {}),
     };
     weeksOut.push(out);
     return out;
@@ -1743,8 +1784,9 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
     "Missed a session? Skip it rather than squeezing it in. Ill or injured? Easy running only until you're well, then pick the plan up where it is.",
   ];
 
-  const keepBefore = old.weeks.filter((w) => w.end < start);
+  const keepBefore = old.weeks.filter((w) => w.end < (anchored ? firstAllowed : start));
   const keepAfter = old.weeks.filter((w) => w.start > end);
+  const newWeeks = anchored ? weeks.filter((w) => w.start >= firstAllowed) : weeks;
   const races = [
     ...old.races.filter((r) => !r.date || r.date < start || r.date > end),
     ...tuneUps,
@@ -1762,14 +1804,15 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
     phases: [...old.phases.filter((p) => p.end && p.end < start), ...phases, ...old.phases.filter((p) => p.start && p.start > end)],
     blocks: old.blocks.filter((b) => !b.start || b.start > end || (b.end && b.end < start)),
     races,
-    weeks: [...keepBefore, ...weeks, ...keepAfter],
+    weeks: [...keepBefore, ...newWeeks, ...keepAfter],
     paces,
     structure: old.structure,
     rules,
     benchmarks: old.benchmarks.filter((b) => !b.date || b.date < start || b.date > end),
     adjust: null,
     baseWeeks: undefined,
-    built: { ...o, weeks: N, start, peak: peakWeek, longest, vdot: v0, vdotEnd: vEnd },
+    built: { ...o, anchorStart: undefined, vdotNow: undefined, resumeKm: undefined, weeks: N, start, peak: peakWeek, longest, vdot: v0, vdotEnd: vEnd, history: h },
+    vdotTargets: [...tuneUps, ...(isRace ? [goalRace] : [])].filter((r) => r.date).map((r) => ({ date: r.date!, name: r.name, approx: !!r.approx, vdot: vdotAtDate(r.date!) })).sort((a, b) => a.date.localeCompare(b.date)),
     previous: prev,
   };
   return { plan, weeks: built };

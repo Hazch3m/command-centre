@@ -19,6 +19,10 @@ export interface PlanWeek {
   /** Named sessions by day; days without one follow the weekly structure. */
   sessions: Partial<Record<DayKey, string>>;
   notes: string;
+  /** Projected VDOT the week's paces are set from (plans built in the app). */
+  vdot?: number;
+  /** Paces are provisional: set from the projected VDOT, confirmed by your next race's result (or a Monday re-plan). */
+  provisional?: boolean;
 }
 export interface PlanRace {
   date: string | null;
@@ -82,7 +86,9 @@ export interface Plan {
   /** The weeks as written, before `adjust` (only on a loaded plan; never saved). */
   baseWeeks?: PlanWeek[];
   /** Set when the plan was built in the app (Plan settings → Build a plan): the choices it was built from. */
-  built?: BuildOptions & { start: string; peak: number; longest: number; vdot: number; vdotEnd?: number };
+  built?: BuildOptions & { start: string; peak: number; longest: number; vdot: number; vdotEnd?: number; history?: import("./planBuilder").History };
+  /** Projected VDOT at each race in the plan (and the goal race), from the plan's fitness curve. */
+  vdotTargets?: { date: string; name: string; approx?: boolean; vdot: number }[];
   /** The plan before the last one was built, so it can be brought back. */
   previous?: Plan;
   /** Your target settings (pace or heart rate, easy-run targets), attached when the plan loads; never saved in the plan. */

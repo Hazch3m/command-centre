@@ -21,6 +21,7 @@ import { useRunningData } from "../modules/running/useRunning";
 import { addTaskFromText, focusGroup, loadTasks, setDone } from "../modules/tasks/data";
 import { HabitButton } from "./Habits";
 import { GettingStarted } from "./Account";
+import { ReplanCard } from "./ReplanCard";
 import { PracticeTag } from "../modules/running/PracticeTag";
 import { plannerView } from "./Planner";
 import { weatherModule } from "../modules/weather";
@@ -422,6 +423,7 @@ export function Today() {
   return (
     <div className="p-screen">
       <GettingStarted />
+      <ReplanCard />
       {layout.order
         .filter((id) => !layout.hidden.includes(id))
         // Calendar, to-do and habits only when the Planner is switched on.

@@ -5485,3 +5485,11 @@ svg.effort {
 .p-wchart-nav .p-round:disabled { opacity: 0.3; }
 
 .p-less { display: block; margin: 0.3rem auto 0.6rem; }
+
+/* Monday re-plan suggestion (Today and Training) */
+.p-replan-why { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.92rem; }
+.p-replan-diff { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.p-replan-diff th { text-align: left; font-weight: 600; color: var(--muted); padding: 0.2rem 0; }
+.p-replan-diff td { padding: 0.25rem 0; border-top: 1px solid color-mix(in srgb, var(--text) 10%, transparent); }
+.p-pill.p-pill-quiet { background: var(--p-surface); color: var(--text); }
+.p-prov { color: var(--muted); }
