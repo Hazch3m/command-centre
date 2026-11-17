@@ -8,7 +8,7 @@ import { mergeImported, csvToWeeks } from "./planCsv";
 const wk = (start: string, week: string, sun = "15 km long run"): PlanWeek => {
   const d = new Date(start + "T12:00Z");
   const end = new Date(d.getTime() + 6 * 864e5).toISOString().slice(0, 10);
-  return { week, start, end, phase: "Base", km: "50", sessions: { mon: "5 km recovery", tue: "10 km easy", wed: "Rest", thu: "10 km easy", fri: "Rest", sat: "5 km easy", sun } };
+  return { week, start, end, phase: "Base", km: "50", kmMin: 50, kmMax: 50, notes: "", sessions: { mon: "5 km recovery", tue: "10 km easy", wed: "Rest", thu: "10 km easy", fri: "Rest", sat: "5 km easy", sun } };
 };
 
 describe("keeping your progress when the plan changes", () => {

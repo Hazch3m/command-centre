@@ -101,7 +101,7 @@ describe("the builder follows the season (Harry's inputs)", () => {
 
   it("names the phases as v2 does, on v2's dates (±1 week)", () => {
     const ph = (name: string) => r.plan.phases.find((p) => p.name === name);
-    const close = (a: string | undefined, b: string) => expect(a && weeksApart(a, b), `${a} vs ${b}`).toBeLessThanOrEqual(1);
+    const close = (a: string | null | undefined, b: string) => expect(a && weeksApart(a, b), `${a} vs ${b}`).toBeLessThanOrEqual(1);
     close(ph("Rebuild and sharpen")?.start, "2026-11-16");
     close(ph("Threshold base")?.start, "2026-12-21");
     close(ph("Edinburgh-specific")?.start, "2027-03-29");
