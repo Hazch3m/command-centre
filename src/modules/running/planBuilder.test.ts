@@ -34,7 +34,8 @@ describe("plan builder", () => {
   it("builds gradually, with easier weeks and a taper", () => {
     const { weeks } = buildPlan(BUNDLED_PLAN, O, H, TODAY);
     const L = LEVELS.advanced;
-    for (let i = 1; i < weeks.length - 3; i++) if (!weeks[i].cut && !weeks[i - 1].cut) expect(weeks[i].km).toBeLessThanOrEqual(Math.ceil(weeks[i - 1].km * (1 + L.growth)) + 6);
+    // Against the last full week (a race week or an easier week in between doesn't count).
+    for (let i = 2; i < weeks.length - 3; i++) if (!weeks[i].cut && !weeks[i - 1].cut) expect(weeks[i].km).toBeLessThanOrEqual(Math.ceil(Math.max(weeks[i - 1].km, weeks[i - 2].km) * (1 + L.growth)) + 6);
     expect(weeks.some((w) => w.cut)).toBe(true);
     const peak = Math.max(...weeks.map((w) => w.km));
     expect(weeks[weeks.length - 1].km).toBeLessThan(peak * 0.6);
@@ -295,20 +296,22 @@ describe("plan builder: a marathon on the way, and the year-round extras", () =>
   const at = (a: string) => r.weeks.findIndex((w) => w.around?.at === a);
 
   it("tapers for it, races it, and recovers before building again", () => {
-    expect(["taper2", "taper1", "race", "recover1", "recover2"].map(at)).toEqual([at("taper2"), at("taper2") + 1, at("taper2") + 2, at("taper2") + 3, at("taper2") + 4]);
+    // An A marathon on the way (A-secondary, by season): a 2-week taper (race week included), then 3 recovery weeks.
+    expect(["taper1", "race", "recover1", "recover2", "recover3"].map(at)).toEqual([at("taper1"), at("taper1") + 1, at("taper1") + 2, at("taper1") + 3, at("taper1") + 4]);
+    expect(at("taper2")).toBe(-1);
     expect(r.weeks[at("race")].monday).toBe("2027-05-24");
-    const before = r.weeks[at("taper2") - 1].km;
-    expect(r.weeks[at("taper1")].km).toBeLessThan(before * 0.75);
+    const before = r.weeks[at("taper1") - 1].km;
+    expect(r.weeks[at("taper1")].km).toBeLessThanOrEqual(Math.round(before * 0.76));
     // The week after: easy only, no sessions, no medium-long run.
     const after = Object.values(pw[at("recover1")].sessions) as string[];
     expect(after.filter((x) => / with |medium-long|MP|strides/.test(x))).toEqual([]);
-    expect(pw[at("taper1")].sessions.tue).toMatch(/^.*Marathon pace: 2 × 3 km at MP/);
+    expect(pw[at("taper1")].sessions.tue).toMatch(/^.*Marathon pace: 2 × 5 km at MP/);
     // Volume is back to normal a week after the second easy week, and no easier week straight away.
-    expect(r.weeks[at("recover2") + 1].cut).toBe(false);
+    expect(r.weeks[at("recover3") + 1].cut).toBe(false);
   });
 
   it("puts marathon pace in its long runs beforehand, growing towards 22 km", () => {
-    const mp = pw.slice(0, at("taper2")).map((w) => /last (\d+(?:\.\d+)?) at MP|(\d) × 5 km at MP/.exec(w.sessions.sun ?? "")).filter(Boolean);
+    const mp = pw.slice(0, at("taper1")).map((w) => /last (\d+(?:\.\d+)?) at MP|(\d) × 5 km at MP/.exec(w.sessions.sun ?? "")).filter(Boolean);
     expect(mp.length).toBeGreaterThanOrEqual(2);
   });
 
@@ -360,7 +363,7 @@ describe("plan builder: changing the races already in your plan", () => {
     expect(names).toContain("Edinburgh marathon A 42.2");
     expect(names).toContain("Lausanne half B 21.1");
     expect(names.some((n) => n.startsWith("Lausanne marathon"))).toBe(false);
-    expect(r.weeks.some((w) => w.around?.at === "taper2")).toBe(true);
+    expect(r.weeks.some((w) => w.around?.at === "taper1")).toBe(true);
     // Lausanne is now a half: no marathon taper or recovery around it.
     expect(r.weeks.filter((w) => w.around).every((w) => w.around!.race === "Edinburgh marathon")).toBe(true);
     expect(r.plan.previous?.races?.map((x) => x.name)).toEqual(["Edinburgh marathon", "Lausanne marathon"]);
@@ -469,7 +472,8 @@ describe("plan builder: marathon seasons, heart rates and the winter ramp", () =
   });
 
   it("runs threshold and marathon pace (at Edinburgh's pace) before Edinburgh, with VO2 max every 2–3 weeks", () => {
-    const spring = r.plan.weeks.filter((w) => w.start >= "2027-03-01" && w.start < "2027-05-10");
+    // Edinburgh's specific block (season segmentation: 7 weeks before its 2-week taper).
+    const spring = r.plan.weeks.filter((w) => w.start >= "2027-03-29" && w.start < "2027-05-17");
     const all = spring.flatMap((w) => Object.values(w.sessions) as string[]);
     expect(all.some((x) => /Marathon pace: .* at MP 3:5\d|Marathon pace: .* at MP 4:0\d/.test(x))).toBe(true);
     expect(all.some((x) => /3:4[3-9]/.test(x) && /MP/.test(x))).toBe(false);

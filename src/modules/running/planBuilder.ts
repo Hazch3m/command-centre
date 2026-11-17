@@ -1,6 +1,7 @@
 import { addDays, diffDays } from "../../core/time";
 import { targetTime } from "./fitness";
 import { raceKmFor } from "./forecast";
+import { phaseAt, segmentSeason, seasonLabel, type SeasonKind } from "./season";
 import { firstChangeableMonday, mondayOf, priorityOf, weeksAlreadyDone, WEEK_KEYS, type DayKey, type Plan, type PlanRace, type PlanWeek } from "./plan";
 import { weeklyTotals } from "./stats";
 import type { Run } from "./strava";
@@ -600,6 +601,12 @@ function vo2Session(c: number, p: Paces, norwegian: boolean): { km: number; text
   return steps[c < steps.length ? c : 6 + ((c - 6) % 3)]();
 }
 
+/** 30/15s: sets of 30 s fast (about 3K pace) and 15 s jog, 3 min between sets. */
+function thirtyFifteen(n: number, V: number): { km: number; text: string } {
+  const fast = V - 16;
+  return workout((3 * n * 30) / fast, 3 * n * 15 + 2 * 180, `30/15s: 3 sets of ${n} × 30 s at ${around(fast)}, 15 s jog, 3 min between sets`);
+}
+
 /** The c-th marathon-pace session of a block, building from reps to a long continuous run at MP. */
 function mpSession(c: number, mp: number): { km: number; text: string } {
   const cont = (k: number) => workout(k, 0, `${k} km at MP ${around(mp, 2)}`);
@@ -713,7 +720,10 @@ export interface BuiltWeek {
   long: number;
   cut: boolean;
   /** Weeks around a marathon raced inside the plan: its taper, its week, and the easy weeks after it. */
-  around?: { race: string; at: "taper2" | "taper1" | "race" | "recover1" | "recover2" };
+  around?: { race: string; at: "taper2" | "taper1" | "race" | "recover1" | "recover2" | "recover3" };
+  /** The season phase (marathon plans by season), and what it's called. */
+  season?: SeasonKind;
+  label?: string;
 }
 
 /** The plan built from the options, merged into the current one: weeks before it and after the race are kept. */
@@ -789,8 +799,44 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
    * C (training-run) marathons get their race week and one easy week. The plan writes these itself.
    */
   const marathonsInside = [...(o.keepRaces ? inside : []), ...added].filter((r) => r.date && r.date < o.raceDate && raceKmOf(r) >= 30);
+  const primaryName = o.raceName || DIST_LABEL[o.dist];
+  // Marathon plans "by season" (spec v2): phases worked out backwards from the goal race (A-primary),
+  // with A marathons on the way as A-secondary races (season.ts).
+  const kindsAll = new Set<SessionKind>(T.kinds ?? ALL_KINDS);
+  const seasons = o.dist === "marathon" && isRace && T.structure !== "classic" && (T.quality ?? L.quality) >= 2 && kindsAll.has("intervals") && (kindsAll.has("threshold") || kindsAll.has("tempo"));
+  const secondaryAs = marathonsInside.filter((r) => priorityOf(r) === "A");
+  const lastMarathon =
+    [...old.races, ...(o.extraRaces ?? [])]
+      .filter((r) => r.date && r.date < start && !r.approx && raceKmOf(r) >= 30)
+      .map((r) => r.date!)
+      .sort()
+      .pop() ?? null;
+  const season = seasons
+    ? segmentSeason({
+        start,
+        primary: { name: primaryName, date: o.raceDate },
+        secondaries: secondaryAs.map((r) => ({ name: r.name, date: r.date! })),
+        others: [...(o.keepRaces ? inside : []), ...added].filter((r) => r.date && raceKmOf(r) < 30).map((r) => ({ name: r.name, date: r.date!, uncertainty: r.approx ? 7 : 0 })),
+        lastMarathon,
+      })
+    : null;
+  const seasonOf = (monday: string) => (season ? phaseAt(season, monday) : undefined);
+  if (season) {
+    // The goal race's specific block sets the race-specific weeks; the weeks before the first VO2 max block are the base.
+    specN = season.filter((p) => p.kind === "specific" && p.race === primaryName).reduce((a, p) => a + p.weeks, 0);
+    const firstVo2 = season.find((p) => p.kind === "vo2");
+    baseN = firstVo2 ? diffDays(start, firstVo2.from) / 7 : baseN;
+  }
   const aroundOf = (monday: string): BuiltWeek["around"] => {
+    // A-secondary marathons (by season): a 2-week taper (its race week included), then a 3-week recovery.
+    const sp = seasonOf(monday);
+    if (sp && sp.race && sp.race !== primaryName && (sp.kind === "taper" || sp.kind === "recovery")) {
+      const k = diffDays(sp.from, monday) / 7;
+      if (sp.kind === "taper") return { race: sp.race, at: k === sp.weeks - 1 ? "race" : "taper1" };
+      return { race: sp.race, at: (["recover1", "recover2", "recover3"] as const)[Math.min(2, k)] };
+    }
     for (const r of marathonsInside) {
+      if (season && secondaryAs.includes(r)) continue;
       const d = diffDays(mondayOf(r.date!), monday) / 7;
       const pr = priorityOf(r);
       const name = r.name;
@@ -805,7 +851,12 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
   /** Weeks before a marathon you race inside the plan (3–10 out): its race-specific weeks. */
   // The marathon-specific stretch before a marathon on the way (about 13 weeks: March to Edinburgh, say).
   const springOf = (monday: string): PlanRace | null =>
-    marathonsInside.find((r) => {
+    season
+      ? (() => {
+          const sp = seasonOf(monday);
+          return sp?.kind === "specific" && sp.race !== primaryName ? (marathonsInside.find((r) => r.name === sp.race) ?? null) : null;
+        })()
+      : marathonsInside.find((r) => {
       const d = diffDays(monday, mondayOf(r.date!)) / 7;
       return d >= 1 && d <= 13 && priorityOf(r) !== "C";
     }) ?? null;
@@ -836,6 +887,7 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
   let peakLong = 0;
   const cap = L.longCap[o.dist];
   let lastBig = -99;
+  let rampFrom: number | null = null;
   // The base holds a plateau a step below the peak (about 88%) for big marathon and half builds (plateau, above).
   // Race-specific weeks (not the easier ones), so long runs can alternate: big, shorter, big, …
   // (Weeks with a tune-up race don't count: their long run makes way for the race.)
@@ -855,6 +907,8 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
     if (buildN === 0 && i < N - 1) phase = "taper";
     if (goal === "recover") phase = "recover";
     if (goal === "faster" && phase === "race") phase = "taper";
+    const sp = seasonOf(monday);
+    if (sp && i < buildN) phase = sp.kind === "specific" && sp.race === primaryName ? "specific" : sp.kind === "opening" || sp.kind === "base" ? "base" : "build";
     let km: number;
     let long: number;
     let cut = false;
@@ -862,9 +916,17 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
     if (i < buildN && (ar = aroundOf(monday))) {
       // Around a marathon you race on the way: down for its taper, then easy weeks; volume doesn't grow meanwhile.
       const r = marathonsInside.find((x) => x.name === ar!.race)!;
-      const f = { taper2: 0.8, taper1: 0.65, race: 0.45, recover1: 0.5, recover2: 0.75 }[ar.at];
+      // By season (an A-secondary race): taper about −25% then −50% plus the race; recovery about 33%, 57%, 70%.
+      const bySeason = !!sp && (sp.kind === "taper" || sp.kind === "recovery");
+      const f = bySeason
+        ? { taper2: 0.8, taper1: 0.75, race: 0.47, recover1: 0.33, recover2: 0.57, recover3: 0.7 }[ar.at]
+        : { taper2: 0.8, taper1: 0.65, race: 0.45, recover1: 0.5, recover2: 0.75, recover3: 0.85 }[ar.at];
       km = cur * f + (ar.at === "race" ? raceKmOf(r) : 0);
-      long = Math.round({ taper2: Math.min(cap * 0.78, longMax), taper1: Math.min(20, cap * 0.55), race: 0, recover1: Math.min(14, longMax * 0.45), recover2: Math.min(cap * 0.65, longMax) }[ar.at]);
+      long = Math.round(
+        bySeason
+          ? { taper2: Math.min(cap * 0.78, longMax), taper1: Math.min(22, longMax), race: 0, recover1: Math.min(12, longMax), recover2: Math.min(18, longMax), recover3: Math.min(24, longMax) }[ar.at]
+          : { taper2: Math.min(cap * 0.78, longMax), taper1: Math.min(20, cap * 0.55), race: 0, recover1: Math.min(14, longMax * 0.45), recover2: Math.min(cap * 0.65, longMax), recover3: Math.min(cap * 0.7, longMax) }[ar.at],
+      );
     } else if (i < buildN) {
       // No easier week straight after a marathon's recovery weeks: they were the easier weeks.
       // A race last week, this week or next, or a marathon's taper coming, already makes for a lighter fortnight: no easier week on top.
@@ -880,6 +942,15 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
         cur = Math.min(phase === "base" || firstMi > i ? plateau : peak, Math.max(cur, cur * (1 + g)));
       }
       km = cut ? cur * L.cut : cur;
+      // Ramping back after a marathon's recovery weeks: up to 25% a week until back to 90% of the usual level.
+      const prevB = built[i - 1];
+      if (prevB && (prevB.around?.at === "recover3" || prevB.around?.at === "recover2" || rampFrom !== null) && !cut) {
+        const base = rampFrom ?? prevB.km;
+        if (base < cur * 0.9) {
+          km = Math.min(km, base * 1.25);
+          rampFrom = km < cur * 0.9 ? km : null;
+        } else rampFrom = null;
+      }
       // Race-specific weeks push the long run on towards its cap; before that it follows the week's volume.
       // Race-specific weeks: long runs towards the cap, but only every other one at full length (like Pfitzinger's or Runna's
       // plans): the longest comes a few weeks before the taper, with shorter long runs (and medium-long runs) between.
@@ -888,6 +959,10 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
       // Before the race-specific weeks the long run stays within about 30% of the week (33% at 115 km+).
       if (phase === "base" && o.dist === "marathon" && km >= 75) long = Math.min(long, Math.max(22, km * lerp(0.3, 0.33, (km - 100) / 15)));
       long = Math.max(o.dist === "5k" ? 8 : 10, Math.round(long));
+      // At most 3 km more than the longest long run of the last 4 weeks (not the previous week: a lighter or race
+      // week in between doesn't hold you back, a long break does).
+      const recent = built.slice(Math.max(0, i - 4), i).map((x) => x.long);
+      if (recent.length) long = Math.min(long, Math.max(...recent, i < 4 ? h.longest8 : 0) + 3);
       // The biggest long runs (most of the cap) come every other week at most, every third in the base:
       // shorter long runs (about 24–30 km for a marathon) in between. Weekly 3-hour runs add risk, not fitness.
       if (!cut && long >= cap * 0.88) {
@@ -901,7 +976,7 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
       km = Math.max(peak, cur) * k;
       long = phase === "race" ? 0 : Math.round(Math.max(10, peakLong * (k + 0.05)));
     }
-    built.push({ monday, phase, km: Math.round(km), long, cut, ...(ar ? { around: ar } : {}) });
+    built.push({ monday, phase, km: Math.round(km), long, cut, ...(ar ? { around: ar } : {}), ...(sp ? { season: sp.kind, label: i === N - 1 ? "Race week" : seasonLabel(sp, primaryName) } : {}) });
   }
 
   // Races inside the new plan.
@@ -939,8 +1014,6 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
   // Marathon plans by season: winter and summer, a VO2 max and a threshold session; the marathon-specific
   // stretches (before a marathon on the way, and the goal's race-specific weeks), threshold and marathon pace,
   // with VO2 max every two or three weeks to stay sharp.
-  const kindsAll = new Set<SessionKind>(T.kinds ?? ALL_KINDS);
-  const seasons = o.dist === "marathon" && T.structure !== "classic" && (T.quality ?? L.quality) >= 2 && kindsAll.has("intervals") && (kindsAll.has("threshold") || kindsAll.has("tempo"));
   let lastVo2 = -99;
   let keepCount = 0;
   let mpCount = 0;
@@ -966,7 +1039,9 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
     if (goal === "recover") nQ = i >= N / 2 && N >= 3 ? Math.min(1, nQ) : 0;
     // Around a marathon on the way: one short session in its taper and race week and the second week after, none the week after.
     const ar = b.around;
-    if (ar) nQ = ar.at === "recover1" ? 0 : Math.min(nQ, 1);
+    // (By season: no sessions in the first two recovery weeks — strides only in the second — one light one in the
+    // third; two short sessions in an A-secondary race's taper week, one in its race week.)
+    if (ar) nQ = ar.at === "recover1" || (b.season === "recovery" && ar.at === "recover2") ? 0 : b.season === "taper" && ar.at === "taper1" ? Math.min(Math.max(nQ, 2), 2) : Math.min(nQ, 1);
     // Weeks before a marathon on the way (raced seriously): marathon pace in every other long run.
     const pre = !ar && !b.cut && b.phase !== "race" && b.phase !== "taper" ? weeksBeforeMarathon(b.monday) : null;
     const mpFor = (target?: string) => {
@@ -1082,13 +1157,37 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
           return { ...q, text: `Marathon pace: ${q.text}`, kind: "racepace" as const };
         };
         // (VO2 max is the first to go when tired: the threshold session and the long run stay.)
-        const second = sharpenFor ? picks[0] : vo2Due ? nextVo2() : longHard ? null : mpQ();
+        // Spec v1.2: a marathon-pace session in weeks with an easy long run; VO2 max upkeep in weeks with a
+        // marathon-pace long run (so VO2 max comes every other week or so).
+        void vo2Due;
+        const second = sharpenFor ? picks[0] : longHard ? nextVo2() : mpQ();
         picks = [thr(), ...(second ? [second] : [])];
+      } else if (b.season === "opening") {
+        // Rebuild and sharpen (spec v1.2): key 1 VO2 max long reps (4 × 4 min → 5 × 1 km → 30/15s 3 × 10 →
+        // 5 × 4 min), key 2 threshold (4 × 2 km → 3 × 3 km → 5 × 6 min → 2 × 15 min).
+        const k = Math.min(3, built.slice(0, i).filter((x) => x.season === "opening" && !raceWeeks.has(x.monday)).length);
+        const V = p.interval;
+        const v = [() => timed(4, 4, V + 1, "", "3 min jog", 180), () => reps(5, 1, V - 1, "2 min jog", 120), () => thirtyFifteen(10, V), () => timed(5, 4, V, "", "2:30 jog", 150)][k]();
+        const th = [() => reps(4, 2, p.threshold, "2 min jog", 120), () => reps(3, 3, p.threshold, "2 min jog", 120), () => timed(5, 6, p.threshold - 1, "", "1 min jog", 60), () => timed(2, 15, p.threshold - 1, "", "3 min jog", 180)][k]();
+        picks = [
+          // (Sharpening for a 10k or longer: its race-pace session instead; a 5k's is VO2 max work already.)
+          sharpenFor && nextTune && (raceKmFor(nextTune) ?? 10) > 6 ? picks[0] : { ...v, text: `VO2 max: ${v.text}`, kind: "intervals" as const },
+          { ...th, text: `Threshold: ${th.text}`, kind: "threshold" as const },
+        ];
+        lastVo2 = i;
       } else {
         // Winter and summer: a VO2 max session and a threshold session (a sharpening week's race-pace session
         // stands in for the VO2 max one).
         picks = [sharpenFor ? picks[0] : nextVo2(), thr()];
       }
+    } else if (seasons && tune && !ar && raceHere.length) {
+      // Race week (B/C, by season): one sharpener at the race's pace, easy otherwise.
+      const rk = raceKmFor(raceHere[0]) ?? 10;
+      // (Sharpening turned off: a short threshold session instead.)
+      const sh = T.sharpen !== false;
+      const q = !sh ? reps(4, 1, p.threshold, "90 s jog", 90) : rk <= 6 ? reps(5, 1, p.fivek - 2, "2 min jog", 120) : rk <= 12 ? reps(4, 1, p.tenk, "2 min jog", 120) : reps(4, 2, p.threshold, "90 s jog", 90);
+      const lab = !sh ? "Threshold" : rk <= 6 ? "5K pace" : rk <= 12 ? "10K pace" : "Threshold";
+      picks = [{ ...q, text: `${lab}: ${q.text}`, kind: sh && rk <= 12 ? ("intervals" as const) : ("threshold" as const) }];
     } else if (!seasons) {
       // VO2 max work in the winter and summer (base and build weeks away from a marathon): about every
       // 7–10 days, two weeks in three, in place of a progression run or a fartlek (threshold stays).
@@ -1106,9 +1205,25 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
       } else vo2Run = 0;
     }
     // Around a marathon on the way: marathon pace, short, in its taper and race week; something light after.
-    if (ar && picks.length) {
+    if (ar && picks.length && (b.season === "taper" || b.season === "recovery")) {
+      // An A-secondary race (by season): taper week 2 × 5 km at its marathon pace and 5 × 1 km at 10k pace;
+      // race week 3 × 2 km at marathon pace; third recovery week a light fartlek.
       const mpP = mpFor(marathonsInside.find((r) => r.name === ar.race)?.target);
-      if (ar.at === "recover2") picks = [{ ...session("fartlek", 0, o, "taper", 0, p, rp), kind: "fartlek" as const }];
+      if (ar.at === "recover3" || ar.at === "recover2") picks = [{ ...workout((8 * 120) / (p.tenk + 6), 7 * 60, `8 × 2 min fartlek at ${around(p.tenk + 6)}, 1 min jog`), kind: "fartlek" as const }];
+      else if (ar.at === "taper1") {
+        const a = reps(2, 5, mpP, "3 min jog", 180);
+        const c = reps(5, 1, p.tenk, "2 min jog", 120);
+        picks = [
+          { ...a, text: `Marathon pace: ${a.text.replace(" at ", " at MP ")}`, kind: "racepace" as const },
+          { ...c, text: `10K pace: ${c.text}`, kind: "intervals" as const },
+        ].slice(0, Math.max(1, nQ));
+      } else {
+        const q = reps(3, 2, mpP, "2 min jog", 120);
+        picks = [{ ...q, text: `Marathon pace: ${q.text.replace(" at ", " at MP ")}`, kind: "racepace" as const }];
+      }
+    } else if (ar && picks.length) {
+      const mpP = mpFor(marathonsInside.find((r) => r.name === ar.race)?.target);
+      if (ar.at === "recover2" || ar.at === "recover3") picks = [{ ...session("fartlek", 0, o, "taper", 0, p, rp), kind: "fartlek" as const }];
       else {
         const q = ar.at === "taper2" ? reps(3, 3, mpP, "2 min jog", 120) : ar.at === "taper1" ? reps(2, 3, mpP, "2 min jog", 120) : reps(3, 1, mpP, "2 min jog", 120);
         picks = [{ ...q, text: `Marathon pace: ${q.text.replace(" at ", " at MP ")}`, kind: "racepace" as const }];
@@ -1211,7 +1326,11 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
                 taper1: `${ar.race} next week: volume well down, sessions short, plenty of sleep.`,
                 race: `Race week: ${ar.race}. Easy running and a few km at marathon pace, then race.`,
                 recover1: `After ${ar.race}: easy running only, no sessions. Take a day off whenever your legs ask.`,
-                recover2: `Second week after ${ar.race}: one light session, a shorter long run; full training next week.`,
+                recover2:
+                  b.season === "recovery"
+                    ? `Second week after ${ar.race}: easy running with strides, a little more each day.`
+                    : `Second week after ${ar.race}: one light session, a shorter long run; full training next week.`,
+                recover3: `Third week after ${ar.race}: one light session; the next block starts next week.`,
               }[ar.at]
           : raceHere.length
             ? `Tune-up race: ${raceHere.map((r) => r.name).join(", ")}. Lighter week around it.`
@@ -1231,7 +1350,7 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
       week: String(doneBefore + i + 1),
       start: b.monday,
       end: addDays(b.monday, 6),
-      phase: PHASE_NAME[b.phase],
+      phase: b.label ?? PHASE_NAME[b.phase],
       km: b.phase === "race" ? `about ${total} + race` : String(total),
       kmMin: total,
       kmMax: total,
@@ -1245,7 +1364,23 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
 
   // Phases, with what each is for.
   const phases: Plan["phases"] = [];
-  for (const ph of ["recover", "base", "build", "specific", "taper"] as Phase[]) {
+  if (season) {
+    const what: Record<SeasonKind, string> = {
+      opening: "Recover from the last marathon and get your speed back: a VO2 max session and a threshold session a week, long runs building.",
+      base: "Aerobic volume and threshold: threshold sessions grow in total time; the second session alternates steady running and VO2 max upkeep.",
+      vo2: "VO2 max and 10k speed: long-rep VO2 max sessions building from 15 to 20 min of hard running, threshold every 7–10 days.",
+      specific: "Marathon pace and endurance: threshold plus marathon pace (or a long run with marathon pace), VO2 max every 2–3 weeks.",
+      taper: "Volume drops while the sessions stay short and sharp, so you start fresh.",
+      recovery: "Real recovery: easy running only at first, then strides, then one light session.",
+    };
+    for (const p of season) {
+      const ws = built.filter((b) => b.monday >= p.from && b.monday <= p.to);
+      if (!ws.length) continue;
+      const kms = ws.map((w) => w.km);
+      phases.push({ name: seasonLabel(p, primaryName), start: p.from, end: addDays(p.to, 6), summary: `${Math.min(...kms)}–${Math.max(...kms)} km. ${what[p.kind]}` });
+    }
+  }
+  for (const ph of (season ? [] : ["recover", "base", "build", "specific", "taper"]) as Phase[]) {
     const ws = built.filter((b) => b.phase === ph || (ph === "taper" && b.phase === "race"));
     if (!ws.length) continue;
     const kms = ws.map((w) => w.km);
