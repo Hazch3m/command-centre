@@ -157,6 +157,24 @@ describe("regression: key sessions, and the spec's session rules", () => {
     }
   });
 
+  it("the specific blocks' key long runs, as v2", () => {
+    const want: Record<string, RegExp> = {
+      "2027-04-12": /^30 km long run, last 16 at MP/,
+      "2027-04-19": /^35 km long run, last 22 at MP/,
+      "2027-05-10": /^30 km long run, last 14 at MP/,
+      "2027-10-25": /^32 km long run/,
+      "2027-11-01": /^36 km long run, last 25 at MP/,
+      "2027-11-08": /^30 km long run$/,
+      "2027-11-15": /^28 km long run, last 10 at MP/,
+    };
+    for (const [d, re] of Object.entries(want)) expect(weeks.find((x) => x.start === d)!.sessions.sun, d).toMatch(re);
+  });
+
+  it("heart-rate zones from threshold 188: threshold 180–188, marathon pace 171–179", () => {
+    expect(plan.paces.find((z) => /^Threshold/.test(z.zone))!.hr).toBe("180–188");
+    expect(plan.paces.find((z) => /^Marathon pace/.test(z.zone))!.hr).toBe("171–179");
+  });
+
   it("an approximate race is on its nominal date, flagged", () => {
     const r = plan.races.find((x) => x.name === "Summer 10k")!;
     expect(r.date).toBe("2027-07-18");

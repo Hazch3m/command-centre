@@ -1160,12 +1160,30 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
         if (i - lastBig < (phase === "base" ? 3 : 2)) long = Math.round(Math.min(long, cap * 0.8));
         else lastBig = i;
       }
+      // By season, the specific block's key long runs are set by weeks to the race (spec step 3, as in v2), within
+      // 33% of the week and 3 km over the last 4 weeks' longest:
+      //   A-primary: 5 weeks out 89% of the cap (32 km), 4 weeks out the longest (36, with 25 at MP), 3 weeks out 83% (30)
+      //   A-secondary: 6 weeks out 83% (30, with 16 at MP), 5 weeks out 97% (35, with 22 at MP), 2 weeks out 83% (30, with 14)
+      if (vol && sp?.kind === "specific" && !cut) {
+        const primaryRace = sp.race === primaryName;
+        const rd = primaryRace ? o.raceDate : secondaryAs.find((r) => r.name === sp.race)?.date;
+        if (rd) {
+          const d = diffDays(monday, mondayOf(rd)) / 7;
+          const f = (primaryRace ? { 5: 0.89, 4: 1, 3: 0.83 } : { 6: 0.83, 5: 0.97, 2: 0.83 } as Record<number, number>)[d];
+          if (f) {
+            long = Math.min(Math.round(cap * f), Math.floor(km * 0.335), 36, recent.length ? Math.max(...recent, i < 4 ? h.longest8 : 0) + 3 : 99);
+            if (f >= 0.97) lastBig = i;
+          }
+        }
+      }
       if (!cut) longMax = Math.max(longMax, long);
       peakLong = Math.max(peakLong, long);
     } else {
       const k = taper[i - buildN];
       km = vol ? vol[i].km : Math.max(peak, cur) * k;
       long = phase === "race" ? 0 : Math.round(Math.max(10, peakLong * (k + 0.05)));
+      // By season, the taper's first long run is 78% of the cap (28 km, with 10 at MP), as in v2.
+      if (vol && i === buildN && phase !== "race") long = Math.round(Math.min(cap * 0.78, peakLong));
     }
     built.push({ monday, phase, km: Math.round(km), long, cut, ...(ar ? { around: ar } : {}), ...(sp ? { season: sp.kind, label: i === N - 1 ? "Race week" : seasonLabel(sp, primaryName) } : {}) });
   }

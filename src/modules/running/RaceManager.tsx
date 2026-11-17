@@ -130,6 +130,11 @@ export function RaceManager({ plan }: { plan: Plan }) {
                     <input value={r.target} placeholder="1:18:00" onChange={(e) => change(i, { target: e.target.value })} />
                   </label>
                 </div>
+                {r.date && (
+                  <label className="inline small">
+                    <input type="checkbox" checked={!!r.approx} onChange={(e) => change(i, { approx: e.target.checked, when: e.target.checked ? `about ${when(r.date!)}` : when(r.date!) })} /> Approximate date (planned on this date; you'll be asked to re-plan when it's fixed)
+                  </label>
+                )}
                 <div className="rm-row">
                   <span className="label">Distance</span>
                   <div className="ps-choice">
