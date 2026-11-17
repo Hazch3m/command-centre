@@ -40,7 +40,7 @@ describe("regression: Harry's inputs reproduce v2", () => {
   const { plan } = harryPlan();
   const rows = v2.map((f) => {
     const w = plan.weeks.find((x) => x.start === f.start)!;
-    return { start: f.start, v2: f.km, ours: Math.round(w.kmMin + raceKmIn(f.start)), w };
+    return { start: f.start, v2: f.km, ours: Math.round((w.kmMin ?? 0) + raceKmIn(f.start)), w };
   });
 
   it("weekly km within ±10% of v2 in at least 90% of weeks", () => {
