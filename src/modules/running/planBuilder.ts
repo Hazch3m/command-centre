@@ -54,6 +54,8 @@ export interface BuildOptions {
   anchorStart?: string;
   /** Re-plan: your fitness now; paces from the first changeable week move by the difference from the projection. */
   vdotNow?: number;
+  /** VDOT points between your 5k–10k fitness and your marathon (re-measure at a half or marathon). */
+  enduranceGap?: number;
   /** Re-plan after missed training: what you ran last week; the first new week is 70% of the plan (or 10% over
    * this), the second 85%. */
   resumeKm?: number;
@@ -939,7 +941,11 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
   const vdotOfWeek = (i: number) => lerp(v0, vEnd, i / Math.max(1, N - 1)) + (i >= iNow ? vShift : 0);
   const paceAt = (i: number) => pacesFor(vdotOfWeek(i));
   const racePaceOf = (p: Paces) => (o.dist === "marathon" ? p.mp : o.dist === "half" ? p.hmp : o.dist === "10k" ? p.tenk : p.fivek);
-  const goalPace = goalSec ? goalSec / (DIST_M[o.dist] / 1000) : null;
+  // A race pace you confirmed in the Monday re-plan (the goal clipped to your prediction) holds the goal's pace back
+  // (it only ever slows it: set a slower goal and that's used).
+  const goalPlanPace = old.races.find((r) => r.date === o.raceDate)?.planPace ?? null;
+  const goalPace0 = goalSec ? goalSec / (DIST_M[o.dist] / 1000) : null;
+  const goalPace = goalPace0 != null && goalPlanPace != null ? Math.max(goalPace0, goalPlanPace) : (goalPace0 ?? goalPlanPace);
 
   // Races inside the plan (tune-ups), worked out first: a marathon you race on the way shapes the weeks around it.
   const end = addDays(raceMonday, 6);
@@ -984,7 +990,7 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
         startKm,
         cap: peak,
         growth: T.growth,
-        races: [...(o.keepRaces ? inside : []), ...added].filter((r) => r.date && raceKmOf(r) < 30).map((r) => ({ date: r.date!, km: raceKmOf(r), window: r.approx ? (r.window ?? 7) : 0 })),
+        races: [...(o.keepRaces ? inside : []), ...added].filter((r) => r.date && raceKmOf(r) < 30).map((r) => ({ date: r.date!, km: raceKmOf(r), window: r.approx ? (r.window ?? 0) : 0 })),
       })
     : null;
   // Re-plan after missed training: the first new week is 70% of the plan (or 10% over what you ran, if more), the
@@ -1171,6 +1177,7 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
     when: fmtDay(o.raceDate),
     name: o.raceName || DIST_LABEL[o.dist],
     target: o.target,
+    ...(goalPlanPace ? { planPace: goalPlanPace } : {}),
     role: "Goal race",
     priority: "A",
     ...(o.terrain ? { elevation: { ...courseElevation(o.terrain, DIST_M[o.dist] / 1000), kind: o.terrain.kind } } : {}),
@@ -1215,7 +1222,8 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
     // Marathon pace for a week: the next A race's (the A-secondary's goal while it's ahead, then the goal race's).
     const mpPaceAt = (m: string, i: number) => {
       const next = secondaryAs.find((r) => r.date! >= m);
-      const sec = next?.target ? targetTime(next.target, 42195) : null;
+      const sec0 = next?.target ? targetTime(next.target, 42195) : null;
+      const sec = next?.planPace ? Math.max(sec0 ?? 0, next.planPace * 42.195) : sec0;
       const pp = paceAt(i);
       // The goal race's pace (provisional until its block): your goal, else your fitness then.
       const gp = goalPace && Math.abs(goalPace - racePaceOf(pp)) < 25 ? goalPace : racePaceOf(pp);

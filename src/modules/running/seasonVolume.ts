@@ -25,7 +25,7 @@ import { mondayOf } from "./plan";
  *    (towards the phase level) until it's back to 90% of the level before the break.
  *  - Floor: 50 km outside taper, race and recovery weeks.
  *  - A race with an approximate date counts in its nominal week; for focus weeks, every week within its window
- *    (± days, default 7) counts as a race week.
+ *    (± days; default 0, the nominal date only, as in v2) counts as a race week.
  */
 
 export type WeekType = "start" | "build" | "cut" | "race" | "post" | "taper" | "recovery";

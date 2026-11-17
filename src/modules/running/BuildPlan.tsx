@@ -7,6 +7,7 @@ import { plannedRuns } from "./FitnessPlan";
 import { raceKm, raceKmFor } from "./forecast";
 import { mondayOf, priorityOf, restorePreviousPlan, savePlan, WEEK_KEYS, type Plan, type PlanRace } from "./plan";
 import { buildPlan, raceKey, doublesAdvice, DIST_M, expectedGain, courseElevation, elevationCost, DEFAULT_WEEKS, DIST_LABEL, GOALS, LEVELS, MAX_WEEKS, pacesFor, recommend, SESSION_KINDS, summarizeHistory, tuneDefaults, type BuildOptions, type Goal, type History, type Level, type RaceDist, type SessionKind, type Tune } from "./planBuilder";
+import { DEFAULT_GAP } from "./replanChecks";
 import { raceReadiness } from "./readiness";
 import { ReadinessView, useReadinessInputs } from "./ReadinessCard";
 import { useRunningData } from "./useRunning";
@@ -523,6 +524,10 @@ export function PlanBuilder({ plan, compact }: { plan: Plan; compact?: boolean }
                 Threshold <input type="number" inputMode="numeric" min={120} max={220} value={o.hr?.lthr ?? hrNow?.lthr ?? ""} placeholder="optional" onChange={(e) => set({ hr: { max: o.hr?.max ?? hrNow?.max ?? 190, lthr: e.target.value ? +e.target.value : null } })} /> bpm
               </label>
             </div>
+            <label className="pb-gap" title="How many VDOT points your marathon runs below your 5k–10k fitness. Re-measure it at a half or a marathon.">
+              Endurance gap <input type="number" inputMode="decimal" step={0.1} min={0} max={8} value={o.enduranceGap ?? DEFAULT_GAP} onChange={(e) => set({ enduranceGap: e.target.value === "" ? undefined : +e.target.value })} /> VDOT points
+              <small className="muted"> · your marathon prediction is your VDOT minus this; the Monday re-plan checks your goal pace against it</small>
+            </label>
           </div>
           {isRace && (
             <div className="pb-block">

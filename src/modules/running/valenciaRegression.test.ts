@@ -111,10 +111,9 @@ describe("regression: key sessions, and the spec's session rules", () => {
             ? { t: 220, mp: 232, v: 200 }
             : { t: 217, mp: 227, v: 198 };
 
-  // Differences accepted as the rule's version (17 Nov): cutback after 3 build weeks (4 and 11 Jan), threshold not a
-  // steady run (28 Jun), and Valencia's longest marathon-pace long run week, threshold only (1 Nov). With the summer
-  // 10k's approximate date (± 7 days), the summer focus weeks move to 28 Jun and 2 Aug (v2: 5 and 26 Jul).
-  const accepted = new Set(["2027-01-04", "2027-01-11", "2027-06-28", "2027-11-01", "2027-07-05", "2027-07-26", "2027-08-02"]);
+  // Differences accepted as the rule's version (17 Nov): cutback after 3 build weeks (4 and 11 Jan) and threshold not a
+  // steady run (28 Jun). (1 Nov, threshold only: v2 updated to match.)
+  const accepted = new Set(["2027-01-04", "2027-01-11", "2027-06-28"]);
   it("key-session types match v2 in at least 80% of weeks (all but the accepted differences)", () => {
     const off: string[] = [];
     for (const f of v2) {

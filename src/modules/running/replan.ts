@@ -1,6 +1,6 @@
 import { addDays, diffDays } from "../../core/time";
 import { firstChangeableMonday, mondayOf, type Plan } from "./plan";
-import { buildPlan, type History } from "./planBuilder";
+import { buildPlan, type BuildOptions, type History } from "./planBuilder";
 
 /*
  * Monday re-plan (plan generator v2 spec, step 7): suggest and confirm, never automatic.
@@ -83,7 +83,7 @@ export function replanReasons(plan: Plan, x: ReplanInput): ReplanReason[] {
 export const reasonsKey = (rs: ReplanReason[], today: string) => `${mondayOf(today)}|${rs.map((r) => r.text).join("|")}`;
 
 /** The re-planned plan (not saved): the same choices, from the first changeable Monday. */
-export function replan(plan: Plan, rs: ReplanReason[], x: ReplanInput & { history: History }): Plan {
+export function replan(plan: Plan, rs: ReplanReason[], x: ReplanInput & { history: History }, patch: Partial<BuildOptions> = {}): Plan {
   const b = plan.built!;
   const missed = rs.some((r) => r.kind === "missed");
   const lastKm = x.weekKm.get(addDays(mondayOf(x.today), -7)) ?? 0;
@@ -104,6 +104,7 @@ export function replan(plan: Plan, rs: ReplanReason[], x: ReplanInput & { histor
       anchorStart: b.start,
       vdotNow: x.vdotNow ?? undefined,
       resumeKm: missed ? Math.max(20, lastKm) : undefined,
+      ...patch,
     },
     h,
     x.today,

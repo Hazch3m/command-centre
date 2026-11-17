@@ -37,7 +37,9 @@ export interface PlanRace {
   taper?: "full" | "mini" | "none";
   /** Distance in km, when the name doesn't say. */
   km?: number;
-  /** For a race with an approximate date (`approx`): days either side it could fall (default 7). The plan puts it
+  /** Race pace to plan with (s/km), confirmed in the Monday re-plan: the goal clipped to your prediction. */
+  planPace?: number;
+  /** For a race with an approximate date (`approx`): days either side it could fall (default 0: the nominal date only). The plan puts it
    * on its nominal date; the window only keeps focus weeks away from it. */
   window?: number;
   /** The course's climb and descent (m); slows the predicted time on a hilly course. */
