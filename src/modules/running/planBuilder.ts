@@ -2,6 +2,7 @@ import { addDays, diffDays } from "../../core/time";
 import { targetTime } from "./fitness";
 import { raceKmFor } from "./forecast";
 import { phaseAt, segmentSeason, seasonLabel, type SeasonKind } from "./season";
+import { seasonVolumes } from "./seasonVolume";
 import { firstChangeableMonday, mondayOf, priorityOf, weeksAlreadyDone, WEEK_KEYS, type DayKey, type Plan, type PlanRace, type PlanWeek } from "./plan";
 import { weeklyTotals } from "./stats";
 import type { Run } from "./strava";
@@ -821,6 +822,18 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
       })
     : null;
   const seasonOf = (monday: string) => (season ? phaseAt(season, monday) : undefined);
+  const vol = season
+    ? seasonVolumes({
+        start,
+        weeks: N,
+        season,
+        primary: primaryName,
+        startKm,
+        cap: peak,
+        growth: T.growth,
+        races: [...(o.keepRaces ? inside : []), ...added].filter((r) => r.date && raceKmOf(r) < 30).map((r) => ({ date: r.date!, km: raceKmOf(r) })),
+      })
+    : null;
   if (season) {
     // The goal race's specific block sets the race-specific weeks; the weeks before the first VO2 max block are the base.
     specN = season.filter((p) => p.kind === "specific" && p.race === primaryName).reduce((a, p) => a + p.weeks, 0);
@@ -921,7 +934,7 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
       const f = bySeason
         ? { taper2: 0.8, taper1: 0.75, race: 0.47, recover1: 0.33, recover2: 0.57, recover3: 0.7 }[ar.at]
         : { taper2: 0.8, taper1: 0.65, race: 0.45, recover1: 0.5, recover2: 0.75, recover3: 0.85 }[ar.at];
-      km = cur * f + (ar.at === "race" ? raceKmOf(r) : 0);
+      km = (vol ? vol[i].km : cur * f) + (ar.at === "race" ? raceKmOf(r) : 0);
       long = Math.round(
         bySeason
           ? { taper2: Math.min(cap * 0.78, longMax), taper1: Math.min(22, longMax), race: 0, recover1: Math.min(12, longMax), recover2: Math.min(18, longMax), recover3: Math.min(24, longMax) }[ar.at]
@@ -931,7 +944,7 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
       // No easier week straight after a marathon's recovery weeks: they were the easier weeks.
       // A race last week, this week or next, or a marathon's taper coming, already makes for a lighter fortnight: no easier week on top.
       const lightSoon = raceWeeks.has(addDays(monday, -7)) || raceWeeks.has(monday) || raceWeeks.has(addDays(monday, 7)) || !!aroundOf(addDays(monday, 7));
-      cut = i > 0 && (i + 1) % L.cutEvery === 0 && i < buildN - 1 && !built[i - 1]?.around && !lightSoon;
+      cut = vol ? vol[i].type === "cut" : i > 0 && (i + 1) % L.cutEvery === 0 && i < buildN - 1 && !built[i - 1]?.around && !lightSoon;
       // A tune-up race week holds the volume where it is (it's a lighter week): no jump straight after it.
       if (i > 0 && !cut && !raceWeeks.has(monday)) {
         // New territory (well above your biggest recent week) grows more slowly, and the base holds a plateau
@@ -942,9 +955,14 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
         cur = Math.min(phase === "base" || firstMi > i ? plateau : peak, Math.max(cur, cur * (1 + g)));
       }
       km = cut ? cur * L.cut : cur;
+      // By season, the week's km come from the season's volume rules (seasonVolume.ts).
+      if (vol) {
+        km = vol[i].km;
+        cur = Math.max(cur, km);
+      }
       // Ramping back after a marathon's recovery weeks: up to 25% a week until back to 90% of the usual level.
       const prevB = built[i - 1];
-      if (prevB && (prevB.around?.at === "recover3" || prevB.around?.at === "recover2" || rampFrom !== null) && !cut) {
+      if (!vol && prevB && (prevB.around?.at === "recover3" || prevB.around?.at === "recover2" || rampFrom !== null) && !cut) {
         const base = rampFrom ?? prevB.km;
         if (base < cur * 0.9) {
           km = Math.min(km, base * 1.25);
@@ -973,7 +991,7 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
       peakLong = Math.max(peakLong, long);
     } else {
       const k = taper[i - buildN];
-      km = Math.max(peak, cur) * k;
+      km = vol ? vol[i].km : Math.max(peak, cur) * k;
       long = phase === "race" ? 0 : Math.round(Math.max(10, peakLong * (k + 0.05)));
     }
     built.push({ monday, phase, km: Math.round(km), long, cut, ...(ar ? { around: ar } : {}), ...(sp ? { season: sp.kind, label: i === N - 1 ? "Race week" : seasonLabel(sp, primaryName) } : {}) });
@@ -1278,7 +1296,9 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
     const easy = run.filter((k) => !s[k]);
     const used = Object.values(sized).reduce((a, x) => a + (x ?? 0), 0) + Object.values(pm).reduce((a, x) => a + (x ?? 0), 0);
     const left = Math.max(0, km - used);
-    const each = easy.length ? left / easy.length : 0;
+    // The day before a race is a fixed 5 km shake-out; the other easy days share the rest.
+    const preRace = easy.filter((k) => [...raceDays].some((r) => IDX(r) - IDX(k) === 1)).length;
+    const each = easy.length > preRace ? Math.max(0, left - preRace * 5) / (easy.length - preRace) : easy.length ? left / easy.length : 0;
     // Strides twice a week (once for a beginner's base), on easy days apart from each other.
     let strides = T.strides !== false && b.phase !== "recover" && ar?.at !== "recover1" ? (o.level === "beginner" && b.phase === "base" ? 1 : 2) : 0;
     let lastStride = -9;
@@ -1287,7 +1307,8 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
     for (const k of easy) {
       const after = longAt && IDX(k) === (IDX(longAt) + 1) % 7;
       const before = [...raceDays].some((r) => IDX(r) - IDX(k) === 1);
-      const cap = after ? Math.max(6, each * 0.8) : tune ? 10 : 16;
+      // Easy days up to 16 km (22 by season with no doubles, spec v1.2); race weeks up to 10 (14 by season).
+      const cap = after ? Math.max(6, each * 0.8) : tune ? (seasons ? 14 : 10) : seasons && !(T.doubles ?? 0) ? 22 : 16;
       const kk = Math.max(before ? 4 : 5, r1(Math.min(cap, before ? 5 : each)));
       let text = `${kk} km ${after ? "recovery" : "easy"}`;
       if (before) text = `${kk} km easy + 4 × 20 s strides`;
