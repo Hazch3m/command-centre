@@ -35,7 +35,12 @@ describe("plan builder", () => {
     const { weeks } = buildPlan(BUNDLED_PLAN, O, H, TODAY);
     const L = LEVELS.advanced;
     // Against the last full week (a race week or an easier week in between doesn't count).
-    for (let i = 2; i < weeks.length - 3; i++) if (!weeks[i].cut && !weeks[i - 1].cut) expect(weeks[i].km).toBeLessThanOrEqual(Math.ceil(Math.max(weeks[i - 1].km, weeks[i - 2].km) * (1 + L.growth)) + 6);
+    // (Spec: at most min(15 km, 15%) above the last full week.)
+    for (let i = 2; i < weeks.length - 3; i++)
+      if (!weeks[i].cut && !weeks[i - 1].cut) {
+        const full = Math.max(weeks[i - 1].km, weeks[i - 2].km);
+        expect(weeks[i].km).toBeLessThanOrEqual(Math.ceil(full + Math.max(full * L.growth + 6, Math.min(15, full * 0.15))) + 1);
+      }
     expect(weeks.some((w) => w.cut)).toBe(true);
     const peak = Math.max(...weeks.map((w) => w.km));
     expect(weeks[weeks.length - 1].km).toBeLessThan(peak * 0.6);
@@ -109,11 +114,12 @@ describe("plan builder: goals, speed work and tweaks", () => {
 
   it("sharpens for a B race in the two weeks before it, unless you turn it off", () => {
     const tune = { date: "2027-07-18", approx: false, when: "", name: "Summer 10k", target: "", role: "tune-up", priority: "B" as const, km: 10 };
-    const o = { ...base, extraRaces: [tune] };
+    // (The rotating structure sharpens two weeks out; by season, only the race week has a sharpener.)
+    const o = { ...base, extraRaces: [tune], tune: { structure: "classic" as const } };
     const r = bp(BUNDLED_PLAN, o, h, "2026-11-06");
     const before = r.plan.weeks.filter((w) => w.start >= "2027-06-28" && w.start <= "2027-07-05").flatMap((w) => Object.values(w.sessions) as string[]);
     expect(before.some((x) => /^.*10K pace: /.test(x))).toBe(true);
-    const off = bp(BUNDLED_PLAN, { ...o, tune: { sharpen: false } }, h, "2026-11-06");
+    const off = bp(BUNDLED_PLAN, { ...o, tune: { structure: "classic", sharpen: false } }, h, "2026-11-06");
     expect(off.plan.weeks.flatMap((w) => Object.values(w.sessions) as string[]).some((x) => /10K pace: /.test(x))).toBe(false);
   });
 
@@ -126,9 +132,9 @@ describe("plan builder: goals, speed work and tweaks", () => {
   it("ramps faster when you ask for it", () => {
     const slow = bp(BUNDLED_PLAN, { ...base, weeks: 30, tune: { growth: 0.03 } }, h, "2026-11-06").weeks;
     const fast = bp(BUNDLED_PLAN, { ...base, weeks: 30, tune: { growth: 0.1 } }, h, "2026-11-06").weeks;
-    // The quicker ramp gets near its peak volume sooner.
-    const near = (ws: typeof fast) => ws.findIndex((w) => w.km >= 0.9 * Math.max(...ws.map((x) => x.km)));
-    expect(near(fast)).toBeLessThan(near(slow));
+    // The quicker ramp gets to each phase's volume sooner (by season, the phase levels hold both back after that).
+    const early = (ws: typeof fast) => ws.slice(0, 8).reduce((a, w) => a + w.km, 0);
+    expect(early(fast)).toBeGreaterThan(early(slow) * 1.05);
   });
 
   it("builds blocks without a race", () => {
@@ -214,9 +220,9 @@ describe("plan builder: long runs and labels", () => {
     const s = r.plan.weeks.filter((w) => w.start >= from && w.start <= o.raceDate).flatMap((w) => Object.values(w.sessions) as string[]);
     expect(s.some((x) => /VO2 max: /.test(x))).toBe(true);
     expect(s.some((x) => /Threshold(?: tempo)?: /.test(x))).toBe(true);
-    expect(s.filter((x) => / with /.test(x) && !/long run/.test(x) && !/(VO2 max|Threshold|Threshold tempo|Hill strength|Race pace|Marathon pace): |fartlek|time trial/.test(x))).toEqual([]);
-    // Every speed session has its warm-up and cool-down written in.
-    expect(s.filter((x) => / with /.test(x) && !/long run|time trial/.test(x) && !/warm-up, .*cool-down$/.test(x))).toEqual([]);
+    expect(s.filter((x) => / with /.test(x) && !/long run|km steady at/.test(x) && !/(VO2 max|Threshold|Threshold tempo|Hill strength|Race pace|Marathon pace|10K pace|5K pace): |fartlek|time trial/.test(x))).toEqual([]);
+    // Every speed session has its warm-up and cool-down written in (a steady run is one run at a steady pace).
+    expect(s.filter((x) => / with /.test(x) && !/long run|time trial|km steady at/.test(x) && !/warm-up, .*cool-down$/.test(x))).toEqual([]);
   });
 });
 
@@ -431,14 +437,16 @@ describe("plan builder: Norwegian 4 × 4 and doubles only when needed", () => {
     for (const x of vo2) expect(sessionToWorkout(x), x).not.toBeNull();
   });
 
-  it("does VO2 max work about every 7–10 days in winter, building from short reps to 4–5 min", () => {
+  it("VO2 max by season: weekly in the opening and VO2 max blocks, every other week in the base (spec v1.2)", () => {
     const r = buildPlan({ ...BUNDLED_PLAN, races: [] }, o, h, "2026-11-15");
-    const winter = r.plan.weeks.filter((w) => w.start >= "2026-11-16" && w.start < "2027-03-01");
-    const vo2 = winter.map((w) => (Object.values(w.sessions) as string[]).find((x) => /VO2 max: /.test(x))).filter(Boolean) as string[];
-    expect(vo2.length).toBeGreaterThanOrEqual(Math.floor(winter.length * 0.55));
-    expect(vo2[0]).toMatch(/30 s fartlek/);
-    expect(vo2.slice(4).some((x) => /× [45] min/.test(x))).toBe(true);
-    for (const x of vo2) expect(sessionToWorkout(x), x).not.toBeNull();
+    const weeksOf = (phase: string) => r.plan.weeks.filter((w) => w.phase === phase && w.start >= "2026-11-16");
+    const vo2In = (w: (typeof r.plan.weeks)[number]) => (Object.values(w.sessions) as string[]).some((x) => /VO2 max: /.test(x));
+    const block = weeksOf("VO2 max block");
+    expect(block.filter(vo2In).length).toBeGreaterThanOrEqual(block.length - 1);
+    const base = weeksOf("Threshold base");
+    expect(base.filter(vo2In).length).toBeGreaterThanOrEqual(Math.floor(base.length / 3));
+    expect(block.flatMap((w) => Object.values(w.sessions) as string[]).some((x) => /VO2 max: [45] × [45] min/.test(x))).toBe(true);
+    for (const x of r.plan.weeks.flatMap((w) => Object.values(w.sessions) as string[]).filter((x) => /VO2 max: /.test(x))) expect(sessionToWorkout(x), x).not.toBeNull();
   });
 
   it("only doubles when the easy days would otherwise be long", () => {
@@ -463,13 +471,18 @@ describe("plan builder: marathon seasons, heart rates and the winter ramp", () =
   const ses = (d: string) => Object.values(wk(d).sessions) as string[];
   const km = (d: string) => r.weeks.find((w) => w.monday === d)!;
 
-  it("gives a VO2 max and a threshold session in normal winter weeks, one session in easier weeks", () => {
-    for (const d of ["2026-11-16", "2026-11-23", "2026-12-21", "2026-12-28"]) {
+  it("opening weeks: a VO2 max and a threshold session; base weeks: threshold plus a steady run or VO2 max upkeep", () => {
+    for (const d of ["2026-11-16", "2026-11-23"]) {
       expect(ses(d).filter((x) => /VO2 max: /.test(x)).length, d).toBe(1);
       expect(ses(d).filter((x) => /Threshold( tempo)?: /.test(x)).length, d).toBe(1);
     }
+    for (const d of ["2026-12-21", "2026-12-28"]) {
+      expect(ses(d).filter((x) => /Threshold( tempo)?: /.test(x)).length, d).toBe(1);
+      expect(ses(d).filter((x) => /VO2 max: |km steady at/.test(x)).length, d).toBe(1);
+    }
+    // Easier weeks keep two shorter sessions, as v2 does.
     const cut = r.weeks.find((w) => w.cut && w.monday < "2027-02-01")!;
-    expect(ses(cut.monday).filter((x) => / with 3 km warm-up/.test(x)).length).toBe(1);
+    expect(ses(cut.monday).filter((x) => / with 3 km warm-up|progression run/.test(x)).length).toBe(2);
   });
 
   it("runs threshold and marathon pace (at Edinburgh's pace) before Edinburgh, with VO2 max every 2–3 weeks", () => {

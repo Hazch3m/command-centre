@@ -53,3 +53,144 @@ describe("regression: Harry's inputs reproduce v2", () => {
     expect(Math.max(...rows.map((r) => r.ours))).toBeLessThanOrEqual(120);
   });
 });
+
+import { sessionToWorkout } from "../watch/importWeek";
+
+// ---- Key-session types -----------------------------------------------------------------------------
+// fast = VO2 max, 10k pace, 30/15s and race-week sharpeners at 5k/10k pace; threshold (half pace counts here);
+// steady; mp = marathon pace; progression. v2's sessions have no labels, so each is matched to the nearest of
+// the week's paces (threshold, marathon pace, VO2 max) as our plan sets them.
+const secs = (m: RegExpExecArray | null) => (m ? +m[1] * 60 + +m[2] : null);
+const ourType = (x: string): string | null => {
+  if (/long run/.test(x)) return null;
+  if (/km steady/.test(x)) return "steady";
+  if (/progression run/.test(x)) return "progression";
+  if (/Marathon pace:|Race pace:/.test(x)) return "mp";
+  if (/Threshold|min T at|Half pace/.test(x)) return "threshold";
+  if (/VO2 max:|10K pace:|5K pace:|30\/15|fartlek/.test(x)) return "fast";
+  return null;
+};
+const v2Type = (raw: string, zones: { t: number; mp: number; v: number }): string | null => {
+  const x = raw.replace(/^(Tue|Wed|Thu|Fri|Done): /, "");
+  if (!/\d/.test(x) || /^—|strides|hill sprints|^Sun \d|^Sat \d|Summer 10k|Antigel 10k|Aix 10k|Killarney|Lausanne|Edinburgh|Valencia/.test(x)) return null;
+  if (/30\/15/.test(x)) return "fast";
+  if (/steady/.test(x)) return "steady";
+  if (/last \d+ km at/.test(x)) return "progression";
+  if (/\d+ km with \d+ km at/.test(x)) return "mp";
+  const pace = secs(/at (?:about )?(\d):(\d\d)/.exec(x));
+  if (pace == null) return null;
+  const d = [
+    ["threshold", Math.abs(pace - zones.t)],
+    ["mp", Math.abs(pace - zones.mp)],
+    ["fast", Math.abs(pace - zones.v)],
+  ] as const;
+  return [...d].sort((a, b) => a[1] - b[1])[0][0];
+};
+
+describe("regression: key sessions, and the spec's session rules", () => {
+  const { plan } = harryPlan();
+  const zonesOf = (w: (typeof plan.weeks)[number]) => {
+    const all = Object.values(w.sessions) as string[];
+    const t = secs(/(?:Threshold[^:]*|min T): .*?at (\d):(\d\d)|Threshold: \d+ × [\d.]+ (?:km|min) at (\d):(\d\d)/.exec(all.join(" "))) ?? 0;
+    return t;
+  };
+  void zonesOf;
+  // The week's own paces, read from v2's own threshold, marathon-pace and VO2 columns (by date).
+  const v2Zones = (start: string) =>
+    start < "2026-12-21"
+      ? { t: 230, mp: 241, v: 211 }
+      : start < "2027-02-01"
+        ? { t: 228, mp: 241, v: 208 }
+        : start < "2027-05-31"
+          ? { t: 226, mp: 240, v: 205 }
+          : start < "2027-08-16"
+            ? { t: 220, mp: 232, v: 200 }
+            : { t: 217, mp: 227, v: 198 };
+
+  it("key-session types match v2 in at least 80% of weeks", () => {
+    const off: string[] = [];
+    for (const f of v2) {
+      const w = plan.weeks.find((x) => x.start === f.start)!;
+      const ours = (Object.values(w.sessions) as string[]).map(ourType).filter(Boolean).sort().join("+");
+      const theirs = [f.s1, f.s2].map((x) => v2Type(x, v2Zones(f.start))).filter(Boolean).sort().join("+");
+      if (ours !== theirs) off.push(`${f.start}: ${ours} vs ${theirs}`);
+    }
+    expect(off.length, off.join("; ")).toBeLessThanOrEqual(Math.floor(v2.length * 0.2));
+  });
+
+  const weeks = plan.weeks.filter((w) => w.start >= "2026-11-16" && w.start <= "2027-12-05");
+  it("at most 2 key sessions a week; every session goes to the watch", () => {
+    for (const w of weeks) {
+      const keys = (Object.values(w.sessions) as string[]).filter((x) => ourType(x) && !/long run/.test(x));
+      expect(keys.length, w.start).toBeLessThanOrEqual(2);
+      for (const x of Object.values(w.sessions) as string[]) if (!/^Rest$/.test(x) && !/(10k|half|marathon|5k)\s*$/i.test(x)) expect(sessionToWorkout(x), x).not.toBeNull();
+    }
+  });
+
+  it("VO2 max sessions: 15–21 min of hard running in reps of 2 min or more (30/15s and sharpeners aside)", () => {
+    for (const w of weeks)
+      for (const x of Object.values(w.sessions) as string[]) {
+        const m = /VO2 max: (\d+) × ([\d.]+) (km|m|min) at (\d):(\d\d)/.exec(x);
+        if (!m) continue;
+        const pace = +m[4] * 60 + +m[5];
+        const one = m[3] === "min" ? +m[2] * 60 : m[3] === "km" ? +m[2] * pace : (+m[2] / 1000) * pace;
+        expect(one, x).toBeGreaterThanOrEqual(120);
+        expect((+m[1] * one) / 60, x).toBeGreaterThanOrEqual(15);
+        expect((+m[1] * one) / 60, x).toBeLessThanOrEqual(21);
+      }
+  });
+
+  it("long runs: at most 33% of the week (rounded), 36 km", () => {
+    for (const w of weeks) {
+      const l = /(\d+) km (?:easy )?long run/.exec(w.sessions.sun ?? "");
+      if (!l || !w.kmMin) continue;
+      expect(+l[1], w.start).toBeLessThanOrEqual(36);
+      expect(Math.round((+l[1] / w.kmMin) * 100), w.start).toBeLessThanOrEqual(33);
+    }
+  });
+
+  it("phase emphasis: VO2 max blocks mostly VO2 max work, the base's key 1 threshold", () => {
+    const of = (phase: string) => weeks.filter((w) => w.phase === phase).flatMap((w) => (Object.values(w.sessions) as string[]).map(ourType).filter(Boolean));
+    const vo2 = of("VO2 max block");
+    expect(vo2.filter((x) => x === "fast").length / vo2.length).toBeGreaterThanOrEqual(0.5);
+    const base = weeks.filter((w) => w.phase === "Threshold base" && !/Antigel/.test(Object.values(w.sessions).join()));
+    expect(base.filter((w) => /Threshold/.test(w.sessions.tue ?? "")).length / base.length).toBeGreaterThanOrEqual(0.6);
+  });
+
+  it("marathon pace: Edinburgh's in the spring, Valencia's goal pace only after Edinburgh", () => {
+    const mpPaces = (from: string, to: string) =>
+      weeks
+        .filter((w) => w.start >= from && w.start < to)
+        .flatMap((w) => Object.values(w.sessions) as string[])
+        .map((x) => secs(/at MP (\d):(\d\d)/.exec(x)))
+        .filter((x): x is number => x != null);
+    expect(mpPaces("2026-11-16", "2027-05-31").every((x) => x >= 236)).toBe(true);
+    expect(mpPaces("2027-08-16", "2027-12-06").some((x) => x <= 227)).toBe(true);
+  });
+
+  it("intensity: hard time ≤ 15% of the week; hard + moderate ≤ 25% before the specific blocks, ≤ 40% in them", () => {
+    for (const w of weeks) {
+      if (!w.kmMin || /taper|Race week|Recovery/i.test(w.phase)) continue;
+      const all = Object.values(w.sessions) as string[];
+      let hard = 0;
+      let mod = 0;
+      for (const x of all) {
+        const r = /(\d+) × ([\d.]+) (km|m|min|s) at (\d):(\d\d)/.exec(x);
+        const pace = r ? +r[4] * 60 + +r[5] : 0;
+        const work = r ? +r[1] * (r[3] === "min" ? +r[2] * 60 : r[3] === "s" ? +r[2] : r[3] === "km" ? +r[2] * pace : (+r[2] / 1000) * pace) : 0;
+        const sets = /(\d) sets of/.exec(x);
+        const tem = /(\d+) min T at/.exec(x);
+        if (/Marathon pace:|at MP|steady/.test(x)) {
+          const k = /(\d+) km (?:steady|at MP)|last (\d+) at MP|(\d) × (\d+) km at MP/.exec(x);
+          const km = k ? +(k[1] ?? k[2] ?? 0) || +(k[3] ?? 0) * +(k[4] ?? 0) : 0;
+          mod += km * 235;
+        } else if (tem) hard += +tem[1] * 60;
+        else if (r && !/fartlek/.test(x)) hard += work * (sets ? +sets[1] : 1);
+      }
+      const total = w.kmMin * 300;
+      const specific = /specific/.test(w.phase);
+      expect(hard / total, `${w.start} hard`).toBeLessThanOrEqual(0.15);
+      expect((hard + mod) / total, `${w.start} hard+moderate`).toBeLessThanOrEqual(specific ? 0.4 : 0.25);
+    }
+  });
+});
