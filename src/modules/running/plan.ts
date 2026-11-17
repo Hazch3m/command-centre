@@ -1,5 +1,5 @@
 import { backend } from "@backend";
-import { addDays, diffDays, parseKey } from "../../core/time";
+import { addDays, diffDays, parseKey, todayKey } from "../../core/time";
 import defaultPlan from "./default-plan.json";
 import type { PlanAdjust } from "./planAdjust";
 import type { BuildOptions } from "./planBuilder";
@@ -172,6 +172,38 @@ export function upcomingRaces(plan: Plan, today: string): RaceCountdown[] {
     .sort((a, b) => a.days - b.days);
 }
 
+/**
+ * Your progress through the current training block, kept whenever the plan changes: how many weeks of it
+ * you've already had before `start` — the run of numbered weeks that ends the week before `start`, back to
+ * its week 1. (Labels count down by one going back; "1" then "1" also counts, from plans rebuilt before
+ * numbering carried on.) A rebuilt or imported plan carries on from the next number: week 3 after weeks 1 and 2.
+ */
+export function weeksAlreadyDone(weeks: PlanWeek[], start: string): number {
+  const ws = weeks.filter((w) => w.start < start).sort((a, b) => a.start.localeCompare(b.start));
+  let n = 0;
+  let next = start;
+  let nextLabel: number | null = null;
+  let doubled = false;
+  for (let i = ws.length - 1; i >= 0; i--) {
+    const w = ws[i];
+    const label = /^\s*\d+\s*$/.test(w.week) ? Number(w.week) : NaN;
+    if (!Number.isFinite(label) || addDays(w.start, 7) !== next) break;
+    if (nextLabel !== null) {
+      if (label === nextLabel - 1) {
+        /* counting down */
+      } else if (label === 1 && nextLabel === 1 && !doubled) doubled = true;
+      else break;
+    }
+    n++;
+    next = w.start;
+    nextLabel = label;
+  }
+  return n;
+}
+
+/** The first week a plan change may touch: past weeks and the week you're in stay as they are (it's next Monday, or today if it's Monday). */
+export const firstChangeableMonday = (today: string) => (mondayOf(today) < today ? addDays(mondayOf(today), 7) : mondayOf(today));
+
 /** Monday of the week containing `day`. */
 export function mondayOf(day: string): string {
   const dow = parseKey(day).getDay();
@@ -216,7 +248,11 @@ export async function savePlanRaces(races: PlanRace[]) {
 export async function restorePreviousPlan() {
   const { plan } = await loadPlanFile();
   if (!plan.previous) return;
-  await backend.writeDataFile(PLAN_FILE, JSON.stringify({ ...plan.previous, editedInApp: new Date().toISOString() }, null, 2));
+  // Going back keeps what you've done since: past weeks and this week stay as they are now.
+  const cut = firstChangeableMonday(todayKey());
+  const prev = plan.previous;
+  const weeks = [...plan.weeks.filter((w) => w.start < cut), ...prev.weeks.filter((w) => w.start >= cut)];
+  await backend.writeDataFile(PLAN_FILE, JSON.stringify({ ...prev, weeks, editedInApp: new Date().toISOString() }, null, 2));
   window.dispatchEvent(new Event("cc:plan-changed"));
 }
 

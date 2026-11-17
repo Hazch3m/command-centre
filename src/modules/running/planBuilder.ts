@@ -1,7 +1,7 @@
 import { addDays, diffDays } from "../../core/time";
 import { targetTime } from "./fitness";
 import { raceKmFor } from "./forecast";
-import { mondayOf, priorityOf, WEEK_KEYS, type DayKey, type Plan, type PlanRace, type PlanWeek } from "./plan";
+import { firstChangeableMonday, mondayOf, priorityOf, weeksAlreadyDone, WEEK_KEYS, type DayKey, type Plan, type PlanRace, type PlanWeek } from "./plan";
 import { weeklyTotals } from "./stats";
 import type { Run } from "./strava";
 import { predictTime, vdot as vdotOf } from "./vo2";
@@ -742,9 +742,11 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
     longCap: { ...L0.longCap, [o.dist]: T.longest ?? L0.longCap[o.dist] },
   };
   const raceMonday = mondayOf(o.raceDate);
-  const firstAllowed = mondayOf(today) < today ? addDays(mondayOf(today), 7) : mondayOf(today);
+  const firstAllowed = firstChangeableMonday(today);
   let start = addDays(raceMonday, -(o.weeks - 1) * 7);
   if (start < firstAllowed) start = firstAllowed;
+  // The weeks of this block you've already done stay, and the new weeks carry on numbering after them.
+  const doneBefore = weeksAlreadyDone(old.weeks, start);
   const N = Math.max(1, diffDays(start, raceMonday) / 7 + 1);
   const goal: Goal = o.goal ?? "race";
   const isRace = goal === "race";
@@ -1226,7 +1228,7 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
               ? "The race drops a lot: run some easy runs and the long run downhill to get your quads used to it."
               : "";
     const out: PlanWeek = {
-      week: String(i + 1),
+      week: String(doneBefore + i + 1),
       start: b.monday,
       end: addDays(b.monday, 6),
       phase: PHASE_NAME[b.phase],
@@ -1398,9 +1400,11 @@ function startSession(rw: RunWalk, last: boolean): { text: string; km: number; m
 
 /** A beginner's plan: three run/walk sessions a week, building to 30 minutes of running. No race or 5k time needed. */
 export function buildStartPlan(old: Plan, o: BuildOptions, h: History, today: string): { plan: Plan; weeks: BuiltWeek[] } {
-  const firstAllowed = mondayOf(today) < today ? addDays(mondayOf(today), 7) : mondayOf(today);
+  const firstAllowed = firstChangeableMonday(today);
   const N = Math.max(3, Math.min(20, o.weeks || START_WEEKS.length));
   const start = firstAllowed;
+  // A new kind of plan starts at week 1 (your past weeks are kept as they are).
+  const doneBefore = 0;
   const end = addDays(start, N * 7 - 1);
   // Runs on three days with a rest day between; the third on your long-run day. Other days: rest or a walk.
   const runDays: DayKey[] = o.longDay === "sat" ? ["mon", "wed", "sat"] : ["tue", "thu", "sun"];
@@ -1418,7 +1422,7 @@ export function buildStartPlan(old: Plan, o: BuildOptions, h: History, today: st
     const km = Math.round(sess.km * 3 * 10) / 10;
     built.push({ monday, phase: "base", km, long: sess.km, cut: false });
     weeks.push({
-      week: String(i + 1),
+      week: String(doneBefore + i + 1),
       start: monday,
       end: addDays(monday, 6),
       phase: i < Math.ceil(N * 0.55) ? "Run/walk" : "Running",
@@ -1500,9 +1504,11 @@ const B5_EASY = [3.5, 4, 4, 3.5, 4.5, 4.5, 5, 4, 5, 3];
 const B5_CUT = new Set([3, 7]);
 
 export function buildBeyond5kPlan(old: Plan, o: BuildOptions, h: History, today: string): { plan: Plan; weeks: BuiltWeek[] } {
-  const firstAllowed = mondayOf(today) < today ? addDays(mondayOf(today), 7) : mondayOf(today);
+  const firstAllowed = firstChangeableMonday(today);
   const N = Math.max(4, Math.min(20, o.weeks || B5_LONG.length));
   const start = firstAllowed;
+  // A new kind of plan starts at week 1 (your past weeks are kept as they are).
+  const doneBefore = 0;
   const end = addDays(start, N * 7 - 1);
   // Paces from the 5k time you give (or your running); about 35 min if neither is known.
   const tSec = o.target ? targetTime(o.target, 5000) : null;
@@ -1543,7 +1549,7 @@ export function buildBeyond5kPlan(old: Plan, o: BuildOptions, h: History, today:
     const cut = B5_CUT.has(j);
     built.push({ monday: addDays(start, i * 7), phase: last ? "race" : "base", km, long: last ? 7 : B5_LONG[j], cut });
     weeks.push({
-      week: String(i + 1),
+      week: String(doneBefore + i + 1),
       start: addDays(start, i * 7),
       end: addDays(start, i * 7 + 6),
       phase: last ? "Time trial" : i < N / 2 ? "Building" : "Stronger",
