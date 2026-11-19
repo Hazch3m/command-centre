@@ -32,10 +32,32 @@ export interface AutoSyncSettings {
 }
 
 /** Easy steps' heart-rate targets as you chose: none, an upper limit only, or the zone. */
-export function easyTargets(w: Workout, mode: AutoSyncSettings["easy"], ceiling: number | null): Workout {
+/** The plan's own heart-rate bands for easy and long runs ([low, high] bpm), when it has them. */
+export interface EasyBands {
+  easy?: [number, number];
+  long?: [number, number];
+}
+export function easyBands(plan: Plan): EasyBands {
+  const M = plan.built?.hr?.max;
+  if (M) return { easy: [Math.round(M * 0.68), Math.round(M * 0.755)], long: [Math.round(M * 0.68), Math.round(M * 0.78)] };
+  const band = (re: RegExp): [number, number] | undefined => {
+    const m = /(\d{2,3})\s*[–-]\s*(\d{2,3})/.exec(plan.paces.find((x) => re.test(x.zone))?.hr ?? "");
+    return m ? [+m[1], +m[2]] : undefined;
+  };
+  return { easy: band(/^Easy/i), long: band(/^Long/i) ?? band(/^Easy/i) };
+}
+
+/**
+ * Easy parts of a workout (easy and long runs, warm-ups, cool-downs) by your setting: no target, a ceiling, or a
+ * heart-rate band. The plan's bands (easy 68–75.5% of max, long runs up to 78%) are used where it has them, else
+ * Garmin's zone 2.
+ */
+export function easyTargets(w: Workout, mode: AutoSyncSettings["easy"], ceiling: number | null, bands: EasyBands = {}): Workout {
   const m = mode ?? "off";
-  if (m === "zone") return w;
-  const fix = (st: Step): Step => (/^hr\s+zone\s+[12]$/i.test(st.target) ? { ...st, target: m === "ceiling" && ceiling ? `hr 60-${ceiling}` : "open" } : st);
+  const band = /^long/i.test(w.name) ? (bands.long ?? bands.easy) : bands.easy;
+  if (m === "zone" && !band) return w;
+  const target = m === "zone" ? `hr ${band![0]}-${band![1]}` : m === "ceiling" ? (band ? `hr 60-${band[1]}` : ceiling ? `hr 60-${ceiling}` : "open") : "open";
+  const fix = (st: Step): Step => (/^hr\s+zone\s+[12]$/i.test(st.target) ? { ...st, target } : st);
   return { ...w, steps: w.steps.map((it) => (it.kind === "repeat" ? { ...it, steps: it.steps.map(fix) } : fix(it))) };
 }
 export const AUTOSYNC_SETTINGS = "watch.autosync.settings";
@@ -73,6 +95,7 @@ export function wanted(plan: Plan, from: string, days: number, easy?: { mode: Au
   const out = new Map<string, { w: NonNullable<ReturnType<typeof sessionToWorkout>>; hash: string }>() as Map<string, { w: NonNullable<ReturnType<typeof sessionToWorkout>>; hash: string }> & { ran: Set<string> };
   out.ran = new Set<string>();
   const zones = zonesOf(plan);
+  const bands = easyBands(plan);
   for (let m = mondayOf(from); m <= addDays(from, days - 1); m = addDays(m, 7)) {
     for (const d of forecastWeek(plan, m).days) {
       if (d.date < from || d.date > addDays(from, days - 1)) continue;
@@ -81,7 +104,7 @@ export function wanted(plan: Plan, from: string, days: number, easy?: { mode: Au
       if (d.kind === "rest" || d.race || d.kind === "race" || !(d.km ?? 0) || d.runs.length) continue;
       const w0 = sessionToWorkout(d.text, zones);
       if (!w0) continue;
-      const w = easyTargets(w0, easy?.mode, easy?.ceiling ?? null);
+      const w = easyTargets(w0, easy?.mode, easy?.ceiling ?? null, bands);
       try {
         out.set(d.date, { w, hash: JSON.stringify(toGarmin(w)) });
       } catch {

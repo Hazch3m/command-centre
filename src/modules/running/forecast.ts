@@ -195,7 +195,10 @@ function paceFor(plan: Plan, text: string, kind: DayKind): string | null {
     if (hz) return easyish && prefs.easyTarget === "feel" ? `easy, under ${hz.range[1]} bpm` : hrText(hz.range);
   }
   // The plan gives heart rates too (built with yours): both, pace first.
-  const hrNote = z?.hr ? planHr(z.hr) : null;
+  // (Long runs: the long-run band from your heart rates, for plans built before it had its own.)
+  const M = plan.built?.hr?.max;
+  const longHr = kind === "long" && /^Long/i.test(z?.zone ?? "") && M ? `${Math.round(M * 0.68)}–${Math.round(M * 0.78)}` : null; // = hrTargets().long
+  const hrNote = longHr ? planHr(longHr) : z?.hr ? planHr(z.hr) : null;
   const both = (x: string | null) => (x && hrNote ? `${x} · ${hrNote}` : x ?? hrNote);
   if (easyish && prefs && pace) {
     if (prefs.easyTarget === "feel") return both("easy, by feel");

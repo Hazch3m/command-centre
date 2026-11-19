@@ -775,14 +775,16 @@ function timed(n: number, min: number, pace: number, tag: string, jog: string, j
  * Heart-rate targets from your max (and threshold) heart rate: easy and long runs about 68–75% of max,
  * recovery under 68%, threshold up to your threshold heart rate, VO2 max reps 93–97% of max by the end of each.
  */
-export function hrTargets(hr: BuildOptions["hr"]): Record<"recovery" | "easy" | "mp" | "hmp" | "threshold" | "vo2", string> {
-  if (!hr?.max) return { recovery: "", easy: "", mp: "", hmp: "", threshold: "", vo2: "" };
+export function hrTargets(hr: BuildOptions["hr"]): Record<"recovery" | "easy" | "long" | "mp" | "hmp" | "threshold" | "vo2", string> {
+  if (!hr?.max) return { recovery: "", easy: "", long: "", mp: "", hmp: "", threshold: "", vo2: "" };
   const M = hr.max;
   const T = hr.lthr ?? Math.round(M * 0.92);
   const r = (x: number) => Math.round(x);
   return {
     recovery: `under ${r(M * 0.68)}`,
     easy: `${r(M * 0.68)}–${r(M * 0.755)}`,
+    // Long runs: a little more room at the top (78% of max), for the drift late in a long run.
+    long: `${r(M * 0.68)}–${r(M * 0.78)}`,
     mp: `${r(T * 0.91)}–${r(T * 0.95)}`,
     hmp: `${r(T * 0.95)}–${r(T * 0.98)}`,
     threshold: `${r(T - 8)}–${T}`,
@@ -1787,7 +1789,7 @@ export function buildPlan(old0: Plan, o: BuildOptions, h: History, today: string
   const paces: Plan["paces"] = [
     zone("Recovery", range(...pNow.recovery), range(...pEnd.recovery), "The day after the long run", HR.recovery),
     zone("Easy", range(...pNow.easy), range(...pEnd.easy), "Most of your running", HR.easy),
-    zone("Long run (easy part)", range(...pNow.long), range(...pEnd.long), "Long runs", HR.easy),
+    zone("Long run (easy part)", range(...pNow.long), range(...pEnd.long), "Long runs", HR.long),
     zone("Marathon pace (MP)", around(pNow.mp), around(o.dist === "marathon" && goalPace ? goalPace : pEnd.mp), "Race-pace sections", HR.mp),
     zone("Half marathon pace (HMP)", around(pNow.hmp), around(o.dist === "half" && goalPace ? goalPace : pEnd.hmp), "Half-specific sessions", HR.hmp),
     zone("Threshold (T)", around(pNow.threshold), around(pEnd.threshold), "Comfortably hard, about 1-hour race effort; keep your heart rate at or under threshold", HR.threshold),

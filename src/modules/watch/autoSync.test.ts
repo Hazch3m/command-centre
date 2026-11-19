@@ -102,4 +102,17 @@ describe("easy-run alerts", () => {
     const rec = sessionToWorkout("5 km recovery")!;
     expect(all(rec)).not.toMatch(/hr zone 1/);
   });
+
+  it("uses the plan's bands where it has them: long runs up to 78% of max, easy runs up to 75.5%", async () => {
+    const { easyTargets, easyBands } = await import("./autoSync");
+    const { sessionToWorkout } = await import("./importWeek");
+    const bands = easyBands({ paces: [], built: { hr: { max: 199, lthr: 188 } } } as never);
+    expect(bands).toEqual({ easy: [135, 150], long: [135, 155] });
+    const long = sessionToWorkout("22 km long run")!;
+    expect(JSON.stringify(easyTargets(long, "zone", 140, bands))).toMatch(/hr 135-155/);
+    expect(JSON.stringify(easyTargets(long, "ceiling", 140, bands))).toMatch(/hr 60-155/);
+    const easy = sessionToWorkout("9 km easy")!;
+    expect(JSON.stringify(easyTargets(easy, "ceiling", 140, bands))).toMatch(/hr 60-150/);
+    expect(JSON.stringify(easyTargets(long, "off", 140, bands))).not.toMatch(/hr /);
+  });
 });
