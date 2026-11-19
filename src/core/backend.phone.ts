@@ -133,7 +133,7 @@ const stage = (s: string | null) => {
 };
 
 async function sql() {
-  SQL ??= await initSqlJs({ locateFile: () => wasmUrl });
+  SQL ??= await initSqlJs({ locateFile: () => wasmUrl } as unknown as Parameters<typeof initSqlJs>[0]);
   return SQL;
 }
 
