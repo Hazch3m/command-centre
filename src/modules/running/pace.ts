@@ -73,6 +73,32 @@ export function workKm(text: string, pace: number): { km: number; rep: number | 
   return null;
 }
 
+type Lap = NonNullable<RunDetail["laps"]>[number];
+/**
+ * The work in a session's watch laps when the laps aren't one per rep: the watch's 1 km auto-laps inside 3 km reps,
+ * say. Runs of consecutive quick laps (quicker than `quick` s/km) are the reps; they count if there are 2 or more
+ * about the right length, or if together they're about the work distance.
+ */
+function quickLapWork(laps: Lap[], repKm: number | null, totalKm: number | null, quick: number): Lap[] | null {
+  const fast = (l: Lap) => l.distance >= 150 && l.moving_time / (l.distance / 1000) < quick;
+  const blocks: Lap[][] = [];
+  let cur: Lap[] = [];
+  for (const l of laps) {
+    if (fast(l)) cur.push(l);
+    else if (cur.length) (blocks.push(cur), (cur = []));
+  }
+  if (cur.length) blocks.push(cur);
+  if (!blocks.length) return null;
+  const km = (b: Lap[]) => b.reduce((a, l) => a + l.distance, 0) / 1000;
+  if (repKm) {
+    const like = blocks.filter((b) => km(b) > repKm * 0.7 && km(b) < repKm * 1.3);
+    if (like.length >= 2) return like.flat();
+  }
+  const all = blocks.flat();
+  const sum = all.reduce((a, l) => a + l.distance, 0) / 1000;
+  return totalKm && sum > totalKm * 0.7 && sum < totalKm * 1.3 && all.length >= 2 ? all : null;
+}
+
 function verdictFor(off: number, easy: boolean): PaceVerdict {
   if (off === 0 || (easy && off > 0)) return "on-point";
   if (off < 0) return off >= -6 ? "slightly-fast" : "too-fast";
@@ -115,6 +141,14 @@ export function checkRun(day: ForecastDay, run: Run, detail: RunDetail | null): 
     if (like.length >= 2) {
       segs = like.map((l) => ({ distance: l.distance, time: l.moving_time }));
       measured = `${like.length} work laps`;
+    }
+  }
+  // Laps that split the reps up (1 km auto-laps in 3 km reps): the quick laps together are the work.
+  if (!segs.length && laps.length >= 3) {
+    const q = quickLapWork(laps, work?.rep ?? null, work?.km ?? null, mid * 1.12);
+    if (q) {
+      segs = q.map((l) => ({ distance: l.distance, time: l.moving_time }));
+      measured = `${q.length} work laps`;
     }
   }
   if (!segs.length) {
@@ -166,6 +200,14 @@ function checkHr(day: ForecastDay, run: Run, detail: RunDetail | null, [lo, hi]:
     if (reps.length >= 2) {
       segs = reps.map((l) => ({ distance: l.distance, hr: l.hr! }));
       measured = `${reps.length} work laps`;
+    }
+  }
+  // Laps that split the reps up: runs of quick laps (within 12% of the quickest lap) are the reps.
+  if (!segs.length && laps.length >= 3) {
+    const q = quickLapWork(laps, work?.rep ?? null, work?.km ?? null, Math.min(...laps.map((l) => l.moving_time / (l.distance / 1000))) * 1.12);
+    if (q) {
+      segs = q.map((l) => ({ distance: l.distance, hr: l.hr! }));
+      measured = `${q.length} work laps`;
     }
   }
   if (!segs.length) {
