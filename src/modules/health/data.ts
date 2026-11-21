@@ -265,6 +265,12 @@ function chunks(from: string, to: string, days: number): [string, string][] {
 let running: Promise<HealthSync> | null = null;
 
 /** Pulls recent days from Garmin: 4 months the first time, then the last week. */
+/** How far back the history goes (Garmin may have less). */
+export const BACKFILL_FROM = "2025-05-01";
+const BACKFILL_KEY = "health.backfill";
+/** Where the history has got to: the earliest day fetched. */
+export const getBackfill = () => kvGet<{ earliest: string } | null>(BACKFILL_KEY, null);
+
 export function syncHealth(): Promise<HealthSync> {
   running ??= doSync().finally(() => (running = null));
   return running;
@@ -391,6 +397,7 @@ async function doSync(): Promise<HealthSync> {
     }
   });
   await kvSet("health.sleepDebug", sleepDebug);
+  let sleepShift = 0;
   await step("sleep history", async () => {
     const stats: Patch = new Map();
     for (const [a, b] of chunks(from, today, 28)) parseSleep(await get(`/sleep-service/stats/sleep/daily/${a}/${b}`), stats);
@@ -403,6 +410,7 @@ async function doSync(): Promise<HealthSync> {
         break;
       }
     }
+    sleepShift = shift;
     for (const [date, f] of stats) {
       const d = addDays(date, shift);
       if (!nights.has(d) && d <= today) put(patch, d, f);
@@ -421,6 +429,52 @@ async function doSync(): Promise<HealthSync> {
       parsePredictions(await get(`/metrics-service/metrics/racepredictions/latest/${dn}`), patch, today);
     });
   } else errors.push("resting HR and race predictions: couldn't read your Garmin profile name");
+
+  // History: going back to May 2025 (or as far as Garmin has), up to 360 days a sync, so the first syncs fill it
+  // in a few goes without asking Garmin for too much at once. Where it's got to is kept, so a failed go resumes.
+  const bf = await kvGet<{ earliest: string } | null>(BACKFILL_KEY, null);
+  let earliest = bf?.earliest ?? addDays(today, -120);
+  if (earliest > BACKFILL_FROM) {
+    for (let k = 0; k < 3 && earliest > BACKFILL_FROM; k++) {
+      const b = addDays(earliest, -1);
+      const a = addDays(earliest, -120) < BACKFILL_FROM ? BACKFILL_FROM : addDays(earliest, -120);
+      // Older days Garmin doesn't have can fail: a window counts as done when most of it came back.
+      let ok = 0;
+      const fails: string[] = [];
+      const old = async (what: string, fn: () => Promise<void>) => {
+        try {
+          await fn();
+          ok++;
+        } catch (e) {
+          const msg = String((e as Error)?.message ?? e);
+          if (msg.startsWith("offline")) offline = true;
+          fails.push(`${what}: ${msg}`);
+        }
+      };
+      await old("HRV", async () => {
+        for (const [x, y] of chunks(a, b, 28)) parseHrv(await get(`/hrv-service/hrv/daily/${x}/${y}`), patch);
+      });
+      if (name) await old("resting HR", async () => parseRhr(await get(`/userstats-service/wellness/daily/${encodeURIComponent(name!)}?fromDate=${a}&untilDate=${b}&metricId=60`), patch));
+      await old("sleep", async () => {
+        const stats: Patch = new Map();
+        for (const [x, y] of chunks(a, b, 28)) parseSleep(await get(`/sleep-service/stats/sleep/daily/${x}/${y}`), stats);
+        for (const [date, f] of stats) put(patch, addDays(date, sleepShift), f);
+      });
+      await old("Body Battery", async () => {
+        for (const [x, y] of chunks(a, b, 28)) parseBodyBattery(await get(`/wellness-service/wellness/bodyBattery/reports/daily?startDate=${x}&endDate=${y}`), patch, today);
+      });
+      await old("VO2 max", async () => {
+        for (const [x, y] of chunks(a, b, 60)) parseVo2(await get(`/metrics-service/metrics/maxmet/daily/${x}/${y}`), patch);
+      });
+      if (offline) break;
+      if (ok < 3) {
+        errors.push(`history ${a} to ${b}: ${fails.join("; ")}`);
+        break;
+      }
+      earliest = a;
+    }
+    await kvSet(BACKFILL_KEY, { earliest });
+  }
 
   const stamp = new Date().toISOString();
   const stmts = [...patch.entries()].map(([date, f]) => {

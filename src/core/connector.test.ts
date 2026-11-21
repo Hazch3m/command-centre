@@ -28,6 +28,11 @@ async function copy() {
   // The same morning from Strava's API (left out) and from Apple Health (Garmin's copy wins).
   add("99999", day(1), 8, 300, 145);
   add("hk" + "a".repeat(32), day(1), 8, 300, 145);
+  // 60 days of Garmin wellness: resting HR 48 then 53 in the last 5 days; HRV 70, low lately.
+  for (let i = 0; i < 60; i++)
+    db.run("INSERT INTO health_daily (date, rhr, hrv, hrv_week, hrv_status, sleep_secs, sleep_score, bb_high, bb_low, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'x')", [
+      day(i), i < 5 ? 53 : 48, i < 7 ? 55 : 70, 66, i < 7 ? "UNBALANCED" : "BALANCED", 7.5 * 3600, 80, 90, 20,
+    ]);
   return { db, files: { "training-plan.json": JSON.stringify(BUNDLED_PLAN) }, creds: { secret: "s", garmin: null, google: null, ics: [] } };
 }
 
@@ -47,7 +52,7 @@ describe("Pacelife for Claude (MCP)", () => {
     expect(init.json?.result).toMatchObject({ protocolVersion: "2025-06-18", serverInfo: { name: "Pacelife" } });
     expect((await call({ jsonrpc: "2.0", method: "notifications/initialized" })).status).toBe(202);
     const list = await call({ jsonrpc: "2.0", id: 2, method: "tools/list" });
-    expect(list.json?.result?.tools?.map((t) => t.name)).toEqual(["get_overview", "get_plan", "get_runs", "get_run", "get_progress", "get_projections"]);
+    expect(list.json?.result?.tools?.map((t) => t.name)).toEqual(["get_overview", "get_plan", "get_runs", "get_run", "get_progress", "get_wellness", "get_projections"]);
   });
 
   it("gives runs without Strava's API ones, and one copy of each run", async () => {
@@ -72,6 +77,15 @@ describe("Pacelife for Claude (MCP)", () => {
     expect(none.json?.result?.isError).toBe(true);
     const proj = await call({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "get_projections", arguments: {} } });
     expect(proj.json?.result?.content?.[0].text).toBeTruthy();
+  });
+
+  it("gives daily wellness with 7- and 30-day averages and the lowest 30-day average on record", async () => {
+    const w = await tool("get_wellness", { from: day(6), to: day(0) });
+    expect(w.days).toHaveLength(7);
+    expect(w.days[6]).toMatchObject({ date: day(0), resting_hr: 53, hrv_last_night_ms: 55, hrv_status: "unbalanced", sleep_hours: 7.5 });
+    expect(w.averages.resting_hr.last_7_days).toBeCloseTo((5 * 53 + 2 * 48) / 7, 1);
+    expect(w.averages.resting_hr.lowest_30_day_average).toEqual({ value: 48, period_end: day(5) });
+    expect(w.history_from).toBe(day(59));
   });
 
   it("refuses unknown methods and tools", async () => {

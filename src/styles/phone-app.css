@@ -5501,3 +5501,12 @@ svg.effort {
 .p-daysoff-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.88rem; }
 .p-daysoff-list li span { display: inline-block; width: 2.4rem; color: var(--muted); }
 .p-daysoff-list li.changed { font-weight: 600; }
+
+/* Resting HR and HRV trend (Stats) */
+.wt { display: flex; flex-direction: column; gap: 0.5rem; }
+.wt-chart { margin-bottom: 0.4rem; }
+.wt-dot { fill: color-mix(in srgb, var(--wt) 45%, transparent); }
+.wt-line { fill: none; stroke: var(--wt); stroke-width: 2.2; stroke-linejoin: round; }
+.wt-band { fill: color-mix(in srgb, var(--z-easy) 14%, transparent); }
+.wt-rhr { --wt: var(--z-vo2); }
+.wt-hrv { --wt: var(--accent); }

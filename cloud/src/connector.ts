@@ -14,7 +14,8 @@ import { forecastWeek, raceKm } from "../../src/modules/running/forecast";
 import { pacesFor } from "../../src/modules/running/planBuilder";
 import { predictTime } from "../../src/modules/running/vo2";
 import { loadDetails, loadOverrides, loadReadings, type Run, type RunDetail } from "../../src/modules/running/strava";
-import { latestPredictions } from "../../src/modules/health/data";
+import { latestPredictions, type HealthDay } from "../../src/modules/health/data";
+import { summarize } from "../../src/modules/health/wellness";
 import { kvGet, db as appDb } from "../../src/core/db";
 import { addDays } from "../../src/core/time";
 
@@ -87,6 +88,8 @@ interface World {
   details: Map<string, RunDetail>;
   fitness: Fitness | null;
   overrides: Map<string, string>;
+  /** Garmin's daily wellness numbers (resting HR, HRV, sleep, Body Battery). */
+  health: HealthDay[];
 }
 
 async function readWorld(today: string): Promise<World> {
@@ -112,7 +115,8 @@ async function readWorld(today: string): Promise<World> {
     fitness = null;
   }
   const overrides = await loadOverrides().catch(() => new Map<string, string>());
-  return { today, plan, planError, runs, details, fitness, overrides };
+  const health = await appDb.select<HealthDay>("SELECT * FROM health_daily ORDER BY date").catch(() => [] as HealthDay[]);
+  return { today, plan, planError, runs, details, fitness, overrides, health };
 }
 
 /** Opens the app's code on your copy, runs `f`, and puts back whatever was open before (a sync, say). */
@@ -387,6 +391,56 @@ const TOOLS: { name: string; description: string; inputSchema: object; run: (w: 
     },
   },
   {
+    name: "get_wellness",
+    description:
+      "Daily wellness from Garmin for a date range: resting heart rate, HRV (last night's average, the 7-day average, status and the balanced range), sleep (hours and score) and Body Battery (high and low). Plus, for resting HR, HRV, sleep and Body Battery: the last 7 and 30 days' averages and the lowest and highest 30-day average on record. Defaults to the last 30 days; up to 800 days.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        from: { type: "string", description: "First day (YYYY-MM-DD). Default: 30 days ago." },
+        to: { type: "string", description: "Last day (YYYY-MM-DD). Default: today." },
+      },
+      additionalProperties: false,
+    },
+    run: (w, a) => {
+      const to = str(a, "to") ?? w.today;
+      let from = str(a, "from") ?? addDays(to, -29);
+      if (from < addDays(to, -799)) from = addDays(to, -799);
+      if (!w.health.length) return { error: "No daily wellness data from Garmin yet: connect Garmin in Pacelife (Settings → Garmin) and let it sync." };
+      const sum = (k: Parameters<typeof summarize>[1], round: (x: number | null) => number | null) => {
+        const s = summarize(w.health, k, w.today);
+        const p = (x: { value: number; period_end: string } | null) => (x ? { value: round(x.value), period_end: x.period_end } : null);
+        return { last_7_days: round(s.last_7_days), last_30_days: round(s.last_30_days), lowest_30_day_average: p(s.lowest_30_day_average), highest_30_day_average: p(s.highest_30_day_average) };
+      };
+      return {
+        from,
+        to,
+        history_from: w.health.find((h) => h.rhr != null || h.hrv != null)?.date ?? w.health[0].date,
+        days: w.health
+          .filter((h) => h.date >= from && h.date <= to)
+          .map((h) => ({
+            date: h.date,
+            resting_hr: h.rhr != null ? Math.round(h.rhr) : null,
+            hrv_last_night_ms: h.hrv != null ? Math.round(h.hrv) : null,
+            hrv_7_day_avg_ms: h.hrv_week != null ? Math.round(h.hrv_week) : null,
+            hrv_status: h.hrv_status ? h.hrv_status.toLowerCase().replace(/_/g, " ") : null,
+            hrv_balanced_range_ms: h.hrv_low != null && h.hrv_high != null ? `${Math.round(h.hrv_low)}–${Math.round(h.hrv_high)}` : null,
+            sleep_hours: h.sleep_secs != null ? r1(h.sleep_secs / 3600) : null,
+            sleep_score: h.sleep_score != null ? Math.round(h.sleep_score) : null,
+            body_battery_high: h.bb_high != null ? Math.round(h.bb_high) : null,
+            body_battery_low: h.bb_low != null ? Math.round(h.bb_low) : null,
+          })),
+        averages: {
+          resting_hr: sum("rhr", r1),
+          hrv_last_night_ms: sum("hrv", r1),
+          sleep_hours: sum("sleep_secs", (x) => (x == null ? null : r1(x / 3600))),
+          sleep_score: sum("sleep_score", r1),
+          body_battery_high: sum("bb_high", r1),
+        },
+      };
+    },
+  },
+  {
     name: "get_projections",
     description:
       "Predicted race times and paces now, how they've moved over the last month, the speed–endurance model behind them, and for each upcoming race: the projected fitness on race day (if the plan's trend holds), the time that projects to, and the goal.",
@@ -431,7 +485,7 @@ const TOOLS: { name: string; description: string; inputSchema: object; run: (w: 
 ];
 
 const INSTRUCTIONS =
-  "Pacelife holds this runner's training plan and runs. Call get_overview first, then get_progress for improvement over time, get_plan for the plan (planned vs done), get_runs and get_run for specific runs, and get_projections for predicted times and paces. VDOT is Jack Daniels' running-fitness number; paces are min:sec per km. Read-only. Runs from Strava's API connection are not included.";
+  "Pacelife holds this runner's training plan and runs. Call get_overview first, then get_progress for improvement over time, get_plan for the plan (planned vs done), get_runs and get_run for specific runs, get_projections for predicted times and paces, and get_wellness for Garmin's daily resting heart rate, HRV, sleep and Body Battery. VDOT is Jack Daniels' running-fitness number; paces are min:sec per km. Read-only. Runs from Strava's API connection are not included.";
 
 // ---- The protocol ----------------------------------------------------------------------------
 
