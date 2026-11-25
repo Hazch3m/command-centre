@@ -22,22 +22,20 @@ import { PracticeTag } from "../modules/running/PracticeTag";
 import { PlanCoach } from "../modules/running/PlanCoach";
 import { isEmptyPlan } from "../core/account";
 
-import { PaceOnTrack } from "./PaceOnTrack";
 import { RaceManager } from "../modules/running/RaceManager";
-import { FitnessPredictor, GoalCarousel, PlanWeeksChart } from "./PlanGoals";
+import { FitnessPredictor, PlanWeeksChart } from "./PlanGoals";
 import { WeekAhead } from "./WeekAhead";
 import { DayBars } from "./DayBars";
-import { CoachCard } from "../modules/running/Coach";
 
-type View = "week" | "plan" | "progress" | "races";
+type View = "week" | "plan" | "races";
 const VIEWS: { id: View; label: string; icon: string }[] = [
   { id: "week", label: "Week", icon: "M4 5h16v15H4zM4 9h16M8 3v4M16 3v4M7.5 13h2M11 13h2M14.5 13h2" },
   { id: "plan", label: "Plan", icon: "M4 5h16M4 10h16M4 15h16M4 20h10" },
-  { id: "progress", label: "Progress", icon: "M3 20h18M5 16l4-5 4 3 6-8M15 6h4v4" },
   { id: "races", label: "Races", icon: "M6 21V4M6 4h11l-2 4 2 4H6" },
 ];
 /** Old view names (All weeks, Pace on point) still land somewhere sensible. */
-const viewOf = (v: string | null | undefined): View => (v === "calendar" ? "plan" : v === "pace" ? "progress" : v === "plan" || v === "progress" || v === "races" ? v : "week");
+// (Progress has its own tab now: old links to the Plan's progress view open the week.)
+const viewOf = (v: string | null | undefined): View => (v === "calendar" ? "plan" : v === "plan" || v === "races" ? v : "week");
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const fmt = (d: string) => `${parseKey(d).getDate()} ${MON[parseKey(d).getMonth()]}`;
 const phase = (p: string) => p.replace(/\s*\(.*\)\s*$/, "").replace(/^Recovery and /, "");
@@ -338,15 +336,6 @@ export function Training() {
               <span className="p-chev">›</span>
             </button>
           </Section>
-        </>
-      )}
-      {view === "progress" && (
-        <>
-          <Section title="How you're doing">
-            <CoachCard plan={plan} runs={runs} />
-          </Section>
-          <GoalCarousel plan={plan} />
-          <PaceOnTrack plan={plan} runs={runs} />
         </>
       )}
       {view === "races" && (

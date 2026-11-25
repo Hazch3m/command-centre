@@ -266,28 +266,27 @@
 .wa.compact { padding-top: 0.75rem; padding-bottom: 0.7rem; gap: 0.3rem; }
 .wa.compact .wa-pager button { height: 1.25rem; width: 1.7rem; font-size: 0.95rem; }
 
-/* Adjust plan: a clear coral button under the Plan tabs. */
+/* Adjust plan: a quiet button under the Plan tabs, not a banner. */
 :root.phone-root .p-adjust-cta {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: 0;
-  border-radius: 18px;
-  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 78%, #ffb38a));
-  color: var(--on-accent, #fff);
+  align-self: flex-start;
+  gap: 0.5rem;
+  width: auto;
+  padding: 0.5rem 0.95rem 0.5rem 0.75rem;
+  border: 1px solid var(--glass-rim-low);
+  border-radius: 999px;
+  background: var(--glass);
+  color: var(--accent);
   font: inherit;
-  text-align: left;
   cursor: pointer;
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 32%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
 }
-:root.phone-root .p-adjust-cta:active { transform: scale(0.985); }
-:root.phone-root .p-adjust-cta svg { width: 1.6rem; height: 1.6rem; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
-:root.phone-root .p-adjust-cta span:not(.p-chev) { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; flex: 1; }
-:root.phone-root .p-adjust-cta b { font-size: 1.05rem; font-weight: 750; }
-:root.phone-root .p-adjust-cta small { font-size: 0.8rem; opacity: 0.9; }
-:root.phone-root .p-adjust-cta .p-chev { color: inherit; font-size: 1.4rem; opacity: 0.9; }
+:root.phone-root .p-adjust-cta:active { transform: scale(0.97); }
+:root.phone-root .p-adjust-cta svg { width: 1.15rem; height: 1.15rem; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+:root.phone-root .p-adjust-cta span:not(.p-chev) { display: flex; }
+:root.phone-root .p-adjust-cta b { font-size: 0.92rem; font-weight: 650; }
+:root.phone-root .p-adjust-cta small, :root.phone-root .p-adjust-cta .p-chev { display: none; }
 .p-wide .p-adjust-cta { max-width: 34rem; }
 
 /* ---- Headings plain, as on the colour page (the build card and today's run keep their own colours) ---- */

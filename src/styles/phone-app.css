@@ -5510,3 +5510,94 @@ svg.effort {
 .wt-band { fill: color-mix(in srgb, var(--z-easy) 14%, transparent); }
 .wt-rhr { --wt: var(--z-vo2); }
 .wt-hrv { --wt: var(--accent); }
+
+/* =====================================================================
+   Progress: one card per question. Each card leads with its number and trend, then the chart,
+   then one line on where it comes from.
+   ===================================================================== */
+.pg { display: flex; flex-direction: column; gap: 0.9rem; }
+.pg-card {
+  margin: 0;
+  padding: 1rem 1.1rem 0.9rem;
+  border-radius: 22px;
+  background: var(--card);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-rim-low);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.pg-card h2 { margin: 0; font-size: 0.95rem; font-weight: 650; color: var(--text-2); letter-spacing: 0; }
+.pg-lead { margin: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.2rem 0.45rem; color: var(--text-2); font-size: 0.92rem; }
+.pg-big { font-size: 2rem; font-weight: 750; color: var(--text); line-height: 1; }
+.pg-delta { font-size: 0.82rem; font-weight: 650; padding: 0.1rem 0.5rem; border-radius: 999px; }
+.pg-delta.up, .pg-change small.up { color: var(--z-easy); }
+.pg-delta.down, .pg-change small.down { color: var(--z-vo2); }
+.pg-delta.up { background: color-mix(in srgb, var(--z-easy) 14%, transparent); }
+.pg-delta.down { background: color-mix(in srgb, var(--z-vo2) 12%, transparent); }
+.pg-note { margin: 0; font-size: 0.8rem; line-height: 1.45; color: var(--muted); }
+.pg-chart { width: 100%; height: auto; display: block; overflow: visible; }
+.pg-axis { fill: var(--muted); font-size: 9px; }
+.pg-val { fill: var(--text-2); font-size: 8.5px; font-weight: 600; }
+.pg-line { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.pg-proj { fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-dasharray: 4 3; opacity: 0.75; }
+.pg-goal-line { stroke: var(--z-race); stroke-width: 1; stroke-dasharray: 2 3; opacity: 0.7; }
+.pg-race { fill: var(--z-race); stroke: var(--card); stroke-width: 1.2; }
+.pg-today { stroke: var(--line-2); stroke-width: 1; }
+.pg-bar { fill: color-mix(in srgb, var(--z-easy) 70%, transparent); }
+.pg-bar:last-of-type { fill: var(--z-easy); }
+.pg-planned { fill: none; stroke: var(--line-2); stroke-width: 1; stroke-dasharray: 3 2; }
+.pg-done { fill: color-mix(in srgb, var(--accent) 75%, transparent); }
+.pg-done.now { fill: color-mix(in srgb, var(--accent) 35%, transparent); }
+
+/* The goal: three numbers, the middle one is the answer */
+.pg-goal-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
+.pg-goal h2 { font-size: 1.15rem; color: var(--text); }
+.pg-verdict { margin: 0; font-size: 1.25rem; font-weight: 750; }
+.pg-goal.tone-good .pg-verdict { color: var(--z-easy); }
+.pg-goal.tone-amber .pg-verdict { color: var(--z-threshold); }
+.pg-goal.tone-warn .pg-verdict { color: var(--z-vo2); }
+.pg-trio { display: grid; grid-template-columns: 1fr 1.25fr 1fr; gap: 0.4rem; }
+.pg-trio span { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.55rem 0.6rem; border-radius: 14px; background: var(--card-2); min-width: 0; }
+.pg-trio small { font-size: 0.7rem; color: var(--muted); line-height: 1.2; }
+.pg-trio b { font-size: 1.15rem; font-weight: 750; }
+.pg-trio i { font-style: normal; font-size: 0.72rem; color: var(--muted); }
+.pg-trio .hl { background: color-mix(in srgb, var(--accent) 13%, var(--card-2)); }
+.pg-trio .hl b { font-size: 1.4rem; color: var(--accent); }
+
+/* Sessions */
+.pg-changes { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: 0.4rem; }
+.pg-change { display: flex; flex-direction: column; gap: 0.1rem; padding: 0.55rem 0.65rem; border-radius: 14px; background: var(--card-2); }
+.pg-change b { font-size: 0.78rem; color: var(--muted); font-weight: 650; }
+.pg-change span { font-size: 1.05rem; font-weight: 700; }
+.pg-change small { font-size: 0.74rem; font-weight: 600; line-height: 1.3; }
+.pg-sessions, .pg-races { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.pg-sessions li + li, .pg-races li + li { border-top: 1px solid var(--line); }
+.pg-sessions button, .pg-races button { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: grid; grid-template-columns: 3.4rem minmax(0, 1fr) auto auto; align-items: center; gap: 0.5rem; padding: 0.5rem 0; font-size: 0.86rem; }
+.pg-sessions button:focus-visible, .pg-races button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.pg-s-date { color: var(--muted); font-size: 0.78rem; }
+.pg-s-what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pg-s-num { font-weight: 650; }
+.pg-s-num i { font-style: normal; color: var(--muted); font-weight: 500; }
+.pg-s-vdot { color: var(--z-race); font-weight: 700; min-width: 2.4rem; text-align: right; }
+.pg-dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; }
+.pg-dot.ok { background: var(--z-easy); }
+.pg-dot.off { background: var(--z-threshold); }
+
+/* Training */
+.pg-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
+.pg-stats span { display: flex; flex-direction: column; gap: 0.1rem; }
+.pg-stats b { font-size: 1.05rem; font-weight: 700; }
+.pg-stats small { font-size: 0.72rem; color: var(--muted); line-height: 1.25; }
+
+
+/* On a computer: the goal across the top, then the questions two by two */
+.p-wide [data-pane="stats"] .p-screen > :is(.pg-goal, .pg-details) { grid-column: 1 / -1; }
+.p-wide [data-pane="stats"] .pg-details .p-group { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.p-wide .pg-goal { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.6rem 2rem; padding: 1.2rem 1.5rem; }
+.p-wide .pg-goal > .pg-goal-head { flex: 1 1 100%; }
+.p-wide .pg-goal > .pg-verdict { flex: 0 0 auto; font-size: 1.6rem; }
+.p-wide .pg-goal > .pg-trio { flex: 1 1 32rem; }
+.p-wide .pg-goal > .pg-note { flex: 1 1 100%; }
