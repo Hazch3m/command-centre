@@ -19,7 +19,8 @@ const RANGES = [
   { id: 600, label: "All" },
 ] as const;
 
-export function WellnessTrend() {
+/** `card`: as a Progress card (its own title inside), not a titled section. */
+export function WellnessTrend({ card }: { card?: boolean } = {}) {
   const today = useToday();
   const hv = useDataVersion("health");
   const [days, setDays] = useState<number>(90);
@@ -30,8 +31,7 @@ export function WellnessTrend() {
   const rhr = summarize(rows, "rhr", today);
   const hrv = summarize(rows, "hrv", today);
   const f0 = (x: number | null | undefined) => (x == null ? "–" : String(Math.round(x)));
-  return (
-    <Section title="Resting heart rate and HRV">
+  const body = (
       <div className="wt">
         <div className="tl-tiles">
           <span className="tl-tile">
@@ -74,7 +74,14 @@ export function WellnessTrend() {
           </span>
         </div>
       </div>
-    </Section>
+  );
+  return card ? (
+    <section className="pg-card wt-card">
+      <h2>Resting heart rate and HRV</h2>
+      {body}
+    </section>
+  ) : (
+    <Section title="Resting heart rate and HRV">{body}</Section>
   );
 }
 

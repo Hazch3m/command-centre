@@ -331,7 +331,7 @@ export function computeFitness(
   }
   // Calibrate: to Garmin readings when there are any, otherwise to race results
   // from the last year (VDOT), which also puts estimates on the same scale as the goals.
-  const races = plan ? raceHistory(runs, plan).map((r) => ({ date: r.date, name: r.name, vdot: vdot(r.km * 1000, r.time) })) : [];
+  const races = plan ? raceHistory(runs, plan, config.hrMax).map((r) => ({ date: r.date, name: r.name, vdot: vdot(r.km * 1000, r.time) })) : [];
   const recentRaces = races.filter((r) => r.date >= addDays(today, -365)).map((r) => ({ date: r.date, vo2: r.vdot }));
   // Garmin readings are deliberately not used for this: Garmin's VO2 max is on a
   // different (usually higher) scale than VDOT, so shifting onto it would make every
@@ -411,7 +411,7 @@ export function computeFitness(
   const shape = predictionBasis ? marathonShape(runs, today, predictionBasis.vdot, shapeOpts) : null;
   // Main prediction: your own speed–endurance curve from your recent races (like
   // Garmin's, it lets your marathon be relatively slower or faster than your 10k).
-  const raceRows = plan ? raceHistory(runs, plan) : [];
+  const raceRows = plan ? raceHistory(runs, plan, config.hrMax) : [];
   const endurance = enduranceModel(
     raceRows.map((r) => ({ date: r.date, name: r.name, distance: r.km * 1000, seconds: r.time })),
     today,
@@ -432,11 +432,12 @@ export function computeFitness(
     return {
       name: d.name,
       distance: d.distance,
-      // Garmin's predictor when synced (it tracks your racing well); otherwise your own curve.
-      seconds: garminPredictions?.values[d.name] ?? (endurance ? endurance.predict(d.distance) : vdotSeconds),
-      source: (garminPredictions?.values[d.name] ? "garmin" : "own") as "garmin" | "own",
+      // One prediction: your own curve, from your races and hard efforts. Garmin's predictor is kept as a
+      // cross-check (garminSeconds), and used only when there's nothing of your own to go on.
+      seconds: endurance ? endurance.predict(d.distance) : vdotSeconds ?? garminPredictions?.values[d.name] ?? null,
+      source: (endurance || vdotSeconds != null || !garminPredictions?.values[d.name] ? "own" : "garmin") as "garmin" | "own",
       ownSeconds: endurance ? endurance.predict(d.distance) : vdotSeconds,
-      secondsMonthAgo: garminPredictions?.values[d.name] ? garminPredictions?.monthAgo?.[d.name] ?? null : enduranceThen ? enduranceThen.predict(d.distance) : null,
+      secondsMonthAgo: enduranceThen ? enduranceThen.predict(d.distance) : vdotSeconds == null && garminPredictions?.values[d.name] ? garminPredictions?.monthAgo?.[d.name] ?? null : null,
       vdotSeconds,
       shapeSeconds: vdotSeconds != null && shape ? vdotSeconds * shapeFactor(d.distance, shape.total) : null,
       formSeconds: current != null ? predictTime(d.distance, current) : null,
