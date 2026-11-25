@@ -19,7 +19,8 @@ import { PhoneNav, usePhoneNav, type Pushed, type Tab } from "./common";
 import { Habits } from "./Habits";
 import { PbsTab } from "../modules/running/PbsTab";
 import { Runs } from "./Runs";
-import { Stats } from "./Stats";
+import { GoalsPage, LoadPage } from "./Stats";
+import { Progress } from "./Progress";
 import { AccountSection } from "./Account";
 import { PlanAdjustPage } from "./PlanAdjust";
 import { Tasks } from "./Tasks";
@@ -40,18 +41,14 @@ const ALL_TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "planner", label: "Planner", icon: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M8 14l2 2 4-4" },
   { id: "training", label: "Plan", icon: "M4 20h4v-6H4zM10 20h4V10h-4zM16 20h4V5h-4z" },
   { id: "runs", label: "Runs", icon: "M14.5 5.2a1.9 1.9 0 1 0 3.8 0 1.9 1.9 0 1 0-3.8 0M13.6 8.6 11 13.6M13.6 8.6l2.9 2.6 2.6-.9M13.6 8.6l-3.3.9-1.7 2.6M11 13.6l3.4 2.1-1.1 4.6M11 13.6l-2.1 3.4-4.2.9" },
-  { id: "stats", label: "Stats", icon: "M4 20V10M10 20V4M16 20v-7M22 20H2" },
+  { id: "stats", label: "Progress", icon: "M3 20h18M5 16l4-5 4 3 6-8M15 6h4v4" },
 ];
 
 let TABS = ALL_TABS.filter((t) => t.id !== "planner" || plannerShown());
 if (typeof window !== "undefined") window.addEventListener("cc:tabs-changed", () => (TABS = ALL_TABS.filter((t) => t.id !== "planner" || plannerShown())));
-/** On a computer the side bar also opens these pages directly. */
-const WIDE_EXTRA: { id: Exclude<Pushed, null>; label: string; icon: string }[] = [
-  { id: "fitness", label: "Fitness", icon: "M3 12h4l3-8 4 16 3-8h4" },
-  { id: "health", label: "Health", icon: "M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" },
-  { id: "analysis", label: "Analysis", icon: "M4 20V10M10 20V4M16 20v-7M22 20H2" },
-];
 const PUSHED: Record<Exclude<Pushed, null>, { title: string; module: string | null }> = {
+  goals: { title: "Race readiness", module: null },
+  load: { title: "Training load", module: null },
   health: { title: "Health", module: "health" },
   fitness: { title: "Fitness", module: "fitness" },
   plan: { title: "Plan", module: "running" },
@@ -68,6 +65,8 @@ const PUSHED: Record<Exclude<Pushed, null>, { title: string; module: string | nu
   connect: { title: "Your runs", module: null },
 };
 const PUSHED_PAGE: Partial<Record<Exclude<Pushed, null>, () => ReactNode>> = {
+  goals: () => <GoalsPage />,
+  load: () => <LoadPage />,
   adjust: () => <PlanAdjustPage />,
   connect: () => <RunSources />,
   analysis: () => (
@@ -453,7 +452,7 @@ export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
               return (
                 <section key={t.id} data-pane={t.id} className={"p-pane" + (on ? " on" + slide : "")} aria-hidden={!on}>
                   {t.id === "today" && wide ? null : t.id === "today" ? pageTitle(new Date().toLocaleDateString("en-GB", { weekday: "long" }), new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long" })) : pageTitle(t.label)}
-                  {t.id === "today" ? wide ? <WebToday /> : <Today /> : t.id === "training" ? <Training /> : t.id === "runs" ? <Runs /> : t.id === "planner" ? <Planner /> : <Stats />}
+                  {t.id === "today" ? wide ? <WebToday /> : <Today /> : t.id === "training" ? <Training /> : t.id === "runs" ? <Runs /> : t.id === "planner" ? <Planner /> : <Progress />}
                 </section>
               );
             })}
@@ -475,15 +474,6 @@ export function PhoneApp({ wide = false }: { wide?: boolean } = {}) {
                 <span>{t.label}</span>
               </button>
             ))}
-            {wide &&
-              WIDE_EXTRA.map((t) => (
-                <button key={t.id} className={`p-tab p-tab-extra` + (pushed === t.id ? " on" : "")} onClick={() => push(t.id)}>
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d={t.icon} />
-                  </svg>
-                  <span>{t.label}</span>
-                </button>
-              ))}
           </nav>
           <RunViewHost />
         </div>

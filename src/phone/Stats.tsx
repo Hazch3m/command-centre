@@ -1,60 +1,53 @@
 import { useToday } from "../core/time";
-import { ModulePage } from "../shell/Dashboard";
-import { FitnessFrom } from "../modules/running/BuildPlan";
-import { Section, usePhoneNav, useReadiness } from "./common";
-import { TrainingLoad } from "./TrainingLoad";
-import { WellnessTrend } from "./WellnessTrend";
-import { LoadFocusCard, PlanFocusWeeks } from "./Focus";
-import { forecastRange } from "../modules/running/forecast";
 import { isEmptyPlan } from "../core/account";
-import { RunalyzeMore } from "./RunalyzeMore";
+import { forecastRange } from "../modules/running/forecast";
 import { useRunningData } from "../modules/running/useRunning";
+import { FitnessPredictor, GoalCarousel } from "./PlanGoals";
+import { PaceOnTrack } from "./PaceOnTrack";
+import { LoadFocusCard, PlanFocusWeeks } from "./Focus";
+import { TrainingLoad } from "./TrainingLoad";
+import { RunalyzeMore } from "./RunalyzeMore";
+import { Section } from "./common";
+import { CoachCard } from "../modules/running/Coach";
 
-/** Stats, Runalyze and Garmin style: fitness, fatigue, predictions and health in one place. */
-export function Stats() {
-  const nav = usePhoneNav();
-  const today = useToday();
-  const ready = useReadiness(today);
-  const { plan } = useRunningData();
+/*
+ * The detail pages behind Progress: each race's readiness and pace targets, and the training-load numbers
+ * (fitness, fatigue and form, Garmin's load focus, zones). Progress itself answers the questions; these are
+ * the working.
+ */
+
+/** Progress → Race readiness and pace targets. */
+export function GoalsPage() {
+  const { plan, runs = [] } = useRunningData();
+  if (!plan || isEmptyPlan(plan)) return null;
   return (
     <div className="p-screen">
-      <Section>
-        <button className="p-row p-row-btn" onClick={() => nav.push("health")}>
-          <span className="p-row-main">
-            <span className="p-row-title">Health</span>
-            <span className="p-row-sub">{ready ? `Readiness ${ready.score}${ready.level ? ` · ${ready.level}` : ""}${ready.hrv ? ` · HRV ${Math.round(ready.hrv)}` : ""}` : "Readiness, HRV, sleep, resting heart rate"}</span>
-          </span>
-          <span className="p-chev">›</span>
-        </button>
-        <button className="p-row p-row-btn" onClick={() => nav.push("plan")}>
-          <span className="p-row-main">
-            <span className="p-row-title">Pace on point and race progress</span>
-            <span className="p-row-sub">How well runs hit their targets, benchmarks, race history</span>
-          </span>
-          <span className="p-chev">›</span>
-        </button>
+      <Section title="This week">
+        <CoachCard plan={plan} runs={runs} />
       </Section>
+      <GoalCarousel plan={plan} />
+      <PaceOnTrack plan={plan} runs={runs} />
+      <FitnessPredictor plan={plan} />
+    </div>
+  );
+}
+
+/** Progress → Training load and zones. */
+export function LoadPage() {
+  const today = useToday();
+  const { plan } = useRunningData();
+  const r = plan && !isEmptyPlan(plan) ? forecastRange(plan, today) : null;
+  return (
+    <div className="p-screen">
       <LoadFocusCard plan={plan} />
-      {plan && !isEmptyPlan(plan) && (() => {
-        const r = forecastRange(plan, today);
-        return r ? (
-          <details className="p-fold">
-            <summary>Load focus in the weeks ahead</summary>
-            <PlanFocusWeeks plan={plan} first={r.first} last={r.last} />
-          </details>
-        ) : null;
-      })()}
+      {plan && r && (
+        <details className="p-fold">
+          <summary>Load focus in the weeks ahead</summary>
+          <PlanFocusWeeks plan={plan} first={r.first} last={r.last} />
+        </details>
+      )}
       <TrainingLoad />
-      <WellnessTrend />
       <RunalyzeMore />
-      <Section title="Race fitness">
-        <div className="p-row p-fitfrom">
-          <FitnessFrom />
-        </div>
-      </Section>
-      <div className="p-embed">
-        <ModulePage id="fitness" />
-      </div>
     </div>
   );
 }

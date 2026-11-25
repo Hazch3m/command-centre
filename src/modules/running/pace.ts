@@ -43,6 +43,8 @@ export interface PaceCheck {
    * "smaller = harder" holds for both and the scoring and charts work unchanged.
    */
   unit?: "bpm";
+  /** Sessions judged on watch laps: the work's average heart rate (distance-weighted), when the laps have it. */
+  hr?: number | null;
 }
 
 const TOLERANCE = 3; // s/km either side of the range still counts as on point
@@ -131,7 +133,7 @@ export function checkRun(day: ForecastDay, run: Run, detail: RunDetail | null): 
   const mid = (target[0] + target[1]) / 2;
   const work = workKm(day.text, mid);
   if (!detail) return null;
-  let segs: { distance: number; time: number }[] = [];
+  let segs: { distance: number; time: number; hr?: number | null }[] = [];
   let measured = "";
   const laps = detail.laps ?? [];
   if (work?.rep && laps.length >= 3) {
@@ -139,7 +141,7 @@ export function checkRun(day: ForecastDay, run: Run, detail: RunDetail | null): 
     const rep = work.rep * 1000;
     const like = laps.filter((l) => l.distance > rep * 0.7 && l.distance < rep * 1.3 && l.moving_time / (l.distance / 1000) < mid * 1.12);
     if (like.length >= 2) {
-      segs = like.map((l) => ({ distance: l.distance, time: l.moving_time }));
+      segs = like.map((l) => ({ distance: l.distance, time: l.moving_time, hr: l.hr }));
       measured = `${like.length} work laps`;
     }
   }
@@ -147,7 +149,7 @@ export function checkRun(day: ForecastDay, run: Run, detail: RunDetail | null): 
   if (!segs.length && laps.length >= 3) {
     const q = quickLapWork(laps, work?.rep ?? null, work?.km ?? null, mid * 1.12);
     if (q) {
-      segs = q.map((l) => ({ distance: l.distance, time: l.moving_time }));
+      segs = q.map((l) => ({ distance: l.distance, time: l.moving_time, hr: l.hr }));
       measured = `${q.length} work laps`;
     }
   }
@@ -166,7 +168,9 @@ export function checkRun(day: ForecastDay, run: Run, detail: RunDetail | null): 
   const verdict = verdictFor(off, false);
   const score = Math.round(Math.max(0, Math.min(100, 0.5 * inRange * 100 + 0.5 * Math.max(0, 100 - Math.abs(off) * 6))));
   const paces = segs.map((x) => x.time / (x.distance / 1000));
-  return { ...base, measured, actual, off, verdict, score, inRange, fastest: Math.min(...paces), slowest: Math.max(...paces), session: true };
+  const withHr = segs.filter((x) => x.hr);
+  const hrAvg = withHr.length === segs.length ? withHr.reduce((a, x) => a + x.hr! * x.distance, 0) / dist : null;
+  return { ...base, measured, actual, off, verdict, score, inRange, fastest: Math.min(...paces), slowest: Math.max(...paces), session: true, hr: hrAvg };
 }
 
 /**

@@ -99,7 +99,16 @@ const RACE_NAME = /\b(race|marathon|half|semi|10 ?k|5 ?k|parkrun|course|lauf|mar
  * Past races: the curated list from the plan, plus any later run Strava marks
  * as a race (distance rounded to the nearest standard distance when close).
  */
-export function raceHistory(runs: Run[], plan: Plan): RaceRow[] {
+/** Names of training runs: never counted as races by their effort. */
+const TRAINING_NAME = /long run|easy|interval|tempo|threshold|repeats|progression|recovery|race prac|fartlek|\bW\d+ (mon|tue|wed|thu|fri|sat|sun)\b/i;
+
+/**
+ * Your races: the curated ones, then runs marked as a race (Strava, or Garmin's event type), named like one at a
+ * race distance, or (with your max heart rate) run at a race distance at race effort: average heart rate at least
+ * 90% of max for a 5k, 88% for a 10k, 86% for a half or marathon. That catches a marathon your watch just called
+ * "Lausanne Running".
+ */
+export function raceHistory(runs: Run[], plan: Plan, hrMax?: number): RaceRow[] {
   const byId = new Map(runs.map((r) => [r.id, r]));
   const curated = plan.history?.races ?? [];
   const rows: RaceRow[] = [];
@@ -113,7 +122,8 @@ export function raceHistory(runs: Run[], plan: Plan): RaceRow[] {
     const raw = km(r.distance);
     const near = STANDARD.find((s) => Math.abs(raw - s) / s < 0.03);
     // Marked as a race (Strava, or Garmin's event type), or a whole run at a race distance named like one.
-    if (r.workout_type !== 1 && !(near && RACE_NAME.test(r.name))) continue;
+    const effort = !!(near && hrMax && r.avg_hr && !TRAINING_NAME.test(r.name) && r.avg_hr >= hrMax * (near <= 5 ? 0.9 : near <= 10 ? 0.88 : 0.86));
+    if (r.workout_type !== 1 && !(near && RACE_NAME.test(r.name)) && !effort) continue;
     const std = near ?? Math.round(raw * 10) / 10;
     rows.push({ id: r.id, name: r.name, date: r.date, km: std, time: r.elapsed_time, equiv: marathonEquivalent(r.elapsed_time, std) });
   }
