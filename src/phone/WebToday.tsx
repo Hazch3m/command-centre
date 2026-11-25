@@ -9,11 +9,11 @@ import { typeOfDay } from "../modules/running/runType";
 import { loadOverrides } from "../modules/running/strava";
 import { ReplanCard } from "./ReplanCard";
 import { useRunningData } from "../modules/running/useRunning";
-import { useFitness } from "../modules/running/fitness";
 import { latest as latestHealth, loadHealth } from "../modules/health/data";
 import { useWeatherBrief } from "../modules/weather";
 import { zoneOf } from "./EffortProfile";
-import { sessionTitle, Today } from "./Today";
+import { Session, sessionTitle, Today } from "./Today";
+import { ProgressSummary } from "./Progress";
 import { isEmptyPlan } from "../core/account";
 import { openPlanDay } from "./WeekAhead";
 import { usePhoneNav } from "./common";
@@ -125,45 +125,6 @@ function WeeklyKm({ runs, today, sel, onPick }: { runs: Run[]; today: string; se
 }
 
 /** VO2 max / VDOT, weekly, the last 16 weeks. */
-function FitnessLine() {
-  const { plan } = useRunningData();
-  const f = useFitness(plan);
-  const today = useToday();
-  const pts = useMemo(() => {
-    if (!f) return [];
-    const from = addDays(today, -16 * 7);
-    return f.weekly.filter((w) => w.week >= from && w.smooth != null).map((w) => ({ x: w.week, v: (w.smooth as number) + f.shift }));
-  }, [f, today]);
-  if (!f) return <p className="wt-empty">Working out your fitness…</p>;
-  if (pts.length < 2) return <p className="wt-empty">Your fitness line appears after a few weeks of runs with heart rate.</p>;
-  const lo = Math.floor(Math.min(...pts.map((p) => p.v)) - 0.5);
-  const hi = Math.ceil(Math.max(...pts.map((p) => p.v)) + 0.5);
-  const W = 340;
-  const H = 150;
-  const x = (i: number) => 30 + (i * (W - 36)) / (pts.length - 1);
-  const y = (v: number) => H - 18 - ((v - lo) / (hi - lo)) * (H - 30);
-  const d = pts.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(p.v).toFixed(1)}`).join(" ");
-  const ticks = hi - lo <= 4 ? Array.from({ length: hi - lo + 1 }, (_, i) => lo + i) : [lo, Math.round((lo + hi) / 2), hi];
-  const last = pts[pts.length - 1];
-  return (
-    <svg className="wt-chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Fitness ${last.v.toFixed(1)}`}>
-      {ticks.map((v) => (
-        <g key={v}>
-          <line x1={26} x2={W} y1={y(v)} y2={y(v)} className="wt-grid" />
-          <text x={0} y={y(v) + 3.5}>{v}</text>
-        </g>
-      ))}
-      <path d={`${d} L${x(pts.length - 1)} ${y(lo)} L${x(0)} ${y(lo)}Z`} className="wt-area" />
-      <path d={d} className="wt-line" />
-      <circle cx={x(pts.length - 1)} cy={y(last.v)} r={4} className="wt-dot" />
-      <text x={30} y={H - 3}>{dayNum(pts[0].x)}</text>
-      <text x={W} y={H - 3} textAnchor="end">
-        Now
-      </text>
-    </svg>
-  );
-}
-
 function fmtSleep(s: number | null | undefined) {
   if (s == null) return "–";
   const m = Math.round(s / 60);
@@ -189,6 +150,7 @@ export function WebToday() {
 
   // No plan yet (a new account): the phone's Today, with its getting-started steps.
   if (!fw || !plan || isEmptyPlan(plan)) return <Today />;
+  const todayDay = fw.days.find((d) => d.date === today) ?? null;
   const done = fw.days.filter((d) => d.date <= today && d.runs.length > 0 && typeOfDay(d.kind) !== "rest").length;
   const due = fw.days.filter((d) => d.date <= today && typeOfDay(d.kind) !== "rest" && d.km).length;
   const daysTo = race ? Math.round((new Date(race.date + "T12:00").getTime() - new Date(today + "T12:00").getTime()) / 864e5) : null;
@@ -241,10 +203,11 @@ export function WebToday() {
       </div>
 
       <div className="wt-row">
-        <section className="wt-panel">
-          <h2>Weekly km, 12 weeks (click a week to see it)</h2>
-          <WeeklyKm runs={runs} today={today} sel={monday} onPick={(m) => setOffset(Math.round((new Date(m + "T12:00").getTime() - new Date(mondayOf(today) + "T12:00").getTime()) / (7 * 864e5)))} />
-        </section>
+        {offset === 0 && todayDay ? (
+          <section className="wt-panel wt-today">
+            <Session d={todayDay} label="Today" next={fw.days.find((d) => d.date === addDays(today, 1))} />
+          </section>
+        ) : null}
         <section className="wt-panel">
           <h2>This morning</h2>
           <div className="wt-kv">
@@ -273,11 +236,16 @@ export function WebToday() {
           )}
         </section>
         <section className="wt-panel">
-          <h2>Fitness</h2>
-          <FitnessLine />
+          <h2>Progress</h2>
+          <ProgressSummary plan={plan} onOpen={() => nav.setTab("stats")} />
         </section>
       </div>
 
+      <div className="wt-row wt-row-2">
+        <section className="wt-panel">
+          <h2>Weekly km, 12 weeks (click a week to see it)</h2>
+          <WeeklyKm runs={runs} today={today} sel={monday} onPick={(m) => setOffset(Math.round((new Date(m + "T12:00").getTime() - new Date(mondayOf(today) + "T12:00").getTime()) / (7 * 864e5)))} />
+        </section>
       <section className="wt-panel">
         <h2>Last runs</h2>
         {recent.length ? (
@@ -311,6 +279,7 @@ export function WebToday() {
           <p className="wt-empty">Your runs appear here once you've connected Garmin, Strava or Apple Health.</p>
         )}
       </section>
+      </div>
     </div>
   );
 }

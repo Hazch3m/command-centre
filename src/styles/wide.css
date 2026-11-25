@@ -344,3 +344,9 @@
   .p-wide .p-runlist .p-runcard { grid-template-columns: minmax(0, 1fr); }
   .p-wide .p-runlist .p-runcard > .p-runcard-map { grid-column: 1; grid-row: auto; }
 }
+/* Row 2: the weekly km beside the last runs */
+.wt-row-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); align-items: start; }
+.wt-row-2 > .wt-panel { margin: 0; }
+.wt-today { padding: 0; background: none; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.wt-today > * { height: 100%; margin: 0; }
+@media (max-width: 1100px) { .wt-row-2 { grid-template-columns: minmax(0, 1fr); } }
