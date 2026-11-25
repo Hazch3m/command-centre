@@ -414,3 +414,44 @@ function RacesCard({ plan, runs, f, onPbs }: { plan: Plan; runs: Run[]; f: Fitne
     </Card>
   );
 }
+
+/** The answers in brief, for Today on a computer: the goal, fitness and the aerobic engine, with a link to Progress. */
+export function ProgressSummary({ plan, onOpen }: { plan: Plan; onOpen: () => void }) {
+  const today = useToday();
+  const { runs = [] } = useRunningData();
+  const f = useFitness(plan);
+  const race = goalRace(plan, today);
+  const r = useReadiness(plan, race);
+  const aero = useMemo(() => (f ? aerobicTrend(runs, f.config.hrMax, today) : null), [runs, f, today]);
+  if (!f) return null;
+  const gap = r?.predicted != null && r.goal != null ? r.predicted - r.goal : null;
+  const then = f.weekly.find((w) => w.week >= addDays(today, -91) && w.smooth != null)?.smooth ?? null;
+  const a0 = aero?.points[0];
+  const a1 = aero?.points[aero.points.length - 1];
+  return (
+    <button type="button" className="pg-sum" onClick={onOpen}>
+      {race && r && (
+        <span className="pg-sum-row">
+          <small>{race.name}, race day</small>
+          <b className="num">{r.predicted ? fmtTime(r.predicted) : "–"}</b>
+          <i className={gap == null ? "" : gap <= 0 ? "up" : "down"}>{gap == null ? "" : gap <= 0 ? "on course" : `${fmtTime(gap)} off the goal`}</i>
+        </span>
+      )}
+      <span className="pg-sum-row">
+        <small>Fitness</small>
+        <b className="num">{f.current != null ? f.current.toFixed(1) : "–"}</b>
+        <i className={then != null && f.current != null && f.current >= then ? "up" : "down"}>{then != null && f.current != null ? `${signed(f.current - then, 1)} in 3 months` : ""}</i>
+      </span>
+      {a0 && a1 && a0 !== a1 && (
+        <span className="pg-sum-row">
+          <small>Easy pace at {aero!.ref} bpm</small>
+          <b className="num">{fmtPace(a1.pace)}</b>
+          <i className={a1.pace <= a0.pace ? "up" : "down"}>
+            {Math.round(Math.abs(a1.pace - a0.pace))} s/km {a1.pace <= a0.pace ? "quicker" : "slower"} since {MON[+a0.month.slice(5) - 1]}
+          </i>
+        </span>
+      )}
+      <span className="p-link">Progress ›</span>
+    </button>
+  );
+}
