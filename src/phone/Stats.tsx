@@ -3,6 +3,7 @@ import { ModulePage } from "../shell/Dashboard";
 import { FitnessFrom } from "../modules/running/BuildPlan";
 import { Section, usePhoneNav, useReadiness } from "./common";
 import { TrainingLoad } from "./TrainingLoad";
+import { WellnessTrend } from "./WellnessTrend";
 import { LoadFocusCard, PlanFocusWeeks } from "./Focus";
 import { forecastRange } from "../modules/running/forecast";
 import { isEmptyPlan } from "../core/account";
@@ -44,6 +45,7 @@ export function Stats() {
         ) : null;
       })()}
       <TrainingLoad />
+      <WellnessTrend />
       <RunalyzeMore />
       <Section title="Race fitness">
         <div className="p-row p-fitfrom">

@@ -195,7 +195,10 @@ function paceFor(plan: Plan, text: string, kind: DayKind): string | null {
     if (hz) return easyish && prefs.easyTarget === "feel" ? `easy, under ${hz.range[1]} bpm` : hrText(hz.range);
   }
   // The plan gives heart rates too (built with yours): both, pace first.
-  const hrNote = z?.hr ? planHr(z.hr) : null;
+  // (Long runs: the long-run band from your heart rates, for plans built before it had its own.)
+  const M = plan.built?.hr?.max;
+  const longHr = kind === "long" && /^Long/i.test(z?.zone ?? "") && M ? `${Math.round(M * 0.68)}–${Math.round(M * 0.78)}` : null; // = hrTargets().long
+  const hrNote = longHr ? planHr(longHr) : z?.hr ? planHr(z.hr) : null;
   const both = (x: string | null) => (x && hrNote ? `${x} · ${hrNote}` : x ?? hrNote);
   if (easyish && prefs && pace) {
     if (prefs.easyTarget === "feel") return both("easy, by feel");
@@ -237,7 +240,8 @@ export function forecastWeek(plan: Plan, monday: string, runs: Run[] = [], overr
     const date = addDays(monday, i);
     const dayRuns = runs.filter((r) => r.date === date);
     const actualKm = dayRuns.reduce((s, r) => s + km(r.distance), 0);
-    const race = plan.races.find((r) => r.date === date && !r.approx) ?? null;
+    // (A race with an approximate date is on its nominal date, shown as approximate.)
+    const race = plan.races.find((r) => r.date === date) ?? null;
     const base: ForecastDay = { date, dow: DOW[i], text: "", kind: "easy", km: null, pace: null, strength: null, race, actualKm, runs: dayRuns };
     const ov = overrides?.get(date);
     if (ov != null) {

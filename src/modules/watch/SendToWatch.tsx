@@ -2,6 +2,7 @@ import { useState } from "react";
 import { loadPlan } from "../running/plan";
 import * as coach from "./coach";
 import { sessionToWorkout, type Zones } from "./importWeek";
+import { easyBands, easyTargets, getAutoSync } from "./autoSync";
 
 async function zones(): Promise<Zones> {
   const p = (await loadPlan()).plan.paces;
@@ -23,7 +24,10 @@ export function SendToWatch({ date, text, compact }: { date: string; text: strin
   const start = async () => {
     setState("busy");
     setMsg(null);
-    const wk = sessionToWorkout(text, await zones());
+    const w0 = sessionToWorkout(text, await zones());
+    // Easy parts follow your watch setting (no target, a ceiling, or the plan's band), as with automatic sending.
+    const [{ plan }, set] = await Promise.all([loadPlan(), getAutoSync()]);
+    const wk = w0 ? easyTargets(w0, set.easy, null, easyBands(plan)) : null;
     if (!wk) return setState("idle"), setMsg("Rest day: nothing to send.");
     const p = await coach.preview(wk);
     if (!p.ok) return setState("idle"), setMsg(p.message);

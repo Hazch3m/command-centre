@@ -29,7 +29,7 @@ function load(bytes?: Uint8Array): Database {
 
 function getDb(): Promise<Database> {
   if (!dbPromise) {
-    dbPromise = initSqlJs({ locateFile: () => wasmUrl }).then((s) => {
+    dbPromise = initSqlJs({ locateFile: () => wasmUrl } as unknown as Parameters<typeof initSqlJs>[0]).then((s) => {
       SQL = s;
       return load();
     });

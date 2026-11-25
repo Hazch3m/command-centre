@@ -103,6 +103,10 @@ export function RaceManager({ plan }: { plan: Plan }) {
                   {r.date ? (r.approx ? `${r.when || "Date to confirm"}` : when(r.date)) : "No date"}
                   {k ? ` · ${k} km` : ""}
                   {r.target ? ` · ${r.target}` : ""}
+                  {(() => {
+                    const t = plan.vdotTargets?.find((x) => x.date === r.date && x.name === r.name);
+                    return t ? ` · VDOT ${t.vdot.toFixed(1)} projected` : "";
+                  })()}
                   {" · "}
                   {TAPER.find((t) => t.v === (r.taper ?? "plan"))!.l.toLowerCase()}
                 </span>
@@ -126,6 +130,11 @@ export function RaceManager({ plan }: { plan: Plan }) {
                     <input value={r.target} placeholder="1:18:00" onChange={(e) => change(i, { target: e.target.value })} />
                   </label>
                 </div>
+                {r.date && (
+                  <label className="inline small">
+                    <input type="checkbox" checked={!!r.approx} onChange={(e) => change(i, { approx: e.target.checked, when: e.target.checked ? `about ${when(r.date!)}` : when(r.date!) })} /> Approximate date (planned on this date; you'll be asked to re-plan when it's fixed)
+                  </label>
+                )}
                 <div className="rm-row">
                   <span className="label">Distance</span>
                   <div className="ps-choice">

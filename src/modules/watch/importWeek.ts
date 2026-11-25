@@ -123,8 +123,13 @@ export function sessionToWorkout(text: string, zones: Zones = {}): Omit<Draft, "
         : step("recovery", recDur, "open", hills ? "Walk or jog back down" : "Easy jog: as slow as you like");
       return { block: repeat(+rep[1], [work, back]), p, label: `${rep[1]}×${durLabel(rep[2], rep[3])}`, after };
     });
-    // Between sets: two easy minutes before the next one starts.
-    const middle: Item[] = sets.flatMap((x, i) => (i ? [step("recovery", "2:00", "open", "Easy between sets"), x.block] : [x.block]));
+    // "3 sets of 10 × 30 s at 3:15, 15 s jog, 3 min between sets": the one set, that many times.
+    const setsOf = /(\d+)\s*sets?\s+of\b/i.exec(s);
+    const between = /(\d+(?:\.\d+)?)\s*(min|s)\s*between sets/i.exec(s);
+    if (setsOf && sets.length === 1) for (let k = 1; k < +setsOf[1]; k++) sets.push({ ...sets[0], block: { ...sets[0].block, id: `${sets[0].block.id}-s${k}` } });
+    // Between sets: two easy minutes (or as written) before the next one starts.
+    const gap = between ? dur(between[1], between[2]) : "2:00";
+    const middle: Item[] = sets.flatMap((x, i) => (i ? [step("recovery", gap, "open", "Easy between sets"), x.block] : [x.block]));
     const p = sets[0].p;
     // Written in ("3 km warm-up … 2 km cool-down"), or 3 km and the rest to finish the run.
     const wu = /(\d+(?:\.\d+)?)\s*km warm-up/i.exec(s)?.[1];

@@ -1,5 +1,5 @@
 import { addDays } from "../../core/time";
-import { mondayOf, WEEK_KEYS, type DayKey, type Plan, type PlanRace, type PlanWeek } from "./plan";
+import { firstChangeableMonday, mondayOf, weeksAlreadyDone, WEEK_KEYS, type DayKey, type Plan, type PlanRace, type PlanWeek } from "./plan";
 
 /**
  * Reads a training plan from a CSV, so any plan (a coach's spreadsheet, an
@@ -175,7 +175,14 @@ export function csvToWeeks(text: string): CsvPlan {
 }
 
 /** The imported weeks merged into the current plan (earlier weeks and weeks after kept), with the goal race added. */
-export function mergeImported(old: Plan, imp: CsvPlan, race: PlanRace | null, fileName: string, today: string): Plan {
+export function mergeImported(old: Plan, imp0: CsvPlan, race: PlanRace | null, fileName: string, today: string): Plan {
+  // Past weeks and the week you're in stay as they were (they're what you've done); the import starts after
+  // them, and its weeks carry on numbering after the weeks of this block you've already had.
+  const cut = firstChangeableMonday(today);
+  const kept = imp0.weeks.filter((w) => w.start >= cut);
+  if (!kept.length) throw new Error("Every week in this CSV is in the past or this week: there's nothing left to import.");
+  const done = weeksAlreadyDone(old.weeks, kept[0].start);
+  const imp: CsvPlan = { ...imp0, weeks: kept.map((w, i) => ({ ...w, week: String(done + i + 1) })) };
   const start = imp.weeks[0].start;
   const end = imp.weeks[imp.weeks.length - 1].end;
   const races = [...old.races.filter((r) => !r.date || r.date < start || r.date > end), ...(race ? [race] : [])].sort((a, b) => (a.date ?? "9").localeCompare(b.date ?? "9"));

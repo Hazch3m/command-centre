@@ -7,6 +7,7 @@ import { mondayOf, upcomingRaces } from "../modules/running/plan";
 import { openRun } from "../modules/running/RunView";
 import { typeOfDay } from "../modules/running/runType";
 import { loadOverrides } from "../modules/running/strava";
+import { ReplanCard } from "./ReplanCard";
 import { useRunningData } from "../modules/running/useRunning";
 import { useFitness } from "../modules/running/fitness";
 import { latest as latestHealth, loadHealth } from "../modules/health/data";
@@ -196,6 +197,7 @@ export function WebToday() {
 
   return (
     <div className="wt">
+      <ReplanCard />
       <div className="wt-head">
         <div className="wt-titles">
           <h1>Today</h1>

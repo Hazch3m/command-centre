@@ -138,8 +138,8 @@ export function AutoSyncSetting() {
             {(s.easy ?? "off") === "off"
               ? "Easy runs, long runs, warm-ups and cool-downs have no target: no beeping. Sessions keep their pace targets."
               : s.easy === "ceiling"
-                ? "A beep only if your heart rate goes above the top of zone 2. Going slower never beeps."
-                : "Heart-rate zone 2 as the target: it beeps when you're above or below it."}
+                ? "A beep only if your heart rate goes above the plan's easy ceiling (long runs a little higher). Going slower never beeps."
+                : "The plan's easy heart-rate band as the target (long runs a little higher at the top): it beeps when you're above or below it."}
           </span>
         </div>
       )}

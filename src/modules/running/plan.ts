@@ -1,5 +1,5 @@
 import { backend } from "@backend";
-import { addDays, diffDays, parseKey } from "../../core/time";
+import { addDays, diffDays, parseKey, todayKey } from "../../core/time";
 import defaultPlan from "./default-plan.json";
 import type { PlanAdjust } from "./planAdjust";
 import type { BuildOptions } from "./planBuilder";
@@ -19,6 +19,10 @@ export interface PlanWeek {
   /** Named sessions by day; days without one follow the weekly structure. */
   sessions: Partial<Record<DayKey, string>>;
   notes: string;
+  /** Projected VDOT the week's paces are set from (plans built in the app). */
+  vdot?: number;
+  /** Paces are provisional: set from the projected VDOT, confirmed by your next race's result (or a Monday re-plan). */
+  provisional?: boolean;
 }
 export interface PlanRace {
   date: string | null;
@@ -33,11 +37,20 @@ export interface PlanRace {
   taper?: "full" | "mini" | "none";
   /** Distance in km, when the name doesn't say. */
   km?: number;
+  /** Race pace to plan with (s/km), confirmed in the Monday re-plan: the goal clipped to your prediction. */
+  planPace?: number;
+  /** For a race with an approximate date (`approx`): days either side it could fall (default 0: the nominal date only). The plan puts it
+   * on its nominal date; the window only keeps focus weeks away from it. */
+  window?: number;
   /** The course's climb and descent (m); slows the predicted time on a hilly course. */
   elevation?: { gain: number; loss: number; kind?: string };
 }
 
 export type RacePriority = NonNullable<PlanRace["priority"]>;
+/** A race as the plan shows it: "Summer 10k (approximate date) · 34:00". */
+export function raceLabel(r: PlanRace, withTarget = true): string {
+  return `${r.name}${r.approx ? " (approximate date)" : ""}${withTarget && r.target ? ` · ${r.target}` : ""}`;
+}
 /** A race's priority: as set, else from its role ("Main goal", "Sub-2:50 attempt") and distance. */
 export function priorityOf(r: PlanRace): RacePriority {
   if (r.priority) return r.priority;
@@ -75,7 +88,9 @@ export interface Plan {
   /** The weeks as written, before `adjust` (only on a loaded plan; never saved). */
   baseWeeks?: PlanWeek[];
   /** Set when the plan was built in the app (Plan settings → Build a plan): the choices it was built from. */
-  built?: BuildOptions & { start: string; peak: number; longest: number; vdot: number; vdotEnd?: number };
+  built?: BuildOptions & { start: string; peak: number; longest: number; vdot: number; vdotEnd?: number; history?: import("./planBuilder").History };
+  /** Projected VDOT at each race in the plan (and the goal race), from the plan's fitness curve. */
+  vdotTargets?: { date: string; name: string; approx?: boolean; vdot: number }[];
   /** The plan before the last one was built, so it can be brought back. */
   previous?: Plan;
   /** Your target settings (pace or heart rate, easy-run targets), attached when the plan loads; never saved in the plan. */
@@ -172,6 +187,38 @@ export function upcomingRaces(plan: Plan, today: string): RaceCountdown[] {
     .sort((a, b) => a.days - b.days);
 }
 
+/**
+ * Your progress through the current training block, kept whenever the plan changes: how many weeks of it
+ * you've already had before `start` — the run of numbered weeks that ends the week before `start`, back to
+ * its week 1. (Labels count down by one going back; "1" then "1" also counts, from plans rebuilt before
+ * numbering carried on.) A rebuilt or imported plan carries on from the next number: week 3 after weeks 1 and 2.
+ */
+export function weeksAlreadyDone(weeks: PlanWeek[], start: string): number {
+  const ws = weeks.filter((w) => w.start < start).sort((a, b) => a.start.localeCompare(b.start));
+  let n = 0;
+  let next = start;
+  let nextLabel: number | null = null;
+  let doubled = false;
+  for (let i = ws.length - 1; i >= 0; i--) {
+    const w = ws[i];
+    const label = /^\s*\d+\s*$/.test(w.week) ? Number(w.week) : NaN;
+    if (!Number.isFinite(label) || addDays(w.start, 7) !== next) break;
+    if (nextLabel !== null) {
+      if (label === nextLabel - 1) {
+        /* counting down */
+      } else if (label === 1 && nextLabel === 1 && !doubled) doubled = true;
+      else break;
+    }
+    n++;
+    next = w.start;
+    nextLabel = label;
+  }
+  return n;
+}
+
+/** The first week a plan change may touch: past weeks and the week you're in stay as they are (it's next Monday, or today if it's Monday). */
+export const firstChangeableMonday = (today: string) => (mondayOf(today) < today ? addDays(mondayOf(today), 7) : mondayOf(today));
+
 /** Monday of the week containing `day`. */
 export function mondayOf(day: string): string {
   const dow = parseKey(day).getDay();
@@ -216,7 +263,11 @@ export async function savePlanRaces(races: PlanRace[]) {
 export async function restorePreviousPlan() {
   const { plan } = await loadPlanFile();
   if (!plan.previous) return;
-  await backend.writeDataFile(PLAN_FILE, JSON.stringify({ ...plan.previous, editedInApp: new Date().toISOString() }, null, 2));
+  // Going back keeps what you've done since: past weeks and this week stay as they are now.
+  const cut = firstChangeableMonday(todayKey());
+  const prev = plan.previous;
+  const weeks = [...plan.weeks.filter((w) => w.start < cut), ...prev.weeks.filter((w) => w.start >= cut)];
+  await backend.writeDataFile(PLAN_FILE, JSON.stringify({ ...prev, weeks, editedInApp: new Date().toISOString() }, null, 2));
   window.dispatchEvent(new Event("cc:plan-changed"));
 }
 

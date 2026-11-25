@@ -5485,3 +5485,28 @@ svg.effort {
 .p-wchart-nav .p-round:disabled { opacity: 0.3; }
 
 .p-less { display: block; margin: 0.3rem auto 0.6rem; }
+
+/* Monday re-plan suggestion (Today and Training) */
+.p-replan-why { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.92rem; }
+.p-replan-diff { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.p-replan-diff th { text-align: left; font-weight: 600; color: var(--muted); padding: 0.2rem 0; }
+.p-replan-diff td { padding: 0.25rem 0; border-top: 1px solid color-mix(in srgb, var(--text) 10%, transparent); }
+.p-pill.p-pill-quiet { background: var(--p-surface); color: var(--text); }
+.p-prov { color: var(--muted); }
+
+/* Days you can't run (Training → week) */
+.p-daysoff-row { display: flex; justify-content: space-between; gap: 0.75rem; margin: 0.2rem 0 0.4rem; }
+.p-daysoff { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.8rem; margin: 0.3rem 0 0.6rem; border-radius: var(--p-radius); background: var(--p-surface); }
+.p-move-day.off { background: color-mix(in srgb, var(--danger, #c0392b) 22%, var(--p-surface-2)); text-decoration: line-through; }
+.p-daysoff-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.88rem; }
+.p-daysoff-list li span { display: inline-block; width: 2.4rem; color: var(--muted); }
+.p-daysoff-list li.changed { font-weight: 600; }
+
+/* Resting HR and HRV trend (Stats) */
+.wt { display: flex; flex-direction: column; gap: 0.5rem; }
+.wt-chart { margin-bottom: 0.4rem; }
+.wt-dot { fill: color-mix(in srgb, var(--wt) 45%, transparent); }
+.wt-line { fill: none; stroke: var(--wt); stroke-width: 2.2; stroke-linejoin: round; }
+.wt-band { fill: color-mix(in srgb, var(--z-easy) 14%, transparent); }
+.wt-rhr { --wt: var(--z-vo2); }
+.wt-hrv { --wt: var(--accent); }

@@ -21,6 +21,7 @@ import { useRunningData } from "../modules/running/useRunning";
 import { addTaskFromText, focusGroup, loadTasks, setDone } from "../modules/tasks/data";
 import { HabitButton } from "./Habits";
 import { GettingStarted } from "./Account";
+import { ReplanCard } from "./ReplanCard";
 import { PracticeTag } from "../modules/running/PracticeTag";
 import { plannerView } from "./Planner";
 import { weatherModule } from "../modules/weather";
@@ -422,6 +423,7 @@ export function Today() {
   return (
     <div className="p-screen">
       <GettingStarted />
+      <ReplanCard />
       {layout.order
         .filter((id) => !layout.hidden.includes(id))
         // Calendar, to-do and habits only when the Planner is switched on.
@@ -477,6 +479,8 @@ function BodyRow({ today, onOpen }: { today: string; onOpen: () => void }) {
   const sleep = sleepS ? `${Math.floor(sleepS / 3600)}:${String(Math.round((sleepS % 3600) / 60)).padStart(2, "0")}` : null;
   const hrv = r?.hrv ?? h?.hrv ?? null;
   const rhr = h?.rhr ?? null;
+  // Nothing from a watch or Health yet: no empty row.
+  if (!r && !sleep && !hrv && !rhr) return null;
   return (
     <button type="button" className="p-home-row p-body" onClick={onOpen}>
       <span className={"p-body-score " + tone}>

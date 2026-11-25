@@ -6,7 +6,7 @@ import { useQuery } from "../../core/useQuery";
 import { forecastRange, forecastWeek, type ForecastDay, type ForecastWeek } from "./forecast";
 import { checkDays } from "./pace";
 import { PaceBadge } from "./PaceOnPoint";
-import { mondayOf, type Plan } from "./plan";
+import { mondayOf, raceLabel, type Plan } from "./plan";
 import { openRun, openWeek } from "./RunView";
 import { RUN_TYPE_LABEL, typeOfDay, typeOfRun, type RunType } from "./runType";
 import { km, pace } from "./stats";
@@ -206,7 +206,7 @@ function WeekCard({
                   </span>
                   <span className={`rt-pill rt-${t}`}>{RUN_TYPE_LABEL[t]}</span>
                   <button className="pw-day-text link" onClick={() => onEdit(d)} title="Change this day">
-                    {d.race ? `${d.race.name}${d.race.target ? ` · ${d.race.target}` : ""}` : d.text || "Rest"}
+                    {d.race ? raceLabel(d.race) : d.text || "Rest"}
                     {d.edited && <span className="wk-tag edited">Changed</span>}
                     {d.strength && <span className="wk-tag">Strength {d.strength}</span>}
                   </button>

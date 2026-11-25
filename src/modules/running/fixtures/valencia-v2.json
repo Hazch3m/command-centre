@@ -1,0 +1,497 @@
+[
+ {
+  "start": "2026-11-16",
+  "km": 64,
+  "kmText": "64",
+  "s1": "Done: 4×4 min at 3:31–3:34",
+  "s2": "Wed: 4×2 km at 3:48–3:52, 2 min jog",
+  "long": "Thu: 20–22 km easy",
+  "notes": "Weekend off; Fri 8 km easy"
+ },
+ {
+  "start": "2026-11-23",
+  "km": 72,
+  "kmText": "72",
+  "s1": "5×1 km at 3:28–3:32, 2 min jog",
+  "s2": "3×3 km at 3:48–3:52, 2 min jog",
+  "long": "24 km easy",
+  "notes": ""
+ },
+ {
+  "start": "2026-11-30",
+  "km": 80,
+  "kmText": "80",
+  "s1": "30/15s: 3 sets of 10×(30 s at about 3:15, 15 s jog), 3 min between sets",
+  "s2": "5×6 min at 3:47–3:50, 1 min jog",
+  "long": "26 km easy",
+  "notes": ""
+ },
+ {
+  "start": "2026-12-07",
+  "km": 86,
+  "kmText": "86",
+  "s1": "5×4 min at 3:29–3:32, 2:30 jog",
+  "s2": "2×15 min at 3:47–3:50, 3 min jog",
+  "long": "28 km, last 4 km at 4:00–4:05",
+  "notes": "Hardest week of the phase"
+ },
+ {
+  "start": "2026-12-14",
+  "km": 62,
+  "kmText": "62",
+  "s1": "Tue: 5×1 km at 3:26–3:28, 2 min jog",
+  "s2": "Sat 19 Dec: 5k time trial (flat, with company)",
+  "long": "Sun: 10 km easy",
+  "notes": "Easy Wed–Fri, strides Thu"
+ },
+ {
+  "start": "2026-12-21",
+  "km": 88,
+  "kmText": "88",
+  "s1": "4×8 min at 3:47–3:50, 2 min jog",
+  "s2": "16 km with 10 km steady at 4:05–4:15",
+  "long": "26 km easy",
+  "notes": "Rest on Christmas Day"
+ },
+ {
+  "start": "2026-12-28",
+  "km": 94,
+  "kmText": "94",
+  "s1": "3×10 min at 3:46–3:50, 2 min jog",
+  "s2": "5×3 min at 3:28–3:32, 2 min jog",
+  "long": "30 km easy",
+  "notes": ""
+ },
+ {
+  "start": "2027-01-04",
+  "km": 80,
+  "kmText": "80",
+  "s1": "25 min tempo at 3:48–3:50",
+  "s2": "12 km, last 4 km at 4:00",
+  "long": "24 km easy",
+  "notes": "Lighter week"
+ },
+ {
+  "start": "2027-01-11",
+  "km": 96,
+  "kmText": "96",
+  "s1": "5×2 km at 3:46–3:49, 90 s jog",
+  "s2": "18 km with 14 km steady at 4:05–4:12",
+  "long": "32 km easy",
+  "notes": ""
+ },
+ {
+  "start": "2027-01-18",
+  "km": 100,
+  "kmText": "100",
+  "s1": "2×20 min at 3:47–3:50, 3 min jog",
+  "s2": "6×3 min at 3:26–3:30, 2 min jog",
+  "long": "30 km, last 6 km at 3:58–4:02",
+  "notes": "Book the lab test for this week or next"
+ },
+ {
+  "start": "2027-01-25",
+  "km": 102,
+  "kmText": "102",
+  "s1": "4×8 min at 3:45–3:48, 2 min jog",
+  "s2": "20 km with 16 km steady at 4:02–4:10",
+  "long": "33 km easy",
+  "notes": "Peak of the phase"
+ },
+ {
+  "start": "2027-02-01",
+  "km": 72,
+  "kmText": "72",
+  "s1": "4×1 km at 3:38–3:40, 2 min jog",
+  "s2": "Sun 7 Feb: Antigel 10k",
+  "long": "—",
+  "notes": "Easy Wed–Sat, strides Thu and Sat"
+ },
+ {
+  "start": "2027-02-08",
+  "km": 92,
+  "kmText": "92",
+  "s1": "Wed: 3×10 min at 3:45–3:48, 2 min jog",
+  "s2": "Fri: 5×4 min at 3:26–3:30, 2:30 jog",
+  "long": "30 km easy",
+  "notes": "Recovery run Mon, easy Tue after Antigel"
+ },
+ {
+  "start": "2027-02-15",
+  "km": 100,
+  "kmText": "100",
+  "s1": "6×1 km at 3:24–3:28, 2 min jog",
+  "s2": "3×10 min at 3:45–3:48, 2 min jog",
+  "long": "32 km easy",
+  "notes": ""
+ },
+ {
+  "start": "2027-02-22",
+  "km": 104,
+  "kmText": "104",
+  "s1": "4×5 min at 3:26–3:29, 3 min jog",
+  "s2": "30/15s: 3 sets of 11×(30 s / 15 s)",
+  "long": "30 km with 10 km at 3:58–4:02",
+  "notes": "Focus week"
+ },
+ {
+  "start": "2027-03-01",
+  "km": 86,
+  "kmText": "86",
+  "s1": "2×15 min at 3:45–3:48, 3 min jog",
+  "s2": "6×800 m at 3:22–3:25, 2 min jog",
+  "long": "26 km easy",
+  "notes": "Lighter week"
+ },
+ {
+  "start": "2027-03-08",
+  "km": 104,
+  "kmText": "104",
+  "s1": "5×1.2 km at 3:24–3:27, 2:30 jog",
+  "s2": "4×8 min at 3:44–3:47, 2 min jog",
+  "long": "34 km easy",
+  "notes": ""
+ },
+ {
+  "start": "2027-03-15",
+  "km": 106,
+  "kmText": "106",
+  "s1": "5×4 min at 3:24–3:27, 2:30 jog",
+  "s2": "30/15s: 3 sets of 12×(30 s / 15 s)",
+  "long": "32 km with 12 km at 3:58–4:02",
+  "notes": "Focus week"
+ },
+ {
+  "start": "2027-03-22",
+  "km": 75,
+  "kmText": "75",
+  "s1": "5×1 km at 3:34–3:36, 2 min jog",
+  "s2": "Sun 28 Mar: Aix 10k",
+  "long": "—",
+  "notes": "Easy Wed–Sat, strides Thu and Sat"
+ },
+ {
+  "start": "2027-03-29",
+  "km": 98,
+  "kmText": "98",
+  "s1": "Wed: 3×3 km at 3:45–3:48, 2 min jog",
+  "s2": "—",
+  "long": "32 km with 3×5 km at 3:58–4:02, 4 min easy",
+  "notes": "Easy Mon–Tue after Aix"
+ },
+ {
+  "start": "2027-04-05",
+  "km": 106,
+  "kmText": "106",
+  "s1": "6×6 min at 3:44–3:47, 1 min jog",
+  "s2": "16 km with 12 km at 3:58–4:02",
+  "long": "34 km easy",
+  "notes": ""
+ },
+ {
+  "start": "2027-04-12",
+  "km": 110,
+  "kmText": "110",
+  "s1": "5×1 km at 3:22–3:26, 2 min jog",
+  "s2": "4×3 km at 3:44–3:47, 2 min jog",
+  "long": "30 km with 16 km at 3:58–4:02",
+  "notes": ""
+ },
+ {
+  "start": "2027-04-19",
+  "km": 108,
+  "kmText": "108",
+  "s1": "2×15 min at 3:44–3:47, 3 min jog",
+  "s2": "— (easy with strides)",
+  "long": "Sun 25 Apr: 35 km with 22 km at 3:58–4:02",
+  "notes": "Key benchmark: heart rate mostly in the 170s"
+ },
+ {
+  "start": "2027-04-26",
+  "km": 90,
+  "kmText": "90",
+  "s1": "6×1 km at 3:22–3:26, 2 min jog",
+  "s2": "3×10 min at 3:44–3:47, 2 min jog",
+  "long": "26 km easy",
+  "notes": "Lighter week"
+ },
+ {
+  "start": "2027-05-03",
+  "km": 80,
+  "kmText": "80",
+  "s1": "Tue: 4×2 km at 3:47–3:50, 90 s jog",
+  "s2": "Sat 8 May: Killarney half",
+  "long": "Sun: 10 km easy",
+  "notes": "Easy Wed–Fri"
+ },
+ {
+  "start": "2027-05-10",
+  "km": 96,
+  "kmText": "96",
+  "s1": "3×3 km at 3:44–3:47, 2 min jog",
+  "s2": "5×1 km at 3:32–3:36, 2 min jog",
+  "long": "30 km with 14 km at 3:58–4:02",
+  "notes": "Last big week"
+ },
+ {
+  "start": "2027-05-17",
+  "km": 72,
+  "kmText": "72",
+  "s1": "2×5 km at 3:58–4:02, 3 min jog",
+  "s2": "5×1 km at 3:34–3:38, 2 min jog",
+  "long": "22 km easy",
+  "notes": "Taper"
+ },
+ {
+  "start": "2027-05-24",
+  "km": 45,
+  "kmText": "45 + race",
+  "s1": "Tue: 3×2 km at 3:58–4:00, 2 min jog",
+  "s2": "—",
+  "long": "Sun 30 May: Edinburgh",
+  "notes": "Easy otherwise, strides Fri"
+ },
+ {
+  "start": "2027-05-31",
+  "km": 35,
+  "kmText": "35",
+  "s1": "—",
+  "s2": "—",
+  "long": "12 km easy",
+  "notes": "Easy only, take days off when your legs ask"
+ },
+ {
+  "start": "2027-06-07",
+  "km": 60,
+  "kmText": "60",
+  "s1": "6×20 s strides twice",
+  "s2": "6×10 s hill sprints",
+  "long": "18 km easy",
+  "notes": "Easy running only"
+ },
+ {
+  "start": "2027-06-14",
+  "km": 78,
+  "kmText": "78",
+  "s1": "8×2 min at about 3:35, 1 min jog",
+  "s2": "—",
+  "long": "24 km easy",
+  "notes": "One light session"
+ },
+ {
+  "start": "2027-06-21",
+  "km": 86,
+  "kmText": "86",
+  "s1": "30/15s: 3 sets of 10×(30 s / 15 s)",
+  "s2": "3×10 min at 3:40–3:43, 2 min jog",
+  "long": "26 km easy",
+  "notes": ""
+ },
+ {
+  "start": "2027-06-28",
+  "km": 95,
+  "kmText": "95",
+  "s1": "5×4 min at 3:21–3:24, 2:30 jog",
+  "s2": "18 km with 12 km steady at 3:58–4:05",
+  "long": "30 km easy",
+  "notes": ""
+ },
+ {
+  "start": "2027-07-05",
+  "km": 100,
+  "kmText": "100",
+  "s1": "6×1 km at 3:19–3:22, 2 min jog",
+  "s2": "30/15s: 3 sets of 11×(30 s / 15 s)",
+  "long": "30 km easy",
+  "notes": "Focus week"
+ },
+ {
+  "start": "2027-07-12",
+  "km": 80,
+  "kmText": "80",
+  "s1": "4×1 km at about 3:30, 2 min jog",
+  "s2": "Summer 10k, about 18 Jul",
+  "long": "—",
+  "notes": "Easy days before the race"
+ },
+ {
+  "start": "2027-07-19",
+  "km": 104,
+  "kmText": "104",
+  "s1": "4×5 min at 3:20–3:23, 3 min jog",
+  "s2": "4×8 min at 3:39–3:42, 2 min jog",
+  "long": "32 km easy",
+  "notes": ""
+ },
+ {
+  "start": "2027-07-26",
+  "km": 108,
+  "kmText": "108",
+  "s1": "5×1.2 km at 3:18–3:21, 2:30 jog",
+  "s2": "30/15s: 3 sets of 12×(30 s / 15 s)",
+  "long": "32 km with 10 km at 3:50–3:54",
+  "notes": "Focus week"
+ },
+ {
+  "start": "2027-08-02",
+  "km": 90,
+  "kmText": "90",
+  "s1": "2×15 min at 3:38–3:41, 3 min jog",
+  "s2": "6×800 m at 3:16–3:19, 2 min jog",
+  "long": "26 km easy",
+  "notes": "Lighter week"
+ },
+ {
+  "start": "2027-08-09",
+  "km": 110,
+  "kmText": "110",
+  "s1": "5×4 min at 3:18–3:21, 2:30 jog",
+  "s2": "3×10 min at 3:38–3:41, 2 min jog",
+  "long": "34 km easy",
+  "notes": ""
+ },
+ {
+  "start": "2027-08-16",
+  "km": 105,
+  "kmText": "105",
+  "s1": "6×6 min at 3:37–3:40, 1 min jog",
+  "s2": "18 km with 12 km at 3:50",
+  "long": "30 km easy",
+  "notes": ""
+ },
+ {
+  "start": "2027-08-23",
+  "km": 110,
+  "kmText": "110",
+  "s1": "4×3 km at 3:37–3:40, 2 min jog",
+  "s2": "5×1 km at 3:18–3:21, 2 min jog",
+  "long": "32 km with 14 km at 3:48–3:50",
+  "notes": ""
+ },
+ {
+  "start": "2027-08-30",
+  "km": 114,
+  "kmText": "114",
+  "s1": "2×20 min at 3:38–3:41, 3 min jog",
+  "s2": "20 km with 15 km at 3:48–3:50",
+  "long": "34 km easy",
+  "notes": ""
+ },
+ {
+  "start": "2027-09-06",
+  "km": 95,
+  "kmText": "95",
+  "s1": "3×10 min at 3:37–3:40, 2 min jog",
+  "s2": "6×800 m at 3:16–3:19, 2 min jog",
+  "long": "28 km easy",
+  "notes": "Lighter week"
+ },
+ {
+  "start": "2027-09-13",
+  "km": 116,
+  "kmText": "116",
+  "s1": "5×2 km at 3:36–3:39, 90 s jog",
+  "s2": "6×1 km at 3:27–3:30, 90 s jog",
+  "long": "35 km with 18 km at 3:47–3:50",
+  "notes": ""
+ },
+ {
+  "start": "2027-09-20",
+  "km": 120,
+  "kmText": "120",
+  "s1": "6×6 min at 3:36–3:39, 1 min jog",
+  "s2": "22 km with 2×8 km at 3:46–3:48, 3 min jog",
+  "long": "34 km easy",
+  "notes": "Peak volume"
+ },
+ {
+  "start": "2027-09-27",
+  "km": 118,
+  "kmText": "118",
+  "s1": "4×3 km at 3:36–3:39, 2 min jog",
+  "s2": "5×1.2 km at 3:17–3:20, 2:30 jog",
+  "long": "36 km with 20 km at 3:46–3:50",
+  "notes": ""
+ },
+ {
+  "start": "2027-10-04",
+  "km": 98,
+  "kmText": "98",
+  "s1": "2×15 min at 3:36–3:39, 3 min jog",
+  "s2": "16 km with 10 km at 3:46–3:48",
+  "long": "28 km easy",
+  "notes": "Lighter week"
+ },
+ {
+  "start": "2027-10-11",
+  "km": 116,
+  "kmText": "116",
+  "s1": "6×6 min at 3:35–3:38, 1 min jog",
+  "s2": "6×1 km at 3:26–3:29, 90 s jog",
+  "long": "32 km with 16 km at 3:46–3:49",
+  "notes": ""
+ },
+ {
+  "start": "2027-10-18",
+  "km": 88,
+  "kmText": "88",
+  "s1": "Tue: 4×2 km at 3:37–3:40, 90 s jog",
+  "s2": "Sun 24 Oct: Lausanne half",
+  "long": "—",
+  "notes": "Easy Wed–Sat"
+ },
+ {
+  "start": "2027-10-25",
+  "km": 108,
+  "kmText": "108",
+  "s1": "Wed: 3×3 km at 3:36–3:39, 2 min jog",
+  "s2": "—",
+  "long": "32 km easy, last 5 km at 3:46–3:48",
+  "notes": "Easy Mon–Tue after the half"
+ },
+ {
+  "start": "2027-11-01",
+  "km": 118,
+  "kmText": "118",
+  "s1": "5×2 km at 3:35–3:38, 90 s jog",
+  "s2": "",
+  "long": "Sun 7 Nov: 36 km with 25 km at 3:46–3:50",
+  "notes": "Final rehearsal, race kit and fuel"
+ },
+ {
+  "start": "2027-11-08",
+  "km": 110,
+  "kmText": "110",
+  "s1": "3×10 min at 3:36–3:39, 2 min jog",
+  "s2": "18 km with 14 km at 3:46–3:48",
+  "long": "30 km easy",
+  "notes": "Last big week"
+ },
+ {
+  "start": "2027-11-15",
+  "km": 95,
+  "kmText": "95",
+  "s1": "2×5 km at 3:46–3:48, 3 min jog",
+  "s2": "6×1 km at 3:28–3:30, 2 min jog",
+  "long": "28 km with 10 km at 3:46–3:48",
+  "notes": "Taper: about −20%"
+ },
+ {
+  "start": "2027-11-22",
+  "km": 72,
+  "kmText": "72",
+  "s1": "3×3 km at 3:46–3:48, 2 min jog",
+  "s2": "5×1 km at 3:30, 2 min jog",
+  "long": "20 km easy",
+  "notes": "Taper: about −40%"
+ },
+ {
+  "start": "2027-11-29",
+  "km": 50,
+  "kmText": "50 + race",
+  "s1": "Tue: 2×3 km at 3:46–3:48, 2 min jog",
+  "s2": "—",
+  "long": "Sun 5 Dec: Valencia",
+  "notes": "Easy otherwise, strides Thu and Fri"
+ }
+]
