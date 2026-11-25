@@ -205,7 +205,7 @@ export function WebToday() {
       <div className="wt-row">
         {offset === 0 && todayDay ? (
           <section className="wt-panel wt-today">
-            <Session d={todayDay} label="Today" next={fw.days.find((d) => d.date === addDays(today, 1))} />
+            <Session d={todayDay} label="Today" compact next={fw.days.find((d) => d.date === addDays(today, 1))} />
           </section>
         ) : null}
         <section className="wt-panel">

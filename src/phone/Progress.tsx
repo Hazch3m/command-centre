@@ -135,11 +135,7 @@ function GoalCard({ plan, f, today }: { plan: Plan; f: Fitness; today: string })
       </div>
       <p className="pg-note">
         {gap != null && gap > 0 && perKm != null && <>That's {Math.round(perKm)} s/km. </>}
-        {f.slope != null && f.neededSlope != null && f.nextMilestone && (
-          <>
-            Fitness is {f.slope >= 0 ? "rising" : "falling"} {Math.abs(f.slope).toFixed(2)} a week over the last 8 weeks; {f.neededSlope <= 0 ? "you're already at the level " + f.nextMilestone.label + " needs" : `${f.neededSlope.toFixed(2)} a week gets you to ${f.nextMilestone.label}`}.{" "}
-          </>
-        )}
+        {f.slope != null && <>Fitness is {f.slope >= 0 ? "rising" : "falling"} {Math.abs(f.slope).toFixed(2)} VDOT a week over the last 8 weeks. </>}
         Race readiness {r.score}%: how much of the volume, long runs and race-specific work the plan has in you by then.
       </p>
     </section>
@@ -155,10 +151,12 @@ function FitnessCard({ f, today }: { f: Fitness; today: string }) {
   const races = f.races.filter((r) => r.date >= from);
   const now = f.current;
   const then = pts.find((p) => p.d >= addDays(today, -91))?.v ?? null;
-  const ms = f.nextMilestone;
+  // The level your goal race needs (its milestone), drawn as a line; nothing else ahead of today.
+  const goal = f.config.projection.milestones.filter((m) => m.date >= today).sort((a, b) => b.date.localeCompare(a.date))[0] ?? null;
+  const ms = goal ? { ...goal, label: goal.label.replace(/^.*·\s*/, "") } : null;
   if (now == null && !pts.length) return null;
   // The chart: the last year and on to the next goal.
-  const end = ms && ms.date > today ? ms.date : today;
+  const end = today;
   const W = 320;
   const H = 120;
   const vals = [...pts.map((p) => p.v), ...races.map((r) => r.vdot), ...(ms ? [ms.vo2] : []), ...(now != null ? [now] : [])];
@@ -168,9 +166,9 @@ function FitnessCard({ f, today }: { f: Fitness; today: string }) {
   const x = (d: string) => (diffDays(from, d) / span) * W;
   const y = (v: number) => 6 + (1 - (v - lo) / Math.max(1, hi - lo)) * (H - 12);
   const line = pts.map((p, i) => `${i ? "L" : "M"}${x(p.d).toFixed(1)} ${y(p.v).toFixed(1)}`).join("");
-  const proj = now != null && ms && ms.date > today ? `M${x(today).toFixed(1)} ${y(now).toFixed(1)}L${x(ms.date).toFixed(1)} ${y(ms.vo2).toFixed(1)}` : null;
   const months: { d: string; label: string }[] = [];
   for (let d = addDays(from, 1); d <= end; d = addDays(d, 1)) if (parseKey(d).getDate() === 1 && parseKey(d).getMonth() % 2 === 0) months.push({ d, label: MON[parseKey(d).getMonth()] });
+  if (now != null && pts.length) pts.push({ d: today, v: now });
   const basis = f.predictionBasis?.race;
   return (
     <Card
@@ -186,17 +184,15 @@ function FitnessCard({ f, today }: { f: Fitness; today: string }) {
         {ms && <line x1={0} x2={W} y1={y(ms.vo2)} y2={y(ms.vo2)} className="pg-goal-line" />}
         {ms && (
           <text x={W - 2} y={y(ms.vo2) - 3} textAnchor="end" className="pg-axis">
-            {ms.label} {ms.vo2.toFixed(1)}
+            {ms.label} needs {ms.vo2.toFixed(1)}
           </text>
         )}
         <path d={line} className="pg-line" />
-        {proj && <path d={proj} className="pg-proj" />}
         {races.map((r) => (
           <rect key={r.date + r.name} x={x(r.date) - 3.5} y={y(r.vdot) - 3.5} width={7} height={7} transform={`rotate(45 ${x(r.date)} ${y(r.vdot)})`} className="pg-race">
             <title>{`${r.name}, ${day(r.date)}: VDOT ${r.vdot.toFixed(1)}`}</title>
           </rect>
         ))}
-        <line x1={x(today)} x2={x(today)} y1={0} y2={H} className="pg-today" />
         {months.map((m) => (
           <text key={m.d} x={x(m.d)} y={H + 12} className="pg-axis">
             {m.label}
@@ -279,7 +275,7 @@ function SessionsCard({ plan, runs }: { plan: Plan; runs: Run[] }) {
           date: r.check.date,
           runId: r.check.runId,
           kind,
-          label: (/(?:Threshold|VO2 max|10K pace|5K pace|Marathon pace):\s*([^,]+)/.exec(r.day.text)?.[1] ?? r.day.text).replace(/ at .*$/, ""),
+          label: r.check.autoZone ? r.day.text.replace(/\s*\(before the plan.*$/, "") : (/(?:Threshold|VO2 max|10K pace|5K pace|Marathon pace):\s*([^,]+)/.exec(r.day.text)?.[1] ?? r.day.text).replace(/ at .*$/, ""),
           pace: r.check.actual,
           target: r.check.target,
           hr: r.check.hr ?? null,
@@ -315,7 +311,7 @@ function SessionsCard({ plan, runs }: { plan: Plan; runs: Run[] }) {
             <button onClick={() => openRun(p.runId)}>
               <span className="pg-s-date">{day(p.date)}</span>
               <span className="pg-s-what">
-                {p.kind}: {p.label}
+                <em>{p.kind}</em> {p.label}
               </span>
               <span className="pg-s-num num">
                 {fmtPace(p.pace)}
